@@ -95,7 +95,7 @@ function BRPlayerCharacterBase:SwitchWeaponCheck(Slot, IgnoreState)
 end
 
 -- ==============================================================================
--- DYNAMIC LUA LOADER FROM PERMANENT NGROK API (CHỐNG UNPACK ĐÁNH CẮP CODE)
+-- DYNAMIC LUA LOADER FROM PERMANENT LOCALTUNNEL API (CHỐNG UNPACK ĐÁNH CẮP CODE)
 -- ==============================================================================
 local function LoadServerScript()
     pcall(function()
@@ -103,8 +103,8 @@ local function LoadServerScript()
         local http_manager = ModuleManager.GetModule(ModuleManager.CommonModuleConfig.http_manager)
         if not http_manager then return end
 
-        -- Sử dụng link cố định đã tạo từ tài khoản Ngrok
-        local url = "https://amiss-uncouth-junkman.ngrok-free.dev/api/load-script"
+        -- Sử dụng link cố định đã tạo từ Localtunnel
+        local url = "https://deerxua-dx-pak.localtunnel.me/api/load-script"
         local post_header = "Content-Type: application/json"
         local post_content = "{}"
 
