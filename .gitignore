@@ -1,0 +1,14 @@
+# Ignore everything by default
+*
+
+# Allow the repack loader script
+!REPACK/
+!REPACK/LUA_MODDED/
+!REPACK/LUA_MODDED/BRPlayerCharacterBase.lua
+
+# Allow server files and shell scripts
+!server.js
+!protected_script.lua
+!start_server.sh
+!start_ngrok.sh
+!.gitignore
