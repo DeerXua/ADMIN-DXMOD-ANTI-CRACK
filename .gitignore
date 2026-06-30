@@ -10,5 +10,6 @@
 !server.js
 !protected_script.lua
 !start_server.sh
+!start_all.sh
 !start_ngrok.sh
 !.gitignore
