@@ -308,5 +308,5 @@ app.get("/health", (req, res) => {
 
 app.listen(PORT, "0.0.0.0", () => {
   console.log(`[PAYLOAD-SERVER] running on port ${PORT}`);
-  getEncryptedPayload();
+  getPlaintextPayload();
 });
