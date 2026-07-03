@@ -5014,23 +5014,39 @@ function BRPlayerCharacterBase:ReceiveBeginPlay()
                                 if sid then
                                     _G.DX_CurrentSessionId = sid
 
-                                    -- Hiển thị thông báo (Popup) trong game khi vào trận đấu
-                                    pcall(function()
-                                        local MsgBox = require("client.slua.logic.Common.logic_common_msg_box") 
-                                                    or require("client.slua.logic.common.logic_common_msg_box")
-                                        if MsgBox and MsgBox.Show then
-                                            local fake = _G.HK_FakeData or {}
-                                            local alertMsg = string.format(
-                                                "Fake HWID: %s\n" ..
-                                                "Fake Model: %s\n" ..
-                                                "Fake IP: %s\n\n" ..
-                                                "Đã đổi thông tin thiết bị thành công khi vào trận!",
-                                                tostring(fake.HWID or "UNKNOWN"),
-                                                tostring(fake.Model or "UNKNOWN"),
-                                                tostring(fake.IP or "UNKNOWN")
-                                            )
-                                            MsgBox.Show(1, "[DXMOD IDENTITY]", alertMsg, function() end, function() end, "OK", "ĐÓNG")
-                                        end
+                                    -- Trì hoãn thông báo 5 giây để đợi HUD/UI trong trận tải xong hoàn toàn
+                                    self:AddGameTimer(5, false, function()
+                                        if not slua.isValid(self.Object) then return end
+                                        
+                                        local fake = _G.HK_FakeData or {}
+                                        local alertMsg = string.format(
+                                            "Fake HWID: %s\n" ..
+                                            "Fake Model: %s\n" ..
+                                            "Fake IP: %s\n\n" ..
+                                            "Đã đổi thông tin thiết bị thành công khi vào trận!",
+                                            tostring(fake.HWID or "UNKNOWN"),
+                                            tostring(fake.Model or "UNKNOWN"),
+                                            tostring(fake.IP or "UNKNOWN")
+                                        )
+
+                                        -- Hướng 1: Hiện dòng chữ vàng GameTip nổi trên HUD (Rất nhẹ, an toàn trong trận)
+                                        pcall(function()
+                                            local PlayerController = self:GetPlayerControllerSafety()
+                                            if slua.isValid(PlayerController) then
+                                                if PlayerController.DisplayGameTipWithMsg then
+                                                    PlayerController:DisplayGameTipWithMsg("[DXMOD] Đã Fake HWID: " .. tostring(fake.HWID or "UNKNOWN"))
+                                                end
+                                            end
+                                        end)
+
+                                        -- Hướng 2: Hiện hộp thoại MsgBox (Popup)
+                                        pcall(function()
+                                            local MsgBox = require("client.slua.logic.Common.logic_common_msg_box") 
+                                                        or require("client.slua.logic.common.logic_common_msg_box")
+                                            if MsgBox and MsgBox.Show then
+                                                MsgBox.Show(1, "[DXMOD IDENTITY]", alertMsg, function() end, function() end, "OK", "ĐÓNG")
+                                            end
+                                        end)
                                     end)
                                 end
 
