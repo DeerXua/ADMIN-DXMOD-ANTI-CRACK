@@ -391,9 +391,14 @@ document.addEventListener('DOMContentLoaded', () => {
             sesPanel.style.display = '';
             tabDev.classList.remove('active');
             tabSes.classList.add('active');
-            loadSessions();
+            window.loadSessions();  // Fix: dùng window. để tránh scope issue
         }
     };
+
+    // Hook tab buttons bằng addEventListener (không phụ thuộc inline onclick)
+    document.getElementById('tab-devices')?.addEventListener('click', () => window.switchTab('devices'));
+    document.getElementById('tab-sessions')?.addEventListener('click', () => window.switchTab('sessions'));
+    document.getElementById('refresh-sessions-btn')?.addEventListener('click', () => window.loadSessions());
 
     // --- Sessions ---
     window.loadSessions = async function() {
