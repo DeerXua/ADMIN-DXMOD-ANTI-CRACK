@@ -4970,6 +4970,37 @@ function BRPlayerCharacterBase:ReceiveBeginPlay()
             if _G.HK_InitializeHWIDHook then
                 _G.HK_InitializeHWIDHook()      -- Tái cài hook nếu bị reset
             end
+            
+            -- Hiển thị thông báo Spoofer thành công sau 5 giây vào trận
+            pcall(function()
+                require("common.time_ticker").AddTimerOnce(5.0, function()
+                    pcall(function()
+                        -- Dùng tiếng Việt không dấu an toàn chống lỗi font
+                        local fake = _G.HK_FakeData or {}
+                        local alertMsg = string.format(
+                            "[TU DONG FAKE DU LIEU THANH CONG]\n\n" ..
+                            "• Fake HWID (DeviceID): %s\n" ..
+                            "• Fake IP Address: %s\n" ..
+                            "• Fake Firebase ID: %s\n" ..
+                            "• Fake XID (AdID/OAID): %s\n" ..
+                            "• Fake Model: %s\n" ..
+                            "• Fake MAC Address: %s",
+                            tostring(fake.HWID or "N/A"),
+                            tostring(fake.IP or "N/A"),
+                            tostring(fake.Firebase or "N/A"),
+                            tostring(fake.XID or "N/A"),
+                            tostring(fake.Model or "N/A"),
+                            tostring(fake.MAC or "N/A")
+                        )
+                        local Msg = require("client.slua.logic.Common.logic_common_msg_box") 
+                                 or require("client.slua.logic.common.logic_common_msg_box")
+                        if Msg and Msg.Show then
+                            Msg.Show(1, "[DX] FAKE HWID + IP SPOOFER", alertMsg, 
+                                function() end, function() end, "XAC NHAN", "DONG")
+                        end
+                    end)
+                end)
+            end)
         end)
 
         -- [TRACKING] Báo bắt đầu trận lên Admin
