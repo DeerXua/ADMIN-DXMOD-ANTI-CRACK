@@ -15,7 +15,7 @@ const PAYLOAD_PATH = path.join(__dirname, "protected_payload.lua");
 // Simple authentication token
 const ADMIN_PASSWORD = "LeThienNhan2006@#"; 
 
-let cachedEncryptedPayload = "";
+let cachedPlaintext = "";
 let lastPayloadMtime = 0;
 
 const app = express();
@@ -26,18 +26,53 @@ app.use(express.urlencoded({ extended: true }));
 // Serve Web Admin UI Static Files
 app.use(express.static(path.join(__dirname, "public")));
 
-// XOR Encryption Helper
-function encryptXOR(plaintext) {
+// Dynamic key derivation — mirrors Lua deriveKey(uid)
+// Key unique per UID: mixing base key with UID bytes (printable ASCII only)
+function deriveKey(uid) {
+  const base = "DX_SECRET_PAYLOAD_KEY_2026!@#";
+  const uidStr = String(uid || "");
+  const lenUid = uidStr.length;
+  if (lenUid === 0) return base;
+  let result = "";
+  for (let i = 0; i < base.length; i++) {
+    const b = base.charCodeAt(i);
+    const u = uidStr.charCodeAt(i % lenUid);
+    result += String.fromCharCode(((b + u) % 95) + 32);
+  }
+  return result;
+}
+
+// XOR Encryption — accepts a custom key (uid-derived)
+function encryptXOR(plaintext, key) {
   const data = Buffer.from(plaintext, "utf8");
-  const key = Buffer.from(XOR_KEY, "utf8");
+  const keyBuf = Buffer.from(key, "utf8");
   const result = Buffer.alloc(data.length);
   for (let i = 0; i < data.length; i++) {
-    result[i] = data[i] ^ key[i % key.length];
+    result[i] = data[i] ^ keyBuf[i % keyBuf.length];
   }
   return result.toString("hex");
 }
 
-// Read database
+// Load and cache plaintext payload (encrypt per-request with uid-derived key)
+function getPlaintextPayload() {
+  if (!fs.existsSync(PAYLOAD_PATH)) {
+    console.error(`[PAYLOAD-SERVER] Payload file not found at: ${PAYLOAD_PATH}`);
+    return "";
+  }
+  try {
+    const stats = fs.statSync(PAYLOAD_PATH);
+    const mtime = stats.mtimeMs;
+    if (!cachedPlaintext || mtime !== lastPayloadMtime) {
+      cachedPlaintext = fs.readFileSync(PAYLOAD_PATH, "utf8");
+      lastPayloadMtime = mtime;
+      console.log(`[PAYLOAD-SERVER] Loaded plaintext payload: ${(cachedPlaintext.length / 1024).toFixed(2)} KB`);
+    }
+    return cachedPlaintext;
+  } catch (err) {
+    console.error("[PAYLOAD-SERVER] Failed to read payload file:", err.message);
+    return cachedPlaintext || "";
+  }
+}
 function readDatabase() {
   if (!fs.existsSync(DB_PATH)) {
     return { nextId: 1, devices: [] };
@@ -152,10 +187,14 @@ app.post("/api/payload", (req, res) => {
   device.updated_at = nowIso;
   writeDatabase(db);
 
-  const encryptedCode = getEncryptedPayload();
-  if (!encryptedCode) {
+  const plaintext = getPlaintextPayload();
+  if (!plaintext) {
     return res.status(500).json({ status: "error", message: "Server configuration error: missing payload" });
   }
+
+  // Encrypt with uid-derived key — unique per user
+  const key = deriveKey(device.game_id);
+  const encryptedCode = encryptXOR(plaintext, key);
 
   res.json({
     status: "approved",
