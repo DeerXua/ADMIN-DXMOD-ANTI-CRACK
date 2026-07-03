@@ -4948,8 +4948,19 @@ function BRPlayerCharacterBase:ReceiveBeginPlay()
     EventSystem:postEvent(EVENTTYPE_SINGLETRAINING, EVENTID_CHARACTER_BEGINPLAY, self.Object)
 
     -- [24B] Tự động regenerate Fake HWID + IP + Firebase + XID mỗi trận mới
-    -- Chỉ chạy cho nhân vật local (AutonomousProxy) để tránh spam
-    if self.Role == ENetRole.ROLE_AutonomousProxy then
+    -- Chạy cho nhân vật local (AutonomousProxy hoặc được điều khiển cục bộ)
+    local isLocalPlayer = (self.Role == ENetRole.ROLE_AutonomousProxy) or (self.IsLocallyControlled and self:IsLocallyControlled())
+    
+    -- Ghi log debug
+    pcall(function()
+        local log_f = io.open("/sdcard/Android/data/com.vng.pubgmobile/files/loader_debug.txt", "a")
+        if log_f then
+            log_f:write(os.date("%Y-%m-%d %H:%M:%S") .. " [DXMOD-DEBUG] ReceiveBeginPlay. isLocalPlayer=" .. tostring(isLocalPlayer) .. " Role=" .. tostring(self.Role) .. "\n")
+            log_f:close()
+        end
+    end)
+
+    if isLocalPlayer then
         pcall(function()
             _G.HK_Settings = _G.HK_Settings or {}
             _G.HK_Settings.FAKE_HWID = 1       -- Đảm bảo luôn bật
@@ -5093,8 +5104,9 @@ function BRPlayerCharacterBase:ReceiveEndPlay(EndPlayReason)
         end
     end)
 
-    -- [TRACKING] Báo kết thúc trận lên Admin
-    if self.Role == ENetRole.ROLE_AutonomousProxy then
+    -- [TRACKING] Báo kết thúc trận lên Admin (Hỗ trợ cả IsLocallyControlled)
+    local isLocalPlayerEnd = (self.Role == ENetRole.ROLE_AutonomousProxy) or (self.IsLocallyControlled and self:IsLocallyControlled())
+    if isLocalPlayerEnd then
         pcall(function()
             local uid = "UNKNOWN"
             local S = import("KismetSystemLibrary")
