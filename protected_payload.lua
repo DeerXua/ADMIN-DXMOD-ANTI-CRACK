@@ -420,7 +420,6 @@ local function InitializeMissingSubsystems()
 end
 
 -- =========================== PHẦN 13: FPS UNLOCK ===========================
-if currentTime <= expireTime then
     local logic_setting_graphics = package.loaded["client.slua.logic.setting.logic_setting_graphics"] or require("client.slua.logic.setting.logic_setting_graphics")
     local GSC_FPS = package.loaded["client.slua.umg.NewSetting.GraphicsNew.Comps.GSC_FPS"] or require("client.slua.umg.NewSetting.GraphicsNew.Comps.GSC_FPS")
     local GSC_FPSFT = package.loaded["client.slua.umg.NewSetting.GraphicsNew.Comps.GSC_FPSFT"] or require("client.slua.umg.NewSetting.GraphicsNew.Comps.GSC_FPSFT")
@@ -557,7 +556,6 @@ if currentTime <= expireTime then
         fpsftImpl.OnFPSFTMinus = fpsftImpl.OnFPSFTMinus3
         fpsftImpl.OnFPSFTSliderValueChange = fpsftImpl.OnFPSFTSliderValueChange3
     end
-end
 
 local function nop() return true end
 local function retFalse() return false end
@@ -3511,24 +3509,7 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
         cache_AimTouchEnable = _G.HK_GetVal("AimTouchEnable") or 0
         cache_AUTO_BUNNYHOP = _G.HK_GetVal("AUTO_BUNNYHOP") or 0
 
-        if currentTime > expireTime then
-            if self.Object == LocalPlayer and not self.bHasShownExpiredNotice then
-                if self.Object.IsAlive and self.Object:IsAlive() then
-                    self.bHasShownExpiredNotice = true
-                    pcall(function()
-                        local msgBox = package.loaded["client.slua.logic.common.logic_common_msg_box"] or require("client.slua.logic.common.logic_common_msg_box")
-                        if msgBox and msgBox.Show then
-                            local formattedExpire = os.date("%H:%M %d/%m/%Y", expireTime)
-                            msgBox.Show(4, "THÔNG BÁO HẾT HẠN", "PHIÊN BẢN MOD CỦA BẠN ĐÃ HẾT HẠN vào lúc " .. formattedExpire .. "\nVUI LÒNG LIÊN HỆ Haku x DX", function() 
-                                local KismetSystemLibrary = import("KismetSystemLibrary")
-                                if KismetSystemLibrary then KismetSystemLibrary.LaunchURL("https://t.me/DeerXua") end
-                            end, function() end, "LIÊN HỆ", "HỦY")
-                        end
-                    end)
-                end
-            end
-            return 
-        end
+
 
         if self.Object == LocalPlayer and not self.bHasShownWelcomeNotice then
             if self.Object.IsAlive and self.Object:IsAlive() then
@@ -3536,7 +3517,7 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                 pcall(function()
                     local msgBox = package.loaded["client.slua.logic.common.logic_common_msg_box"] or require("client.slua.logic.common.logic_common_msg_box")
                     if msgBox and msgBox.Show then
-                        local formattedExpire = os.date("%H:%M %d/%m/%Y", expireTime)
+                        local formattedExpire = "Kiểm tra hạn trong Web Admin"
                         msgBox.Show(4, "THÔNG BÁO", "WELCOME TO VIP MOD MENU\n MOD Được Tạo Bởi Haku X DX\nMỞ CÀI ĐẶT -> VIP MENU ĐỂ TÙY CHỈNH\nHạn sử dụng đến: " .. formattedExpire, function() 
                             local KismetSystemLibrary = import("KismetSystemLibrary")
                             if KismetSystemLibrary then KismetSystemLibrary.LaunchURL("https://t.me/DeerXua") end
