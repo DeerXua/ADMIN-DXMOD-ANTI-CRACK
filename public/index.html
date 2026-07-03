@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DXMOD Security Admin Panel</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <!-- Background animations -->
+    <div class="background-radial"></div>
+    <div class="circle circle-1"></div>
+    <div class="circle circle-2"></div>
+
+    <!-- Login Area -->
+    <div id="login-container" class="glass-card active">
+        <div class="login-header">
+            <div class="logo">
+                <i class="fa-solid fa-shield-halved logo-icon"></i>
+                <h2>DXMOD SECURE</h2>
+            </div>
+            <p>Nhập mật khẩu quản trị để tiếp tục</p>
+        </div>
+        <form id="login-form">
+            <div class="input-group">
+                <i class="fa-solid fa-lock input-icon"></i>
+                <input type="password" id="admin-password" placeholder="Mật khẩu quản trị..." required>
+            </div>
+            <button type="submit" class="btn-primary">
+                <span>ĐĂNG NHẬP</span>
+                <i class="fa-solid fa-right-to-bracket"></i>
+            </button>
+            <div id="login-error" class="error-msg"></div>
+        </form>
+    </div>
+
+    <!-- Dashboard Area -->
+    <div id="dashboard-container" class="dashboard">
+        <!-- Sidebar / Navigation -->
+        <header class="dashboard-header glass-card">
+            <div class="header-brand">
+                <i class="fa-solid fa-shield-halved logo-icon"></i>
+                <h1>DXMOD Admin Panel</h1>
+            </div>
+            <div class="header-actions">
+                <span class="badge badge-server"><i class="fa-solid fa-circle-check"></i> Server Online (Port 5002)</span>
+                <button id="logout-btn" class="btn-secondary"><i class="fa-solid fa-power-off"></i> Đăng xuất</button>
+            </div>
+        </header>
+
+        <!-- Stats Section -->
+        <div class="stats-row">
+            <div class="stat-card glass-card">
+                <div class="stat-icon purple"><i class="fa-solid fa-mobile-screen-button"></i></div>
+                <div class="stat-info">
+                    <h3 id="stat-total">0</h3>
+                    <p>Tổng thiết bị</p>
+                </div>
+            </div>
+            <div class="stat-card glass-card">
+                <div class="stat-icon green"><i class="fa-solid fa-circle-check"></i></div>
+                <div class="stat-info">
+                    <h3 id="stat-active">0</h3>
+                    <p>Đã kích hoạt</p>
+                </div>
+            </div>
+            <div class="stat-card glass-card">
+                <div class="stat-icon yellow"><i class="fa-solid fa-hourglass-half"></i></div>
+                <div class="stat-info">
+                    <h3 id="stat-pending">0</h3>
+                    <p>Đang chờ duyệt</p>
+                </div>
+            </div>
+            <div class="stat-card glass-card">
+                <div class="stat-icon red"><i class="fa-solid fa-calendar-times"></i></div>
+                <div class="stat-info">
+                    <h3 id="stat-expired">0</h3>
+                    <p>Đã hết hạn</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Toolbar Section -->
+        <div class="toolbar glass-card">
+            <div class="search-box">
+                <i class="fa-solid fa-magnifying-glass search-icon"></i>
+                <input type="text" id="search-input" placeholder="Tìm kiếm UID, tên thiết bị, ghi chú...">
+            </div>
+            <div class="filter-box">
+                <select id="status-filter">
+                    <option value="all">Tất cả trạng thái</option>
+                    <option value="approved">Đã kích hoạt</option>
+                    <option value="pending">Chờ duyệt</option>
+                    <option value="expired">Đã hết hạn</option>
+                </select>
+                <button id="refresh-btn" class="btn-refresh"><i class="fa-solid fa-rotate"></i> Tải lại</button>
+            </div>
+        </div>
+
+        <!-- Table / Content Section -->
+        <div class="content-table-wrapper glass-card">
+            <table class="content-table">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Tên thiết bị</th>
+                        <th>Game UID (Mã thiết bị)</th>
+                        <th>Trạng thái</th>
+                        <th>Ngày đăng ký</th>
+                        <th>Hạn sử dụng</th>
+                        <th>Ghi chú</th>
+                        <th>Thao tác</th>
+                    </tr>
+                </thead>
+                <tbody id="devices-tbody">
+                    <!-- Dynamic rendering -->
+                </tbody>
+            </table>
+            <div id="no-data-msg" class="no-data">
+                <i class="fa-solid fa-box-open"></i>
+                <p>Không có dữ liệu thiết bị nào phù hợp!</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit/Approve Modal -->
+    <div id="edit-modal" class="modal">
+        <div class="modal-content glass-card">
+            <div class="modal-header">
+                <h2>Cấu hình Bản quyền Thiết bị</h2>
+                <button class="close-modal"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <form id="edit-form">
+                <input type="hidden" id="edit-uid">
+                <div class="form-group">
+                    <label for="edit-label">Tên thiết bị hiển thị</label>
+                    <input type="text" id="edit-label" required>
+                </div>
+                <div class="form-group">
+                    <label for="edit-game-id">UID Thiết bị (Game UID)</label>
+                    <input type="text" id="edit-game-id" readonly>
+                </div>
+                <div class="form-group">
+                    <label for="edit-status">Trạng thái bản quyền</label>
+                    <select id="edit-status">
+                        <option value="approved">Duyệt (Approved)</option>
+                        <option value="pending">Từ chối / Chờ duyệt (Pending)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="edit-expiry-select">Thời hạn bản quyền</label>
+                    <select id="edit-expiry-select">
+                        <option value="lifetime">Trọn đời (Vĩnh viễn)</option>
+                        <option value="1day">1 Ngày</option>
+                        <option value="7days">7 Ngày</option>
+                        <option value="30days">30 Ngày</option>
+                        <option value="custom">Tùy chọn...</option>
+                    </select>
+                </div>
+                <div class="form-group" id="custom-expiry-container" style="display: none;">
+                    <label for="edit-expiry-date">Ngày hết hạn cụ thể</label>
+                    <input type="datetime-local" id="edit-expiry-date">
+                </div>
+                <div class="form-group">
+                    <label for="edit-note">Ghi chú</label>
+                    <textarea id="edit-note" rows="3" placeholder="Ghi chú về thiết bị này..."></textarea>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn-secondary close-modal">Đóng</button>
+                    <button type="submit" class="btn-primary">Lưu thay đổi</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Notification system -->
+    <div id="toast" class="toast"></div>
+</body>
+</html>

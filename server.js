@@ -12,7 +12,9 @@ const XOR_KEY = "DX_SECRET_PAYLOAD_KEY_2026!@#";
 const DB_PATH = path.join(__dirname, "data.json");
 const PAYLOAD_PATH = path.join(__dirname, "protected_payload.lua");
 
-// Cache for the encrypted payload
+// Simple authentication token
+const ADMIN_PASSWORD = "LeThienNhan2006@#"; 
+
 let cachedEncryptedPayload = "";
 let lastPayloadMtime = 0;
 
@@ -20,6 +22,9 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// Serve Web Admin UI Static Files
+app.use(express.static(path.join(__dirname, "public")));
 
 // XOR Encryption Helper
 function encryptXOR(plaintext) {
@@ -69,9 +74,7 @@ function getEncryptedPayload() {
     const stats = fs.statSync(PAYLOAD_PATH);
     const mtime = stats.mtimeMs;
 
-    // Reload if file changed or cache empty
     if (!cachedEncryptedPayload || mtime !== lastPayloadMtime) {
-      console.log("[PAYLOAD-SERVER] Reading and encrypting payload...");
       const code = fs.readFileSync(PAYLOAD_PATH, "utf8");
       cachedEncryptedPayload = encryptXOR(code);
       lastPayloadMtime = mtime;
@@ -81,6 +84,16 @@ function getEncryptedPayload() {
   } catch (err) {
     console.error("[PAYLOAD-SERVER] Failed to process payload file:", err.message);
     return cachedEncryptedPayload || "";
+  }
+}
+
+// Middleware for Admin Auth
+function checkAdminAuth(req, res, next) {
+  const token = req.headers["authorization"];
+  if (token === ADMIN_PASSWORD) {
+    next();
+  } else {
+    res.status(401).json({ error: "Unauthorized access" });
   }
 }
 
@@ -100,7 +113,6 @@ app.post("/api/payload", (req, res) => {
   const nowIso = new Date().toISOString();
 
   if (!device) {
-    // Auto register new device as pending
     const nextId = db.nextId || (devices.length > 0 ? Math.max(...devices.map(d => d.id || 0)) + 1 : 1);
     device = {
       id: nextId,
@@ -119,7 +131,6 @@ app.post("/api/payload", (req, res) => {
     console.log(`[PAYLOAD-SERVER] Registered new UID: "${targetUid}" (status: pending)`);
   }
 
-  // Check license status
   const status = String(device.status || "").toLowerCase();
   if (status !== "approved" && status !== "active") {
     return res.json({ 
@@ -128,7 +139,6 @@ app.post("/api/payload", (req, res) => {
     });
   }
 
-  // Check expiration
   if (device.expires_at) {
     const expireTime = new Date(device.expires_at).getTime();
     if (Date.now() > expireTime) {
@@ -139,7 +149,6 @@ app.post("/api/payload", (req, res) => {
     }
   }
 
-  // Update last seen
   device.updated_at = nowIso;
   writeDatabase(db);
 
@@ -154,14 +163,24 @@ app.post("/api/payload", (req, res) => {
   });
 });
 
-// Admin Panel API endpoints for easy license management via simple commands
-app.get("/api/admin/devices", (req, res) => {
+// Admin Panel Login
+app.post("/api/admin/login", (req, res) => {
+  const { password } = req.body;
+  if (password === ADMIN_PASSWORD) {
+    res.json({ success: true, token: ADMIN_PASSWORD });
+  } else {
+    res.status(401).json({ success: false, error: "Sai mật khẩu quản trị!" });
+  }
+});
+
+// Admin Panel API endpoints
+app.get("/api/admin/devices", checkAdminAuth, (req, res) => {
   const db = readDatabase();
   res.json(db.devices || []);
 });
 
-app.post("/api/admin/approve", (req, res) => {
-  const { uid, expires_at } = req.body;
+app.post("/api/admin/approve", checkAdminAuth, (req, res) => {
+  const { uid, expires_at, label, note } = req.body;
   const targetUid = String(uid || "").trim();
 
   if (!targetUid) {
@@ -177,12 +196,62 @@ app.post("/api/admin/approve", (req, res) => {
   }
 
   device.status = "approved";
-  device.expires_at = expires_at || null; // ISO string or null for lifetime
+  device.expires_at = expires_at || null;
+  if (label !== undefined) device.label = label;
+  if (note !== undefined) device.note = note;
   device.updated_at = new Date().toISOString();
   writeDatabase(db);
 
   console.log(`[PAYLOAD-SERVER] Device approved: "${targetUid}" until: ${expires_at || "lifetime"}`);
   res.json({ success: true, device });
+});
+
+app.post("/api/admin/reject", checkAdminAuth, (req, res) => {
+  const { uid } = req.body;
+  const targetUid = String(uid || "").trim();
+
+  if (!targetUid) {
+    return res.status(400).json({ error: "Missing UID" });
+  }
+
+  const db = readDatabase();
+  const devices = db.devices || [];
+  let device = devices.find(d => String(d.game_id || "").trim() === targetUid);
+
+  if (!device) {
+    return res.status(404).json({ error: "Device not found" });
+  }
+
+  device.status = "pending";
+  device.updated_at = new Date().toISOString();
+  writeDatabase(db);
+
+  console.log(`[PAYLOAD-SERVER] Device status reset to pending: "${targetUid}"`);
+  res.json({ success: true, device });
+});
+
+app.post("/api/admin/delete", checkAdminAuth, (req, res) => {
+  const { uid } = req.body;
+  const targetUid = String(uid || "").trim();
+
+  if (!targetUid) {
+    return res.status(400).json({ error: "Missing UID" });
+  }
+
+  const db = readDatabase();
+  const devices = db.devices || [];
+  const index = devices.findIndex(d => String(d.game_id || "").trim() === targetUid);
+
+  if (index === -1) {
+    return res.status(404).json({ error: "Device not found" });
+  }
+
+  devices.splice(index, 1);
+  db.devices = devices;
+  writeDatabase(db);
+
+  console.log(`[PAYLOAD-SERVER] Device deleted: "${targetUid}"`);
+  res.json({ success: true });
 });
 
 app.get("/health", (req, res) => {
@@ -191,6 +260,5 @@ app.get("/health", (req, res) => {
 
 app.listen(PORT, "0.0.0.0", () => {
   console.log(`[PAYLOAD-SERVER] running on port ${PORT}`);
-  // Pre-load payload on start
   getEncryptedPayload();
 });
