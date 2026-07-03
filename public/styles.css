@@ -166,7 +166,6 @@ body {
 input[type="text"],
 input[type="password"],
 input[type="datetime-local"],
-select,
 textarea {
   width: 100%;
   padding: 15px 16px 15px 52px;
@@ -180,6 +179,26 @@ textarea {
   outline: none;
   transition: var(--transition-smooth);
 }
+
+select {
+  width: 100%;
+  padding: 15px 16px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 14px;
+  color: var(--text-primary);
+  font-family: var(--font-stack);
+  font-size: 0.95rem;
+  font-weight: 400;
+  outline: none;
+  transition: var(--transition-smooth);
+}
+
+select option {
+  background-color: #0c1020;
+  color: var(--text-primary);
+}
+
 
 input[type="text"]:focus,
 input[type="password"]:focus,
