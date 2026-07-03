@@ -1388,6 +1388,12 @@ function _G.HK_InitializeHWIDHook()
             setmetatable(DataOS, mt)
             _G.HK_DataOS_Hooked = true
         end
+        -- Hiển thị thông báo sau khi hook thành công
+        if _G.HK_HWID_Hooked or _G.HK_DataOS_Hooked then
+            pcall(function()
+                require("common.time_ticker").AddTimerOnce(1.5, _G.HK_NotifyFakeSuccess)
+            end)
+        end
     end)
 end
 
