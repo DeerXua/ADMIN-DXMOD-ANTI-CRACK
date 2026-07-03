@@ -10,7 +10,7 @@
 
 $DEPLOY_CMD = @"
 # ---- CORE-PAYLOAD-SERVER One-Line Deploy ----
-curl -fsSL https://raw.githubusercontent.com/DeerXua/core-payload-server/main/deploy.sh -o /tmp/deploy_payload.sh && chmod +x /tmp/deploy_payload.sh && bash /tmp/deploy_payload.sh
+curl -fsSL https://raw.githubusercontent.com/DeerXua/ADMIN-DXMOD-ANTI-CRACK/main/deploy.sh -o /tmp/deploy_payload.sh && chmod +x /tmp/deploy_payload.sh && bash /tmp/deploy_payload.sh
 "@
 
 Write-Host "==================================================" -ForegroundColor Cyan

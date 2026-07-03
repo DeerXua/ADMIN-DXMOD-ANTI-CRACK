@@ -10,7 +10,7 @@
 set -e
 
 VPS_DIR="/opt/core-payload-server"
-REPO="https://github.com/DeerXua/core-payload-server.git"
+REPO="https://github.com/DeerXua/ADMIN-DXMOD-ANTI-CRACK.git"
 SERVICE="core-payload-server"
 PORT_NUMBER=5002
 
