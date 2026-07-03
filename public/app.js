@@ -90,7 +90,7 @@ document.addEventListener('DOMContentLoaded', () => {
         loginContainer.classList.remove('active');
         dashboardContainer.classList.add('active');
         fetchDevices();
-        loadSessions();
+        window.loadSessions();
     }
 
     // --- Fetch & Render Devices ---
