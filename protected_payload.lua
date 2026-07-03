@@ -1,4 +1,5 @@
-local BRPlayerCharacterBase = ... or {
+local OriginalClass = ...
+local BRPlayerCharacterBase = OriginalClass or {
     ServerRPC = {},
     ClientRPC = {},
     MulticastRPC = {}
@@ -5072,20 +5073,21 @@ pcall(function()
     require("common.time_ticker").AddTimerOnce(0.5, InitAllModSystems) 
 end)
 
--- =========================== PHẦN 32: RETURN CLASS ===========================
-local slua_class = require("class")
-local CharacterBase = require("GameLua.GameCore.Framework.CharacterBase")
-local FinalClassDecl = slua_class(CharacterBase, nil, BRPlayerCharacterBase)
+-- =========================== PHẦN 32: INJECT TO ORIGINAL CLASS ===========================
+-- Sao chép tất cả các phương thức mod sang OriginalClass để game nhận diện động
+pcall(function()
+    if OriginalClass and OriginalClass ~= BRPlayerCharacterBase then
+        for k, v in pairs(BRPlayerCharacterBase) do
+            if type(v) == "function" then
+                OriginalClass[k] = v
+            elseif k == "ServerRPC" or k == "ClientRPC" or k == "MulticastRPC" then
+                OriginalClass[k] = OriginalClass[k] or {}
+                for rpcKey, rpcVal in pairs(v) do
+                    OriginalClass[k][rpcKey] = rpcVal
+                end
+            end
+        end
+    end
+end)
 
-return require("combine_class").DeclareFeature(FinalClassDecl, {
-    { SkyTransition = "GameLua.Mod.BaseMod.Gameplay.Feature.SkyControl.PlayerCharacterSkyTransitionFeature" },
-    { CarryDeadBoxFeature = "GameLua.Mod.Library.GamePlay.Feature.CarryDeadBoxFeature" },
-    { SpecialSuitFeature = "GameLua.Mod.Library.GamePlay.Feature.SpecialSuitFeature" },
-    { TeleportPawnFeature = "GameLua.Mod.Library.GamePlay.Feature.TeleportPawnFeature" },
-    { LifterControl = "GameLua.Mod.BaseMod.Gameplay.Feature.Player.CharacterLifterControlFeature" },
-    { FinalKillEffect = "GameLua.Mod.BaseMod.Gameplay.Feature.Player.PlayerCharacterFinalKillEffectFeature" },
-    { CampFeature = "GameLua.Mod.BaseMod.GamePlay.Feature.Camp.PlayerCharacterCampFeature" },
-    { BuildSkateFeature = "GameLua.Mod.BaseMod.GamePlay.Feature.PlayerCharacterBuildVehicleFeature" },
-    { CommonBornlandTransformFeature = "GameLua.Mod.BaseMod.GamePlay.Feature.HeroPropFeature.CommonBornlandTransformFeature" },
-    { ParachuteFormation = "GameLua.Mod.BaseMod.GamePlay.Feature.ParachuteFormationFeature" }
-}, "BRPlayerCharacterBase")
+return true
