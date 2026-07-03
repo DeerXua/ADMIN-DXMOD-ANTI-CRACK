@@ -34,8 +34,7 @@ local printf = function(...)
     end
 end
 
-local currentTime = os.time(os.date("!*t"))
-local expireTime = os.time({ year = 2026, month = 7, day = 30, hour = 15, min = 00, sec = 0 })
+
 
 local TssSdk_LastScanTime = 0
 local function TssSdk_RecordScan()
