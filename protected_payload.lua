@@ -3523,27 +3523,7 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
             if self.Object.IsAlive and self.Object:IsAlive() then
                 if _G.DX_UIDStatus and _G.DX_UIDStatus.status ~= "checking" then
                     self.bHasShownWelcomeNotice = true
-                    local isActivated = (_G.DX_UIDStatus.active == true)
-                    if not isActivated then
-                        pcall(function()
-                            local msgBox = package.loaded["client.slua.logic.common.logic_common_msg_box"] or require("client.slua.logic.common.logic_common_msg_box")
-                            if msgBox and msgBox.Show then
-                                local uidStr = _G.DX_GetLocalGameUID()
-                                if not uidStr or uidStr == "" then uidStr = "Đang lấy..." end
-                                local contentMsg = "YÊU CẦU KÍCH HOẠT\n\nHãy gửi ID game cho admin để kích hoạt VIP:\nID GAME CỦA BẠN: " .. uidStr .. "\n\nTelegram Admin: @DeerXua"
-                                msgBox.Show(4, "YÊU CẦU KÍCH HOẠT", contentMsg, function() 
-                                    pcall(function()
-                                        local KismetSystemLibrary = import("KismetSystemLibrary")
-                                        if KismetSystemLibrary and KismetSystemLibrary.LaunchURL then
-                                            KismetSystemLibrary.LaunchURL("https://t.me/DeerXua")
-                                        else
-                                            os.execute("am start -a android.intent.action.VIEW -d https://t.me/DeerXua")
-                                        end
-                                    end)
-                                end, function() end, "TELEGRAM ADMIN", "ĐÓNG")
-                            end
-                        end)
-                    end
+                    -- Không hiện popup yêu cầu kích hoạt ở đây nữa, client loader đã lo phần này
                 end
             end
         end
