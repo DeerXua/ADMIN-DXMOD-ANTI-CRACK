@@ -325,6 +325,27 @@ app.post("/api/admin/delete", checkAdminAuth, (req, res) => {
 
 // ── MATCH TRACKING ──────────────────────────────────────────────────────────
 
+// Hàm dọn dẹp các session bị treo (không gửi ping trong 45s)
+function cleanupSessions(sessData) {
+  const now = Date.now();
+  const TIMEOUT_MS = 45 * 1000; // 45 giây không có heartbeat
+  let changed = false;
+
+  (sessData.sessions || []).forEach(s => {
+    if (s.status === "in_match") {
+      const lastSeen = s.last_seen_at ? new Date(s.last_seen_at).getTime() : new Date(s.started_at).getTime();
+      if (now - lastSeen > TIMEOUT_MS) {
+        s.ended_at = new Date(lastSeen).toISOString();
+        s.status = "ended";
+        s.duration_sec = Math.max(0, Math.round((lastSeen - new Date(s.started_at).getTime()) / 1000));
+        changed = true;
+      }
+    }
+  });
+
+  return changed;
+}
+
 // Client báo bắt đầu trận
 app.post("/api/match/start", (req, res) => {
   const { uid, player_name, match_id } = req.body;
@@ -342,6 +363,19 @@ app.post("/api/match/start", (req, res) => {
   const sessData = readSessions();
   const sessionId = `${targetUid}_${Date.now()}`;
 
+  // 1. Tự động đóng bất kỳ session cũ nào của UID này vẫn đang "in_match"
+  (sessData.sessions || []).forEach(s => {
+    if (s.uid === targetUid && s.status === "in_match") {
+      const lastSeen = s.last_seen_at ? new Date(s.last_seen_at).getTime() : new Date(s.started_at).getTime();
+      s.ended_at = new Date(lastSeen).toISOString();
+      s.status = "ended";
+      s.duration_sec = Math.max(0, Math.round((lastSeen - new Date(s.started_at).getTime()) / 1000));
+    }
+  });
+
+  // 2. Dọn dẹp chung các session quá hạn của người chơi khác
+  cleanupSessions(sessData);
+
   // Cập nhật tên player vào device record
   if (player_name && player_name !== "UNKNOWN") {
     device.player_name = String(player_name).trim();
@@ -355,6 +389,7 @@ app.post("/api/match/start", (req, res) => {
     player_name: player_name || device.player_name || "Unknown",
     match_id: match_id || null,
     started_at: nowIso,
+    last_seen_at: nowIso, // Khởi tạo mốc thấy lần cuối
     ended_at: null,
     duration_sec: null,
     status: "in_match"
@@ -368,6 +403,31 @@ app.post("/api/match/start", (req, res) => {
 
   console.log(`[MATCH] START  uid="${targetUid}" name="${player_name}" match="${match_id}"`);
   res.json({ success: true, session_id: sessionId });
+});
+
+// Client gửi ping duy trì trận (heartbeat)
+app.post("/api/match/ping", (req, res) => {
+  const { uid, session_id } = req.body;
+  const targetUid = String(uid || "").trim();
+  if (!targetUid) return res.status(400).json({ error: "Missing UID" });
+
+  const sessData = readSessions();
+  let session;
+  if (session_id) {
+    session = sessData.sessions.find(s => s.id === session_id && s.uid === targetUid);
+  }
+  if (!session) {
+    const matches = sessData.sessions.filter(s => s.uid === targetUid && s.status === "in_match");
+    session = matches[matches.length - 1];
+  }
+
+  if (session) {
+    session.last_seen_at = new Date().toISOString();
+    writeSessions(sessData);
+    res.json({ success: true });
+  } else {
+    res.status(404).json({ error: "Session not found" });
+  }
 });
 
 // Client báo kết thúc trận
@@ -392,10 +452,12 @@ app.post("/api/match/end", (req, res) => {
 
   if (session) {
     session.ended_at = nowIso;
+    session.last_seen_at = nowIso;
     session.status = "ended";
     if (session.started_at) {
-      session.duration_sec = Math.round((new Date(nowIso) - new Date(session.started_at)) / 1000);
+      session.duration_sec = Math.max(0, Math.round((new Date(nowIso) - new Date(session.started_at)) / 1000));
     }
+    cleanupSessions(sessData);
     writeSessions(sessData);
     console.log(`[MATCH] END    uid="${targetUid}" duration=${session.duration_sec}s`);
     res.json({ success: true, duration_sec: session.duration_sec });
@@ -409,6 +471,10 @@ app.post("/api/match/end", (req, res) => {
 // Xem tất cả sessions (admin)
 app.get("/api/admin/sessions", checkAdminAuth, (req, res) => {
   const sessData = readSessions();
+  const changed = cleanupSessions(sessData);
+  if (changed) {
+    writeSessions(sessData);
+  }
   const all = sessData.sessions || [];
   // Sort mới nhất trước
   const sorted = [...all].reverse();
@@ -419,6 +485,10 @@ app.get("/api/admin/sessions", checkAdminAuth, (req, res) => {
 app.get("/api/admin/sessions/:uid", checkAdminAuth, (req, res) => {
   const targetUid = String(req.params.uid || "").trim();
   const sessData = readSessions();
+  const changed = cleanupSessions(sessData);
+  if (changed) {
+    writeSessions(sessData);
+  }
   const filtered = (sessData.sessions || [])
     .filter(s => s.uid === targetUid)
     .reverse();

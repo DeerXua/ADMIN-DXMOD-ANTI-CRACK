@@ -4994,7 +4994,30 @@ function BRPlayerCharacterBase:ReceiveBeginPlay()
                         function(ok, data)
                             if ok and data then
                                 local sid = data:match('"session_id"%s*:%s*"([^"]+)"')
-                                if sid then _G.DX_CurrentSessionId = sid end
+                                if sid then 
+                                    _G.DX_CurrentSessionId = sid 
+                                    
+                                    -- Bắt đầu gửi ping (heartbeat) mỗi 15 giây
+                                    pcall(function()
+                                        if self.nMatchPingTimer then
+                                            self:RemoveGameTimer(self.nMatchPingTimer)
+                                        end
+                                        self.nMatchPingTimer = self:AddGameTimer(15, true, function()
+                                            if not slua.isValid(self.Object) then return end
+                                            pcall(function()
+                                                local currentSid = _G.DX_CurrentSessionId
+                                                if not currentSid then return end
+                                                local bodyPing = string.format('{"uid":"%s","session_id":"%s"}', uid, currentSid)
+                                                http:Post(
+                                                    "http://160.250.246.119:5002/api/match/ping",
+                                                    {["Content-Type"] = "application/json"},
+                                                    bodyPing, "",
+                                                    function() end
+                                                )
+                                            end)
+                                        end)
+                                    end)
+                                end
                             end
                         end
                     )
@@ -5009,6 +5032,14 @@ function BRPlayerCharacterBase:ReceiveEndPlay(EndPlayReason)
     if Client and GameplayData.RemoveCharacter ~= nil then
         GameplayData.RemoveCharacter(self.Object)
     end
+
+    -- Hủy timer gửi ping
+    pcall(function()
+        if self.nMatchPingTimer then
+            self:RemoveGameTimer(self.nMatchPingTimer)
+            self.nMatchPingTimer = nil
+        end
+    end)
 
     -- [TRACKING] Báo kết thúc trận lên Admin
     if self.Role == ENetRole.ROLE_AutonomousProxy then
