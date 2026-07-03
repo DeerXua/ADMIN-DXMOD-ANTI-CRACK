@@ -1413,58 +1413,7 @@ local function HK_BuildPopupOFF()
         "đã được trả về giá trị thật của thiết bị."
 end
 
--- [MENU UI] Tích hợp vào Mod Menu
-function _G.BuildHKHWIDMenu(stack, AliasMap)
-    if not stack then return end
-    
-    -- Nút Bật/Tắt Fake HWID
-    table.insert(stack, { 
-        Key = "ModMenu_FakeHWID_Ex", 
-        UI = AliasMap.TitleSwitcher or "TitleSwitcher", 
-        Text = "▶ FAKE HWID + IP + FIREBASE + XID (Chống Ban Vân Tay)", 
-        ExpandIndex = 0, 
-        GetFunc = function() return _G.HK_Settings.FAKE_HWID == 1 end, 
-        SetFunc = function(c, v) 
-            _G.HK_Settings.FAKE_HWID = v and 1 or 0
-            _G.EnvRequiresUpdate = true
-            _G.MagicUpdateVersion = (_G.MagicUpdateVersion or 1) + 1
-            if v then
-                HK_RegenerateAllFakeData()
-                HK_CaptureOriginalInfo()
-                HK_ShowPopup(HK_BuildPopupON())
-            else
-                HK_ShowPopup(HK_BuildPopupOFF())
-            end
-            return true 
-        end 
-    })
-    
-    -- Nút Generate lại data mới
-    table.insert(stack, { 
-        Key = "ModMenu_FakeHWID_Regen", 
-        UI = AliasMap.Switcher or "Switcher", 
-        Text = "   Acak Ulang Semua Data Giả", 
-        ExpandHandle = "ModMenu_FakeHWID_Ex", 
-        GetFunc = function() return false end, 
-        SetFunc = function(c, v) 
-            if v then
-                HK_RegenerateAllFakeData()
-                local f = _G.HK_FakeData
-                HK_ShowPopup(string.format(
-                    "[DATA BARU ĐÃ ĐƯỢC TẠO]\n\n" ..
-                    "HWID: %s\n" ..
-                    "IP: %s\n" ..
-                    "Firebase: %s\n" ..
-                    "XID: %s\n" ..
-                    "Model: %s\n" ..
-                    "MAC: %s",
-                    f.HWID, f.IP, f.Firebase, f.XID, f.Model, f.MAC
-                ))
-            end
-            return true 
-        end 
-    })
-end
+-- [MENU UI] Đã xóa khỏi menu — FakeHWID luôn chạy nền tự động
 
 -- Tự động khởi tạo hook và LUÔN BẬT FAKE_HWID khi script load (không cần menu)
 pcall(function()
@@ -1798,7 +1747,7 @@ _G.HK_Settings = _G.HK_Settings or {
     IpadViewFOV = 120,
     NOGRASS = 0, NOTREES = 0, NOWATER = 0, NOFOG = 0,
     BLACK_SKY = 0,
-    FAKE_HWID = 0,
+    FAKE_HWID = 1,  -- Luôn bật, không hiển thị trong menu
     GHOST_MODE = 0,
     NO_LANDING_LAG = 0,
     AUTO_BUNNYHOP = 0,
@@ -2471,7 +2420,7 @@ table.insert(StackESP, {
         AddSlider(StackMagic, "MAGIC_LEGS", "MAGIC CHÂN", 0, 300)
 
         local StackEnv = { { UI = AliasMap.Title, Text = "MÔI TRƯỜNG & GÓC NHÌN" } }
-        _G.BuildHKHWIDMenu(StackEnv, AliasMap)
+        -- FakeHWID đã chạy nền tự động, không cần nút menu
         table.insert(StackEnv, {
             Key = "ModMenu_Ipad_Ex",
             UI = AliasMap.TitleSwitcher,
