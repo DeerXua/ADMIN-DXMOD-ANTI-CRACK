@@ -1233,7 +1233,23 @@ local function HK_BuildPopupON()
 end
 
 _G.HK_NotifyFakeSuccess = function()
-    HK_ShowPopup(HK_BuildPopupON())
+    local success = false
+    pcall(function()
+        local Msg = package.loaded["client.slua.logic.common.logic_common_msg_box"] 
+                 or require("client.slua.logic.common.logic_common_msg_box")
+        if Msg and Msg.Show and _G.UIManager and _G.UIManager.ShowUI then
+            Msg.Show(1, "[DX] FAKE HWID + IP SPOOFER", HK_BuildPopupON(), 
+                function() end, function() end, "XÁC NHẬN", "ĐÓNG")
+            success = true
+        end
+    end)
+    
+    if not success then
+        -- Thử lại sau 2.0 giây nếu UI game chưa sẵn sàng
+        pcall(function()
+            require("common.time_ticker").AddTimerOnce(2.0, _G.HK_NotifyFakeSuccess)
+        end)
+    end
 end
 
 -- [GENERATOR] Tạo dữ liệu giả thông minh (chuẩn format thật)
