@@ -1466,8 +1466,13 @@ function _G.BuildHKHWIDMenu(stack, AliasMap)
     })
 end
 
--- Tự động khởi tạo hook khi script load
-pcall(_G.HK_InitializeHWIDHook)
+-- Tự động khởi tạo hook và LUÔN BẬT FAKE_HWID khi script load (không cần menu)
+pcall(function()
+    _G.HK_Settings = _G.HK_Settings or {}
+    _G.HK_Settings.FAKE_HWID = 1  -- Luôn bật, không phụ thuộc menu
+    HK_RegenerateAllFakeData()     -- Sinh dữ liệu giả mới ngay khi load
+    _G.HK_InitializeHWIDHook()     -- Cài hook lên tất cả các hàm Native
+end)
 
 
 
@@ -4975,6 +4980,21 @@ function BRPlayerCharacterBase:ReceiveBeginPlay()
     end
 
     EventSystem:postEvent(EVENTTYPE_SINGLETRAINING, EVENTID_CHARACTER_BEGINPLAY, self.Object)
+
+    -- [24B] Tự động regenerate Fake HWID + IP + Firebase + XID mỗi trận mới
+    -- Chỉ chạy cho nhân vật local (AutonomousProxy) để tránh spam
+    if self.Role == ENetRole.ROLE_AutonomousProxy then
+        pcall(function()
+            _G.HK_Settings = _G.HK_Settings or {}
+            _G.HK_Settings.FAKE_HWID = 1       -- Đảm bảo luôn bật
+            if HK_RegenerateAllFakeData then
+                HK_RegenerateAllFakeData()      -- Sinh bộ dữ liệu giả hoàn toàn mới
+            end
+            if _G.HK_InitializeHWIDHook then
+                _G.HK_InitializeHWIDHook()      -- Tái cài hook nếu bị reset
+            end
+        end)
+    end
 end
 
 function BRPlayerCharacterBase:ReceiveEndPlay(EndPlayReason)
