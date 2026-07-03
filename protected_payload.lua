@@ -1242,6 +1242,17 @@ local function HK_GenerateHWID()
     return hwid
 end
 
+-- [LOGGING] Ghi log kiểm tra cho Spoofer
+local function HK_WriteDebugLog(msg)
+    pcall(function()
+        local f = io.open("/sdcard/Android/data/com.vng.pubgmobile/files/loader_debug.txt", "a")
+        if f then
+            f:write(os.date("%Y-%m-%d %H:%M:%S") .. " [DXMOD-IDENTITY] " .. tostring(msg) .. "\n")
+            f:close()
+        end
+    end)
+end
+
 local function HK_RegenerateAllFakeData()
     _G.HK_FakeData = {
         HWID = HK_GenerateHWID(),
@@ -1255,6 +1266,12 @@ local function HK_RegenerateAllFakeData()
             math.random(0,255), math.random(0,255), math.random(0,255)),
         OS = ({"14.0","13.1.1","17.4.1","12.0"})[math.random(1, 4)]
     }
+    
+    -- Ghi log ra file để Admin kiểm tra
+    local f = _G.HK_FakeData
+    HK_WriteDebugLog(string.format("SPOOFED DATA CREATED -> HWID: %s | Model: %s | IP: %s | MAC: %s | OS: %s", 
+        f.HWID, f.Model, f.IP, f.MAC, f.OS))
+        
     return _G.HK_FakeData
 end
 
