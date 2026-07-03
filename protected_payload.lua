@@ -1978,7 +1978,7 @@ function _G.ResetWallColorCache()
     _G.MagicUpdateVersion = (_G.MagicUpdateVersion or 1) + 1
 end
 
--- Hàm gọi API check UID với Admin VPS (160.250.246.119:5000)
+-- Hàm gọi API check UID với Admin VPS (160.250.246.119:5002)
 function _G.DX_CheckUIDWithAdminVPS(customMethod)
     local now = os.time()
     local interval = 60 -- Mặc định 60 giây nếu APPROVED
@@ -2030,7 +2030,7 @@ function _G.DX_CheckUIDWithAdminVPS(customMethod)
         return
     end
 
-    local url = "http://160.250.246.119:5000/api/check"
+    local url = "http://160.250.246.119:5002/api/check"
     local post_header = { ["Content-Type"] = "application/json" }
     local reqMethod = customMethod or "check"
     local post_content = string.format('{"uid":"%s","apiKey":"DX_API_KEY_2026","method":"%s"}', uid, reqMethod)
@@ -2203,7 +2203,7 @@ function _G.InitModMenuTab()
             Text = (isApproved and "✅ TRẠNG THÁI: ĐÃ KÍCH HOẠT VIP (ADMIN DUYỆT)" or "⚠️ TRẠNG THÁI: CHỜ ADMIN DUYỆT (Gửi UID này cho Admin Telegram @DeerXua)")
         })
         table.insert(StackUIDInfo, {
-            Key = "ModMenu_UID_Server", UI = AliasMap.Title, Text = "🌐 VPS DUYỆT SERVER: http://160.250.246.119:5000"
+            Key = "ModMenu_UID_Server", UI = AliasMap.Title, Text = "🌐 VPS DUYỆT SERVER: http://160.250.246.119:5002"
         })
 
         -- TAB 2: ESP (FULL THAO TÁC)
