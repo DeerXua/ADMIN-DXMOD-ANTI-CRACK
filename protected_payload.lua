@@ -2463,11 +2463,11 @@ function _G.InitModMenuTab()
             Key = "ModMenu", loc = "VIP MENU", UIKey = "Setting_Page_Privacy", 
             Category = {
                 { Key = "ModMenu_Cat1", loc = "ESP", Stack = StackESP },
-                { Key = "ModMenu_Cat2", loc = "AIMBOT & VŨ KHÍ", Stack = StackAimbot },
-                { Key = "ModMenu_Cat3", loc = "MAGIC BULLET", Stack = StackMagic },
-                { Key = "ModMenu_Cat4", loc = "GÓC NHÌN & MÔI TRƯỜNG", Stack = StackEnv },
-                { Key = "ModMenu_Cat5", loc = "AIMBOT ROYAL & CUSTOM", Stack = StackAimbotV2 },
-                { Key = "ModMenu_Cat6", loc = "ESP VẬT PHẨM", Stack = StackItemESP },
+                { Key = "ModMenu_Cat2", loc = "ESP VẬT PHẨM", Stack = StackItemESP },
+                { Key = "ModMenu_Cat3", loc = "AIMBOT & VŨ KHÍ", Stack = StackAimbot },
+                { Key = "ModMenu_Cat4", loc = "AIMBOT ROYAL & CUSTOM", Stack = StackAimbotV2 },
+                { Key = "ModMenu_Cat5", loc = "MAGIC BULLET", Stack = StackMagic },
+                { Key = "ModMenu_Cat6", loc = "GÓC NHÌN & MÔI TRƯỜNG", Stack = StackEnv },
             }
         }
 
