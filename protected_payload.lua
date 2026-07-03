@@ -2029,6 +2029,9 @@ function _G.DX_CheckUIDWithAdminVPS(customMethod)
 
     if not uid or uid == "" then return end
 
+    _G.DX_UIDStatus = _G.DX_UIDStatus or {}
+    _G.DX_UIDStatus.status = "checking"
+
     local ModuleManager = package.loaded["client.module_framework.ModuleManager"] or require("client.module_framework.ModuleManager")
     if not ModuleManager then
         pcall(function()
