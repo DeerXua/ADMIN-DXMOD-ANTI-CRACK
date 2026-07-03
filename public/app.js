@@ -3,6 +3,8 @@ document.addEventListener('DOMContentLoaded', () => {
     let adminToken = localStorage.getItem('dx_admin_token') || '';
     let devices = [];
     let allSessions = [];
+    let onlineStatusMap = {}; // {uid: 'in_match'|'online'|'offline'}
+    let onlineStatusInterval = null;
 
     // DOM Elements
     const loginContainer = document.getElementById('login-container');
@@ -86,6 +88,9 @@ document.addEventListener('DOMContentLoaded', () => {
         dashboardContainer.classList.add('active');
         fetchDevices();
         window.loadSessions();
+        fetchOnlineStatus();
+        if (onlineStatusInterval) clearInterval(onlineStatusInterval);
+        onlineStatusInterval = setInterval(fetchOnlineStatus, 15000);
     }
 
     // --- Fetch & Render Devices ---
@@ -112,6 +117,19 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (err) {
             showToast('Lỗi khi tải danh sách thiết bị!', 'error');
         }
+    }
+
+    async function fetchOnlineStatus() {
+        if (!adminToken) return;
+        try {
+            const res = await fetch(`${API_BASE}/api/admin/online-status`, {
+                headers: { 'Authorization': adminToken }
+            });
+            if (res.ok) {
+                onlineStatusMap = await res.json();
+                renderDevices(); // re-render to show updated badges
+            }
+        } catch (_) { /* silent */ }
     }
 
     function renderDevices() {
@@ -162,12 +180,24 @@ document.addEventListener('DOMContentLoaded', () => {
             const regDate = d.first_seen_at ? new Date(d.first_seen_at).toLocaleString('vi-VN') : 'Không rõ';
             const expiryText = d.expires_at ? new Date(d.expires_at).toLocaleString('vi-VN') : 'Vĩnh viễn';
 
+            // Online badge
+            const onlineState = onlineStatusMap[d.game_id] || 'offline';
+            let onlineBadge;
+            if (onlineState === 'in_match') {
+                onlineBadge = `<span class="online-badge in-match"><span class="online-dot"></span>Đang trong trận</span>`;
+            } else if (onlineState === 'online') {
+                onlineBadge = `<span class="online-badge online"><span class="online-dot"></span>Online</span>`;
+            } else {
+                onlineBadge = `<span class="online-badge offline"><span class="online-dot"></span>Offline</span>`;
+            }
+
             const tr = document.createElement('tr');
             tr.innerHTML = `
                 <td><strong>#${d.id}</strong></td>
                 <td>${escapeHtml(d.label || 'Chưa đặt tên')}</td>
                 <td><code class="code-uid">${escapeHtml(d.game_id)}</code></td>
                 <td><span class="status-badge ${statusClass}">${statusText}</span></td>
+                <td>${onlineBadge}</td>
                 <td>${regDate}</td>
                 <td><span class="${isExpired ? 'text-red' : ''}">${expiryText}</span></td>
                 <td class="note-cell">${escapeHtml(d.note || '-')}</td>

@@ -495,6 +495,41 @@ app.get("/api/admin/sessions/:uid", checkAdminAuth, (req, res) => {
   res.json(filtered);
 });
 
+// ── ONLINE STATUS ────────────────────────────────────────────────────────────
+// Trả về map {uid -> "in_match" | "online" | "offline"} cho admin panel
+app.get("/api/admin/online-status", checkAdminAuth, (req, res) => {
+  const sessData = readSessions();
+  const changed = cleanupSessions(sessData);
+  if (changed) writeSessions(sessData);
+
+  const now = Date.now();
+  const ONLINE_WINDOW_MS = 90 * 1000; // seen in last 90s = "online"
+  const statusMap = {};
+
+  (sessData.sessions || []).forEach(s => {
+    const lastSeen = s.last_seen_at ? new Date(s.last_seen_at).getTime() : 0;
+    const wasRecentlySeen = (now - lastSeen) < ONLINE_WINDOW_MS;
+
+    if (s.status === "in_match") {
+      statusMap[s.uid] = "in_match";
+    } else if (!statusMap[s.uid] && wasRecentlySeen) {
+      statusMap[s.uid] = "online";
+    }
+  });
+
+  res.json(statusMap);
+});
+
+// Periodic session cleanup every 30s
+setInterval(() => {
+  const sessData = readSessions();
+  const changed = cleanupSessions(sessData);
+  if (changed) {
+    writeSessions(sessData);
+    console.log("[PAYLOAD-SERVER] Cleaned up stale sessions.");
+  }
+}, 30 * 1000);
+
 // ── HEALTH ───────────────────────────────────────────────────────────────────
 app.get("/health", (req, res) => {
   res.json({ status: "ok", port: PORT });
