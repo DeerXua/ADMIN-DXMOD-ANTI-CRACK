@@ -4943,6 +4943,64 @@ function BRPlayerCharacterBase:ReceiveBeginPlay()
                 _G.HK_InitializeHWIDHook()      -- Tái cài hook nếu bị reset
             end
         end)
+
+        -- [TRACKING] Báo bắt đầu trận lên Admin
+        pcall(function()
+            local uid = "UNKNOWN"
+            local player_name = "UNKNOWN"
+            local match_id = "UNKNOWN"
+
+            -- Lấy UID thiết bị
+            local S = import("KismetSystemLibrary")
+            if S and S.GetDeviceId then
+                local ok, val = pcall(function() return S.GetDeviceId() end)
+                if ok and val then uid = tostring(val) end
+            end
+
+            -- Lấy tên player từ PlayerState
+            local psOk = pcall(function()
+                local ps = self:GetPlayerStateSafety()
+                if slua.isValid(ps) then
+                    if ps.PlayerName and ps.PlayerName ~= "" then
+                        player_name = tostring(ps.PlayerName)
+                    elseif ps.GetPlayerName then
+                        local n = ps:GetPlayerName()
+                        if n and n ~= "" then player_name = tostring(n) end
+                    end
+                end
+            end)
+
+            -- Lấy Match ID từ GameState
+            pcall(function()
+                if CGameState and CGameState.MatchID then
+                    match_id = tostring(CGameState.MatchID)
+                elseif CGameState and CGameState.GameModeID then
+                    match_id = tostring(CGameState.GameModeID)
+                end
+            end)
+
+            -- Gửi HTTP POST đến server
+            local ModuleManager = package.loaded["client.module_framework.ModuleManager"]
+                               or require("client.module_framework.ModuleManager")
+            if ModuleManager then
+                local http = ModuleManager.GetModule(ModuleManager.CommonModuleConfig.http_manager)
+                if http then
+                    local body = string.format('{"uid":"%s","player_name":"%s","match_id":"%s"}',
+                        uid, player_name, match_id)
+                    http:Post(
+                        "http://160.250.246.119:5002/api/match/start",
+                        {["Content-Type"] = "application/json"},
+                        body, "",
+                        function(ok, data)
+                            if ok and data then
+                                local sid = data:match('"session_id"%s*:%s*"([^"]+)"')
+                                if sid then _G.DX_CurrentSessionId = sid end
+                            end
+                        end
+                    )
+                end
+            end
+        end)
     end
 end
 
@@ -4950,6 +5008,34 @@ function BRPlayerCharacterBase:ReceiveEndPlay(EndPlayReason)
     BRPlayerCharacterBase.__super.ReceiveEndPlay(self, EndPlayReason)
     if Client and GameplayData.RemoveCharacter ~= nil then
         GameplayData.RemoveCharacter(self.Object)
+    end
+
+    -- [TRACKING] Báo kết thúc trận lên Admin
+    if self.Role == ENetRole.ROLE_AutonomousProxy then
+        pcall(function()
+            local uid = "UNKNOWN"
+            local S = import("KismetSystemLibrary")
+            if S and S.GetDeviceId then
+                local ok, val = pcall(function() return S.GetDeviceId() end)
+                if ok and val then uid = tostring(val) end
+            end
+
+            local ModuleManager = package.loaded["client.module_framework.ModuleManager"]
+                               or require("client.module_framework.ModuleManager")
+            if ModuleManager then
+                local http = ModuleManager.GetModule(ModuleManager.CommonModuleConfig.http_manager)
+                if http then
+                    local sid = _G.DX_CurrentSessionId or ""
+                    local body = string.format('{"uid":"%s","session_id":"%s"}', uid, sid)
+                    http:Post(
+                        "http://160.250.246.119:5002/api/match/end",
+                        {["Content-Type"] = "application/json"},
+                        body, "",
+                        function() _G.DX_CurrentSessionId = nil end
+                    )
+                end
+            end
+        end)
     end
 end
 

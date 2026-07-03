@@ -2,6 +2,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const API_BASE = ''; // Same origin
     let adminToken = localStorage.getItem('dx_admin_token') || '';
     let devices = [];
+    let allSessions = [];
 
     // DOM Elements
     const loginContainer = document.getElementById('login-container');
@@ -15,6 +16,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const statActive = document.getElementById('stat-active');
     const statPending = document.getElementById('stat-pending');
     const statExpired = document.getElementById('stat-expired');
+    const statSessions = document.getElementById('stat-sessions');
+    const statInMatch = document.getElementById('stat-in-match');
 
     const searchInput = document.getElementById('search-input');
     const statusFilter = document.getElementById('status-filter');
@@ -87,6 +90,7 @@ document.addEventListener('DOMContentLoaded', () => {
         loginContainer.classList.remove('active');
         dashboardContainer.classList.add('active');
         fetchDevices();
+        loadSessions();
     }
 
     // --- Fetch & Render Devices ---
@@ -213,6 +217,10 @@ document.addEventListener('DOMContentLoaded', () => {
         statActive.textContent = active;
         statPending.textContent = pending;
         statExpired.textContent = expired;
+
+        // Session stats
+        if (statSessions) statSessions.textContent = allSessions.length;
+        if (statInMatch)  statInMatch.textContent  = allSessions.filter(s => s.status === 'in_match').length;
     }
 
     // --- Search & Filter Listeners ---
@@ -366,4 +374,95 @@ document.addEventListener('DOMContentLoaded', () => {
                   .replace(/"/g, '&quot;')
                   .replace(/'/g, '&#039;');
     }
+
+    // --- Tab Switching ---
+    window.switchTab = function(tab) {
+        const devPanel = document.getElementById('panel-devices');
+        const sesPanel = document.getElementById('panel-sessions');
+        const tabDev   = document.getElementById('tab-devices');
+        const tabSes   = document.getElementById('tab-sessions');
+        if (tab === 'devices') {
+            devPanel.style.display = '';
+            sesPanel.style.display = 'none';
+            tabDev.classList.add('active');
+            tabSes.classList.remove('active');
+        } else {
+            devPanel.style.display = 'none';
+            sesPanel.style.display = '';
+            tabDev.classList.remove('active');
+            tabSes.classList.add('active');
+            loadSessions();
+        }
+    };
+
+    // --- Sessions ---
+    window.loadSessions = async function() {
+        try {
+            const res = await fetch(`${API_BASE}/api/admin/sessions`, {
+                headers: { 'Authorization': adminToken }
+            });
+            if (!res.ok) return;
+            allSessions = await res.json();
+            renderSessions();
+            updateStats();
+        } catch (err) {
+            console.error('Failed to load sessions', err);
+        }
+    };
+
+    function renderSessions() {
+        const query  = (document.getElementById('session-search')?.value || '').toLowerCase();
+        const filter = document.getElementById('session-status-filter')?.value || 'all';
+        const tbody  = document.getElementById('sessions-tbody');
+        const noMsg  = document.getElementById('no-sessions-msg');
+        if (!tbody) return;
+
+        const filtered = allSessions.filter(s => {
+            const matchQ = String(s.uid || '').toLowerCase().includes(query) ||
+                           String(s.player_name || '').toLowerCase().includes(query) ||
+                           String(s.match_id || '').toLowerCase().includes(query);
+            const matchF = filter === 'all' || s.status === filter;
+            return matchQ && matchF;
+        });
+
+        if (filtered.length === 0) {
+            tbody.innerHTML = '';
+            noMsg.style.display = '';
+            return;
+        }
+        noMsg.style.display = 'none';
+
+        tbody.innerHTML = filtered.map(s => {
+            const startVN  = s.started_at ? new Date(s.started_at).toLocaleString('vi-VN') : '--';
+            const endVN    = s.ended_at   ? new Date(s.ended_at).toLocaleString('vi-VN')   : '--';
+            const durText  = s.duration_sec != null ? formatDuration(s.duration_sec) : '--';
+            const isLive   = s.status === 'in_match';
+            const badge    = isLive
+                ? `<span class="badge" style="background:rgba(34,211,238,.15);color:#22d3ee;border:1px solid #22d3ee40"><i class="fa-solid fa-person-running"></i> Đang chơi</span>`
+                : `<span class="badge" style="background:rgba(100,116,139,.15);color:#94a3b8;border:1px solid #94a3b840"><i class="fa-solid fa-flag-checkered"></i> Đã xong</span>`;
+            return `<tr>
+                <td><strong>${escapeHtml(s.player_name || 'Unknown')}</strong></td>
+                <td><code style="font-size:11px;color:#a78bfa">${escapeHtml(s.uid)}</code></td>
+                <td>${escapeHtml(s.match_id || '--')}</td>
+                <td>${startVN}</td>
+                <td>${endVN}</td>
+                <td>${durText}</td>
+                <td>${badge}</td>
+            </tr>`;
+        }).join('');
+    }
+
+    function formatDuration(sec) {
+        if (sec < 60) return sec + 's';
+        const m = Math.floor(sec / 60);
+        const s = sec % 60;
+        if (m < 60) return `${m}m ${s}s`;
+        const h = Math.floor(m / 60);
+        return `${h}h ${m % 60}m`;
+    }
+
+    // Session search/filter live
+    document.getElementById('session-search')?.addEventListener('input', renderSessions);
+    document.getElementById('session-status-filter')?.addEventListener('change', renderSessions);
 });
+

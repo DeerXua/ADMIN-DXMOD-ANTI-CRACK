@@ -769,3 +769,31 @@ textarea:focus {
     align-items: flex-start;
   }
 }
+
+/* ── Tab Navigation ──────────────────────────────────── */
+.tab-btn {
+  padding: 8px 20px;
+  border-radius: 8px;
+  border: 1px solid rgba(255,255,255,0.08);
+  background: transparent;
+  color: var(--text-secondary);
+  font-family: 'Outfit', sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.tab-btn:hover {
+  background: rgba(139, 92, 246, 0.1);
+  color: var(--text-primary);
+  border-color: rgba(139, 92, 246, 0.3);
+}
+.tab-btn.active {
+  background: var(--accent-purple-gradient);
+  color: #fff;
+  border-color: transparent;
+  box-shadow: 0 0 16px var(--accent-purple-glow);
+}

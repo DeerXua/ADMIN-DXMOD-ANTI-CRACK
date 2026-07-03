@@ -80,9 +80,34 @@
                     <p>Đã hết hạn</p>
                 </div>
             </div>
+            <div class="stat-card glass-card">
+                <div class="stat-icon blue" style="background:rgba(59,130,246,.15);color:#60a5fa"><i class="fa-solid fa-gamepad"></i></div>
+                <div class="stat-info">
+                    <h3 id="stat-sessions">0</h3>
+                    <p>Tổng sessions</p>
+                </div>
+            </div>
+            <div class="stat-card glass-card">
+                <div class="stat-icon cyan" style="background:rgba(34,211,238,.15);color:#22d3ee"><i class="fa-solid fa-person-running"></i></div>
+                <div class="stat-info">
+                    <h3 id="stat-in-match">0</h3>
+                    <p>Đang trong trận</p>
+                </div>
+            </div>
         </div>
 
-        <!-- Toolbar Section -->
+        <!-- Tab Navigation -->
+        <div class="tab-nav glass-card" style="display:flex;gap:8px;padding:10px 16px;margin-bottom:0">
+            <button id="tab-devices" class="tab-btn active" onclick="switchTab('devices')">
+                <i class="fa-solid fa-mobile-screen-button"></i> Thiết bị
+            </button>
+            <button id="tab-sessions" class="tab-btn" onclick="switchTab('sessions')">
+                <i class="fa-solid fa-gamepad"></i> Lịch sử trận
+            </button>
+        </div>
+
+        <!-- Table / Content Section -->
+        <div id="panel-devices">
         <div class="toolbar glass-card">
             <div class="search-box">
                 <i class="fa-solid fa-magnifying-glass search-icon"></i>
@@ -98,8 +123,6 @@
                 <button id="refresh-btn" class="btn-refresh"><i class="fa-solid fa-rotate"></i> Tải lại</button>
             </div>
         </div>
-
-        <!-- Table / Content Section -->
         <div class="content-table-wrapper glass-card">
             <table class="content-table">
                 <thead>
@@ -122,6 +145,48 @@
                 <i class="fa-solid fa-box-open"></i>
                 <p>Không có dữ liệu thiết bị nào phù hợp!</p>
             </div>
+        </div>
+        </div>
+
+        <!-- Sessions Panel -->
+        <div id="panel-sessions" style="display:none">
+        <div class="toolbar glass-card">
+            <div class="search-box">
+                <i class="fa-solid fa-magnifying-glass search-icon"></i>
+                <input type="text" id="session-search" placeholder="Tìm theo UID hoặc tên player...">
+            </div>
+            <div class="filter-box">
+                <select id="session-status-filter">
+                    <option value="all">Tất cả</option>
+                    <option value="in_match">Đang trong trận</option>
+                    <option value="ended">Đã kết thúc</option>
+                </select>
+                <button id="refresh-sessions-btn" class="btn-refresh" onclick="loadSessions()">
+                    <i class="fa-solid fa-rotate"></i> Tải lại
+                </button>
+            </div>
+        </div>
+        <div class="content-table-wrapper glass-card">
+            <table class="content-table">
+                <thead>
+                    <tr>
+                        <th>Tên Player</th>
+                        <th>UID Thiết bị</th>
+                        <th>Match ID</th>
+                        <th>Vào trận lúc</th>
+                        <th>Ra trận lúc</th>
+                        <th>Thời lượng</th>
+                        <th>Trạng thái</th>
+                    </tr>
+                </thead>
+                <tbody id="sessions-tbody">
+                </tbody>
+            </table>
+            <div id="no-sessions-msg" class="no-data" style="display:none">
+                <i class="fa-solid fa-box-open"></i>
+                <p>Chưa có session nào!</p>
+            </div>
+        </div>
         </div>
     </div>
 

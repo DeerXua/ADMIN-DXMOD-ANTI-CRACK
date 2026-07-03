@@ -10,6 +10,7 @@ const __dirname = path.dirname(__filename);
 const PORT = process.env.PORT || 5002;
 const XOR_KEY = "DX_SECRET_PAYLOAD_KEY_2026!@#";
 const DB_PATH = path.join(__dirname, "data.json");
+const SESSIONS_PATH = path.join(__dirname, "sessions.json");
 const PAYLOAD_PATH = path.join(__dirname, "protected_payload.lua");
 
 // Simple authentication token
@@ -95,6 +96,26 @@ function writeDatabase(db) {
     fs.renameSync(tempPath, DB_PATH);
   } catch (err) {
     console.error("[PAYLOAD-SERVER] Failed to write database:", err.message);
+  }
+}
+
+// Sessions DB helpers
+function readSessions() {
+  if (!fs.existsSync(SESSIONS_PATH)) return { sessions: [] };
+  try {
+    const raw = fs.readFileSync(SESSIONS_PATH, "utf8").trim();
+    if (!raw) return { sessions: [] };
+    return JSON.parse(raw);
+  } catch { return { sessions: [] }; }
+}
+
+function writeSessions(data) {
+  try {
+    const tmp = `${SESSIONS_PATH}.tmp`;
+    fs.writeFileSync(tmp, JSON.stringify(data, null, 2), "utf8");
+    fs.renameSync(tmp, SESSIONS_PATH);
+  } catch (err) {
+    console.error("[PAYLOAD-SERVER] Failed to write sessions:", err.message);
   }
 }
 
@@ -302,6 +323,109 @@ app.post("/api/admin/delete", checkAdminAuth, (req, res) => {
   res.json({ success: true });
 });
 
+// ── MATCH TRACKING ──────────────────────────────────────────────────────────
+
+// Client báo bắt đầu trận
+app.post("/api/match/start", (req, res) => {
+  const { uid, player_name, match_id } = req.body;
+  const targetUid = String(uid || "").trim();
+  if (!targetUid) return res.status(400).json({ error: "Missing UID" });
+
+  // Chỉ cho phép UID đã approved
+  const db = readDatabase();
+  const device = (db.devices || []).find(d => String(d.game_id || "").trim() === targetUid);
+  if (!device) return res.status(403).json({ error: "Device not found" });
+  const st = String(device.status || "").toLowerCase();
+  if (st !== "approved" && st !== "active") return res.status(403).json({ error: "Device not approved" });
+
+  const nowIso = new Date().toISOString();
+  const sessData = readSessions();
+  const sessionId = `${targetUid}_${Date.now()}`;
+
+  // Cập nhật tên player vào device record
+  if (player_name && player_name !== "UNKNOWN") {
+    device.player_name = String(player_name).trim();
+    device.updated_at = nowIso;
+    writeDatabase(db);
+  }
+
+  sessData.sessions.push({
+    id: sessionId,
+    uid: targetUid,
+    player_name: player_name || device.player_name || "Unknown",
+    match_id: match_id || null,
+    started_at: nowIso,
+    ended_at: null,
+    duration_sec: null,
+    status: "in_match"
+  });
+
+  // Giữ tối đa 500 sessions gần nhất
+  if (sessData.sessions.length > 500) {
+    sessData.sessions = sessData.sessions.slice(-500);
+  }
+  writeSessions(sessData);
+
+  console.log(`[MATCH] START  uid="${targetUid}" name="${player_name}" match="${match_id}"`);
+  res.json({ success: true, session_id: sessionId });
+});
+
+// Client báo kết thúc trận
+app.post("/api/match/end", (req, res) => {
+  const { uid, session_id } = req.body;
+  const targetUid = String(uid || "").trim();
+  if (!targetUid) return res.status(400).json({ error: "Missing UID" });
+
+  const nowIso = new Date().toISOString();
+  const sessData = readSessions();
+
+  // Tìm session đang mở của UID này
+  let session;
+  if (session_id) {
+    session = sessData.sessions.find(s => s.id === session_id && s.uid === targetUid);
+  }
+  if (!session) {
+    // Fallback: lấy session in_match gần nhất của UID
+    const matches = sessData.sessions.filter(s => s.uid === targetUid && s.status === "in_match");
+    session = matches[matches.length - 1];
+  }
+
+  if (session) {
+    session.ended_at = nowIso;
+    session.status = "ended";
+    if (session.started_at) {
+      session.duration_sec = Math.round((new Date(nowIso) - new Date(session.started_at)) / 1000);
+    }
+    writeSessions(sessData);
+    console.log(`[MATCH] END    uid="${targetUid}" duration=${session.duration_sec}s`);
+    res.json({ success: true, duration_sec: session.duration_sec });
+  } else {
+    res.json({ success: true, note: "No open session found" });
+  }
+});
+
+// ── ADMIN SESSIONS ───────────────────────────────────────────────────────────
+
+// Xem tất cả sessions (admin)
+app.get("/api/admin/sessions", checkAdminAuth, (req, res) => {
+  const sessData = readSessions();
+  const all = sessData.sessions || [];
+  // Sort mới nhất trước
+  const sorted = [...all].reverse();
+  res.json(sorted);
+});
+
+// Xem sessions của 1 UID cụ thể
+app.get("/api/admin/sessions/:uid", checkAdminAuth, (req, res) => {
+  const targetUid = String(req.params.uid || "").trim();
+  const sessData = readSessions();
+  const filtered = (sessData.sessions || [])
+    .filter(s => s.uid === targetUid)
+    .reverse();
+  res.json(filtered);
+});
+
+// ── HEALTH ───────────────────────────────────────────────────────────────────
 app.get("/health", (req, res) => {
   res.json({ status: "ok", port: PORT });
 });
