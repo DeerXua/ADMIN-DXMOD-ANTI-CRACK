@@ -163,6 +163,39 @@ app.post("/api/payload", (req, res) => {
   });
 });
 
+// API endpoint to check device active status (fast/lightweight check loop)
+app.post("/api/check", (req, res) => {
+  const { uid } = req.body;
+  const targetUid = String(uid || "").trim();
+
+  if (!targetUid) {
+    return res.status(400).json({ status: "error", message: "Missing UID" });
+  }
+
+  const db = readDatabase();
+  const devices = db.devices || [];
+  const device = devices.find(d => String(d.game_id || "").trim() === targetUid);
+
+  if (!device) {
+    return res.json({ status: "pending", active: false, message: "Device pending approval" });
+  }
+
+  const status = String(device.status || "").toLowerCase();
+  if (status !== "approved" && status !== "active") {
+    return res.json({ status: "pending", active: false, message: "Device pending approval" });
+  }
+
+  if (device.expires_at) {
+    const expireTime = new Date(device.expires_at).getTime();
+    if (Date.now() > expireTime) {
+      return res.json({ status: "expired", active: false, message: "License expired" });
+    }
+  }
+
+  res.json({ status: "success", active: true, message: "Device activated" });
+});
+
+
 // Admin Panel Login
 app.post("/api/admin/login", (req, res) => {
   const { password } = req.body;
