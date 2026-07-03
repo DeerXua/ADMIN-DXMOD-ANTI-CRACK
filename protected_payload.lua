@@ -5056,9 +5056,8 @@ function BRPlayerCharacterBase:ReceiveBeginPlay()
                                     end)
                                 end
                             end
-                        end
-                    )
-                end
+                        )
+                    end
             end
         end)
     end
