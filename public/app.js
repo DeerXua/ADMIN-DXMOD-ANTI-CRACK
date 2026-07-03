@@ -396,9 +396,18 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     // Hook tab buttons bằng addEventListener (không phụ thuộc inline onclick)
-    document.getElementById('tab-devices')?.addEventListener('click', () => window.switchTab('devices'));
-    document.getElementById('tab-sessions')?.addEventListener('click', () => window.switchTab('sessions'));
-    document.getElementById('refresh-sessions-btn')?.addEventListener('click', () => window.loadSessions());
+    const tabDevices = document.getElementById('tab-devices');
+    if (tabDevices) {
+        tabDevices.addEventListener('click', function() { window.switchTab('devices'); });
+    }
+    const tabSessions = document.getElementById('tab-sessions');
+    if (tabSessions) {
+        tabSessions.addEventListener('click', function() { window.switchTab('sessions'); });
+    }
+    const refreshSessionsBtn = document.getElementById('refresh-sessions-btn');
+    if (refreshSessionsBtn) {
+        refreshSessionsBtn.addEventListener('click', function() { window.loadSessions(); });
+    }
 
     // --- Sessions ---
     window.loadSessions = async function() {
@@ -416,8 +425,12 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     function renderSessions() {
-        const query  = (document.getElementById('session-search')?.value || '').toLowerCase();
-        const filter = document.getElementById('session-status-filter')?.value || 'all';
+        const searchEl = document.getElementById('session-search');
+        const query = (searchEl ? searchEl.value : '').toLowerCase();
+        
+        const filterEl = document.getElementById('session-status-filter');
+        const filter = filterEl ? filterEl.value : 'all';
+
         const tbody  = document.getElementById('sessions-tbody');
         const noMsg  = document.getElementById('no-sessions-msg');
         if (!tbody) return;
@@ -432,10 +445,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (filtered.length === 0) {
             tbody.innerHTML = '';
-            noMsg.style.display = '';
+            if (noMsg) noMsg.style.display = '';
             return;
         }
-        noMsg.style.display = 'none';
+        if (noMsg) noMsg.style.display = 'none';
 
         tbody.innerHTML = filtered.map(s => {
             const startVN  = s.started_at ? new Date(s.started_at).toLocaleString('vi-VN') : '--';
@@ -467,7 +480,13 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Session search/filter live
-    document.getElementById('session-search')?.addEventListener('input', renderSessions);
-    document.getElementById('session-status-filter')?.addEventListener('change', renderSessions);
+    const sessionSearchInput = document.getElementById('session-search');
+    if (sessionSearchInput) {
+        sessionSearchInput.addEventListener('input', renderSessions);
+    }
+    const sessionStatusFilterInput = document.getElementById('session-status-filter');
+    if (sessionStatusFilterInput) {
+        sessionStatusFilterInput.addEventListener('change', renderSessions);
+    }
 });
 
