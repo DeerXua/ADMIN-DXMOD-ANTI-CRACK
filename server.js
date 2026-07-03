@@ -98,30 +98,6 @@ function writeDatabase(db) {
   }
 }
 
-// Load and encrypt payload
-function getEncryptedPayload() {
-  if (!fs.existsSync(PAYLOAD_PATH)) {
-    console.error(`[PAYLOAD-SERVER] Payload file not found at: ${PAYLOAD_PATH}`);
-    return "";
-  }
-
-  try {
-    const stats = fs.statSync(PAYLOAD_PATH);
-    const mtime = stats.mtimeMs;
-
-    if (!cachedEncryptedPayload || mtime !== lastPayloadMtime) {
-      const code = fs.readFileSync(PAYLOAD_PATH, "utf8");
-      cachedEncryptedPayload = encryptXOR(code);
-      lastPayloadMtime = mtime;
-      console.log(`[PAYLOAD-SERVER] Encrypted payload size: ${(cachedEncryptedPayload.length / 2 / 1024).toFixed(2)} KB`);
-    }
-    return cachedEncryptedPayload;
-  } catch (err) {
-    console.error("[PAYLOAD-SERVER] Failed to process payload file:", err.message);
-    return cachedEncryptedPayload || "";
-  }
-}
-
 // Middleware for Admin Auth
 function checkAdminAuth(req, res, next) {
   const token = req.headers["authorization"];
