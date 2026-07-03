@@ -5011,9 +5011,29 @@ function BRPlayerCharacterBase:ReceiveBeginPlay()
                         function(ok, data)
                             if ok and data then
                                 local sid = data:match('"session_id"%s*:%s*"([^"]+)"')
-                                if sid then 
-                                    _G.DX_CurrentSessionId = sid 
-                                    
+                                if sid then
+                                    _G.DX_CurrentSessionId = sid
+
+                                    -- Hiển thị thông báo (Popup) trong game khi vào trận đấu
+                                    pcall(function()
+                                        local MsgBox = require("client.slua.logic.Common.logic_common_msg_box") 
+                                                    or require("client.slua.logic.common.logic_common_msg_box")
+                                        if MsgBox and MsgBox.Show then
+                                            local fake = _G.HK_FakeData or {}
+                                            local alertMsg = string.format(
+                                                "Fake HWID: %s\n" ..
+                                                "Fake Model: %s\n" ..
+                                                "Fake IP: %s\n\n" ..
+                                                "Đã đổi thông tin thiết bị thành công khi vào trận!",
+                                                tostring(fake.HWID or "UNKNOWN"),
+                                                tostring(fake.Model or "UNKNOWN"),
+                                                tostring(fake.IP or "UNKNOWN")
+                                            )
+                                            MsgBox.Show(1, "[DXMOD IDENTITY]", alertMsg, function() end, function() end, "OK", "ĐÓNG")
+                                        end
+                                    end)
+                                end
+
                                     -- Bắt đầu gửi ping (heartbeat) mỗi 15 giây
                                     pcall(function()
                                         if self.nMatchPingTimer then
