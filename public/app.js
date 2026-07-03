@@ -40,12 +40,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const toastElement = document.getElementById('toast');
 
-    // Initialize View
-    if (adminToken) {
-        showDashboard();
-    } else {
-        showLogin();
-    }
+    // Initialize View block has been moved to the bottom of the file
 
     // --- Authentication ---
     loginForm.addEventListener('submit', async (e) => {
@@ -487,6 +482,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const sessionStatusFilterInput = document.getElementById('session-status-filter');
     if (sessionStatusFilterInput) {
         sessionStatusFilterInput.addEventListener('change', renderSessions);
+    }
+
+    // --- Initialize View ---
+    // Moved to the bottom to ensure all functions and event listeners are fully registered first
+    if (adminToken) {
+        showDashboard();
+    } else {
+        showLogin();
     }
 });
 
