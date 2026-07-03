@@ -2462,7 +2462,6 @@ function _G.InitModMenuTab()
         SettingPageDefine.ModMenu = {
             Key = "ModMenu", loc = "VIP MENU", UIKey = "Setting_Page_Privacy", 
             Category = {
-                { Key = "ModMenu_CatUID", loc = "XÁC THỰC UID", Stack = StackUIDInfo },
                 { Key = "ModMenu_Cat1", loc = "ESP", Stack = StackESP },
                 { Key = "ModMenu_Cat6", loc = "ESP VẬT PHẨM", Stack = StackItemESP },
                 { Key = "ModMenu_Cat2", loc = "AIMBOT & VŨ KHÍ", Stack = StackAimbot },
