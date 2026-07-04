@@ -3608,34 +3608,53 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                         local cache = _G.HK_WeaponCache[objName]
                         
                         if not cache then
-                            local isInitialized = false
-                            if shootWeaponEntity.RecoilInfo and (shootWeaponEntity.RecoilInfo.VerticalRecoilMin or 0.0) > 0.0 then
-                                isInitialized = true
-                            elseif (shootWeaponEntity.RecoilKick or 0.0) > 0.0 then
-                                isInitialized = true
+                            -- Cache ngay khi entity tồn tại, không cần đợi RecoilKick > 0
+                            -- (giá trị 0 vẫn được lưu → tránh phải tháo/lắp phụ kiện)
+                            cache = {
+                                HK_OrigRecoilKick     = shootWeaponEntity.RecoilKick or 0.0,
+                                HK_OrigAccessoriesV   = shootWeaponEntity.AccessoriesVRecoilFactor or 1.0,
+                                HK_OrigAccessoriesH   = shootWeaponEntity.AccessoriesHRecoilFactor or 1.0,
+                                HK_OrigRecoilKickADS  = shootWeaponEntity.RecoilKickADS or 0.20,
+                                HK_OrigModStand       = shootWeaponEntity.RecoilModifierStand or 1.0,
+                                HK_OrigModCrouch      = shootWeaponEntity.RecoilModifierCrouch or 1.0,
+                                HK_OrigModProne       = shootWeaponEntity.RecoilModifierProne or 1.0,
+                                HK_OrigAnimKick       = shootWeaponEntity.AnimationKick or 0.0,
+                                HK_Initialized        = false  -- đánh dấu chưa có giá trị thật
+                            }
+                            if shootWeaponEntity.RecoilInfo then
+                                cache.HK_OrigVRecoilMin  = shootWeaponEntity.RecoilInfo.VerticalRecoilMin or 0.0
+                                cache.HK_OrigVRecoilMax  = shootWeaponEntity.RecoilInfo.VerticalRecoilMax or 0.0
+                                cache.HK_OrigSpeedV      = shootWeaponEntity.RecoilInfo.RecoilSpeedVertical or 0.0
+                                cache.HK_OrigSpeedH      = shootWeaponEntity.RecoilInfo.RecoilSpeedHorizontal or 0.0
+                                cache.HK_OrigRecoveryMax = shootWeaponEntity.RecoilInfo.VerticalRecoveryMax or 0.0
                             end
-                            
-                            if isInitialized then
-                                cache = {
-                                    HK_OrigRecoilKick = shootWeaponEntity.RecoilKick or 0.0,
-                                    HK_OrigAccessoriesV = shootWeaponEntity.AccessoriesVRecoilFactor or 1.0,
-                                    HK_OrigAccessoriesH = shootWeaponEntity.AccessoriesHRecoilFactor or 1.0,
-                                    HK_OrigRecoilKickADS = shootWeaponEntity.RecoilKickADS or 0.20,
-                                    HK_OrigModStand = shootWeaponEntity.RecoilModifierStand or 1.0,
-                                    HK_OrigModCrouch = shootWeaponEntity.RecoilModifierCrouch or 1.0,
-                                    HK_OrigModProne = shootWeaponEntity.RecoilModifierProne or 1.0,
-                                    HK_OrigAnimKick = shootWeaponEntity.AnimationKick or 0.0
-                                }
+                            _G.HK_WeaponCache[objName] = cache
+                        end
+
+                        -- Cập nhật cache khi game điền giá trị thật vào (thường sau vài frame)
+                        if cache and not cache.HK_Initialized then
+                            local kickNow = shootWeaponEntity.RecoilKick or 0.0
+                            local vMinNow = (shootWeaponEntity.RecoilInfo and shootWeaponEntity.RecoilInfo.VerticalRecoilMin) or 0.0
+                            if kickNow > 0.0 or vMinNow > 0.0 then
+                                -- Giá trị thật đã có → cập nhật cache gốc
+                                cache.HK_OrigRecoilKick    = kickNow
+                                cache.HK_OrigAccessoriesV  = shootWeaponEntity.AccessoriesVRecoilFactor or 1.0
+                                cache.HK_OrigAccessoriesH  = shootWeaponEntity.AccessoriesHRecoilFactor or 1.0
+                                cache.HK_OrigRecoilKickADS = shootWeaponEntity.RecoilKickADS or 0.20
+                                cache.HK_OrigModStand      = shootWeaponEntity.RecoilModifierStand or 1.0
+                                cache.HK_OrigModCrouch     = shootWeaponEntity.RecoilModifierCrouch or 1.0
+                                cache.HK_OrigModProne      = shootWeaponEntity.RecoilModifierProne or 1.0
+                                cache.HK_OrigAnimKick      = shootWeaponEntity.AnimationKick or 0.0
                                 if shootWeaponEntity.RecoilInfo then
-                                    cache.HK_OrigVRecoilMin = shootWeaponEntity.RecoilInfo.VerticalRecoilMin or 0.0
-                                    cache.HK_OrigVRecoilMax = shootWeaponEntity.RecoilInfo.VerticalRecoilMax or 0.0
-                                    cache.HK_OrigSpeedV = shootWeaponEntity.RecoilInfo.RecoilSpeedVertical or 0.0
-                                    cache.HK_OrigSpeedH = shootWeaponEntity.RecoilInfo.RecoilSpeedHorizontal or 0.0
+                                    cache.HK_OrigVRecoilMin  = shootWeaponEntity.RecoilInfo.VerticalRecoilMin or 0.0
+                                    cache.HK_OrigVRecoilMax  = shootWeaponEntity.RecoilInfo.VerticalRecoilMax or 0.0
+                                    cache.HK_OrigSpeedV      = shootWeaponEntity.RecoilInfo.RecoilSpeedVertical or 0.0
+                                    cache.HK_OrigSpeedH      = shootWeaponEntity.RecoilInfo.RecoilSpeedHorizontal or 0.0
                                     cache.HK_OrigRecoveryMax = shootWeaponEntity.RecoilInfo.VerticalRecoveryMax or 0.0
                                 end
-                                _G.HK_WeaponCache[objName] = cache
-                             end
-                         end
+                                cache.HK_Initialized = true  -- không cập nhật lại nữa
+                            end
+                        end
 
                          if cache then
                              -- ===== THÊM: Tính hệ số giảm rung khi đang ngắm (ADS) =====
