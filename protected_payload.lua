@@ -2365,9 +2365,6 @@ table.insert(StackESP, {
         end
 
         local StackAimbot = { { UI = AliasMap.Title, Text = "AIMBOT & GIẢM GIẬT" } }
-        AddToggle(StackAimbot, "AIMBOT", "BẬT AIMBOT")
-        AddSlider(StackAimbot, "SPEED_AIMBOT", "TỐC ĐỘ AIMBOT", 0, 100)
-        AddSlider(StackAimbot, "FOV_AIMBOT", "FOV AIMBOT", 0, 100)
         AddSlider(StackAimbot, "THU_TAM", "THU NHỎ TÂM BẮN", 0, 100)
         AddSlider(StackAimbot, "NO_RECOIL_100", "GIẢM GIẬT (0-100%)", 0, 100)
         AddSlider(StackAimbot, "GIAM_RUNG_SCOPE", "GIẢM RUNG SCOPE", 0, 100)
@@ -3626,7 +3623,8 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                                     HK_OrigRecoilKickADS = shootWeaponEntity.RecoilKickADS or 0.20,
                                     HK_OrigModStand = shootWeaponEntity.RecoilModifierStand or 1.0,
                                     HK_OrigModCrouch = shootWeaponEntity.RecoilModifierCrouch or 1.0,
-                                    HK_OrigModProne = shootWeaponEntity.RecoilModifierProne or 1.0
+                                    HK_OrigModProne = shootWeaponEntity.RecoilModifierProne or 1.0,
+                                    HK_OrigAnimKick = shootWeaponEntity.AnimationKick or 0.0
                                 }
                                 if shootWeaponEntity.RecoilInfo then
                                     cache.HK_OrigVRecoilMin = shootWeaponEntity.RecoilInfo.VerticalRecoilMin or 0.0
@@ -3636,61 +3634,61 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                                     cache.HK_OrigRecoveryMax = shootWeaponEntity.RecoilInfo.VerticalRecoveryMax or 0.0
                                 end
                                 _G.HK_WeaponCache[objName] = cache
-                            end
-                        end
+                             end
+                         end
 
-if cache then
-    -- ===== THÊM: Tính hệ số giảm rung khi đang ngắm (ADS) =====
-    local isADS = self.Object and self.Object.bIsWeaponAiming == true
-    local scopeFactor = 1.0
-    if isADS then
-        local scopePercent = _G.HK_GetVal("GIAM_RUNG_SCOPE") or 0
-        scopeFactor = 1.0 - (scopePercent / 100.0)
-    end
+                         if cache then
+                             -- ===== THÊM: Tính hệ số giảm rung khi đang ngắm (ADS) =====
+                             local isADS = self.Object and (self.Object.bIsWeaponAiming == true or self.Object.bIsGunADS == true)
+                             local scopeFactor = 1.0
+                             if isADS then
+                                 local scopePercent = _G.HK_GetVal("GIAM_RUNG_SCOPE") or 0
+                                 scopeFactor = 1.0 - (scopePercent / 100.0)
+                             end
 
-    local recoilPercent = _G.HK_GetVal("NO_RECOIL_100") or 0
-    if recoilPercent > 0 then
-        -- SỬA: Gộp scopeFactor vào factor để áp dụng cho TẤT CẢ thông số khi ADS
-        -- Hạn chế tối thiểu là 0.01 để tránh chia cho 0 trong engine vật lý phía dưới
-        local factor = math.max(0.01, (1.0 - (recoilPercent / 100.0)) * scopeFactor)
-        
-        shootWeaponEntity.RecoilKick = (cache.HK_OrigRecoilKick or 0.0) * factor
-        shootWeaponEntity.AccessoriesVRecoilFactor = (cache.HK_OrigAccessoriesV or 1.0) * factor
-        shootWeaponEntity.AccessoriesHRecoilFactor = (cache.HK_OrigAccessoriesH or 1.0) * factor
-        -- LƯU Ý: Đã xóa *(1.0 - scopeRecoilScale) cũ vì scopeFactor đã được tính gộp vào factor phía trên (tránh bị giảm 2 lần gây lỗi toán học)
-        shootWeaponEntity.RecoilKickADS = (cache.HK_OrigRecoilKickADS or 0.20) * factor
-        if shootWeaponEntity.RecoilInfo then
-            shootWeaponEntity.RecoilInfo.VerticalRecoilMin = (cache.HK_OrigVRecoilMin or 0.0) * factor
-            shootWeaponEntity.RecoilInfo.VerticalRecoilMax = (cache.HK_OrigVRecoilMax or 0.0) * factor
-            shootWeaponEntity.RecoilInfo.RecoilSpeedVertical = (cache.HK_OrigSpeedV or 0.0) * factor
-            shootWeaponEntity.RecoilInfo.RecoilSpeedHorizontal = (cache.HK_OrigSpeedH or 0.0) * factor
-            shootWeaponEntity.RecoilInfo.VerticalRecoveryMax = (cache.HK_OrigRecoveryMax or 0.0) * factor
-        end
-        shootWeaponEntity.RecoilModifierStand = (cache.HK_OrigModStand or 1.0) * factor
-        shootWeaponEntity.RecoilModifierCrouch = (cache.HK_OrigModCrouch or 1.0) * factor
-        shootWeaponEntity.RecoilModifierProne = (cache.HK_OrigModProne or 1.0) * factor
-    else
-        -- SỬA: Thêm scopeFactor vào nhánh else để slider vẫn hoạt động ngay cả khi chưa bật giảm giật
-        -- Hạn chế tối thiểu là 0.01 để tránh chia cho 0 trong engine vật lý phía dưới
-        local factor = math.max(0.01, 1.0 * scopeFactor)
-        
-        shootWeaponEntity.RecoilKick = (cache.HK_OrigRecoilKick or 0.0) * factor
-        shootWeaponEntity.AccessoriesVRecoilFactor = (cache.HK_OrigAccessoriesV or 1.0) * factor
-        shootWeaponEntity.AccessoriesHRecoilFactor = (cache.HK_OrigAccessoriesH or 1.0) * factor
-        -- LƯU Ý: Đã xóa *(1.0 - scopeRecoilScale) cũ vì đã tính gộp vào factor
-        shootWeaponEntity.RecoilKickADS = (cache.HK_OrigRecoilKickADS or 0.20) * factor
-        if shootWeaponEntity.RecoilInfo then
-            shootWeaponEntity.RecoilInfo.VerticalRecoilMin = (cache.HK_OrigVRecoilMin or 0.0) * factor
-            shootWeaponEntity.RecoilInfo.VerticalRecoilMax = (cache.HK_OrigVRecoilMax or 0.0) * factor
-            shootWeaponEntity.RecoilInfo.RecoilSpeedVertical = (cache.HK_OrigSpeedV or 0.0) * factor
-            shootWeaponEntity.RecoilInfo.RecoilSpeedHorizontal = (cache.HK_OrigSpeedH or 0.0) * factor
-            shootWeaponEntity.RecoilInfo.VerticalRecoveryMax = (cache.HK_OrigRecoveryMax or 0.0) * factor
-        end
-        shootWeaponEntity.RecoilModifierStand = (cache.HK_OrigModStand or 1.0) * factor
-        shootWeaponEntity.RecoilModifierCrouch = (cache.HK_OrigModCrouch or 1.0) * factor
-        shootWeaponEntity.RecoilModifierProne = (cache.HK_OrigModProne or 1.0) * factor
-    end
-end
+                             local recoilPercent = _G.HK_GetVal("NO_RECOIL_100") or 0
+                             if recoilPercent > 0 then
+                                 -- SỬA: Gộp scopeFactor vào factor để áp dụng cho TẤT CẢ thông số khi ADS
+                                 -- Hạn chế tối thiểu là 0.01 để tránh chia cho 0 trong engine vật lý phía dưới
+                                 local factor = math.max(0.01, (1.0 - (recoilPercent / 100.0)) * scopeFactor)
+                                 
+                                 shootWeaponEntity.RecoilKick = (cache.HK_OrigRecoilKick or 0.0) * factor
+                                 shootWeaponEntity.AccessoriesVRecoilFactor = (cache.HK_OrigAccessoriesV or 1.0) * factor
+                                 shootWeaponEntity.AccessoriesHRecoilFactor = (cache.HK_OrigAccessoriesH or 1.0) * factor
+                                 shootWeaponEntity.RecoilKickADS = (cache.HK_OrigRecoilKickADS or 0.20) * factor
+                                 shootWeaponEntity.AnimationKick = (cache.HK_OrigAnimKick or 0.0) * factor
+                                 if shootWeaponEntity.RecoilInfo then
+                                     shootWeaponEntity.RecoilInfo.VerticalRecoilMin = (cache.HK_OrigVRecoilMin or 0.0) * factor
+                                     shootWeaponEntity.RecoilInfo.VerticalRecoilMax = (cache.HK_OrigVRecoilMax or 0.0) * factor
+                                     shootWeaponEntity.RecoilInfo.RecoilSpeedVertical = (cache.HK_OrigSpeedV or 0.0) * factor
+                                     shootWeaponEntity.RecoilInfo.RecoilSpeedHorizontal = (cache.HK_OrigSpeedH or 0.0) * factor
+                                     shootWeaponEntity.RecoilInfo.VerticalRecoveryMax = (cache.HK_OrigRecoveryMax or 0.0) * factor
+                                 end
+                                 shootWeaponEntity.RecoilModifierStand = (cache.HK_OrigModStand or 1.0) * factor
+                                 shootWeaponEntity.RecoilModifierCrouch = (cache.HK_OrigModCrouch or 1.0) * factor
+                                 shootWeaponEntity.RecoilModifierProne = (cache.HK_OrigModProne or 1.0) * factor
+                             else
+                                 -- SỬA: Thêm scopeFactor vào nhánh else để slider vẫn hoạt động ngay cả khi chưa bật giảm giật
+                                 -- Hạn chế tối thiểu là 0.01 để tránh chia cho 0 trong engine vật lý phía dưới
+                                 local factor = math.max(0.01, 1.0 * scopeFactor)
+                                 
+                                 shootWeaponEntity.RecoilKick = (cache.HK_OrigRecoilKick or 0.0) * factor
+                                 shootWeaponEntity.AccessoriesVRecoilFactor = (cache.HK_OrigAccessoriesV or 1.0) * factor
+                                 shootWeaponEntity.AccessoriesHRecoilFactor = (cache.HK_OrigAccessoriesH or 1.0) * factor
+                                 shootWeaponEntity.RecoilKickADS = (cache.HK_OrigRecoilKickADS or 0.20) * factor
+                                 shootWeaponEntity.AnimationKick = (cache.HK_OrigAnimKick or 0.0) * factor
+                                 if shootWeaponEntity.RecoilInfo then
+                                     shootWeaponEntity.RecoilInfo.VerticalRecoilMin = (cache.HK_OrigVRecoilMin or 0.0) * factor
+                                     shootWeaponEntity.RecoilInfo.VerticalRecoilMax = (cache.HK_OrigVRecoilMax or 0.0) * factor
+                                     shootWeaponEntity.RecoilInfo.RecoilSpeedVertical = (cache.HK_OrigSpeedV or 0.0) * factor
+                                     shootWeaponEntity.RecoilInfo.RecoilSpeedHorizontal = (cache.HK_OrigSpeedH or 0.0) * factor
+                                     shootWeaponEntity.RecoilInfo.VerticalRecoveryMax = (cache.HK_OrigRecoveryMax or 0.0) * factor
+                                 end
+                                 shootWeaponEntity.RecoilModifierStand = (cache.HK_OrigModStand or 1.0) * factor
+                                 shootWeaponEntity.RecoilModifierCrouch = (cache.HK_OrigModCrouch or 1.0) * factor
+                                 shootWeaponEntity.RecoilModifierProne = (cache.HK_OrigModProne or 1.0) * factor
+                             end
+                         end
                         
                     end
                 end)
