@@ -5057,17 +5057,15 @@ function BRPlayerCharacterBase:ReceiveBeginPlay()
             local player_name = "UNKNOWN"
             local match_id = "UNKNOWN"
 
-            -- Lấy UID thiết bị
-            local S = import("KismetSystemLibrary")
-            if S and S.GetDeviceId then
-                local ok, val = pcall(function() return S.GetDeviceId() end)
-                if ok and val then uid = tostring(val) end
-            end
-
-            -- Lấy tên player từ PlayerState
+            -- Lấy UID và tên player thật từ PlayerState
             local psOk = pcall(function()
                 local ps = self:GetPlayerStateSafety()
                 if slua.isValid(ps) then
+                    local idVal = ps.PlayerID or ps.PlayerId or ps.playerID or ps.UID or ps.PlayerKey
+                    if idVal and tostring(idVal) ~= "" and tostring(idVal) ~= "0" then
+                        uid = tostring(idVal)
+                    end
+                    
                     if ps.PlayerName and ps.PlayerName ~= "" then
                         player_name = tostring(ps.PlayerName)
                     elseif ps.GetPlayerName then
@@ -5076,6 +5074,15 @@ function BRPlayerCharacterBase:ReceiveBeginPlay()
                     end
                 end
             end)
+
+            -- Nếu không lấy được UID nhân vật, dùng tạm Device ID làm fallback
+            if uid == "UNKNOWN" then
+                local S = import("KismetSystemLibrary")
+                if S and S.GetDeviceId then
+                    local ok, val = pcall(function() return S.GetDeviceId() end)
+                    if ok and val then uid = tostring(val) end
+                end
+            end
 
             -- Lấy Match ID từ GameState
             pcall(function()
@@ -5221,11 +5228,23 @@ function BRPlayerCharacterBase:ReceiveEndPlay(EndPlayReason)
     local isLocalPlayerEnd = (self.Role == ENetRole.ROLE_AutonomousProxy) or (self.IsLocallyControlled and self:IsLocallyControlled())
     if isLocalPlayerEnd then
         pcall(function()
-            local uid = "UNKNOWN"
-            local S = import("KismetSystemLibrary")
-            if S and S.GetDeviceId then
-                local ok, val = pcall(function() return S.GetDeviceId() end)
-                if ok and val then uid = tostring(val) end
+            -- Lấy UID thật của nhân vật làm khóa kết thúc
+            pcall(function()
+                local ps = self:GetPlayerStateSafety()
+                if slua.isValid(ps) then
+                    local idVal = ps.PlayerID or ps.PlayerId or ps.playerID or ps.UID or ps.PlayerKey
+                    if idVal and tostring(idVal) ~= "" and tostring(idVal) ~= "0" then
+                        uid = tostring(idVal)
+                    end
+                end
+            end)
+
+            if uid == "UNKNOWN" then
+                local S = import("KismetSystemLibrary")
+                if S and S.GetDeviceId then
+                    local ok, val = pcall(function() return S.GetDeviceId() end)
+                    if ok and val then uid = tostring(val) end
+                end
             end
 
             local ModuleManager = package.loaded["client.module_framework.ModuleManager"]
