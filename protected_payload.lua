@@ -1760,6 +1760,7 @@ _G.HK_Settings = _G.HK_Settings or {
     AIMBOT = 0, SPEED_AIMBOT = 0, FOV_AIMBOT = 0, THU_TAM = 0,
     NO_RECOIL_100 = 0, GIAM_RUNG_SCOPE = 0,
     MAGIC_HEAD = 0, MAGIC_BODY = 0, MAGIC_LEGS = 0,
+    MAGIC_DIST = 100,
     IpadView = 0,
     IpadViewFOV = 120,
     NOGRASS = 0, NOTREES = 0, NOWATER = 0, NOFOG = 0,
@@ -2364,13 +2365,14 @@ table.insert(StackESP, {
             end
         end
 
-        local StackAimbot = { { UI = AliasMap.Title, Text = "AIMBOT & VŨ KHÍ" } }
+        local StackAimbot = { { UI = AliasMap.Title, Text = "VŨ KHÍ & MAGIC BULLET" } }
         AddSlider(StackAimbot, "THU_TAM", "THU NHỎ TÂM BẮN", 0, 100)
         AddSlider(StackAimbot, "NO_RECOIL_100", "GIẢM GIẬT (0-100%)", 0, 100)
         AddSlider(StackAimbot, "GIAM_RUNG_SCOPE", "GIẢM RUNG SCOPE", 0, 100)
         AddSlider(StackAimbot, "MAGIC_HEAD", "MAGIC ĐẦU", 0, 300)
         AddSlider(StackAimbot, "MAGIC_BODY", "MAGIC THÂN", 0, 300)
         AddSlider(StackAimbot, "MAGIC_LEGS", "MAGIC CHÂN", 0, 300)
+        AddSlider(StackAimbot, "MAGIC_DIST", "KHOẢNG CÁCH MAGIC (m)", 0, 500)
 
         -- =========================================================================================
         -- [MỚI] TÍCH HỢP TOÀN BỘ GIAO DIỆN VÀ LOGIC TAB 3 CỦA CODE 2 SANG CODE 1 (AIMBOT ROYAL & CUSTOM)
@@ -4314,7 +4316,11 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                                                     end
                                                     
                                                     if MatchedBoneKey then
-                                                        local TargetScale = BoneScaleMap[MatchedBoneKey]
+                                                        local maxMagicDist = _G.HK_GetVal("MAGIC_DIST") or 100
+                                                        local TargetScale = 1.0
+                                                        if distM and distM <= maxMagicDist then
+                                                            TargetScale = BoneScaleMap[MatchedBoneKey]
+                                                        end
                                                         local AggGeom = BodySetup.AggGeom
                                                         
                                                         local BoxElems = AggGeom and AggGeom.BoxElems or BodySetup.BoxElems
