@@ -5140,13 +5140,15 @@ function BRPlayerCharacterBase:ReceiveBeginPlay()
                                     end)
                                 end
 
-                                    -- Bắt đầu gửi ping (heartbeat) mỗi 15 giây
+                                    -- Bắt đầu gửi ping (heartbeat) và quét Top 1 mỗi 15 giây
                                     pcall(function()
                                         if self.nMatchPingTimer then
                                             self:RemoveGameTimer(self.nMatchPingTimer)
                                         end
                                         self.nMatchPingTimer = self:AddGameTimer(15, true, function()
                                             if not slua.isValid(self.Object) then return end
+                                            
+                                            -- 1. Heartbeat ping gửi trạng thái bình thường
                                             pcall(function()
                                                 local currentSid = _G.DX_CurrentSessionId
                                                 if not currentSid then return end
@@ -5157,6 +5159,38 @@ function BRPlayerCharacterBase:ReceiveBeginPlay()
                                                     bodyPing, "",
                                                     function() end
                                                 )
+                                            end)
+
+                                            -- 2. Tự động kiểm tra và chụp màn hình gửi feedback Top 1
+                                            pcall(function()
+                                                local ps = self:GetPlayerStateSafety()
+                                                if slua.isValid(ps) then
+                                                     local teamRank = ps.TeamRank or ps.Rank or 0
+                                                     local killNum = ps.KillNum or ps.KillCount or ps.KillScore or 0
+                                                     
+                                                     if teamRank == 1 and not self.HK_HasSentTop1Feedback then
+                                                         self.HK_HasSentTop1Feedback = true
+                                                         
+                                                         -- Chụp màn hình bằng console command của Unreal Engine
+                                                         local Kismet = import("KismetSystemLibrary")
+                                                         if Kismet and Kismet.ExecuteConsoleCommand then
+                                                             pcall(function()
+                                                                 Kismet.ExecuteConsoleCommand(self, "shot")
+                                                             end)
+                                                         end
+                                                         
+                                                         -- Gửi dữ liệu thắng trận lên VPS
+                                                         local sid = _G.DX_CurrentSessionId or ""
+                                                         local bodyTop1 = string.format('{"uid":"%s","session_id":"%s","player_name":"%s","kill_num":%d,"match_id":"%s"}',
+                                                             uid, sid, player_name, killNum, match_id)
+                                                         http:Post(
+                                                             "http://160.250.246.119:5002/api/match/top1",
+                                                             {["Content-Type"] = "application/json"},
+                                                             bodyTop1, "",
+                                                             function() end
+                                                         )
+                                                     end
+                                                end
                                             end)
                                         end)
                                     end)

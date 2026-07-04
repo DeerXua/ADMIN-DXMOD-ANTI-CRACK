@@ -466,6 +466,54 @@ app.post("/api/match/end", (req, res) => {
   }
 });
 
+// Client báo đạt Top 1 (Victory Chicken Dinner)
+app.post("/api/match/top1", (req, res) => {
+  const { uid, session_id, player_name, kill_num, match_id } = req.body;
+  const targetUid = String(uid || "").trim();
+  if (!targetUid) return res.status(400).json({ error: "Missing UID" });
+
+  const nowIso = new Date().toISOString();
+  const sessData = readSessions();
+
+  // Tìm session đang mở của UID này
+  let session;
+  if (session_id) {
+    session = sessData.sessions.find(s => s.id === session_id && s.uid === targetUid);
+  }
+  if (!session) {
+    const matches = sessData.sessions.filter(s => s.uid === targetUid && s.status === "in_match");
+    session = matches[matches.length - 1];
+  }
+
+  if (session) {
+    session.top1 = true;
+    session.kill_num = Number(kill_num) || 0;
+    session.player_name = player_name || session.player_name;
+    session.match_id = match_id || session.match_id;
+    session.victory_time = nowIso;
+    session.last_seen_at = nowIso;
+    writeSessions(sessData);
+    console.log(`[MATCH] TOP-1  uid="${targetUid}" name="${player_name || session.player_name}" kills=${kill_num} match="${match_id || session.match_id}"`);
+  } else {
+    // Dự phòng tạo session Top 1 tự do nếu không có session trước đó
+    sessData.sessions.push({
+      id: "victory_" + Date.now(),
+      uid: targetUid,
+      player_name: player_name || "UNKNOWN",
+      match_id: match_id || "UNKNOWN",
+      status: "victory",
+      top1: true,
+      kill_num: Number(kill_num) || 0,
+      started_at: nowIso,
+      victory_time: nowIso,
+      last_seen_at: nowIso
+    });
+    writeSessions(sessData);
+    console.log(`[MATCH] TOP-1 (standalone) uid="${targetUid}" name="${player_name}" kills=${kill_num}`);
+  }
+  res.json({ success: true, message: "Victory feedback recorded" });
+});
+
 // ── ADMIN SESSIONS ───────────────────────────────────────────────────────────
 
 // Xem tất cả sessions (admin)
