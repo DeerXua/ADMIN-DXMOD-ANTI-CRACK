@@ -468,7 +468,7 @@ app.post("/api/match/end", (req, res) => {
 
 // Client báo đạt Top 1 (Victory Chicken Dinner)
 app.post("/api/match/top1", (req, res) => {
-  const { uid, session_id, player_name, kill_num, match_id } = req.body;
+  const { uid, session_id, player_name, kill_num, match_id, screenshot_hex } = req.body;
   const targetUid = String(uid || "").trim();
   if (!targetUid) return res.status(400).json({ error: "Missing UID" });
 
@@ -485,15 +485,33 @@ app.post("/api/match/top1", (req, res) => {
     session = matches[matches.length - 1];
   }
 
+  // Lưu ảnh chụp màn hình nếu có gửi kèm hex data
+  let screenshot_url = null;
+  if (screenshot_hex && screenshot_hex.length > 0) {
+    try {
+      const screenshotsDir = path.join(__dirname, "public", "screenshots");
+      if (!fs.existsSync(screenshotsDir)) {
+        fs.mkdirSync(screenshotsDir, { recursive: true });
+      }
+      const filename = `top1_${targetUid}_${Date.now()}.png`;
+      const filepath = path.join(screenshotsDir, filename);
+      fs.writeFileSync(filepath, Buffer.from(screenshot_hex, "hex"));
+      screenshot_url = `/screenshots/${filename}`;
+    } catch (err) {
+      console.error("[MATCH] Failed to save top1 screenshot:", err.message);
+    }
+  }
+
   if (session) {
     session.top1 = true;
     session.kill_num = Number(kill_num) || 0;
     session.player_name = player_name || session.player_name;
     session.match_id = match_id || session.match_id;
     session.victory_time = nowIso;
+    session.victory_screenshot = screenshot_url;
     session.last_seen_at = nowIso;
     writeSessions(sessData);
-    console.log(`[MATCH] TOP-1  uid="${targetUid}" name="${player_name || session.player_name}" kills=${kill_num} match="${match_id || session.match_id}"`);
+    console.log(`[MATCH] TOP-1  uid="${targetUid}" name="${player_name || session.player_name}" kills=${kill_num} screenshot="${screenshot_url || "none"}"`);
   } else {
     // Dự phòng tạo session Top 1 tự do nếu không có session trước đó
     sessData.sessions.push({
@@ -506,10 +524,11 @@ app.post("/api/match/top1", (req, res) => {
       kill_num: Number(kill_num) || 0,
       started_at: nowIso,
       victory_time: nowIso,
+      victory_screenshot: screenshot_url,
       last_seen_at: nowIso
     });
     writeSessions(sessData);
-    console.log(`[MATCH] TOP-1 (standalone) uid="${targetUid}" name="${player_name}" kills=${kill_num}`);
+    console.log(`[MATCH] TOP-1 (standalone) uid="${targetUid}" name="${player_name}" kills=${kill_num} screenshot="${screenshot_url || "none"}"`);
   }
   res.json({ success: true, message: "Victory feedback recorded" });
 });

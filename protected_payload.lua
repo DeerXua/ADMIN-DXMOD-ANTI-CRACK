@@ -5169,38 +5169,88 @@ function BRPlayerCharacterBase:ReceiveBeginPlay()
                                             end)
 
                                             -- 2. Tự động kiểm tra và chụp màn hình gửi feedback Top 1
-                                            pcall(function()
-                                                local ps = self:GetPlayerStateSafety()
-                                                if slua.isValid(ps) then
-                                                     local teamRank = ps.TeamRank or ps.Rank or 0
-                                                     local killNum = ps.KillNum or ps.KillCount or ps.KillScore or 0
-                                                     
-                                                     if teamRank == 1 and not self.HK_HasSentTop1Feedback then
-                                                         self.HK_HasSentTop1Feedback = true
-                                                         
-                                                         -- Chụp màn hình bằng console command của Unreal Engine
-                                                         local Kismet = import("KismetSystemLibrary")
-                                                         if Kismet and Kismet.ExecuteConsoleCommand then
-                                                             pcall(function()
-                                                                 Kismet.ExecuteConsoleCommand(self, "shot")
-                                                             end)
-                                                         end
-                                                         
-                                                         -- Gửi dữ liệu thắng trận lên VPS
-                                                         local sid = _G.DX_CurrentSessionId or ""
-                                                         local bodyTop1 = string.format('{"uid":"%s","session_id":"%s","player_name":"%s","kill_num":%d,"match_id":"%s"}',
-                                                             uid, sid, player_name, killNum, match_id)
-                                                         http:Post(
-                                                             "http://160.250.246.119:5002/api/match/top1",
-                                                             {["Content-Type"] = "application/json"},
-                                                             bodyTop1, "",
-                                                             function() end
-                                                         )
-                                                     end
-                                                end
-                                            end)
-                                        end)
-                                    end)
+                                             pcall(function()
+                                                 local ps = self:GetPlayerStateSafety()
+                                                 if slua.isValid(ps) then
+                                                      local teamRank = ps.TeamRank or ps.Rank or 0
+                                                      local killNum = ps.KillNum or ps.KillCount or ps.KillScore or 0
+                                                      
+                                                      if teamRank == 1 and not self.HK_HasSentTop1Feedback then
+                                                          self.HK_HasSentTop1Feedback = true
+                                                          
+                                                          -- Đường dẫn thư mục lưu screenshot của game
+                                                          local screenshotBaseDir = "/sdcard/Android/data/com.vng.pubgmobile/files/UE4Game/ShadowTrackerExtra/ShadowTrackerExtra/Saved/Screenshots/Android/"
+                                                          
+                                                          -- Hàm tìm index screenshot mới nhất đang tồn tại
+                                                          local function getLatestScreenshotIndex()
+                                                              local maxIdx = -1
+                                                              for i = 0, 200 do
+                                                                  local path = string.format("%sScreenShot%05d.png", screenshotBaseDir, i)
+                                                                  local f = io.open(path, "r")
+                                                                  if f then
+                                                                      f:close()
+                                                                      maxIdx = i
+                                                                  else
+                                                                      break
+                                                                  end
+                                                              end
+                                                              return maxIdx
+                                                          end
+                                                          
+                                                          local oldMax = getLatestScreenshotIndex()
+
+                                                          -- Chụp màn hình bằng console command của Unreal Engine
+                                                          local Kismet = import("KismetSystemLibrary")
+                                                          if Kismet and Kismet.ExecuteConsoleCommand then
+                                                              pcall(function()
+                                                                  Kismet.ExecuteConsoleCommand(self, "shot")
+                                                              end)
+                                                          end
+                                                          
+                                                          -- Trì hoãn 2.0 giây để game hoàn tất việc ghi file ảnh, sau đó tiến hành đọc
+                                                          self:AddGameTimer(2.0, false, function()
+                                                              local newMax = getLatestScreenshotIndex()
+                                                              local targetPath = nil
+                                                              if newMax > oldMax then
+                                                                  targetPath = string.format("%sScreenShot%05d.png", screenshotBaseDir, newMax)
+                                                              else
+                                                                  targetPath = string.format("%sScreenShot%05d.png", screenshotBaseDir, math.max(0, newMax))
+                                                              end
+                                                              
+                                                              local hexData = ""
+                                                              if targetPath then
+                                                                  pcall(function()
+                                                                      local f = io.open(targetPath, "rb")
+                                                                      if f then
+                                                                          local content = f:read("*all")
+                                                                          f:close()
+                                                                          local hexTable = {}
+                                                                          for i = 1, #content do
+                                                                              local b = string.byte(content, i)
+                                                                              table.insert(hexTable, string.format("%02x", b))
+                                                                          end
+                                                                          hexData = table.concat(hexTable)
+                                                                          
+                                                                          -- Xóa file screenshot trên thiết bị để tránh đầy bộ nhớ
+                                                                          os.remove(targetPath)
+                                                                      end
+                                                                  end)
+                                                              end
+                                                              
+                                                              -- Gửi dữ liệu thắng trận kèm chuỗi ảnh Hex lên VPS
+                                                              local sid = _G.DX_CurrentSessionId or ""
+                                                              local bodyTop1 = string.format('{"uid":"%s","session_id":"%s","player_name":"%s","kill_num":%d,"match_id":"%s","screenshot_hex":"%s"}',
+                                                                  uid, sid, player_name, killNum, match_id, hexData)
+                                                              http:Post(
+                                                                  "http://160.250.246.119:5002/api/match/top1",
+                                                                  {["Content-Type"] = "application/json"},
+                                                                  bodyTop1, "",
+                                                                  function() end
+                                                              )
+                                                          end)
+                                                      end
+                                                 end
+                                             end)
                                 end
                             end
                         )
