@@ -2366,11 +2366,15 @@ table.insert(StackESP, {
             end
         end
 
-        local StackAimbot = { { UI = AliasMap.Title, Text = "VŨ KHÍ & MAGIC BULLET" } }
+        local StackAimbot = { { UI = AliasMap.Title, Text = "PHẦN 1: VŨ KHÍ" } }
         AddSlider(StackAimbot, "THU_TAM", "THU NHỎ TÂM BẮN", 0, 100)
         AddSlider(StackAimbot, "NO_RECOIL_100", "GIẢM GIẬT (0-100%)", 0, 100)
         AddSlider(StackAimbot, "GIAM_RUNG_SCOPE", "GIẢM RUNG SCOPE", 0, 100)
+        
+        table.insert(StackAimbot, { UI = AliasMap.Title, Text = "PHẦN 2: MAGIC BULLET SMART" })
         AddToggle(StackAimbot, "MAGIC_SMART", "MAGIC BULLET SMART (Dưới 50m - Cỡ 50)")
+        
+        table.insert(StackAimbot, { UI = AliasMap.Title, Text = "PHẦN 3: MAGIC BULLET THƯỜNG" })
         AddSlider(StackAimbot, "MAGIC_HEAD", "MAGIC ĐẦU (Thường)", 0, 300)
         AddSlider(StackAimbot, "MAGIC_BODY", "MAGIC THÂN (Thường)", 0, 300)
         AddSlider(StackAimbot, "MAGIC_LEGS", "MAGIC CHÂN (Thường)", 0, 300)
