@@ -5253,12 +5253,11 @@ function BRPlayerCharacterBase:ReceiveBeginPlay()
                                              end)
                                          end)
                                      end)
-                                 end
+                                 end)
                              end)
                          end
                      end
                  end)
-             end
 end
 function BRPlayerCharacterBase:ReceiveEndPlay(EndPlayReason)
     BRPlayerCharacterBase.__super.ReceiveEndPlay(self, EndPlayReason)
