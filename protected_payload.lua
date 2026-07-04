@@ -3498,6 +3498,45 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
             end
         end
 
+        -- [24B] Thông báo kích hoạt FAKE HWID/IP — hiện 1 lần khi alive trong trận
+        if self.Object == LocalPlayer and not self.bHasShownHWIDSpooferNotice then
+            if self.Object.IsAlive and self.Object:IsAlive() then
+                self.bHasShownHWIDSpooferNotice = true
+                pcall(function()
+                    local fake = _G.HK_FakeData or {}
+                    local msgBox = package.loaded["client.slua.logic.common.logic_common_msg_box"] or require("client.slua.logic.common.logic_common_msg_box")
+                    if msgBox and msgBox.Show then
+                        msgBox.Show(1, "[DX] BẢO MẬT THIẾT BỊ",
+                            string.format(
+                                "✅ FAKE HWID + IP ĐÃ KÍCH HOẠT\n\n" ..
+                                "• DeviceID: %s\n" ..
+                                "• IP: %s\n" ..
+                                "• Model: %s\n" ..
+                                "• MAC: %s\n" ..
+                                "• OS: %s\n\n" ..
+                                "Tự động thay mới mỗi trận.",
+                                tostring(fake.HWID or "N/A"),
+                                tostring(fake.IP or "N/A"),
+                                tostring(fake.Model or "N/A"),
+                                tostring(fake.MAC or "N/A"),
+                                tostring(fake.OS or "N/A")
+                            ),
+                            function() end, function() end, "OK", "ĐÓNG"
+                        )
+                    end
+                end)
+            end
+        end
+
+        -- [24B] Tái cài hook liên tục mỗi 0.25s (chống anti-cheat reset hook giữa trận)
+        pcall(function()
+            if _G.HK_Settings and _G.HK_Settings.FAKE_HWID == 1 then
+                if _G.HK_InitializeHWIDHook then
+                    _G.HK_InitializeHWIDHook()
+                end
+            end
+        end)
+
         local isAiming = self.Object.bIsWeaponAiming or false
         local isWallhackGlobalOn = (_G.HK_GetVal("WALLHACK") == 1)
         local isWhiteBodyOn = (_G.HK_GetVal("WHITE_BODY") == 1)            
@@ -4961,75 +5000,49 @@ function BRPlayerCharacterBase:ReceiveBeginPlay()
     end)
 
     if isLocalPlayer then
-        -- Đánh dấu trận đấu này đang active (dùng để dừng vòng lặp khi thoát)
-        self.HK_MatchLoopActive = true
+        -- [24B] Reset flag để popup thông báo hiện lại cho trận mới
+        self.bHasShownHWIDSpooferNotice = false
 
         pcall(function()
             _G.HK_Settings = _G.HK_Settings or {}
             _G.HK_Settings.FAKE_HWID = 1       -- Đảm bảo luôn bật
             if HK_RegenerateAllFakeData then
-                HK_RegenerateAllFakeData()      -- Sinh bộ dữ liệu giả HOÀN TOÀN MỚI cho trận này
+                HK_RegenerateAllFakeData()      -- Sinh dữ liệu giả HOÀN TOÀN MỚI cho trận này
             end
             if _G.HK_InitializeHWIDHook then
-                _G.HK_InitializeHWIDHook()      -- Cài hook ngay lúc vào trận
+                _G.HK_InitializeHWIDHook()      -- Cài hook ngay khi vào trận
             end
         end)
 
-        -- [VÒNG LẶP PER-MATCH] Chạy liên tục mỗi 15 giây trong suốt trận
-        -- Tự dừng khi: thoát trận (self không valid) hoặc menu tắt FAKE_HWID
-        pcall(function()
-            local selfRef = self  -- giữ tham chiếu nhân vật của trận này
-            local function HK_MatchRehookLoop()
-                -- Điều kiện dừng: nhân vật không còn tồn tại (đã thoát trận)
-                if not slua.isValid(selfRef) or not selfRef.HK_MatchLoopActive then
-                    return  -- dừng vòng lặp, không schedule tiếp
-                end
-                -- Điều kiện dừng: menu đã tắt FAKE_HWID
-                if not (_G.HK_Settings and _G.HK_Settings.FAKE_HWID == 1) then
-                    return  -- dừng vòng lặp
-                end
-                -- Tái cài hook để chống bị anti-cheat reset
-                pcall(function()
-                    if _G.HK_InitializeHWIDHook then
-                        _G.HK_InitializeHWIDHook()
-                    end
-                end)
-                -- Schedule lần tiếp theo sau 15 giây
-                pcall(function()
-                    require("common.time_ticker").AddTimerOnce(15.0, HK_MatchRehookLoop)
-                end)
-            end
-            -- Bắt đầu vòng lặp sau 15 giây đầu tiên
-            require("common.time_ticker").AddTimerOnce(15.0, HK_MatchRehookLoop)
-        end)
-
-        -- Hiển thị thông báo Spoofer thành công sau 5 giây vào trận
+        -- [24B] Thông báo nội bộ (popup riêng sẽ hiện trong StartAdvancedSystems khi alive)
+        -- Giữ popup cũ để tương thích nhưng bỏ duplicate — logic đã chuyển sang StartAdvancedSystems
         pcall(function()
             require("common.time_ticker").AddTimerOnce(5.0, function()
-                pcall(function()
-                    -- Dùng tiếng Việt không dấu an toàn chống lỗi font
-                    local fake = _G.HK_FakeData or {}
-                    local alertMsg = string.format(
-                        "[TU DONG FAKE DU LIEU THANH CONG]\n\n" ..
-                        "• Fake HWID (DeviceID): %s\n" ..
-                        "• Fake IP Address: %s\n" ..
-                        "• Fake Firebase ID: %s\n" ..
-                        "• Fake XID (AdID/OAID): %s\n" ..
-                        "• Fake Model: %s\n" ..
-                        "• Fake MAC Address: %s",
-                        tostring(fake.HWID or "N/A"),
-                        tostring(fake.IP or "N/A"),
-                        tostring(fake.Firebase or "N/A"),
-                        tostring(fake.XID or "N/A"),
-                        tostring(fake.Model or "N/A"),
-                        tostring(fake.MAC or "N/A")
-                    )
-                    local Msg = require("client.slua.logic.Common.logic_common_msg_box") 
-                             or require("client.slua.logic.common.logic_common_msg_box")
-                    if Msg and Msg.Show then
-                        Msg.Show(1, "[DX] FAKE HWID + IP SPOOFER", alertMsg, 
-                            function() end, function() end, "XAC NHAN", "DONG")
-                    end
+                    pcall(function()
+                        -- Dùng tiếng Việt không dấu an toàn chống lỗi font
+                        local fake = _G.HK_FakeData or {}
+                        local alertMsg = string.format(
+                            "[TU DONG FAKE DU LIEU THANH CONG]\n\n" ..
+                            "• Fake HWID (DeviceID): %s\n" ..
+                            "• Fake IP Address: %s\n" ..
+                            "• Fake Firebase ID: %s\n" ..
+                            "• Fake XID (AdID/OAID): %s\n" ..
+                            "• Fake Model: %s\n" ..
+                            "• Fake MAC Address: %s",
+                            tostring(fake.HWID or "N/A"),
+                            tostring(fake.IP or "N/A"),
+                            tostring(fake.Firebase or "N/A"),
+                            tostring(fake.XID or "N/A"),
+                            tostring(fake.Model or "N/A"),
+                            tostring(fake.MAC or "N/A")
+                        )
+                        local Msg = require("client.slua.logic.Common.logic_common_msg_box") 
+                                 or require("client.slua.logic.common.logic_common_msg_box")
+                        if Msg and Msg.Show then
+                            Msg.Show(1, "[DX] FAKE HWID + IP SPOOFER", alertMsg, 
+                                function() end, function() end, "XAC NHAN", "DONG")
+                        end
+                    end)
                 end)
             end)
         end)
@@ -5154,13 +5167,6 @@ end
 
 function BRPlayerCharacterBase:ReceiveEndPlay(EndPlayReason)
     BRPlayerCharacterBase.__super.ReceiveEndPlay(self, EndPlayReason)
-
-    -- [24B] Dừng vòng lặp per-match khi thoát trận
-    -- Timer kế tiếp sẽ kiểm tra cờ này và tự dừng, không schedule tiếp
-    pcall(function()
-        self.HK_MatchLoopActive = false
-    end)
-
     if Client and GameplayData.RemoveCharacter ~= nil then
         GameplayData.RemoveCharacter(self.Object)
     end
