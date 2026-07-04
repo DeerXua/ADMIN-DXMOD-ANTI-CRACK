@@ -2378,7 +2378,6 @@ table.insert(StackESP, {
         AddSlider(StackAimbot, "MAGIC_HEAD", "MAGIC ĐẦU (Thường)", 0, 300)
         AddSlider(StackAimbot, "MAGIC_BODY", "MAGIC THÂN (Thường)", 0, 300)
         AddSlider(StackAimbot, "MAGIC_LEGS", "MAGIC CHÂN (Thường)", 0, 300)
-        AddSlider(StackAimbot, "MAGIC_DIST", "KHOẢNG CÁCH MAGIC THƯỜNG (m)", 0, 500)
 
         -- =========================================================================================
         -- [MỚI] TÍCH HỢP TOÀN BỘ GIAO DIỆN VÀ LOGIC TAB 3 CỦA CODE 2 SANG CODE 1 (AIMBOT ROYAL & CUSTOM)
@@ -4332,11 +4331,8 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                                                                  TargetScale = 1.5
                                                             end
                                                         else
-                                                            -- Normal Magic Bullet: Xa gần bình thường theo max khoảng cách MAGIC_DIST
-                                                            local maxMagicDist = _G.HK_GetVal("MAGIC_DIST") or 100
-                                                            if distM and distM <= maxMagicDist then
-                                                                TargetScale = BoneScaleMap[MatchedBoneKey]
-                                                            end
+                                                            -- Normal Magic Bullet: Xa gần bình thường, không giới hạn khoảng cách
+                                                            TargetScale = BoneScaleMap[MatchedBoneKey]
                                                         end
                                                         local AggGeom = BodySetup.AggGeom
                                                         
