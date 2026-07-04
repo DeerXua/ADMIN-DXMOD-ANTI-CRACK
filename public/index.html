@@ -173,10 +173,12 @@
                         <th>Tên Player</th>
                         <th>UID Thiết bị</th>
                         <th>Match ID</th>
+                        <th>Số Kill</th>
                         <th>Vào trận lúc</th>
                         <th>Ra trận lúc</th>
                         <th>Thời lượng</th>
                         <th>Trạng thái</th>
+                        <th>Ảnh Top 1</th>
                     </tr>
                 </thead>
                 <tbody id="sessions-tbody">
@@ -237,6 +239,19 @@
                     <button type="submit" class="btn-primary">Lưu thay đổi</button>
                 </div>
             </form>
+        </div>
+    </div>
+
+    <!-- Screenshot Preview Modal -->
+    <div id="screenshot-modal" class="modal">
+        <div class="modal-content glass-card screenshot-modal-content">
+            <div class="modal-header">
+                <h2>Ảnh chụp chiến thắng (Top 1)</h2>
+                <button class="close-screenshot-modal close-modal"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="screenshot-body">
+                <img id="screenshot-img" src="" alt="Top 1 Screenshot">
+            </div>
         </div>
     </div>
 

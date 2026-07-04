@@ -42,6 +42,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const toastElement = document.getElementById('toast');
 
+    // Screenshot modal elements
+    const screenshotModal = document.getElementById('screenshot-modal');
+    const screenshotImg = document.getElementById('screenshot-img');
+    const closeScreenshotModal = document.querySelector('.close-screenshot-modal');
+
     // Initialize View block has been moved to the bottom of the file
 
     // --- Authentication ---
@@ -300,8 +305,13 @@ document.addEventListener('DOMContentLoaded', () => {
         btn.addEventListener('click', () => editModal.style.display = 'none');
     });
 
+    if (closeScreenshotModal) {
+        closeScreenshotModal.addEventListener('click', () => screenshotModal.style.display = 'none');
+    }
+
     window.addEventListener('click', (e) => {
         if (e.target === editModal) editModal.style.display = 'none';
+        if (e.target === screenshotModal) screenshotModal.style.display = 'none';
     });
 
     // Save changes
@@ -483,16 +493,37 @@ document.addEventListener('DOMContentLoaded', () => {
             const badge    = isLive
                 ? `<span class="badge" style="background:rgba(34,211,238,.15);color:#22d3ee;border:1px solid #22d3ee40"><i class="fa-solid fa-person-running"></i> Đang chơi</span>`
                 : `<span class="badge" style="background:rgba(100,116,139,.15);color:#94a3b8;border:1px solid #94a3b840"><i class="fa-solid fa-flag-checkered"></i> Đã xong</span>`;
+            
+            let top1Badge = '';
+            if (s.top1) {
+                top1Badge = `<span class="badge-victory"><i class="fa-solid fa-trophy"></i> Top 1</span>`;
+            }
+            
+            let screenshotBtn = '--';
+            if (s.victory_screenshot) {
+                screenshotBtn = `<button class="btn-view-screenshot" data-img="${s.victory_screenshot}"><i class="fa-solid fa-image"></i> Xem ảnh</button>`;
+            }
+
             return `<tr>
-                <td><strong>${escapeHtml(s.player_name || 'Unknown')}</strong></td>
-                <td><code style="font-size:11px;color:#a78bfa">${escapeHtml(s.uid)}</code></td>
+                <td><strong>${escapeHtml(s.player_name || 'Unknown')}</strong>${top1Badge}</td>
+                <td><code class="code-uid">${escapeHtml(s.uid)}</code></td>
                 <td>${escapeHtml(s.match_id || '--')}</td>
+                <td><span class="kill-badge">${s.kill_num || 0} Kill</span></td>
                 <td>${startVN}</td>
                 <td>${endVN}</td>
                 <td>${durText}</td>
                 <td>${badge}</td>
+                <td>${screenshotBtn}</td>
             </tr>`;
         }).join('');
+
+        // Thêm click listener cho nút xem screenshot
+        document.querySelectorAll('.btn-view-screenshot').forEach(btn => {
+            btn.addEventListener('click', () => {
+                screenshotImg.src = btn.dataset.img;
+                screenshotModal.style.display = 'flex';
+            });
+        });
     }
 
     function formatDuration(sec) {
