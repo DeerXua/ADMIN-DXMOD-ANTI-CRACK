@@ -2364,7 +2364,7 @@ table.insert(StackESP, {
             end
         end
 
-        local StackAimbot = { { UI = AliasMap.Title, Text = "AIMBOT & GIẢM GIẬT" } }
+        local StackAimbot = { { UI = AliasMap.Title, Text = "GIẢM GIẬT" } }
         AddSlider(StackAimbot, "THU_TAM", "THU NHỎ TÂM BẮN", 0, 100)
         AddSlider(StackAimbot, "NO_RECOIL_100", "GIẢM GIẬT (0-100%)", 0, 100)
         AddSlider(StackAimbot, "GIAM_RUNG_SCOPE", "GIẢM RUNG SCOPE", 0, 100)
