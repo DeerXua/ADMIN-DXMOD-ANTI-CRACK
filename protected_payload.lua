@@ -1761,6 +1761,7 @@ _G.HK_Settings = _G.HK_Settings or {
     NO_RECOIL_100 = 0, GIAM_RUNG_SCOPE = 0,
     MAGIC_HEAD = 0, MAGIC_BODY = 0, MAGIC_LEGS = 0,
     MAGIC_DIST = 100,
+    MAGIC_SMART = 0,
     IpadView = 0,
     IpadViewFOV = 120,
     NOGRASS = 0, NOTREES = 0, NOWATER = 0, NOFOG = 0,
@@ -2369,10 +2370,11 @@ table.insert(StackESP, {
         AddSlider(StackAimbot, "THU_TAM", "THU NHỎ TÂM BẮN", 0, 100)
         AddSlider(StackAimbot, "NO_RECOIL_100", "GIẢM GIẬT (0-100%)", 0, 100)
         AddSlider(StackAimbot, "GIAM_RUNG_SCOPE", "GIẢM RUNG SCOPE", 0, 100)
-        AddSlider(StackAimbot, "MAGIC_HEAD", "MAGIC ĐẦU", 0, 300)
-        AddSlider(StackAimbot, "MAGIC_BODY", "MAGIC THÂN", 0, 300)
-        AddSlider(StackAimbot, "MAGIC_LEGS", "MAGIC CHÂN", 0, 300)
-        AddSlider(StackAimbot, "MAGIC_DIST", "KHOẢNG CÁCH MAGIC (m)", 0, 500)
+        AddToggle(StackAimbot, "MAGIC_SMART", "MAGIC BULLET SMART (Dưới 50m - Cỡ 50)")
+        AddSlider(StackAimbot, "MAGIC_HEAD", "MAGIC ĐẦU (Thường)", 0, 300)
+        AddSlider(StackAimbot, "MAGIC_BODY", "MAGIC THÂN (Thường)", 0, 300)
+        AddSlider(StackAimbot, "MAGIC_LEGS", "MAGIC CHÂN (Thường)", 0, 300)
+        AddSlider(StackAimbot, "MAGIC_DIST", "KHOẢNG CÁCH MAGIC THƯỜNG (m)", 0, 500)
 
         -- =========================================================================================
         -- [MỚI] TÍCH HỢP TOÀN BỘ GIAO DIỆN VÀ LOGIC TAB 3 CỦA CODE 2 SANG CODE 1 (AIMBOT ROYAL & CUSTOM)
@@ -3361,6 +3363,7 @@ local function UpdateGhostMode()
             MAGIC_HEAD = _G.HK_Settings.MAGIC_HEAD or 0,
             MAGIC_BODY = _G.HK_Settings.MAGIC_BODY or 0,
             MAGIC_LEGS = _G.HK_Settings.MAGIC_LEGS or 0,
+            MAGIC_SMART = _G.HK_Settings.MAGIC_SMART or 0,
         }
         
         -- Đưa tất cả các thông số nhạy cảm về an toàn (0)
@@ -3368,6 +3371,7 @@ local function UpdateGhostMode()
         _G.HK_Settings.MAGIC_HEAD = 0
         _G.HK_Settings.MAGIC_BODY = 0
         _G.HK_Settings.MAGIC_LEGS = 0
+        _G.HK_Settings.MAGIC_SMART = 0
         
         _G.EnvRequiresUpdate = true
         _G.MagicUpdateVersion = (_G.MagicUpdateVersion or 1) + 1
@@ -4316,10 +4320,19 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                                                     end
                                                     
                                                     if MatchedBoneKey then
-                                                        local maxMagicDist = _G.HK_GetVal("MAGIC_DIST") or 100
                                                         local TargetScale = 1.0
-                                                        if distM and distM <= maxMagicDist then
-                                                            TargetScale = BoneScaleMap[MatchedBoneKey]
+                                                        local isSmartOn = (_G.HK_GetVal("MAGIC_SMART") == 1)
+                                                        if isSmartOn then
+                                                            -- Smart Magic Bullet: Dưới 50m luôn có tác dụng phóng to 50% (scale 1.5)
+                                                            if distM and distM <= 50.0 then
+                                                                 TargetScale = 1.5
+                                                            end
+                                                        else
+                                                            -- Normal Magic Bullet: Xa gần bình thường theo max khoảng cách MAGIC_DIST
+                                                            local maxMagicDist = _G.HK_GetVal("MAGIC_DIST") or 100
+                                                            if distM and distM <= maxMagicDist then
+                                                                TargetScale = BoneScaleMap[MatchedBoneKey]
+                                                            end
                                                         end
                                                         local AggGeom = BodySetup.AggGeom
                                                         
