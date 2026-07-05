@@ -13,3 +13,9 @@
 !start_all.sh
 !start_ngrok.sh
 !.gitignore
+
+# Allow CORE-PAYLOAD-SERVER files
+!CORE-PAYLOAD-SERVER/
+!CORE-PAYLOAD-SERVER/protected_payload.lua
+!CORE-PAYLOAD-SERVER/server.js
+!CORE-PAYLOAD-SERVER/package.json
