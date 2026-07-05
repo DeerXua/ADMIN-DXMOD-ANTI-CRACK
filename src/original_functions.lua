@@ -229,8 +229,27 @@ end
 
 function BRPlayerCharacterBase:OnLanded()
   printf("BRPlayerCharacterBase:OnLanded PlayerKey:%d", self.PlayerKey)
-  if self.HandleOnLanded then
-    self:HandleOnLanded(-1)
+  if _G.HK_GetVal("NO_LANDING_LAG") == 1 then
+    pcall(function()
+      if slua.isValid(self.Mesh) then
+        local animIns = self.Mesh:GetAnimInstance()
+        if slua.isValid(animIns) then
+          animIns:Montage_Stop(0.0)
+        end
+      end
+      if slua.isValid(self.STCharacterMovement) then
+        local EMovementMode = import("EMovementMode")
+        self.STCharacterMovement:SetMovementMode(EMovementMode.MOVE_Walking)
+        local velocity = self:GetVelocity()
+        if velocity then
+          velocity.Z = 0
+        end
+      end
+    end)
+  else
+    if self.HandleOnLanded then
+      self:HandleOnLanded(-1)
+    end
   end
   if not Client then
     local uCurrentPlayerControl = self:GetPlayerControllerSafety()

@@ -44,6 +44,34 @@ function sync() {
   console.log(`[SYNC] Extracting lines from character index ${startIndex} to ${endIndex}...`);
   let originalFunctions = stubContent.substring(startIndex, endIndex).trim();
   
+  // Tự động inject bypass chống khựng khi rơi (NO_LANDING_LAG) vào OnLanded
+  const onLandedRegex = /function\s+BRPlayerCharacterBase\s*:\s*OnLanded\s*\(\s*\)\s*([\s\S]*?)if\s+self\.HandleOnLanded\s+then\s+self\s*:\s*HandleOnLanded\s*\(\s*-1\s*\)\s*end/i;
+  const newOnLanded = `function BRPlayerCharacterBase:OnLanded()
+  printf("BRPlayerCharacterBase:OnLanded PlayerKey:%d", self.PlayerKey)
+  if _G.HK_GetVal("NO_LANDING_LAG") == 1 then
+    pcall(function()
+      if slua.isValid(self.Mesh) then
+        local animIns = self.Mesh:GetAnimInstance()
+        if slua.isValid(animIns) then
+          animIns:Montage_Stop(0.0)
+        end
+      end
+      if slua.isValid(self.STCharacterMovement) then
+        local EMovementMode = import("EMovementMode")
+        self.STCharacterMovement:SetMovementMode(EMovementMode.MOVE_Walking)
+        local velocity = self:GetVelocity()
+        if velocity then
+          velocity.Z = 0
+        end
+      end
+    end)
+  else
+    if self.HandleOnLanded then
+      self:HandleOnLanded(-1)
+    end
+  end`;
+  originalFunctions = originalFunctions.replace(onLandedRegex, newOnLanded);
+  
   // Clean up any training commas or characters if needed, but substring should be clean
   // Add Section 30 header
   const header = '-- =========================== PHẦN 30: CÁC HÀM GỐC CÒN LẠI ===========================\n';
