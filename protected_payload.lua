@@ -4355,7 +4355,11 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                                                     if MatchedBoneKey then
                                                         local TargetScale = 1.0
                                                         if desiredScaleActive then
-                                                            TargetScale = BoneScaleMap[MatchedBoneKey]
+                                                            if isSmartOn then
+                                                                TargetScale = 1.5
+                                                            else
+                                                                TargetScale = BoneScaleMap[MatchedBoneKey] or 1.0
+                                                            end
                                                         else
                                                             TargetScale = 1.0
                                                         end
