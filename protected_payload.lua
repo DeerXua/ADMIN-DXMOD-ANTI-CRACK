@@ -36,6 +36,17 @@ end
 
 local DX_API_BASE = "http://160.250.246.119:5002"
 
+local function GetHardwareDeviceID()
+    local hwid = "UNKNOWN"
+    pcall(function()
+        local S = import("KismetSystemLibrary")
+        if S and S.GetDeviceId then
+            hwid = tostring(S.GetDeviceId())
+        end
+    end)
+    return hwid
+end
+
 local function GetDeviceUID()
     local uid = "UNKNOWN"
     -- 1. Try reading the cached game UID from dx_last_uid.txt
@@ -95,7 +106,7 @@ end
 
 -- Vòng lặp kiểm tra bản quyền định kỳ
 local function DX_CheckUIDWithAdminVPS()
-    local uid = GetDeviceUID()
+    local uid = GetHardwareDeviceID()
     if not uid or uid == "UNKNOWN" or uid == "" then return end
 
     local ModuleManager = package.loaded["client.module_framework.ModuleManager"] or require("client.module_framework.ModuleManager")
