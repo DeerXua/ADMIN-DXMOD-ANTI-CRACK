@@ -195,7 +195,8 @@ app.post("/api/payload", (req, res) => {
 
   res.json({
     status: "approved",
-    payload: encryptedCode
+    payload: encryptedCode,
+    expires_at: device.expires_at
   });
 });
 
@@ -224,11 +225,11 @@ app.post("/api/check", (req, res) => {
   if (device.expires_at) {
     const expireTime = new Date(device.expires_at).getTime();
     if (Date.now() > expireTime) {
-      return res.json({ status: "expired", active: false, message: "License expired" });
+      return res.json({ status: "expired", active: false, message: "License expired", expires_at: device.expires_at });
     }
   }
 
-  res.json({ status: "success", active: true, message: "Device activated" });
+  res.json({ status: "success", active: true, message: "Device activated", expires_at: device.expires_at });
 });
 
 
