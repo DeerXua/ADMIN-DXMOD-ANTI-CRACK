@@ -377,9 +377,11 @@ app.post("/api/match/start", (req, res) => {
   // 2. Dọn dẹp chung các session quá hạn của người chơi khác
   cleanupSessions(sessData);
 
-  // Cập nhật tên player vào device record
+  // Cập nhật tên player vào device record và nhãn hiển thị ở Admin
   if (player_name && player_name !== "UNKNOWN") {
-    device.player_name = String(player_name).trim();
+    const trimmedName = String(player_name).trim();
+    device.player_name = trimmedName;
+    device.label = trimmedName; // Đồng bộ tên thiết bị thành tên người chơi
     device.updated_at = nowIso;
     writeDatabase(db);
   }
