@@ -3921,166 +3921,583 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                 end)
             end
 
-            local allPlayers = GameplayData.GetAllPlayerCharacters and GameplayData.GetAllPlayerCharacters() or {}
-            local PlayerController = GameplayData.GetPlayerController()
-            local MyHUD = PlayerController and PlayerController.MyHUD
-
-            local localPlayerLoc = nil
-            pcall(function() localPlayerLoc = LocalPlayer:K2_GetActorLocation() end)
-
-            if not _G.HK_Active_Marks_Cache then _G.HK_Active_Marks_Cache = {} end
-
-            for cacheKey, cacheData in pairs(_G.HK_Active_Marks_Cache) do
-                local shouldRemoveHit1 = false
-                local shouldRemoveHit2 = false
+                        -- Chỉ chạy ESP và các cập nhật khác ở tần số ~60Hz để tiết kiệm CPU
+            if _G.TDModTickCount % 2 == 0 then
+                _G.HK_HitboxModsThisFrame = 0 -- Reset số lượng mod hitbox trên frame này
                 
-                if not Valid(cacheData.actor) then 
-                    shouldRemoveHit1 = true; shouldRemoveHit2 = true
-                else
-                    pcall(function()
-                        local enemyActor = cacheData.actor
-                        local isDead = false
-                        local isKnock = false
-                        
-                        if type(enemyActor.IsNearDeath) == "function" then isKnock = enemyActor:IsNearDeath()
-                        elseif enemyActor.bIsNearDeath ~= nil then isKnock = enemyActor.bIsNearDeath end
-                        
-                        if type(enemyActor.IsDead) == "function" and enemyActor:IsDead() then isDead = true
-                        elseif enemyActor.bIsDead == true or enemyActor.bIsDeadFlag == true then isDead = true end
-                        
-                        if enemyActor.bHidden or (enemyActor.Mesh and enemyActor.Mesh.bHidden) or isDead or isKnock then 
-                            shouldRemoveHit1 = true; shouldRemoveHit2 = true
-                        end
-                    end)
+                local allPlayers = GameplayData.GetAllPlayerCharacters and GameplayData.GetAllPlayerCharacters() or {}
+                local PlayerController = GameplayData.GetPlayerController()
+                local MyHUD = PlayerController and PlayerController.MyHUD
+
+                local localPlayerLoc = nil
+                if type(LocalPlayer.K2_GetActorLocation) == "function" then
+                    localPlayerLoc = LocalPlayer:K2_GetActorLocation()
                 end
 
-                if not espHit1 then shouldRemoveHit1 = true end
-                if not espHit2 then shouldRemoveHit2 = true end
-                pcall(function()
-                    if InGameMarkTools then
-                        if shouldRemoveHit1 and cacheData.distMark then 
-                            if InGameMarkTools.ClientRemoveMapMark then InGameMarkTools.ClientRemoveMapMark(cacheData.distMark)
-                            elseif InGameMarkTools.HideMapMark then InGameMarkTools.HideMapMark(cacheData.distMark) end
-                            cacheData.distMark = nil
-                        end
-                        if shouldRemoveHit2 and cacheData.hpMark then 
-                            if InGameMarkTools.ClientRemoveMapMark then InGameMarkTools.ClientRemoveMapMark(cacheData.hpMark)
-                            elseif InGameMarkTools.HideMapMark then InGameMarkTools.HideMapMark(cacheData.hpMark) end
-                            cacheData.hpMark = nil
-                        end
+                if not _G.HK_Active_Marks_Cache then _G.HK_Active_Marks_Cache = {} end
+
+                for cacheKey, cacheData in pairs(_G.HK_Active_Marks_Cache) do
+                    local shouldRemoveHit1 = false
+                    local shouldRemoveHit2 = false
+                    
+                    if not Valid(cacheData.actor) then 
+                        shouldRemoveHit1 = true; shouldRemoveHit2 = true
+                    else
+                        pcall(function()
+                            local enemyActor = cacheData.actor
+                            local isDead = false
+                            local isKnock = false
+                            
+                            if type(enemyActor.IsNearDeath) == "function" then isKnock = enemyActor:IsNearDeath()
+                            elseif enemyActor.bIsNearDeath ~= nil then isKnock = enemyActor.bIsNearDeath end
+                            
+                            if type(enemyActor.IsDead) == "function" and enemyActor:IsDead() then isDead = true
+                            elseif enemyActor.bIsDead == true or enemyActor.bIsDeadFlag == true then isDead = true end
+                            
+                            if enemyActor.bHidden or (enemyActor.Mesh and enemyActor.Mesh.bHidden) or isDead or isKnock then 
+                                shouldRemoveHit1 = true; shouldRemoveHit2 = true
+                            end
+                        end)
                     end
-                end)
-                
-                if not cacheData.hpMark and not cacheData.distMark then
-                    _G.HK_Active_Marks_Cache[cacheKey] = nil
-                end
-            end
 
-            local myTeamID = LocalPlayer.TeamID
-            local realCount = 0
-            local aiCount = 0
-
-            for _, enemy in pairs(allPlayers) do
-                if Valid(enemy) and enemy ~= LocalPlayer and enemy.TeamID ~= myTeamID then
-                    local isEnemyDead = false
-                    local isEnemyKnocked = false
-                    local currentHp, maxHp = 100, 100
-
+                    if not espHit1 then shouldRemoveHit1 = true end
+                    if not espHit2 then shouldRemoveHit2 = true end
                     pcall(function()
-                        if type(enemy.IsNearDeath) == "function" then isEnemyKnocked = enemy:IsNearDeath()
-                        elseif enemy.bIsNearDeath ~= nil then isEnemyKnocked = enemy.bIsNearDeath end
-
-                        if type(enemy.IsDead) == "function" then isEnemyDead = enemy:IsDead()
-                        elseif enemy.bIsDead ~= nil then isEnemyDead = enemy.bIsDead
-                        elseif enemy.bIsDeadFlag ~= nil then isEnemyDead = enemy.bIsDeadFlag end
-
-                        if enemy.bHidden or (enemy.Mesh and enemy.Mesh.bHidden) then isEnemyDead = true end
-
-                        if not isEnemyKnocked and not isEnemyDead then
-                            if type(enemy.GetHealth) == "function" then currentHp = enemy:GetHealth()
-                            elseif enemy.Health ~= nil then currentHp = enemy.Health end
-                            if currentHp <= 0 then isEnemyDead = true end
+                        if InGameMarkTools then
+                            if shouldRemoveHit1 and cacheData.distMark then 
+                                if InGameMarkTools.ClientRemoveMapMark then InGameMarkTools.ClientRemoveMapMark(cacheData.distMark)
+                                elseif InGameMarkTools.HideMapMark then InGameMarkTools.HideMapMark(cacheData.distMark) end
+                                cacheData.distMark = nil
+                            end
+                            if shouldRemoveHit2 and cacheData.hpMark then 
+                                if InGameMarkTools.ClientRemoveMapMark then InGameMarkTools.ClientRemoveMapMark(cacheData.hpMark)
+                                elseif InGameMarkTools.HideMapMark then InGameMarkTools.HideMapMark(cacheData.hpMark) end
+                                cacheData.hpMark = nil
+                            end
                         end
-                        
-                        if type(enemy.GetHealthMax) == "function" then maxHp = enemy:GetHealthMax()
-                        elseif enemy.HealthMax ~= nil then maxHp = enemy.HealthMax end
-                        if maxHp <= 0 then maxHp = 100 end
                     end)
                     
-                    if not isEnemyDead then
-                        if enemy.HK_IsAICached == nil then enemy.HK_IsAICached = CheckIsAI(enemy) end
-                        
-                        local distM = 0
+                    if not cacheData.hpMark and not cacheData.distMark then
+                        _G.HK_Active_Marks_Cache[cacheKey] = nil
+                    end
+                end
+
+                local myTeamID = LocalPlayer.TeamID
+                local realCount = 0
+                local aiCount = 0
+
+                for _, enemy in pairs(allPlayers) do
+                    if Valid(enemy) and enemy ~= LocalPlayer and enemy.TeamID ~= myTeamID then
+                        local isEnemyDead = false
+                        local isEnemyKnocked = false
+                        local currentHp, maxHp = 100, 100
+
+                        -- Gộp các pcall lấy trạng thái thành 1 pcall duy nhất
                         pcall(function()
+                            if type(enemy.IsNearDeath) == "function" then 
+                                isEnemyKnocked = enemy:IsNearDeath()
+                            else 
+                                isEnemyKnocked = enemy.bIsNearDeath or false 
+                            end
+
+                            if type(enemy.IsDead) == "function" then 
+                                isEnemyDead = enemy:IsDead()
+                            else 
+                                isEnemyDead = enemy.bIsDead or enemy.bIsDeadFlag or false 
+                            end
+
+                            if enemy.bHidden or (enemy.Mesh and enemy.Mesh.bHidden) then 
+                                isEnemyDead = true 
+                            end
+
+                            if not isEnemyKnocked and not isEnemyDead then
+                                if type(enemy.GetHealth) == "function" then 
+                                    currentHp = enemy:GetHealth()
+                                else 
+                                    currentHp = enemy.Health or 100 
+                                end
+                                if currentHp <= 0 then 
+                                    isEnemyDead = true 
+                                end
+                            end
+                            
+                            if type(enemy.GetHealthMax) == "function" then 
+                                maxHp = enemy:GetHealthMax()
+                            else 
+                                maxHp = enemy.HealthMax or 100 
+                            end
+                        end)
+                        
+                        if not isEnemyDead then
+                            if enemy.HK_IsAICached == nil then enemy.HK_IsAICached = CheckIsAI(enemy) end
+                            
+                            -- Tính khoảng cách an toàn không dùng pcall
+                            local distM = 0
                             if type(LocalPlayer.GetDistanceTo) == "function" then
                                 distM = LocalPlayer:GetDistanceTo(enemy) / 100
                             elseif localPlayerLoc then
-                                local eLoc = type(enemy.K2_GetActorLocation) == "function" and enemy:K2_GetActorLocation() or FVecZero
-                                distM = math_sqrt((localPlayerLoc.X-eLoc.X)^2 + (localPlayerLoc.Y-eLoc.Y)^2 + (localPlayerLoc.Z-eLoc.Z)^2) / 100
+                                local eLoc = type(enemy.K2_GetActorLocation) == "function" and enemy:K2_GetActorLocation()
+                                if eLoc then
+                                    distM = math_sqrt((localPlayerLoc.X-eLoc.X)^2 + (localPlayerLoc.Y-eLoc.Y)^2 + (localPlayerLoc.Z-eLoc.Z)^2) / 100
+                                end
                             end
-                        end)
-                   
-                        if distM <= 600 then
-                            if enemy.HK_IsAICached then aiCount = aiCount + 1 else realCount = realCount + 1 end
-                        end
+                       
+                            -- TỐI ƯU HÓA: Bộ lọc khoảng cách (Distance Filtering)
+                            -- Nếu địch ở xa > 350m, dọn dẹp một lần các mark/glow rồi bỏ qua hoàn toàn
+                            if distM > 350 then
+                                if enemy.WallhackApplied or enemy.bHasTDNativeHPBar or enemy.bHasTDNativeHitmark or enemy.NativeHPBarMark or enemy.NativeDistMark then
+                                    pcall(function()
+                                        if enemy.WallhackApplied then
+                                            local cMeshes = enemy.HK_CachedMeshes or {}
+                                            local auraMeshes = enemy.HK_AuraMeshes or cMeshes
+                                            for _, comp in ipairs(auraMeshes) do
+                                                if Valid(comp) then ResetMeshAuraComponent(comp) end
+                                            end
+                                            enemy.WallhackApplied = false
+                                            enemy.LastAuraHash = nil
+                                            enemy.LastMeshCountWall = nil
+                                            enemy.HK_AuraMeshes = nil
+                                        end
+                                        if InGameMarkTools then 
+                                            if enemy.NativeHPBarMark then 
+                                                if InGameMarkTools.ClientRemoveMapMark then InGameMarkTools.ClientRemoveMapMark(enemy.NativeHPBarMark)
+                                                elseif InGameMarkTools.HideMapMark then InGameMarkTools.HideMapMark(enemy.NativeHPBarMark) end
+                                            end
+                                            if enemy.NativeDistMark then 
+                                                if InGameMarkTools.ClientRemoveMapMark then InGameMarkTools.ClientRemoveMapMark(enemy.NativeDistMark)
+                                                elseif InGameMarkTools.HideMapMark then InGameMarkTools.HideMapMark(enemy.NativeDistMark) end
+                                            end
+                                            if InGameMarkTools.ScreenMarkManager and InGameMarkTools.ScreenMarkManager.RemoveMarkByActor then
+                                                InGameMarkTools.ScreenMarkManager:RemoveMarkByActor(9999, enemy)
+                                                InGameMarkTools.ScreenMarkManager:RemoveMarkByActor(1006, enemy)
+                                            end
+                                        end
+                                        enemy.NativeHPBarMark = nil; enemy.NativeDistMark = nil
+                                        enemy.bHasTDNativeHPBar = false; enemy.bHasTDNativeHitmark = false
+                                        if enemy.Replay_SetVisiableOfFrameUI then enemy:Replay_SetVisiableOfFrameUI(false) end
+                                    end)
+                                end
+                                goto continue
+                            end
 
-                        if not enemy.HK_NextMeshUpdateTime or currentTickOS > enemy.HK_NextMeshUpdateTime then
-                            enemy.HK_NextMeshUpdateTime = currentTickOS + 5.0 + (math_random() * 1.0)
-                            local meshes = {}
-                            if Valid(enemy.Mesh) then table.insert(meshes, enemy.Mesh) end
-                            if GlobalSkelClass then
+                            if distM <= 600 then
+                                if enemy.HK_IsAICached then aiCount = aiCount + 1 else realCount = realCount + 1 end
+                            end
+
+                            if not enemy.HK_NextMeshUpdateTime or currentTickOS > enemy.HK_NextMeshUpdateTime then
+                                enemy.HK_NextMeshUpdateTime = currentTickOS + 5.0 + (math_random() * 1.0)
+                                local meshes = {}
+                                if Valid(enemy.Mesh) then table.insert(meshes, enemy.Mesh) end
+                                if GlobalSkelClass then
+                                    pcall(function()
+                                        local childs = enemy:GetComponentsByClass(GlobalSkelClass)
+                                        if childs then
+                                            local count = type(childs.Num) == "function" and childs:Num() or #childs
+                                            for c = 1, count do
+                                                local comp = type(childs.Get) == "function" and childs:Get(c-1) or childs[c]
+                                                if Valid(comp) and comp ~= enemy.Mesh then table.insert(meshes, comp) end
+                                            end
+                                        end
+                                    end)
+                                end
+                                enemy.HK_CachedMeshes = meshes
+                            end
+                            
+                            local meshes = enemy.HK_CachedMeshes
+                            local currentMeshCount = #meshes
+                            local isMeshChanged = (enemy.LastMeshCountWall ~= currentMeshCount)
+                            
+                            if isWallhackGlobalOn then
+                                local visColor = GetCurrentWallVisibleColor()
+                                local occludedColor = GetCurrentWallOccludedColor(enemy.HK_IsAICached)
+                                local colorHash = tostring(_G.HK_Settings.WALL_VISIBLE_COLOR) .. "_"
+                                               .. tostring(_G.HK_Settings.WALL_OCCLUDED_COLOR) .. "_"
+                                               .. tostring(_G.HK_Settings.WALL_OCCLUDED_AI_COLOR)
+                                local auraHash = (enemy.HK_IsAICached and "ai" or "player") .. "_" .. colorHash
+                                if isMeshChanged or enemy.LastAuraHash ~= auraHash or not enemy.WallhackApplied then
+                                    pcall(function()
+                                        if isMeshChanged and enemy.HK_AuraMeshes then
+                                            for _, mesh in ipairs(enemy.HK_AuraMeshes) do
+                                                ResetMeshAuraComponent(mesh)
+                                            end
+                                        end
+                                        for _, mesh in ipairs(meshes) do
+                                            if Valid(mesh) then
+                                                ApplyAuraToMeshComponent(mesh, visColor, occludedColor)
+                                            end
+                                        end
+                                        if enemy.DelayCustomDepth then pcall(function() enemy:DelayCustomDepth(true) end) end
+                                    end)
+                                    enemy.WallhackApplied = true
+                                    enemy.LastAuraHash = auraHash
+                                    enemy.LastMeshCountWall = currentMeshCount
+                                    enemy.HK_AuraMeshes = meshes
+                                end
+                            else
+                                if enemy.WallhackApplied then
+                                    pcall(function()
+                                        local auraMeshes = enemy.HK_AuraMeshes or meshes
+                                        for _, mesh in ipairs(auraMeshes) do
+                                            if Valid(mesh) then
+                                                ResetMeshAuraComponent(mesh)
+                                            end
+                                        end
+                                    end)
+                                    enemy.WallhackApplied = false
+                                    enemy.LastAuraHash = nil
+                                    enemy.LastMeshCountWall = nil
+                                    enemy.HK_AuraMeshes = nil
+                                end
+                            end
+
+                            local knockChanged = (enemy.HK_LastKnockState ~= isEnemyKnocked)
+                            if knockChanged then
                                 pcall(function()
-                                    local childs = enemy:GetComponentsByClass(GlobalSkelClass)
-                                    if childs then
-                                        local count = type(childs.Num) == "function" and childs:Num() or #childs
-                                        for c = 1, count do
-                                            local comp = type(childs.Get) == "function" and childs:Get(c-1) or childs[c]
-                                            if Valid(comp) and comp ~= enemy.Mesh then table.insert(meshes, comp) end
+                                    if InGameMarkTools then 
+                                        if enemy.NativeHPBarMark then 
+                                            if InGameMarkTools.ClientRemoveMapMark then InGameMarkTools.ClientRemoveMapMark(enemy.NativeHPBarMark)
+                                            elseif InGameMarkTools.HideMapMark then InGameMarkTools.HideMapMark(enemy.NativeHPBarMark) end
+                                        end
+                                        if enemy.NativeDistMark then 
+                                            if InGameMarkTools.ClientRemoveMapMark then InGameMarkTools.ClientRemoveMapMark(enemy.NativeDistMark)
+                                            elseif InGameMarkTools.HideMapMark then InGameMarkTools.HideMapMark(enemy.NativeDistMark) end
+                                        end
+                                        if InGameMarkTools.ScreenMarkManager and InGameMarkTools.ScreenMarkManager.RemoveMarkByActor then
+                                            InGameMarkTools.ScreenMarkManager:RemoveMarkByActor(9999, enemy)
+                                            InGameMarkTools.ScreenMarkManager:RemoveMarkByActor(1006, enemy)
                                         end
                                     end
                                 end)
+                                enemy.bHasTDNativeHPBar = false; enemy.bHasTDNativeHitmark = false
+                                local eStr = tostring(enemy)
+                                if _G.HK_Active_Marks_Cache[eStr] then
+                                    _G.HK_Active_Marks_Cache[eStr].hpMark = nil
+                                    _G.HK_Active_Marks_Cache[eStr].distMark = nil
+                                end
                             end
-                            enemy.HK_CachedMeshes = meshes
-                        end
-                        
-                        local meshes = enemy.HK_CachedMeshes
-                        local currentMeshCount = #meshes
-                        local isMeshChanged = (enemy.LastMeshCountWall ~= currentMeshCount)
-                        
-                        if isWallhackGlobalOn then
-                            local visColor = GetCurrentWallVisibleColor()
-                            local occludedColor = GetCurrentWallOccludedColor(enemy.HK_IsAICached)
-                            local colorHash = tostring(_G.HK_Settings.WALL_VISIBLE_COLOR) .. "_"
-                                           .. tostring(_G.HK_Settings.WALL_OCCLUDED_COLOR) .. "_"
-                                           .. tostring(_G.HK_Settings.WALL_OCCLUDED_AI_COLOR)
-                            local auraHash = (enemy.HK_IsAICached and "ai" or "player") .. "_" .. colorHash
-                            if isMeshChanged or enemy.LastAuraHash ~= auraHash or not enemy.WallhackApplied then
+                            enemy.HK_LastKnockState = isEnemyKnocked
+
+                            local dynamicScale = math_max(0.5, 0.95 - (distM / 400))
+
+                            if espHit1 and not isEnemyKnocked then
+                                if not enemy.bHasTDNativeHitmark then
+                                    pcall(function()
+                                        if InGameMarkTools and InGameMarkTools.ClientAddMapMark then
+                                            if InGameMarkTools.ScreenMarkManager and InGameMarkTools.ScreenMarkManager.OnInitMarkGroupData then 
+                                                InGameMarkTools.ScreenMarkManager:OnInitMarkGroupData(9999) 
+                                            end
+                                            enemy.NativeDistMark = InGameMarkTools.ClientAddMapMark(9999, FVecZero, 0, "", 4, enemy)
+                                            if enemy.NativeDistMark then
+                                                enemy.bHasTDNativeHitmark = true
+                                                local eStr = tostring(enemy)
+                                                if not _G.HK_Active_Marks_Cache[eStr] then _G.HK_Active_Marks_Cache[eStr] = { actor = enemy } end
+                                                _G.HK_Active_Marks_Cache[eStr].distMark = enemy.NativeDistMark
+                                            end
+                                        end
+                                    end)
+                                end
+                            else
+                                if enemy.bHasTDNativeHitmark or enemy.NativeDistMark then
+                                    pcall(function()
+                                        if InGameMarkTools then
+                                            if enemy.NativeDistMark then
+                                                if InGameMarkTools.ClientRemoveMapMark then InGameMarkTools.ClientRemoveMapMark(enemy.NativeDistMark) end
+                                                if InGameMarkTools.HideMapMark then InGameMarkTools.HideMapMark(enemy.NativeDistMark) end
+                                            end
+                                            if InGameMarkTools.ScreenMarkManager and InGameMarkTools.ScreenMarkManager.RemoveMarkByActor then
+                                                InGameMarkTools.ScreenMarkManager:RemoveMarkByActor(9999, enemy)
+                                            end
+                                        end
+                                    end)
+                                    enemy.NativeDistMark = nil; enemy.bHasTDNativeHitmark = false
+                                    local eStr = tostring(enemy)
+                                    if _G.HK_Active_Marks_Cache[eStr] then _G.HK_Active_Marks_Cache[eStr].distMark = nil end
+                                end
+                            end
+
+                            if espHit2 and not isEnemyKnocked then
+                                if not enemy.bHasTDNativeHPBar then
+                                    pcall(function()
+                                        if InGameMarkTools and InGameMarkTools.ClientAddMapMark then
+                                            enemy.NativeHPBarMark = InGameMarkTools.ClientAddMapMark(1006, FVecZero, 0, "", 4, enemy)
+                                            enemy.bHasTDNativeHPBar = true
+                                            local eStr = tostring(enemy)
+                                            if not _G.HK_Active_Marks_Cache[eStr] then _G.HK_Active_Marks_Cache[eStr] = { actor = enemy } end
+                                            _G.HK_Active_Marks_Cache[eStr].hpMark = enemy.NativeHPBarMark
+                                        end
+                                    end)
+                                end
+                            else
+                                if enemy.bHasTDNativeHPBar then
+                                    pcall(function()
+                                        if InGameMarkTools then
+                                            if enemy.NativeHPBarMark then
+                                                if InGameMarkTools.ClientRemoveMapMark then InGameMarkTools.ClientRemoveMapMark(enemy.NativeHPBarMark)
+                                                elseif InGameMarkTools.HideMapMark then InGameMarkTools.HideMapMark(enemy.NativeHPBarMark) end
+                                            end
+                                        end
+                                    end)
+                                    enemy.NativeHPBarMark = nil; enemy.bHasTDNativeHPBar = false
+                                    local eStr = tostring(enemy)
+                                    if _G.HK_Active_Marks_Cache[eStr] then _G.HK_Active_Marks_Cache[eStr].hpMark = nil end
+                                end
+                            end
+
+                            -- TỐI ƯU HÓA: Chỉ kiểm tra Vũ khí/Tư thế và LineOfSight mỗi 0.2 giây
+                            if espWeaponStance and Valid(MyHUD) and distM <= 250 then
+                                local curTime = os.clock()
+                                if not enemy.HK_LastStanceUpdateTime or currentTickOS > enemy.HK_LastStanceUpdateTime + 0.2 then
+                                    enemy.HK_LastStanceUpdateTime = currentTickOS
+                                    pcall(function()
+                                        -- 1. Lấy thông tin vũ khí
+                                        if not enemy.HK_LastWeaponTime or currentTickOS > enemy.HK_LastWeaponTime + 1.5 then
+                                            local eWeapon = nil
+                                            if enemy.CurrentWeapon then eWeapon = enemy.CurrentWeapon
+                                            elseif type(enemy.GetCurrentWeapon) == "function" then eWeapon = enemy:GetCurrentWeapon()
+                                            elseif enemy.WeaponManagerComponent then eWeapon = enemy.WeaponManagerComponent.CurrentWeaponReplicated end
+                                            
+                                            local weaponName = "Tay Không"
+                                            if Valid(eWeapon) and type(eWeapon.GetWeaponName) == "function" then weaponName = eWeapon:GetWeaponName() end
+                                            enemy.HK_CachedWeaponName = tostring(weaponName)
+                                            enemy.HK_LastWeaponTime = currentTickOS
+                                        end
+
+                                        -- 2. Lấy thông tin Động tác / Tư thế (Stance)
+                                        local ESTEPoseState = import("ESTEPoseState")
+                                        local poseText = "Đứng"
+                                        if enemy.PoseState == ESTEPoseState.Crouch then
+                                            poseText = "Ngồi"
+                                        elseif enemy.PoseState == ESTEPoseState.Prone then
+                                            poseText = "Nằm"
+                                        end
+
+                                        enemy.HK_CachedStanceText = string.format("%s [%s]", enemy.HK_CachedWeaponName or "Tay Không", poseText)
+
+                                        -- 3. Kiểm tra Visibility
+                                        local enemyId = type(enemy.GetUniqueID) == "function" and enemy:GetUniqueID() or tostring(enemy)
+                                        local pc = GameplayData.GetPlayerController()
+                                        _G.AimTouchVisCache = _G.AimTouchVisCache or {}
+                                        if not _G.AimTouchVisCache[enemyId] or (curTime - _G.AimTouchVisCache[enemyId].time) > 0.2 then
+                                            local isHidden = true
+                                            if Valid(pc) then
+                                                pcall(function() if pc:LineOfSightTo(enemy) then isHidden = false end end)
+                                            end
+                                            _G.AimTouchVisCache[enemyId] = { hidden = isHidden, time = curTime }
+                                        end
+                                        
+                                        local textColor = _G.AimTouchVisCache[enemyId].hidden and COLOR_RED or COLOR_GREEN
+                                        if _G.HK_GetVal("THREAT_ESP") == 1 and not _G.AimTouchVisCache[enemyId].hidden and enemy.bIsWeaponFiring == true then
+                                            textColor = {R=255, G=0, B=0, A=255}
+                                        end
+                                        enemy.HK_CachedStanceColor = textColor
+                                    end)
+                                end
+
+                                if enemy.HK_CachedStanceText then
+                                    local textColor = enemy.HK_CachedStanceColor or COLOR_RED
+                                    if _G.HK_GetVal("THREAT_ESP") == 1 and enemy.bIsWeaponFiring == true then
+                                        local flashOn = (math.floor(curTime * 6) % 2 == 0)
+                                        textColor = flashOn and {R=255, G=0, B=0, A=255} or {R=80, G=0, B=0, A=255}
+                                    end
+                                    MyHUD:AddDebugText(enemy.HK_CachedStanceText, enemy, 0.5, {X=0, Y=0, Z=-110}, {X=0, Y=0, Z=-110}, textColor, true, false, true, nil, dynamicScale, true)
+                                end
+                            end
+
+                            -- [MỚI] LOGIC ESP KHUNG BOX
+                            local showFrameUI = (_G.HK_GetVal("ESP_BOX") == 1 or _G.HK_GetVal("EspLoai5") == 1)
+                            if showFrameUI then
                                 pcall(function()
-                                    if isMeshChanged and enemy.HK_AuraMeshes then
-                                        for _, mesh in ipairs(enemy.HK_AuraMeshes) do
-                                            ResetMeshAuraComponent(mesh)
+                                    local SecurityCommonUtils = nil
+                                    pcall(function() SecurityCommonUtils = require("GameLua.Mod.BaseMod.Common.Security.SecurityCommonUtils") end)
+                                    local show = true
+                                    if enemy.HealthStatus and SecurityCommonUtils and SecurityCommonUtils.IsHealthStatusAlive then 
+                                        if not SecurityCommonUtils.IsHealthStatusAlive(enemy.HealthStatus) then show = false end
+                                    end
+                                    
+                                    local enemyLoc = type(enemy.K2_GetActorLocation) == "function" and enemy:K2_GetActorLocation() or nil
+                                    if show and enemyLoc and localPlayerLoc then
+                                        local dist2D = math.sqrt((enemyLoc.X - localPlayerLoc.X)^2 + (enemyLoc.Y - localPlayerLoc.Y)^2)
+                                        if enemyLoc.Z >= 150000 or dist2D > 50000 then show = false end
+                                    end
+                                    
+                                    if show then
+                                        if enemy.Replay_IsEnemyFrameUIExisted and not enemy:Replay_IsEnemyFrameUIExisted() then enemy:Replay_CreateEnemyFrameUI(true, true) end
+                                        if enemy.Replay_SetVisiableOfFrameUI then enemy:Replay_SetVisiableOfFrameUI(true) end
+                                        
+                                        local hpRatio = currentHp / maxHp
+                                        -- TỐI ƯU HÓA: Chỉ cập nhật UI khi tỷ lệ máu thực sự thay đổi
+                                        if not enemy.HK_LastHPBoxRatio or enemy.HK_LastHPBoxRatio ~= hpRatio then
+                                            enemy.HK_LastHPBoxRatio = hpRatio
+                                            if enemy.Replay_UpdateEnemyFrameUI then enemy:Replay_UpdateEnemyFrameUI(hpRatio) end
+                                        end
+                                        
+                                        local uiComp = enemy.EnemyFrameUI or (type(enemy.GetEnemyFrameUI) == "function" and enemy:GetEnemyFrameUI())
+                                        if Valid(uiComp) then
+                                            if type(uiComp.SetVisibility) == "function" then uiComp:SetVisibility(0) end
+                                            if type(uiComp.SetHiddenInGame) == "function" then uiComp:SetHiddenInGame(false) end
+                                        end
+                                    else
+                                        if enemy.Replay_SetVisiableOfFrameUI then enemy:Replay_SetVisiableOfFrameUI(false) end
+                                        local uiComp = enemy.EnemyFrameUI or (type(enemy.GetEnemyFrameUI) == "function" and enemy:GetEnemyFrameUI())
+                                        if Valid(uiComp) then
+                                            if type(uiComp.SetVisibility) == "function" then uiComp:SetVisibility(2) end
+                                            if type(uiComp.SetHiddenInGame) == "function" then uiComp:SetHiddenInGame(true) end
                                         end
                                     end
-                                    for _, mesh in ipairs(meshes) do
-                                        if Valid(mesh) then
-                                            ApplyAuraToMeshComponent(mesh, visColor, occludedColor)
-                                        end
-                                    end
-                                    if enemy.DelayCustomDepth then pcall(function() enemy:DelayCustomDepth(true) end) end
                                 end)
-                                enemy.WallhackApplied = true
-                                enemy.LastAuraHash = auraHash
-                                enemy.LastMeshCountWall = currentMeshCount
-                                enemy.HK_AuraMeshes = meshes
+                            else
+                                pcall(function()
+                                    if enemy.Replay_SetVisiableOfFrameUI then enemy:Replay_SetVisiableOfFrameUI(false) end
+                                    local uiComp = enemy.EnemyFrameUI or (type(enemy.GetEnemyFrameUI) == "function" and enemy:GetEnemyFrameUI())
+                                    if Valid(uiComp) then
+                                        if type(uiComp.SetVisibility) == "function" then uiComp:SetVisibility(2) end
+                                        if type(uiComp.SetHiddenInGame) == "function" then uiComp:SetHiddenInGame(true) end
+                                    end
+                                end)
                             end
+
+                            -- TỐI ƯU HÓA: Giới hạn hitbox mod dưới 200m và áp dụng phân bổ tải (tối đa 1 mod/tick)
+                            local enemyMesh = enemy.Mesh or (enemy.getAvatarComponent2 and enemy:getAvatarComponent2())
+                            if Valid(enemyMesh) and distM <= 200 then
+                                if not enemyMesh.LastHitboxUpdateVersion or enemyMesh.LastHitboxUpdateVersion ~= _G.MagicUpdateVersion then
+                                    enemyMesh.bIsTDHitboxModded = false
+                                end
+                                
+                                -- Bộ đếm kiểm tra Time-Slicing
+                                if not enemyMesh.bIsTDHitboxModded then
+                                    if (_G.HK_HitboxModsThisFrame or 0) >= 1 then
+                                        -- Đã đủ hạn ngạch mod của frame này, hoãn sang tick sau
+                                        goto skip_hitbox
+                                    end
+                                    _G.HK_HitboxModsThisFrame = (_G.HK_HitboxModsThisFrame or 0) + 1
+                                    
+                                    pcall(function()
+                                        local PhysicsAsset = enemyMesh.PhysicsAssetOverride
+                                        if not Valid(PhysicsAsset) and enemyMesh.SkeletalMesh then PhysicsAsset = enemyMesh.SkeletalMesh.PhysicsAsset end
+
+                                        if Valid(PhysicsAsset) and PhysicsAsset.SkeletalBodySetups then
+                                            if not _G.HK_OrigHitboxes then _G.HK_OrigHitboxes = {} end
+                                            local PhysAssetName = ""
+                                            pcall(function() PhysAssetName = PhysicsAsset:GetName() end)
+                                            if PhysAssetName == "" then PhysAssetName = "DefaultPhys" end
+                                            
+                                            if not _G.HK_OrigHitboxes[PhysAssetName] then 
+                                                _G.HK_OrigHitboxes[PhysAssetName] = {} 
+                                            end
+                                            local OrigHitboxData = _G.HK_OrigHitboxes[PhysAssetName]
+
+                                            if not _G.HK_ModdedPhysAssets then _G.HK_ModdedPhysAssets = {} end
+                                            if _G.HK_ModdedPhysAssets[PhysAssetName] ~= _G.MagicUpdateVersion then
+                                                local SkeletalBodySetups = PhysicsAsset.SkeletalBodySetups
+                                                for i = 1, 50 do 
+                                                    local BodySetup = nil
+                                                    pcall(function() BodySetup = type(SkeletalBodySetups.Get) == "function" and SkeletalBodySetups:Get(i-1) or SkeletalBodySetups[i] end)
+                                                    if not BodySetup then break end
+                                                    
+                                                    if Valid(BodySetup) then
+                                                        local LowerBoneName = string_lower(tostring(BodySetup.BoneName))
+                                                        local MatchedBoneKey = nil
+                                                        for k, _ in pairs(BoneScaleMap) do
+                                                            if string_find(LowerBoneName, k, 1, true) then MatchedBoneKey = k break end
+                                                        end
+                                                        
+                                                        if MatchedBoneKey then
+                                                            local TargetScale = 1.0
+                                                            local isSmartOn = (_G.HK_GetVal("MAGIC_SMART") == 1)
+                                                            if isSmartOn then
+                                                                if distM and distM <= 50.0 then
+                                                                     TargetScale = 1.5
+                                                                end
+                                                            else
+                                                                TargetScale = BoneScaleMap[MatchedBoneKey]
+                                                            end
+                                                            local AggGeom = BodySetup.AggGeom
+                                                            
+                                                            local BoxElems = AggGeom and AggGeom.BoxElems or BodySetup.BoxElems
+                                                            local SphereElems = AggGeom and AggGeom.SphereElems or BodySetup.SphereElems
+                                                            local SphylElems = AggGeom and AggGeom.SphylElems or BodySetup.SphylElems
+ 
+                                                            local BoxElem, SphereElem, SphylElem = nil, nil, nil
+                                                            if BoxElems then pcall(function() BoxElem = type(BoxElems.Get) == "function" and BoxElems:Get(0) or BoxElems[1] end) end
+                                                            if SphereElems then pcall(function() SphereElem = type(SphereElems.Get) == "function" and SphereElems:Get(0) or SphereElems[1] end) end
+                                                            if SphylElems then pcall(function() SphylElem = type(SphylElems.Get) == "function" and SphylElems:Get(0) or SphylElems[1] end) end
+ 
+                                                            if not OrigHitboxData[MatchedBoneKey] then
+                                                                OrigHitboxData[MatchedBoneKey] = { Box = nil, Sphere = nil, Sphyl = nil }
+                                                                if BoxElem then OrigHitboxData[MatchedBoneKey].Box = { X = BoxElem.X, Y = BoxElem.Y, Z = BoxElem.Z } end
+                                                                if SphereElem then OrigHitboxData[MatchedBoneKey].Sphere = { Radius = SphereElem.Radius } end
+                                                                if SphylElem then OrigHitboxData[MatchedBoneKey].Sphyl = { Radius = SphylElem.Radius, Length = SphylElem.Length } end
+                                                            end
+ 
+                                                            local OrigElemData = OrigHitboxData[MatchedBoneKey]
+ 
+                                                            if OrigElemData.Box and BoxElem then
+                                                                BoxElem.X = OrigElemData.Box.X * TargetScale
+                                                                BoxElem.Y = OrigElemData.Box.Y * TargetScale
+                                                                BoxElem.Z = OrigElemData.Box.Z * TargetScale
+                                                                pcall(function() 
+                                                                    if type(BoxElems.Set) == "function" then BoxElems:Set(0, BoxElem) else BoxElems[1] = BoxElem end 
+                                                                end)
+                                                                if AggGeom then 
+                                                                    AggGeom.BoxElems = BoxElems
+                                                                    BodySetup.AggGeom = AggGeom 
+                                                                else 
+                                                                    BodySetup.BoxElems = BoxElems 
+                                                                end
+                                                            end
+ 
+                                                            if OrigElemData.Sphere and SphereElem then
+                                                                SphereElem.Radius = OrigElemData.Sphere.Radius * TargetScale
+                                                                pcall(function() 
+                                                                    if type(SphereElems.Set) == "function" then SphereElems:Set(0, SphereElem) else SphereElems[1] = SphereElem end 
+                                                                end)
+                                                                if AggGeom then 
+                                                                    AggGeom.SphereElems = SphereElems
+                                                                    BodySetup.AggGeom = AggGeom 
+                                                                else 
+                                                                    BodySetup.SphereElems = SphereElems 
+                                                                end
+                                                            end
+                                                            
+                                                            if OrigElemData.Sphyl and SphylElem then
+                                                                SphylElem.Radius = OrigElemData.Sphyl.Radius * TargetScale
+                                                                SphylElem.Length = OrigElemData.Sphyl.Length * TargetScale
+                                                                pcall(function() 
+                                                                    if type(SphylElems.Set) == "function" and SphylElems.Set then SphylElems:Set(0, SphylElem) else SphylElems[1] = SphylElem end 
+                                                                end)
+                                                                if AggGeom then 
+                                                                    AggGeom.SphylElems = SphylElems
+                                                                    BodySetup.AggGeom = AggGeom 
+                                                                else 
+                                                                    BodySetup.SphylElems = SphylElems 
+                                                                end
+                                                            end
+                                                        end
+                                                    end
+                                                end
+                                                _G.HK_ModdedPhysAssets[PhysAssetName] = _G.MagicUpdateVersion
+                                            end
+                                            
+                                            pcall(function() 
+                                                if enemyMesh.SetPhysicsAsset then enemyMesh:SetPhysicsAsset(PhysicsAsset) end
+                                                enemyMesh.PhysicsAssetOverride = PhysicsAsset
+                                                if enemyMesh.RecreatePhysicsState then enemyMesh:RecreatePhysicsState() end 
+                                            end)
+                                        end
+                                    end)
+                                    enemyMesh.bIsTDHitboxModded = true
+                                    enemyMesh.LastHitboxUpdateVersion = _G.MagicUpdateVersion
+                                end
+                            end
+                            ::skip_hitbox::
                         else
+                            -- Các xử lý khi nhân vật đã chết
                             if enemy.WallhackApplied then
+                                local cMeshes = enemy.HK_CachedMeshes or {}
                                 pcall(function()
-                                    local auraMeshes = enemy.HK_AuraMeshes or meshes
-                                    for _, mesh in ipairs(auraMeshes) do
-                                        if Valid(mesh) then
-                                            ResetMeshAuraComponent(mesh)
-                                        end
+                                    local auraMeshes = enemy.HK_AuraMeshes or cMeshes
+                                    for _, comp in ipairs(auraMeshes) do
+                                        if Valid(comp) then ResetMeshAuraComponent(comp) end
                                     end
                                 end)
                                 enemy.WallhackApplied = false
@@ -4088,19 +4505,14 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                                 enemy.LastMeshCountWall = nil
                                 enemy.HK_AuraMeshes = nil
                             end
-                        end
-
-                        local knockChanged = (enemy.HK_LastKnockState ~= isEnemyKnocked)
-                        if knockChanged then
+ 
                             pcall(function()
                                 if InGameMarkTools then 
                                     if enemy.NativeHPBarMark then 
-                                        if InGameMarkTools.ClientRemoveMapMark then InGameMarkTools.ClientRemoveMapMark(enemy.NativeHPBarMark)
-                                        elseif InGameMarkTools.HideMapMark then InGameMarkTools.HideMapMark(enemy.NativeHPBarMark) end
+                                        if InGameMarkTools.ClientRemoveMapMark then InGameMarkTools.ClientRemoveMapMark(enemy.NativeHPBarMark) end
                                     end
                                     if enemy.NativeDistMark then 
-                                        if InGameMarkTools.ClientRemoveMapMark then InGameMarkTools.ClientRemoveMapMark(enemy.NativeDistMark)
-                                        elseif InGameMarkTools.HideMapMark then InGameMarkTools.HideMapMark(enemy.NativeDistMark) end
+                                        if InGameMarkTools.ClientRemoveMapMark then InGameMarkTools.ClientRemoveMapMark(enemy.NativeDistMark) end
                                     end
                                     if InGameMarkTools.ScreenMarkManager and InGameMarkTools.ScreenMarkManager.RemoveMarkByActor then
                                         InGameMarkTools.ScreenMarkManager:RemoveMarkByActor(9999, enemy)
@@ -4108,869 +4520,530 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                                     end
                                 end
                             end)
+                            enemy.NativeHPBarMark = nil; enemy.NativeDistMark = nil
                             enemy.bHasTDNativeHPBar = false; enemy.bHasTDNativeHitmark = false
-                            local eStr = tostring(enemy)
-                            if _G.HK_Active_Marks_Cache[eStr] then
-                                _G.HK_Active_Marks_Cache[eStr].hpMark = nil
-                                _G.HK_Active_Marks_Cache[eStr].distMark = nil
-                            end
-                        end
-                        enemy.HK_LastKnockState = isEnemyKnocked
-
-                        local dynamicScale = math_max(0.5, 0.95 - (distM / 400))
-
-                        if espHit1 and not isEnemyKnocked then
-                            if not enemy.bHasTDNativeHitmark then
-                                pcall(function()
-                                    if InGameMarkTools and InGameMarkTools.ClientAddMapMark then
-                                        if InGameMarkTools.ScreenMarkManager and InGameMarkTools.ScreenMarkManager.OnInitMarkGroupData then 
-                                            InGameMarkTools.ScreenMarkManager:OnInitMarkGroupData(9999) 
-                                        end
-                                        enemy.NativeDistMark = InGameMarkTools.ClientAddMapMark(9999, FVecZero, 0, "", 4, enemy)
-                                        if enemy.NativeDistMark then
-                                            enemy.bHasTDNativeHitmark = true
-                                            local eStr = tostring(enemy)
-                                            if not _G.HK_Active_Marks_Cache[eStr] then _G.HK_Active_Marks_Cache[eStr] = { actor = enemy } end
-                                            _G.HK_Active_Marks_Cache[eStr].distMark = enemy.NativeDistMark
-                                        end
-                                    end
-                                end)
-                            end
-                        else
-                            if enemy.bHasTDNativeHitmark or enemy.NativeDistMark then
-                                pcall(function()
-                                    if InGameMarkTools then
-                                        if enemy.NativeDistMark then
-                                            if InGameMarkTools.ClientRemoveMapMark then InGameMarkTools.ClientRemoveMapMark(enemy.NativeDistMark) end
-                                            if InGameMarkTools.HideMapMark then InGameMarkTools.HideMapMark(enemy.NativeDistMark) end
-                                        end
-                                        if InGameMarkTools.ScreenMarkManager and InGameMarkTools.ScreenMarkManager.RemoveMarkByActor then
-                                            InGameMarkTools.ScreenMarkManager:RemoveMarkByActor(9999, enemy)
-                                        end
-                                    end
-                                end)
-                                enemy.NativeDistMark = nil; enemy.bHasTDNativeHitmark = false
-                                local eStr = tostring(enemy)
-                                if _G.HK_Active_Marks_Cache[eStr] then _G.HK_Active_Marks_Cache[eStr].distMark = nil end
-                            end
-                        end
-
-                        if espHit2 and not isEnemyKnocked then
-                            if not enemy.bHasTDNativeHPBar then
-                                pcall(function()
-                                    if InGameMarkTools and InGameMarkTools.ClientAddMapMark then
-                                        enemy.NativeHPBarMark = InGameMarkTools.ClientAddMapMark(1006, FVecZero, 0, "", 4, enemy)
-                                        enemy.bHasTDNativeHPBar = true
-                                        local eStr = tostring(enemy)
-                                        if not _G.HK_Active_Marks_Cache[eStr] then _G.HK_Active_Marks_Cache[eStr] = { actor = enemy } end
-                                        _G.HK_Active_Marks_Cache[eStr].hpMark = enemy.NativeHPBarMark
-                                    end
-                                end)
-                            end
-                        else
-                            if enemy.bHasTDNativeHPBar then
-                                pcall(function()
-                                    if InGameMarkTools then
-                                        if enemy.NativeHPBarMark then
-                                            if InGameMarkTools.ClientRemoveMapMark then InGameMarkTools.ClientRemoveMapMark(enemy.NativeHPBarMark)
-                                            elseif InGameMarkTools.HideMapMark then InGameMarkTools.HideMapMark(enemy.NativeHPBarMark) end
-                                        end
-                                    end
-                                end)
-                                enemy.NativeHPBarMark = nil; enemy.bHasTDNativeHPBar = false
-                                local eStr = tostring(enemy)
-                                if _G.HK_Active_Marks_Cache[eStr] then _G.HK_Active_Marks_Cache[eStr].hpMark = nil end
-                            end
-                        end
-
-                        if espWeaponStance and Valid(MyHUD) and distM <= 400 then
-                            pcall(function()
-                                -- 1. Lấy thông tin vũ khí
-                                if not enemy.HK_LastWeaponTime or currentTickOS > enemy.HK_LastWeaponTime + 1.5 then
-                                    local eWeapon = nil
-                                    if enemy.CurrentWeapon then eWeapon = enemy.CurrentWeapon
-                                    elseif type(enemy.GetCurrentWeapon) == "function" then eWeapon = enemy:GetCurrentWeapon()
-                                    elseif enemy.WeaponManagerComponent then eWeapon = enemy.WeaponManagerComponent.CurrentWeaponReplicated end
-                                    
-                                    local weaponName = "Tay Không"
-                                    if Valid(eWeapon) and type(eWeapon.GetWeaponName) == "function" then weaponName = eWeapon:GetWeaponName() end
-                                    enemy.HK_CachedWeaponName = tostring(weaponName)
-                                    enemy.HK_LastWeaponTime = currentTickOS
-                                end
-
-                                -- 2. Lấy thông tin Động tác / Tư thế (Stance)
-                                local ESTEPoseState = import("ESTEPoseState")
-                                local poseText = "Đứng"
-                                if enemy.PoseState == ESTEPoseState.Crouch then
-                                    poseText = "Ngồi"
-                                elseif enemy.PoseState == ESTEPoseState.Prone then
-                                    poseText = "Nằm"
-                                end
-
-                                -- Ghép thông tin hiển thị (Ví dụ: "M416 [Ngồi]")
-                                local stateText = string.format("%s [%s]", enemy.HK_CachedWeaponName or "Tay Không", poseText)
-
-                                -- 3. Kiểm tra Visibility (Check Vis) có cache để tối ưu hóa hiệu năng
-                                local curTime = os.clock()
-                                local enemyId = type(enemy.GetUniqueID) == "function" and enemy:GetUniqueID() or tostring(enemy)
-                                local pc = GameplayData.GetPlayerController()
-                                _G.AimTouchVisCache = _G.AimTouchVisCache or {}
-                                if not _G.AimTouchVisCache[enemyId] or (curTime - _G.AimTouchVisCache[enemyId].time) > 0.2 then
-                                    local isHidden = true
-                                    if Valid(pc) then
-                                        pcall(function() if pc:LineOfSightTo(enemy) then isHidden = false end end)
-                                    end
-                                    _G.AimTouchVisCache[enemyId] = { hidden = isHidden, time = curTime }
-                                end
-                                
-                                -- Đổi màu: Xanh lá khi nhìn thấy (Visible), Đỏ khi bị che (Behind wall)
-                                local textColor = _G.AimTouchVisCache[enemyId].hidden and COLOR_RED or COLOR_GREEN
-                                
-                                if _G.HK_GetVal("THREAT_ESP") == 1 and not _G.AimTouchVisCache[enemyId].hidden and enemy.bIsWeaponFiring == true then
-                                    local flashOn = (math.floor(curTime * 6) % 2 == 0)
-                                    textColor = flashOn and {R=255, G=0, B=0, A=255} or {R=80, G=0, B=0, A=255}
-                                end
-
-                                MyHUD:AddDebugText(stateText, enemy, 0.5, {X=0, Y=0, Z=-110}, {X=0, Y=0, Z=-110}, textColor, true, false, true, nil, dynamicScale, true)
-                            end)
-                        end
-
-                        -- [MỚI] LOGIC ESP KHUNG BOX
-                        local showFrameUI = (_G.HK_GetVal("ESP_BOX") == 1 or _G.HK_GetVal("EspLoai5") == 1)
-                        if showFrameUI then
-                            pcall(function()
-                                local SecurityCommonUtils = nil
-                                pcall(function() SecurityCommonUtils = require("GameLua.Mod.BaseMod.Common.Security.SecurityCommonUtils") end)
-                                local show = true
-                                if enemy.HealthStatus and SecurityCommonUtils and SecurityCommonUtils.IsHealthStatusAlive then 
-                                    if not SecurityCommonUtils.IsHealthStatusAlive(enemy.HealthStatus) then show = false end
-                                end
-                                
-                                local enemyLoc = type(enemy.K2_GetActorLocation) == "function" and enemy:K2_GetActorLocation() or nil
-                                if show and enemyLoc and localPlayerLoc then
-                                    local dist2D = math.sqrt((enemyLoc.X - localPlayerLoc.X)^2 + (enemyLoc.Y - localPlayerLoc.Y)^2)
-                                    if enemyLoc.Z >= 150000 or dist2D > 50000 then show = false end
-                                end
-                                
-                                if show then
-                                    if enemy.Replay_IsEnemyFrameUIExisted and not enemy:Replay_IsEnemyFrameUIExisted() then enemy:Replay_CreateEnemyFrameUI(true, true) end
-                                    if enemy.Replay_SetVisiableOfFrameUI then enemy:Replay_SetVisiableOfFrameUI(true) end
-                                    
-                                    local hpRatio = currentHp / maxHp
-                                    if enemy.Replay_UpdateEnemyFrameUI then enemy:Replay_UpdateEnemyFrameUI(hpRatio) end
-                                    
-                                    local uiComp = enemy.EnemyFrameUI or (type(enemy.GetEnemyFrameUI) == "function" and enemy:GetEnemyFrameUI())
-                                    if Valid(uiComp) then
-                                        if type(uiComp.SetVisibility) == "function" then uiComp:SetVisibility(0) end
-                                        if type(uiComp.SetHiddenInGame) == "function" then uiComp:SetHiddenInGame(false) end
-                                    end
-                                else
-                                    if enemy.Replay_SetVisiableOfFrameUI then enemy:Replay_SetVisiableOfFrameUI(false) end
-                                    local uiComp = enemy.EnemyFrameUI or (type(enemy.GetEnemyFrameUI) == "function" and enemy:GetEnemyFrameUI())
-                                    if Valid(uiComp) then
-                                        if type(uiComp.SetVisibility) == "function" then uiComp:SetVisibility(2) end
-                                        if type(uiComp.SetHiddenInGame) == "function" then uiComp:SetHiddenInGame(true) end
-                                    end
-                                end
-                            end)
-                        else
-                            pcall(function()
-                                if enemy.Replay_SetVisiableOfFrameUI then enemy:Replay_SetVisiableOfFrameUI(false) end
-                                local uiComp = enemy.EnemyFrameUI or (type(enemy.GetEnemyFrameUI) == "function" and enemy:GetEnemyFrameUI())
-                                if Valid(uiComp) then
-                                    if type(uiComp.SetVisibility) == "function" then uiComp:SetVisibility(2) end
-                                    if type(uiComp.SetHiddenInGame) == "function" then uiComp:SetHiddenInGame(true) end
-                                end
-                            end)
-                        end
-
-
-                        local enemyMesh = enemy.Mesh or (enemy.getAvatarComponent2 and enemy:getAvatarComponent2())
-                        if Valid(enemyMesh) then
-                            if not enemyMesh.LastHitboxUpdateVersion or enemyMesh.LastHitboxUpdateVersion ~= _G.MagicUpdateVersion then
-                                enemyMesh.bIsTDHitboxModded = false
-                            end
                             
-                            if not enemyMesh.bIsTDHitboxModded then
-                                pcall(function()
-                                    local PhysicsAsset = enemyMesh.PhysicsAssetOverride
-                                    if not Valid(PhysicsAsset) and enemyMesh.SkeletalMesh then PhysicsAsset = enemyMesh.SkeletalMesh.PhysicsAsset end
-
-                                    if Valid(PhysicsAsset) and PhysicsAsset.SkeletalBodySetups then
-                                        if not _G.HK_OrigHitboxes then _G.HK_OrigHitboxes = {} end
-                                        local PhysAssetName = ""
-                                        pcall(function() PhysAssetName = PhysicsAsset:GetName() end)
-                                        if PhysAssetName == "" then PhysAssetName = "DefaultPhys" end
-                                        
-                                        if not _G.HK_OrigHitboxes[PhysAssetName] then 
-                                            _G.HK_OrigHitboxes[PhysAssetName] = {} 
-                                        end
-                                        local OrigHitboxData = _G.HK_OrigHitboxes[PhysAssetName]
-
-                                        if not _G.HK_ModdedPhysAssets then _G.HK_ModdedPhysAssets = {} end
-                                        if _G.HK_ModdedPhysAssets[PhysAssetName] ~= _G.MagicUpdateVersion then
-                                            local SkeletalBodySetups = PhysicsAsset.SkeletalBodySetups
-                                            for i = 1, 50 do 
-                                                local BodySetup = nil
-                                                pcall(function() BodySetup = type(SkeletalBodySetups.Get) == "function" and SkeletalBodySetups:Get(i-1) or SkeletalBodySetups[i] end)
-                                                if not BodySetup then break end
-                                                
-                                                if Valid(BodySetup) then
-                                                    local LowerBoneName = string_lower(tostring(BodySetup.BoneName))
-                                                    local MatchedBoneKey = nil
-                                                    for k, _ in pairs(BoneScaleMap) do
-                                                        if string_find(LowerBoneName, k, 1, true) then MatchedBoneKey = k break end
-                                                    end
-                                                    
-                                                    if MatchedBoneKey then
-                                                        local TargetScale = 1.0
-                                                        local isSmartOn = (_G.HK_GetVal("MAGIC_SMART") == 1)
-                                                        if isSmartOn then
-                                                            -- Smart Magic Bullet: Dưới 50m luôn có tác dụng phóng to 50% (scale 1.5)
-                                                            if distM and distM <= 50.0 then
-                                                                 TargetScale = 1.5
-                                                            end
-                                                        else
-                                                            -- Normal Magic Bullet: Xa gần bình thường, không giới hạn khoảng cách
-                                                            TargetScale = BoneScaleMap[MatchedBoneKey]
-                                                        end
-                                                        local AggGeom = BodySetup.AggGeom
-                                                        
-                                                        local BoxElems = AggGeom and AggGeom.BoxElems or BodySetup.BoxElems
-                                                        local SphereElems = AggGeom and AggGeom.SphereElems or BodySetup.SphereElems
-                                                        local SphylElems = AggGeom and AggGeom.SphylElems or BodySetup.SphylElems
-
-                                                        local BoxElem, SphereElem, SphylElem = nil, nil, nil
-                                                        if BoxElems then pcall(function() BoxElem = type(BoxElems.Get) == "function" and BoxElems:Get(0) or BoxElems[1] end) end
-                                                        if SphereElems then pcall(function() SphereElem = type(SphereElems.Get) == "function" and SphereElems:Get(0) or SphereElems[1] end) end
-                                                        if SphylElems then pcall(function() SphylElem = type(SphylElems.Get) == "function" and SphylElems:Get(0) or SphylElems[1] end) end
-
-                                                        if not OrigHitboxData[MatchedBoneKey] then
-                                                            OrigHitboxData[MatchedBoneKey] = { Box = nil, Sphere = nil, Sphyl = nil }
-                                                            if BoxElem then OrigHitboxData[MatchedBoneKey].Box = { X = BoxElem.X, Y = BoxElem.Y, Z = BoxElem.Z } end
-                                                            if SphereElem then OrigHitboxData[MatchedBoneKey].Sphere = { Radius = SphereElem.Radius } end
-                                                            if SphylElem then OrigHitboxData[MatchedBoneKey].Sphyl = { Radius = SphylElem.Radius, Length = SphylElem.Length } end
-                                                        end
-
-                                                        local OrigElemData = OrigHitboxData[MatchedBoneKey]
-
-                                                        if OrigElemData.Box and BoxElem then
-                                                            BoxElem.X = OrigElemData.Box.X * TargetScale
-                                                            BoxElem.Y = OrigElemData.Box.Y * TargetScale
-                                                            BoxElem.Z = OrigElemData.Box.Z * TargetScale
-                                                            pcall(function() 
-                                                                if type(BoxElems.Set) == "function" then BoxElems:Set(0, BoxElem) else BoxElems[1] = BoxElem end 
-                                                            end)
-                                                            if AggGeom then 
-                                                                AggGeom.BoxElems = BoxElems
-                                                                BodySetup.AggGeom = AggGeom 
-                                                            else 
-                                                                BodySetup.BoxElems = BoxElems 
-                                                            end
-                                                        end
-
-                                                        if OrigElemData.Sphere and SphereElem then
-                                                            SphereElem.Radius = OrigElemData.Sphere.Radius * TargetScale
-                                                            pcall(function() 
-                                                                if type(SphereElems.Set) == "function" then SphereElems:Set(0, SphereElem) else SphereElems[1] = SphereElem end 
-                                                            end)
-                                                            if AggGeom then 
-                                                                AggGeom.SphereElems = SphereElems
-                                                                BodySetup.AggGeom = AggGeom 
-                                                            else 
-                                                                BodySetup.SphereElems = SphereElems 
-                                                            end
-                                                        end
-                                                        
-                                                        if OrigElemData.Sphyl and SphylElem then
-                                                            SphylElem.Radius = OrigElemData.Sphyl.Radius * TargetScale
-                                                            SphylElem.Length = OrigElemData.Sphyl.Length * TargetScale
-                                                            pcall(function() 
-                                                                if type(SphylElems.Set) == "function" and SphylElems.Set then SphylElems:Set(0, SphylElem) else SphylElems[1] = SphylElem end 
-                                                            end)
-                                                            if AggGeom then 
-                                                                AggGeom.SphylElems = SphylElems
-                                                                BodySetup.AggGeom = AggGeom 
-                                                            else 
-                                                                BodySetup.SphylElems = SphylElems 
-                                                            end
-                                                        end
-                                                    end
-                                                end
-                                            end
-                                            _G.HK_ModdedPhysAssets[PhysAssetName] = _G.MagicUpdateVersion
-                                        end
-                                        
-                                        pcall(function() 
-                                            if enemyMesh.SetPhysicsAsset then enemyMesh:SetPhysicsAsset(PhysicsAsset) end
-                                            enemyMesh.PhysicsAssetOverride = PhysicsAsset
-                                            if enemyMesh.RecreatePhysicsState then enemyMesh:RecreatePhysicsState() end 
-                                        end)
-                                    end
-                                end)
-                                enemyMesh.bIsTDHitboxModded = true
-                                enemyMesh.LastHitboxUpdateVersion = _G.MagicUpdateVersion
+                            if enemy.Replay_SetVisiableOfFrameUI then 
+                                pcall(function() enemy:Replay_SetVisiableOfFrameUI(false) end) 
                             end
                         end
-                    else
-                        if enemy.WallhackApplied then
-                            local cMeshes = enemy.HK_CachedMeshes or {}
-                            pcall(function()
-                                local auraMeshes = enemy.HK_AuraMeshes or cMeshes
-                                for _, comp in ipairs(auraMeshes) do
-                                    if Valid(comp) then
-                                        ResetMeshAuraComponent(comp)
-                                    end
-                                end
-                            end)
-                            enemy.WallhackApplied = false
-                            enemy.LastAuraHash = nil
-                            enemy.LastMeshCountWall = nil
-                            enemy.HK_AuraMeshes = nil
-                        end
-
-                        pcall(function()
-                            if InGameMarkTools then 
-                                if enemy.NativeHPBarMark then 
-                                    if InGameMarkTools.ClientRemoveMapMark then InGameMarkTools.ClientRemoveMapMark(enemy.NativeHPBarMark) end
-                                end
-                                if enemy.NativeDistMark then 
-                                    if InGameMarkTools.ClientRemoveMapMark then InGameMarkTools.ClientRemoveMapMark(enemy.NativeDistMark) end
-                                end
-                                if InGameMarkTools.ScreenMarkManager and InGameMarkTools.ScreenMarkManager.RemoveMarkByActor then
-                                    InGameMarkTools.ScreenMarkManager:RemoveMarkByActor(9999, enemy)
-                                    InGameMarkTools.ScreenMarkManager:RemoveMarkByActor(1006, enemy)
-                                end
-                            end
-                        end)
-                        enemy.NativeHPBarMark = nil; enemy.NativeDistMark = nil
-                        enemy.bHasTDNativeHPBar = false; enemy.bHasTDNativeHitmark = false
-                        
-                        if enemy.Replay_SetVisiableOfFrameUI then 
-                            pcall(function() enemy:Replay_SetVisiableOfFrameUI(false) end) 
-                        end
+                        ::continue::
                     end
                 end
-            end
 
-            if espCount then
-                pcall(function()
-                    if Valid(MyHUD) then
-                        local totalEnemies = realCount + aiCount
-                        local text = string.format("Kẻ Địch Xung Quanh: %d", totalEnemies)
-                        MyHUD:AddDebugText(text, LocalPlayer, 0.5, FVecZero, FVecZero, COLOR_RED, true, false, true, nil, 0.8, true)
-                    end
-                end)
-            end
+                if espCount then
+                    pcall(function()
+                        if Valid(MyHUD) then
+                            local totalEnemies = realCount + aiCount
+                            local text = string.format("Kẻ Địch Xung Quanh: %d", totalEnemies)
+                            MyHUD:AddDebugText(text, LocalPlayer, 0.5, FVecZero, FVecZero, COLOR_RED, true, false, true, nil, 0.8, true)
+                        end
+                    end)
+                end
 
-            -- ==========================================================
-            -- [LOGIC ESP BOM VVIP 7.0] - Gốc & Hoàn Hảo (Chuẩn Code Đầu)
-            -- ==========================================================
-            if _G.HK_GetVal("EspBomMaster") == 1 and (_G.HK_GetVal("EspItemBom") == 1 or _G.HK_GetVal("EspActiveBom") == 1) then
-                pcall(function()
-                    if Valid(MyHUD) then
-                        if not _G.CachedGameplayStatics then _G.CachedGameplayStatics = import("GameplayStatics") end
-                        if not _G.CachedActorClass_ForBomb then _G.CachedActorClass_ForBomb = import("Actor") end 
-                        if not _G.CachedProjArray then _G.CachedProjArray = slua.Array(UEnums.EPropertyClass.Object, _G.CachedActorClass_ForBomb) end
-                        
-                        local ui_util = require("client.common.ui_util")
-                        local gameInstance = ui_util and ui_util.GetGameInstance()
-                        
-                        if gameInstance and _G.CachedGameplayStatics then
-                            local curTime = os.clock()
+                -- ==========================================================
+                -- [LOGIC ESP BOM VVIP 7.0] - Gốc & Hoàn Hảo (Chuẩn Code Đầu)
+                -- ==========================================================
+                if _G.HK_GetVal("EspBomMaster") == 1 and (_G.HK_GetVal("EspItemBom") == 1 or _G.HK_GetVal("EspActiveBom") == 1) then
+                    pcall(function()
+                        if Valid(MyHUD) then
+                            if not _G.CachedGameplayStatics then _G.CachedGameplayStatics = import("GameplayStatics") end
+                            if not _G.CachedActorClass_ForBomb then _G.CachedActorClass_ForBomb = import("Actor") end 
+                            if not _G.CachedProjArray then _G.CachedProjArray = slua.Array(UEnums.EPropertyClass.Object, _G.CachedActorClass_ForBomb) end
+                            
+                            local ui_util = require("client.common.ui_util")
+                            local gameInstance = ui_util and ui_util.GetGameInstance()
+                            
+                            if gameInstance and _G.CachedGameplayStatics then
+                                local curTime = os.clock()
 
-                            -- Quét danh sách 0.5s/lần để chống giật FPS
-                            if not _G.LastBombScanTime or (curTime - _G.LastBombScanTime) > 0.5 then
-                                _G.LastBombScanTime = curTime
-                                local allActors = _G.CachedGameplayStatics.GetAllActorsOfClass(gameInstance, _G.CachedActorClass_ForBomb, _G.CachedProjArray)
-                                
-                                local activeBombs = {}
-                                local itemBombs = {}
-                                
-                                if allActors then
-                                    for _, actor in pairs(allActors) do
-                                        if slua.isValid(actor) and not actor.bHidden and not actor.bTearOff then
-                                            local isPendingKill = false
-                                            pcall(function() if type(actor.IsPendingKill) == "function" then isPendingKill = actor:IsPendingKill() end end)
-                                            
-                                            if not isPendingKill then
-                                                local nameLower = string.lower(tostring(actor))
+                                -- Quét danh sách 0.5s/lần để chống giật FPS
+                                if not _G.LastBombScanTime or (curTime - _G.LastBombScanTime) > 0.5 then
+                                    _G.LastBombScanTime = curTime
+                                    local allActors = _G.CachedGameplayStatics.GetAllActorsOfClass(gameInstance, _G.CachedActorClass_ForBomb, _G.CachedProjArray)
+                                    
+                                    local activeBombs = {}
+                                    local itemBombs = {}
+                                    
+                                    if allActors then
+                                        for _, actor in pairs(allActors) do
+                                            if slua.isValid(actor) and not actor.bHidden and not actor.bTearOff then
+                                                local isPendingKill = false
+                                                pcall(function() if type(actor.IsPendingKill) == "function" then isPendingKill = actor:IsPendingKill() end end)
                                                 
-                                                local bType = 0
-                                                if string.find(nameLower, "m79") or string.find(nameLower, "launcher") then bType = 5
-                                                elseif string.find(nameLower, "sticky") then bType = 6
-                                                elseif string.find(nameLower, "smoke") then bType = 2
-                                                elseif string.find(nameLower, "burn") or string.find(nameLower, "molotov") then bType = 3
-                                                elseif string.find(nameLower, "flash") or string.find(nameLower, "stun") then bType = 4
-                                                elseif string.find(nameLower, "grenade") then bType = 1 end
-                                                
-                                                if bType > 0 then
-                                                    if string.find(nameLower, "projectile") or string.find(nameLower, "thrown") then
-                                                        table.insert(activeBombs, {act = actor, type = bType})
-                                                    else
-                                                        local shouldAdd = true
-                                                        if bType == 5 then
-                                                            local attachParent = nil
-                                                            pcall(function() 
-                                                                if type(actor.GetAttachParentActor) == "function" then
-                                                                    attachParent = actor:GetAttachParentActor()
-                                                                end
-                                                            end)
-                                                            
-                                                            if slua.isValid(attachParent) then
-                                                                local isHolding = false
-                                                                pcall(function()
-                                                                    local curWeapon = nil
-                                                                    if type(attachParent.GetCurrentWeapon) == "function" then
-                                                                        curWeapon = attachParent:GetCurrentWeapon()
-                                                                    elseif attachParent.CurrentWeapon then
-                                                                        curWeapon = attachParent.CurrentWeapon
-                                                                    end
-                                                                    if curWeapon == actor then
-                                                                        isHolding = true
+                                                if not isPendingKill then
+                                                    local nameLower = string.lower(tostring(actor))
+                                                    
+                                                    local bType = 0
+                                                    if string.find(nameLower, "m79") or string.find(nameLower, "launcher") then bType = 5
+                                                    elseif string.find(nameLower, "sticky") then bType = 6
+                                                    elseif string.find(nameLower, "smoke") then bType = 2
+                                                    elseif string.find(nameLower, "burn") or string.find(nameLower, "molotov") then bType = 3
+                                                    elseif string.find(nameLower, "flash") or string.find(nameLower, "stun") then bType = 4
+                                                    elseif string.find(nameLower, "grenade") then bType = 1 end
+                                                    
+                                                    if bType > 0 then
+                                                        if string.find(nameLower, "projectile") or string.find(nameLower, "thrown") then
+                                                            table.insert(activeBombs, {act = actor, type = bType})
+                                                        else
+                                                            local shouldAdd = true
+                                                            if bType == 5 then
+                                                                local attachParent = nil
+                                                                pcall(function() 
+                                                                    if type(actor.GetAttachParentActor) == "function" then
+                                                                        attachParent = actor:GetAttachParentActor()
                                                                     end
                                                                 end)
-                                                                if not isHolding then
-                                                                    shouldAdd = false
+                                                                
+                                                                if slua.isValid(attachParent) then
+                                                                    local isHolding = false
+                                                                    pcall(function()
+                                                                        local curWeapon = nil
+                                                                        if type(attachParent.GetCurrentWeapon) == "function" then
+                                                                            curWeapon = attachParent:GetCurrentWeapon()
+                                                                        elseif attachParent.CurrentWeapon then
+                                                                            curWeapon = attachParent.CurrentWeapon
+                                                                        end
+                                                                        if curWeapon == actor then
+                                                                            isHolding = true
+                                                                        end
+                                                                    end)
+                                                                    if not isHolding then
+                                                                        shouldAdd = false
+                                                                    end
                                                                 end
                                                             end
-                                                        end
-                                                        
-                                                        if shouldAdd then
-                                                            table.insert(itemBombs, {act = actor, type = bType})
+                                                            
+                                                            if shouldAdd then
+                                                                table.insert(itemBombs, {act = actor, type = bType})
+                                                            end
                                                         end
                                                     end
                                                 end
                                             end
                                         end
                                     end
+                                    _G.CachedActiveBombs = activeBombs
+                                    _G.CachedItemBombs = itemBombs
                                 end
-                                _G.CachedActiveBombs = activeBombs
-                                _G.CachedItemBombs = itemBombs
-                            end
 
-                            local C_WHITE  = {R=255, G=255, B=255, A=255}
-                            local C_RED    = {R=255, G=0, B=0, A=255}
-                            local C_CYAN   = {R=0, G=255, B=255, A=255}
+                                local C_WHITE  = {R=255, G=255, B=255, A=255}
+                                local C_RED    = {R=255, G=0, B=0, A=255}
+                                local C_CYAN   = {R=0, G=255, B=255, A=255}
 
-                            -- HÀM VẼ CHUNG
-                            local function DrawBombs(bombList, isItem, maxDist)
-                                if not bombList then return end
-                                for _, item in ipairs(bombList) do
-                                    local bomb = item.act
-                                    local bType = item.type
-                                    
-                                    if slua.isValid(bomb) and not bomb.bHidden then
-                                        local isPendingKill = false
-                                        pcall(function() if type(bomb.IsPendingKill) == "function" then isPendingKill = bomb:IsPendingKill() end end)
+                                -- HÀM VẼ CHUNG
+                                local function DrawBombs(bombList, isItem, maxDist)
+                                    if not bombList then return end
+                                    for _, item in ipairs(bombList) do
+                                        local bomb = item.act
+                                        local bType = item.type
                                         
-                                        if not isPendingKill then
-                                            local skipDraw = false
-                                            if isItem and _G.CachedActiveBombs then
-                                                pcall(function()
-                                                    local loc1 = type(bomb.K2_GetActorLocation) == "function" and bomb:K2_GetActorLocation()
-                                                    if loc1 then
-                                                        for _, actItem in ipairs(_G.CachedActiveBombs) do
-                                                            local activeB = actItem.act
-                                                            if slua.isValid(activeB) then
-                                                                local loc2 = type(activeB.K2_GetActorLocation) == "function" and activeB:K2_GetActorLocation()
-                                                                if loc2 then
-                                                                    local dx = loc1.X - loc2.X
-                                                                    local dy = loc1.Y - loc2.Y
-                                                                    local dz = loc1.Z - loc2.Z
-                                                                    if math.sqrt(dx*dx + dy*dy + dz*dz) < 150 then
-                                                                        skipDraw = true
-                                                                        break
+                                        if slua.isValid(bomb) and not bomb.bHidden then
+                                            local isPendingKill = false
+                                            pcall(function() if type(bomb.IsPendingKill) == "function" then isPendingKill = bomb:IsPendingKill() end end)
+                                            
+                                            if not isPendingKill then
+                                                local skipDraw = false
+                                                if isItem and _G.CachedActiveBombs then
+                                                    pcall(function()
+                                                        local loc1 = type(bomb.K2_GetActorLocation) == "function" and bomb:K2_GetActorLocation()
+                                                        if loc1 then
+                                                            for _, actItem in ipairs(_G.CachedActiveBombs) do
+                                                                local activeB = actItem.act
+                                                                if slua.isValid(activeB) then
+                                                                    local loc2 = type(activeB.K2_GetActorLocation) == "function" and activeB:K2_GetActorLocation()
+                                                                    if loc2 then
+                                                                        local dx = loc1.X - loc2.X
+                                                                        local dy = loc1.Y - loc2.Y
+                                                                        local dz = loc1.Z - loc2.Z
+                                                                        if math.sqrt(dx*dx + dy*dy + dz*dz) < 150 then
+                                                                            skipDraw = true
+                                                                            break
+                                                                        end
                                                                     end
                                                                 end
-                                                            end
-                                                        end
-                                                    end
-                                                end)
-                                            end
-
-                                            if not skipDraw then
-                                                local distM = 0
-                                                pcall(function() distM = LocalPlayer:GetDistanceTo(bomb) / 100 end)
-                                                
-                                                if distM > 0 and distM <= maxDist then
-                                                    local displayName = ""
-                                                    local bombColor = C_WHITE
-                                                    local zOffset = isItem and 15 or 25
-                                                    
-                                                    if bType == 1 then
-                                                        displayName = "Boom"
-                                                        bombColor = isItem and {R=255, G=100, B=100, A=255} or C_RED
-                                                    elseif bType == 6 then
-                                                        displayName = isItem and "Bom Dính" or "BOM DÍNH"
-                                                        bombColor = isItem and {R=255, G=105, B=180, A=255} or {R=255, G=0, B=255, A=255}
-                                                    elseif bType == 2 then
-                                                        displayName = isItem and "Khói" or "KHÓI"
-                                                        bombColor = isItem and {R=200, G=200, B=200, A=255} or C_WHITE
-                                                    elseif bType == 3 then
-                                                        displayName = isItem and "Lửa" or "LỬA"
-                                                        bombColor = isItem and {R=255, G=160, B=50, A=255} or {R=255, G=100, B=0, A=255}
-                                                    elseif bType == 4 then
-                                                        displayName = isItem and "Mù" or "MÙ"
-                                                        bombColor = isItem and {R=150, G=255, B=255, A=255} or C_CYAN
-                                                    elseif bType == 5 then
-                                                        displayName = isItem and "ĐẠN KHÓI" or "ĐẠN KHÓI"
-                                                        bombColor = isItem and {R=150, G=255, B=150, A=255} or {R=100, G=255, B=100, A=255}
-                                                    end
-                                                    
-                                                    local text = string.format("%s [%dm]", displayName, math.floor(distM))
-                                                    
-                                                    local curGameTime = 0
-                                                    pcall(function() curGameTime = _G.CachedGameplayStatics.GetTimeSeconds(gameInstance) end)
-                                                    
-                                                    local shouldTimerRun = not isItem
-                                                    if isItem then
-                                                        pcall(function()
-                                                            if bomb.bIsPinPulled or bomb.bPinPulled or (type(bomb.IsPinPulled) == "function" and bomb:IsPinPulled()) then
-                                                                shouldTimerRun = true
-                                                            end
-                                                        end)
-                                                    end
-
-                                                    if shouldTimerRun and curGameTime > 0 then
-                                                        local timeLeft = -1
-                                                        pcall(function()
-                                                            if type(bomb.GetExplosionTime) == "function" then timeLeft = bomb:GetExplosionTime() - curGameTime
-                                                            elseif bomb.ExplosionTime then timeLeft = bomb.ExplosionTime - curGameTime
-                                                            elseif bomb.ExplodeTime then timeLeft = bomb.ExplodeTime - curGameTime end
-                                                        end)
-                                                        
-                                                        if timeLeft == -1 or timeLeft > 100 then
-                                                            _G.ActiveBombTimers = _G.ActiveBombTimers or {}
-                                                            local bombId = tostring(bomb)
-                                                            if not _G.ActiveBombTimers[bombId] then
-                                                                _G.ActiveBombTimers[bombId] = curGameTime
-                                                            end
-                                                            local elapsed = curGameTime - _G.ActiveBombTimers[bombId]
-                                                            local maxTime = 5.0
-                                                            
-                                                            if bType == 1 then maxTime = 7.0
-                                                            elseif bType == 6 then maxTime = 5.0
-                                                            elseif bType == 2 then maxTime = 45.0
-                                                            elseif bType == 3 then maxTime = 12.0
-                                                            elseif bType == 4 then maxTime = 5.0
-                                                            elseif bType == 5 then maxTime = 45.0 end
-                                                            
-                                                            timeLeft = maxTime - elapsed
-                                                        end
-                                                        
-                                                        if timeLeft < 0 then timeLeft = 0 end
-                                                        if timeLeft > 0.1 then
-                                                            text = string.format("%s (%.1fs)", text, timeLeft)
-                                                            if bType == 1 and timeLeft <= 1.5 then
-                                                                bombColor = {R=255, G=165, B=0, A=255} 
-                                                            end
-                                                        end
-                                                    end
-                                                    
-                                                    pcall(function()
-                                                        if _G.ActiveBombTimers then
-                                                            for k, v in pairs(_G.ActiveBombTimers) do
-                                                                if (curGameTime - v) > 60.0 then _G.ActiveBombTimers[k] = nil end
                                                             end
                                                         end
                                                     end)
+                                                end
 
-                                                    local dynamicScale = math.max(0.6, 1.1 - (distM / maxDist))
-                                                    MyHUD:AddDebugText(text, bomb, 0.35, {X=0, Y=0, Z=zOffset}, {X=0, Y=0, Z=zOffset}, bombColor, true, false, true, nil, dynamicScale, true)
+                                                if not skipDraw then
+                                                    local distM = 0
+                                                    pcall(function() distM = LocalPlayer:GetDistanceTo(bomb) / 100 end)
+                                                    
+                                                    if distM > 0 and distM <= maxDist then
+                                                        local displayName = ""
+                                                        local bombColor = C_WHITE
+                                                        local zOffset = isItem and 15 or 25
+                                                        
+                                                        if bType == 1 then
+                                                            displayName = "Boom"
+                                                            bombColor = isItem and {R=255, G=100, B=100, A=255} or C_RED
+                                                        elseif bType == 6 then
+                                                            displayName = isItem and "Bom Dính" or "BOM DÍNH"
+                                                            bombColor = isItem and {R=255, G=105, B=180, A=255} or {R=255, G=0, B=255, A=255}
+                                                        elseif bType == 2 then
+                                                            displayName = isItem and "Khói" or "KHÓI"
+                                                            bombColor = isItem and {R=200, G=200, B=200, A=255} or C_WHITE
+                                                        elseif bType == 3 then
+                                                            displayName = isItem and "Lửa" or "LỬA"
+                                                            bombColor = isItem and {R=255, G=160, B=50, A=255} or {R=255, G=100, B=0, A=255}
+                                                        elseif bType == 4 then
+                                                            displayName = isItem and "Mù" or "MÙ"
+                                                            bombColor = isItem and {R=150, G=255, B=255, A=255} or C_CYAN
+                                                        elseif bType == 5 then
+                                                            displayName = isItem and "ĐẠN KHÓI" or "ĐẠN KHÓI"
+                                                            bombColor = isItem and {R=150, G=255, B=150, A=255} or {R=100, G=255, B=100, A=255}
+                                                        end
+                                                        
+                                                        local text = string.format("%s [%dm]", displayName, math.floor(distM))
+                                                        
+                                                        local curGameTime = 0
+                                                        pcall(function() curGameTime = _G.CachedGameplayStatics.GetTimeSeconds(gameInstance) end)
+                                                        
+                                                        local shouldTimerRun = not isItem
+                                                        if isItem then
+                                                            pcall(function()
+                                                                if bomb.bIsPinPulled or bomb.bPinPulled or (type(bomb.IsPinPulled) == "function" and bomb:IsPinPulled()) then
+                                                                    shouldTimerRun = true
+                                                                end
+                                                            end)
+                                                        end
+
+                                                        if shouldTimerRun and curGameTime > 0 then
+                                                            local timeLeft = -1
+                                                            pcall(function()
+                                                                if type(bomb.GetExplosionTime) == "function" then timeLeft = bomb:GetExplosionTime() - curGameTime
+                                                                elseif bomb.ExplosionTime then timeLeft = bomb.ExplosionTime - curGameTime
+                                                                elseif bomb.ExplodeTime then timeLeft = bomb.ExplodeTime - curGameTime end
+                                                            end)
+                                                            
+                                                            if timeLeft == -1 or timeLeft > 100 then
+                                                                _G.ActiveBombTimers = _G.ActiveBombTimers or {}
+                                                                local bombId = tostring(bomb)
+                                                                if not _G.ActiveBombTimers[bombId] then
+                                                                    _G.ActiveBombTimers[bombId] = curGameTime
+                                                                end
+                                                                local elapsed = curGameTime - _G.ActiveBombTimers[bombId]
+                                                                local maxTime = 5.0
+                                                                
+                                                                if bType == 1 then maxTime = 7.0
+                                                                elseif bType == 6 then maxTime = 5.0
+                                                                elseif bType == 2 then maxTime = 45.0
+                                                                elseif bType == 3 then maxTime = 12.0
+                                                                elseif bType == 4 then maxTime = 5.0
+                                                                elseif bType == 5 then maxTime = 45.0 end
+                                                                
+                                                                timeLeft = maxTime - elapsed
+                                                            end
+                                                            
+                                                            if timeLeft < 0 then timeLeft = 0 end
+                                                            if timeLeft > 0.1 then
+                                                                text = string.format("%s (%.1fs)", text, timeLeft)
+                                                                if bType == 1 and timeLeft <= 1.5 then
+                                                                    bombColor = {R=255, G=165, B=0, A=255} 
+                                                                end
+                                                            end
+                                                        end
+                                                        
+                                                        pcall(function()
+                                                            if _G.ActiveBombTimers then
+                                                                for k, v in pairs(_G.ActiveBombTimers) do
+                                                                    if (curGameTime - v) > 60.0 then _G.ActiveBombTimers[k] = nil end
+                                                                end
+                                                            end
+                                                        end)
+
+                                                        local dynamicScale = math.max(0.6, 1.1 - (distM / maxDist))
+                                                        MyHUD:AddDebugText(text, bomb, 0.35, {X=0, Y=0, Z=zOffset}, {X=0, Y=0, Z=zOffset}, bombColor, true, false, true, nil, dynamicScale, true)
+                                                    end
                                                 end
                                             end
                                         end
                                     end
                                 end
+
+                                if _G.HK_GetVal("EspItemBom") == 1 then DrawBombs(_G.CachedItemBombs, true, 50) end
+                                if _G.HK_GetVal("EspActiveBom") == 1 then DrawBombs(_G.CachedActiveBombs, false, 150) end
                             end
-
-                            if _G.HK_GetVal("EspItemBom") == 1 then DrawBombs(_G.CachedItemBombs, true, 50) end
-                            if _G.HK_GetVal("EspActiveBom") == 1 then DrawBombs(_G.CachedActiveBombs, false, 150) end
                         end
-                    end
-                end)
-            end
+                    end)
+                end
 
-            -- ==========================================================
-            -- [LOGIC ESP XE - VEHICLE ESP VVIP]
-            -- ==========================================================
-            if _G.HK_GetVal("EspVehicle") == 1 then
-                pcall(function()
-                    if Valid(MyHUD) then
-                        if not _G.CachedGameplayStatics then _G.CachedGameplayStatics = import("GameplayStatics") end
-                        if not _G.CachedActorClass_ForVehicle then _G.CachedActorClass_ForVehicle = import("STExtraVehicleBase") end 
-                        if not _G.CachedVehicleArray then _G.CachedVehicleArray = slua.Array(UEnums.EPropertyClass.Object, import("Actor")) end
-                        
-                        local ui_util = require("client.common.ui_util")
-                        local gameInstance = ui_util and ui_util.GetGameInstance()
-                        
-                        if gameInstance and _G.CachedGameplayStatics then
-                            local curTime = os.clock()
+                -- ==========================================================
+                -- [LOGIC ESP XE - VEHICLE ESP VVIP]
+                -- ==========================================================
+                if _G.HK_GetVal("EspVehicle") == 1 then
+                    pcall(function()
+                        if Valid(MyHUD) then
+                            if not _G.CachedGameplayStatics then _G.CachedGameplayStatics = import("GameplayStatics") end
+                            if not _G.CachedActorClass_ForVehicle then _G.CachedActorClass_ForVehicle = import("STExtraVehicleBase") end 
+                            if not _G.CachedVehicleArray then _G.CachedVehicleArray = slua.Array(UEnums.EPropertyClass.Object, import("Actor")) end
+                            
+                            local ui_util = require("client.common.ui_util")
+                            local gameInstance = ui_util and ui_util.GetGameInstance()
+                            
+                            if gameInstance and _G.CachedGameplayStatics then
+                                local curTime = os.clock()
 
-                            -- Quét danh sách 1.0s/lần để chống giật FPS tuyệt đối
-                            if not _G.LastVehicleScanTime or (curTime - _G.LastVehicleScanTime) > 1.0 then
-                                _G.LastVehicleScanTime = curTime
-                                local allVehicles = nil
-                                pcall(function()
-                                    allVehicles = _G.CachedGameplayStatics.GetAllActorsOfClass(gameInstance, _G.CachedActorClass_ForVehicle, _G.CachedVehicleArray)
-                                end)
-                                allVehicles = allVehicles or _G.CachedVehicleArray
-                                
-                                local activeVehicles = {}
-                                if allVehicles then
-                                    for _, veh in pairs(allVehicles) do
-                                        if slua.isValid(veh) and not veh.bHidden and not veh.bTearOff then
+                                -- Quét danh sách 1.0s/lần để chống giật FPS tuyệt đối
+                                if not _G.LastVehicleScanTime or (curTime - _G.LastVehicleScanTime) > 1.0 then
+                                    _G.LastVehicleScanTime = curTime
+                                    local allVehicles = nil
+                                    pcall(function()
+                                        allVehicles = _G.CachedGameplayStatics.GetAllActorsOfClass(gameInstance, _G.CachedActorClass_ForVehicle, _G.CachedVehicleArray)
+                                    end)
+                                    allVehicles = allVehicles or _G.CachedVehicleArray
+                                    
+                                    local activeVehicles = {}
+                                    if allVehicles then
+                                        for _, veh in pairs(allVehicles) do
+                                            if slua.isValid(veh) and not veh.bHidden and not veh.bTearOff then
+                                                local isPendingKill = false
+                                                pcall(function() if type(veh.IsPendingKill) == "function" then isPendingKill = veh:IsPendingKill() end end)
+                                                
+                                                if not isPendingKill then
+                                                    local vehName = "Xe"
+                                                    pcall(function()
+                                                        if type(veh.GetVehicleName) == "function" then vehName = veh:GetVehicleName()
+                                                        elseif veh.VehicleName then vehName = veh.VehicleName end
+                                                    end)
+                                                    
+                                                    local nameLower = string.lower(tostring(vehName) .. tostring(veh))
+                                                    local displayName = "Xe"
+                                                    if string.find(nameLower, "uaz") then displayName = "UAZ"
+                                                    elseif string.find(nameLower, "dacia") then displayName = "Dacia"
+                                                    elseif string.find(nameLower, "buggy") then displayName = "Buggy"
+                                                    elseif string.find(nameLower, "mirado") then displayName = "Mirado"
+                                                    elseif string.find(nameLower, "bike") or string.find(nameLower, "motor") then displayName = "Motor"
+                                                    elseif string.find(nameLower, "scooter") then displayName = "Scooter"
+                                                    elseif string.find(nameLower, "coupe") then displayName = "Coupe RB"
+                                                    elseif string.find(nameLower, "brdm") then displayName = "BRDM"
+                                                    elseif string.find(nameLower, "boat") or string.find(nameLower, "aquarail") then displayName = "Thuyền"
+                                                    elseif string.find(nameLower, "glider") then displayName = "Tàu lượn"
+                                                    else displayName = "Xe (" .. string.sub(vehName, 1, 8) .. ")" end
+
+                                                    table.insert(activeVehicles, {act = veh, name = displayName})
+                                                end
+                                            end
+                                        end
+                                    end
+                                    _G.CachedVehicles = activeVehicles
+                                end
+
+                                if _G.CachedVehicles then
+                                    for _, item in ipairs(_G.CachedVehicles) do
+                                        local veh = item.act
+                                        if slua.isValid(veh) and not veh.bHidden then
                                             local isPendingKill = false
                                             pcall(function() if type(veh.IsPendingKill) == "function" then isPendingKill = veh:IsPendingKill() end end)
                                             
                                             if not isPendingKill then
-                                                local vehName = "Xe"
-                                                pcall(function()
-                                                    if type(veh.GetVehicleName) == "function" then vehName = veh:GetVehicleName()
-                                                    elseif veh.VehicleName then vehName = veh.VehicleName end
-                                                end)
-                                                
-                                                local nameLower = string.lower(tostring(vehName) .. tostring(veh))
-                                                local displayName = "Xe"
-                                                if string.find(nameLower, "uaz") then displayName = "UAZ"
-                                                elseif string.find(nameLower, "dacia") then displayName = "Dacia"
-                                                elseif string.find(nameLower, "buggy") then displayName = "Buggy"
-                                                elseif string.find(nameLower, "mirado") then displayName = "Mirado"
-                                                elseif string.find(nameLower, "bike") or string.find(nameLower, "motor") then displayName = "Motor"
-                                                elseif string.find(nameLower, "scooter") then displayName = "Scooter"
-                                                elseif string.find(nameLower, "coupe") then displayName = "Coupe RB"
-                                                elseif string.find(nameLower, "brdm") then displayName = "BRDM"
-                                                elseif string.find(nameLower, "boat") or string.find(nameLower, "aquarail") then displayName = "Thuyền"
-                                                elseif string.find(nameLower, "glider") then displayName = "Tàu lượn"
-                                                else displayName = "Xe (" .. string.sub(vehName, 1, 8) .. ")" end
+                                                local isShow = false
+                                                if item.name == "Dacia" then isShow = (_G.HK_GetVal("EspVeh_Dacia") == 1)
+                                                elseif item.name == "UAZ" then isShow = (_G.HK_GetVal("EspVeh_UAZ") == 1)
+                                                elseif item.name == "Buggy" then isShow = (_G.HK_GetVal("EspVeh_Buggy") == 1)
+                                                elseif item.name == "Coupe RB" then isShow = (_G.HK_GetVal("EspVeh_Coupe") == 1)
+                                                elseif item.name == "Mirado" then isShow = (_G.HK_GetVal("EspVeh_Mirado") == 1)
+                                                elseif item.name == "Motor" or item.name == "Scooter" then isShow = (_G.HK_GetVal("EspVeh_Motor") == 1)
+                                                else isShow = (_G.HK_GetVal("EspVeh_Other") == 1) end
 
-                                                table.insert(activeVehicles, {act = veh, name = displayName})
+                                                if isShow then
+                                                    local distM = 0
+                                                    local lp = LocalPlayer or GameplayData.GetPlayerCharacter()
+                                                    if slua.isValid(lp) then
+                                                        pcall(function() distM = lp:GetDistanceTo(veh) / 100 end)
+                                                    end
+                                                    
+                                                    if distM > 0 and distM <= 500 then
+                                                        local hasDriver = false
+                                                        pcall(function() 
+                                                            local driver = type(veh.GetDriver) == "function" and veh:GetDriver() or nil
+                                                            if slua.isValid(driver) then hasDriver = true end
+                                                        end)
+
+                                                        local hpStr = ""
+                                                        pcall(function()
+                                                            local hp = veh.HP or (type(veh.GetHP) == "function" and veh:GetHP()) or 100
+                                                            local maxHp = veh.HPMax or (type(veh.GetHPMax) == "function" and veh:GetHPMax()) or 100
+                                                            if maxHp > 0 then hpStr = string.format(" [%d%%]", math.floor((hp/maxHp)*100)) end
+                                                        end)
+                                                        
+                                                        local text = string.format("%s%s [%dm]", item.name, hpStr, math.floor(distM))
+                                                        local vehColor = hasDriver and {R=255, G=50, B=50, A=255} or {R=0, G=255, B=150, A=255}
+                                                        local dynamicScale = math.max(0.5, 0.9 - (distM / 500))
+                                                        
+                                                        MyHUD:AddDebugText(text, veh, 0.35, {X=0, Y=0, Z=50}, {X=0, Y=0, Z=50}, vehColor, true, false, true, nil, dynamicScale, true)
+                                                    end
+                                                end
                                             end
                                         end
                                     end
                                 end
-                                _G.CachedVehicles = activeVehicles
+                            end
+                        end
+                    end)
+                end
+                
+                -- ==========================================================
+                -- [LOGIC ESP VẬT PHẨM - ITEM ESP VVIP]
+                -- ==========================================================
+                if _G.HK_GetVal("EspItemMaster") == 1 then
+                    pcall(function()
+                        if Valid(MyHUD) then
+                            if not _G.CachedGameplayStatics then _G.CachedGameplayStatics = import("GameplayStatics") end
+                            
+                            -- Fallback setup for PickUp wrapper class
+                            if not _G.CachedActorClass_ForPickUp then
+                                local classNames = {
+                                    "STExtraPickUpWrapper",
+                                    "PickUpWrapperActor",
+                                    "STExtraPickupWrapper",
+                                    "PickupWrapperActor",
+                                    "/Script/ShadowTrackerExtra.STExtraPickUpWrapper",
+                                    "/Script/ShadowTrackerExtra.PickUpWrapperActor",
+                                }
+                                for _, name in ipairs(classNames) do
+                                    pcall(function()
+                                        local cls = import(name)
+                                        if cls then _G.CachedActorClass_ForPickUp = cls end
+                                    end)
+                                    if _G.CachedActorClass_ForPickUp then break end
+                                end
                             end
 
-                            if _G.CachedVehicles then
-                                for _, item in ipairs(_G.CachedVehicles) do
-                                    local veh = item.act
-                                    if slua.isValid(veh) and not veh.bHidden then
-                                        local isPendingKill = false
-                                        pcall(function() if type(veh.IsPendingKill) == "function" then isPendingKill = veh:IsPendingKill() end end)
-                                        
-                                        if not isPendingKill then
-                                            local isShow = false
-                                            if item.name == "Dacia" then isShow = (_G.HK_GetVal("EspVeh_Dacia") == 1)
-                                            elseif item.name == "UAZ" then isShow = (_G.HK_GetVal("EspVeh_UAZ") == 1)
-                                            elseif item.name == "Buggy" then isShow = (_G.HK_GetVal("EspVeh_Buggy") == 1)
-                                            elseif item.name == "Coupe RB" then isShow = (_G.HK_GetVal("EspVeh_Coupe") == 1)
-                                            elseif item.name == "Mirado" then isShow = (_G.HK_GetVal("EspVeh_Mirado") == 1)
-                                            elseif item.name == "Motor" or item.name == "Scooter" then isShow = (_G.HK_GetVal("EspVeh_Motor") == 1)
-                                            else isShow = (_G.HK_GetVal("EspVeh_Other") == 1) end
+                            if not _G.CachedPickUpArray then
+                                pcall(function()
+                                    _G.CachedPickUpArray = slua.Array(UEnums.EPropertyClass.Object, import("Actor"))
+                                end)
+                            end
+                            
+                            local ui_util = require("client.common.ui_util")
+                            local gameInstance = ui_util and ui_util.GetGameInstance()
+                            
+                            if gameInstance and _G.CachedGameplayStatics and _G.CachedActorClass_ForPickUp and _G.CachedPickUpArray then
+                                local curTime = os.clock()
 
-                                            if isShow then
-                                                local distM = 0
-                                                local lp = LocalPlayer or GameplayData.GetPlayerCharacter()
-                                                if slua.isValid(lp) then
-                                                    pcall(function() distM = lp:GetDistanceTo(veh) / 100 end)
-                                                end
+                                -- Quét danh sách vật phẩm dưới đất 1.0s/lần
+                                if not _G.LastItemScanTime or (curTime - _G.LastItemScanTime) > 1.0 then
+                                    _G.LastItemScanTime = curTime
+                                    
+                                    local allPickUps = nil
+                                    pcall(function()
+                                        allPickUps = _G.CachedGameplayStatics.GetAllActorsOfClass(gameInstance, _G.CachedActorClass_ForPickUp, _G.CachedPickUpArray)
+                                    end)
+                                    allPickUps = allPickUps or _G.CachedPickUpArray
+                                    
+                                    local activeItems = {}
+                                    if allPickUps then
+                                        for _, pickup in pairs(allPickUps) do
+                                            if slua.isValid(pickup) and not pickup.bHidden then
+                                                local isPendingKill = false
+                                                pcall(function() if type(pickup.IsPendingKill) == "function" then isPendingKill = pickup:IsPendingKill() end end)
                                                 
-                                                if distM > 0 and distM <= 500 then
-                                                    local hasDriver = false
-                                                    pcall(function() 
-                                                        local driver = type(veh.GetDriver) == "function" and veh:GetDriver() or nil
-                                                        if slua.isValid(driver) then hasDriver = true end
-                                                    end)
-
-                                                    local hpStr = ""
+                                                if not isPendingKill then
+                                                    local itemID = nil
                                                     pcall(function()
-                                                        local hp = veh.HP or (type(veh.GetHP) == "function" and veh:GetHP()) or 100
-                                                        local maxHp = veh.HPMax or (type(veh.GetHPMax) == "function" and veh:GetHPMax()) or 100
-                                                        if maxHp > 0 then hpStr = string.format(" [%d%%]", math.floor((hp/maxHp)*100)) end
+                                                        local itemData = pickup.PickUpItemData or pickup.ItemData or pickup.PickUpData
+                                                        if itemData then
+                                                            local defineID = slua.IndexReference(itemData, "DefineID")
+                                                            if defineID then
+                                                                itemID = slua.IndexReference(defineID, "TypeSpecificID") or defineID.TypeSpecificID
+                                                            else
+                                                                itemID = itemData.TypeSpecificID or slua.IndexReference(itemData, "TypeSpecificID")
+                                                            end
+                                                        end
                                                     end)
+                                                    if not itemID then
+                                                        pcall(function()
+                                                            itemID = pickup.TypeSpecificID or pickup.ItemID or pickup.ItemId
+                                                        end)
+                                                    end
                                                     
-                                                    local text = string.format("%s%s [%dm]", item.name, hpStr, math.floor(distM))
-                                                    local vehColor = hasDriver and {R=255, G=50, B=50, A=255} or {R=0, G=255, B=150, A=255}
-                                                    local dynamicScale = math.max(0.5, 0.9 - (distM / 500))
+                                                    local itemName = ""
+                                                    if itemID then
+                                                        pcall(function()
+                                                            local itemCfg = CDataTable.GetTableData("Item", itemID)
+                                                            if itemCfg then
+                                                                itemName = itemCfg.ItemName or itemCfg.itemName or ""
+                                                            end
+                                                        end)
+                                                    end
                                                     
-                                                    MyHUD:AddDebugText(text, veh, 0.35, {X=0, Y=0, Z=50}, {X=0, Y=0, Z=50}, vehColor, true, false, true, nil, dynamicScale, true)
+                                                    local nameLower = string.lower(tostring(itemName) .. "_" .. tostring(itemID or "") .. "_" .. tostring(pickup))
+                                                    local matchedKeyword = nil
+                                                    local mapping = nil
+                                                    
+                                                    if itemID and _G.HK_WeaponMap[itemID] then
+                                                        mapping = _G.HK_WeaponMap[itemID]
+                                                    else
+                                                        for _, kw in ipairs(_G.HK_OrderedKeywords) do
+                                                            if string.find(nameLower, kw) then
+                                                                matchedKeyword = kw
+                                                                break
+                                                            end
+                                                        end
+                                                        if matchedKeyword then
+                                                            mapping = _G.HK_WeaponMap[matchedKeyword]
+                                                        end
+                                                    end
+                                                    
+                                                    if mapping then
+                                                        if _G.HK_GetVal(mapping.cat) == 1 and _G.HK_GetVal(mapping.key) == 1 then
+                                                            table.insert(activeItems, {
+                                                                act = pickup,
+                                                                name = mapping.name,
+                                                                color = mapping.color
+                                                            })
+                                                        end
+                                                    end
                                                 end
                                             end
                                         end
                                     end
+                                    _G.CachedItems = activeItems
                                 end
-                            end
-                        end
-                    end
-                end)
-            end
-            -- ==========================================================
-            -- [LOGIC ESP VẬT PHẨM - ITEM ESP VVIP]
-            -- ==========================================================
-            if _G.HK_GetVal("EspItemMaster") == 1 then
-                pcall(function()
-                    if Valid(MyHUD) then
-                        if not _G.CachedGameplayStatics then _G.CachedGameplayStatics = import("GameplayStatics") end
-                        
-                        -- Nhập class Wrapper của vật phẩm rơi dưới đất với cơ chế fallback và an toàn cao
-                        if not _G.CachedActorClass_ForPickUp then
-                            local classNames = {
-                                "STExtraPickUpWrapper",
-                                "PickUpWrapperActor",
-                                "STExtraPickupWrapper",
-                                "PickupWrapperActor",
-                                "/Script/ShadowTrackerExtra.STExtraPickUpWrapper",
-                                "/Script/ShadowTrackerExtra.PickUpWrapperActor",
-                            }
-                            for _, name in ipairs(classNames) do
-                                pcall(function()
-                                    local cls = import(name)
-                                    if cls then _G.CachedActorClass_ForPickUp = cls end
-                                end)
-                                if _G.CachedActorClass_ForPickUp then break end
-                            end
-                        end
 
-                        if not _G.CachedPickUpArray then
-                            pcall(function()
-                                _G.CachedPickUpArray = slua.Array(UEnums.EPropertyClass.Object, import("Actor"))
-                            end)
-                        end
-                        
-                        local ui_util = require("client.common.ui_util")
-                        local gameInstance = ui_util and ui_util.GetGameInstance()
-                        
-                        if gameInstance and _G.CachedGameplayStatics and _G.CachedActorClass_ForPickUp and _G.CachedPickUpArray then
-                            local curTime = os.clock()
-
-                            -- Quét danh sách vật phẩm dưới đất 1.0s/lần để bảo toàn hiệu năng FPS
-                            if not _G.LastItemScanTime or (curTime - _G.LastItemScanTime) > 1.0 then
-                                _G.LastItemScanTime = curTime
-                                
-                                local allPickUps = nil
-                                pcall(function()
-                                    allPickUps = _G.CachedGameplayStatics.GetAllActorsOfClass(gameInstance, _G.CachedActorClass_ForPickUp, _G.CachedPickUpArray)
-                                end)
-                                allPickUps = allPickUps or _G.CachedPickUpArray
-                                
-                                local activeItems = {}
-                                if allPickUps then
-                                    for _, pickup in pairs(allPickUps) do
+                                if _G.CachedItems then
+                                    local maxItemDist = _G.HK_GetVal("EspItem_Dist") or 150
+                                    for _, item in ipairs(_G.CachedItems) do
+                                        local pickup = item.act
                                         if slua.isValid(pickup) and not pickup.bHidden then
                                             local isPendingKill = false
                                             pcall(function() if type(pickup.IsPendingKill) == "function" then isPendingKill = pickup:IsPendingKill() end end)
                                             
                                             if not isPendingKill then
-                                                -- Trích xuất ID vật phẩm từ wrapper qua cấu trúc FBattleItemData
-                                                local itemID = nil
-                                                pcall(function()
-                                                    local itemData = pickup.PickUpItemData or pickup.ItemData or pickup.PickUpData
-                                                    if itemData then
-                                                        local defineID = slua.IndexReference(itemData, "DefineID")
-                                                        if defineID then
-                                                            itemID = slua.IndexReference(defineID, "TypeSpecificID") or defineID.TypeSpecificID
-                                                        else
-                                                            itemID = itemData.TypeSpecificID or slua.IndexReference(itemData, "TypeSpecificID")
-                                                        end
-                                                    end
-                                                end)
-                                                if not itemID then
-                                                    pcall(function()
-                                                        itemID = pickup.TypeSpecificID or pickup.ItemID or pickup.ItemId
-                                                    end)
+                                                local distM = 0
+                                                local lp = LocalPlayer or GameplayData.GetPlayerCharacter()
+                                                if Valid(lp) then
+                                                    pcall(function() distM = lp:GetDistanceTo(pickup) / 100 end)
                                                 end
                                                 
-                                                -- Lấy tên vật phẩm tương ứng từ DataTable của game nếu có ID
-                                                local itemName = ""
-                                                if itemID then
-                                                    pcall(function()
-                                                        local itemCfg = CDataTable.GetTableData("Item", itemID)
-                                                        if itemCfg then
-                                                            itemName = itemCfg.ItemName or itemCfg.itemName or ""
-                                                        end
-                                                    end)
+                                                if distM > 0 and distM <= maxItemDist then
+                                                    local text = string.format("%s [%dm]", item.name, math.floor(distM))
+                                                    local dynamicScale = math.max(0.5, 0.9 - (distM / 300))
+                                                    
+                                                    MyHUD:AddDebugText(text, pickup, 0.35, {X=0, Y=0, Z=15}, {X=0, Y=0, Z=15}, item.color, true, false, true, nil, dynamicScale, true)
                                                 end
-                                                
-                                                -- Tổng hợp chuỗi định danh chữ thường
-                                                local nameLower = string.lower(tostring(itemName) .. "_" .. tostring(itemID or "") .. "_" .. tostring(pickup))
-                                                local matchedKeyword = nil
-                                                local mapping = nil
-                                                
-                                                -- 1. Tìm khớp trực tiếp theo ID trong bản đồ weapon map
-                                                if itemID and _G.HK_WeaponMap[itemID] then
-                                                    mapping = _G.HK_WeaponMap[itemID]
-                                                else
-                                                    -- 2. Tìm khớp theo từ khoá chuỗi
-                                                    for _, kw in ipairs(_G.HK_OrderedKeywords) do
-                                                        if string.find(nameLower, kw) then
-                                                            matchedKeyword = kw
-                                                            break
-                                                        end
-                                                    end
-                                                    if matchedKeyword then
-                                                        mapping = _G.HK_WeaponMap[matchedKeyword]
-                                                    end
-                                                end
-                                                
-                                                if mapping then
-                                                    -- Kiểm tra cấu hình bật/tắt của danh mục cha và của súng con
-                                                    if _G.HK_GetVal(mapping.cat) == 1 and _G.HK_GetVal(mapping.key) == 1 then
-                                                        table.insert(activeItems, {
-                                                            act = pickup,
-                                                            name = mapping.name,
-                                                            color = mapping.color
-                                                        })
-                                                    end
-                                                end
-                                            end
-                                        end
-                                    end
-                                end
-                                _G.CachedItems = activeItems
-                            end
-
-                            -- Thực hiện vẽ text định vị các vật phẩm hợp lệ
-                            if _G.CachedItems then
-                                local maxItemDist = _G.HK_GetVal("EspItem_Dist") or 150
-                                for _, item in ipairs(_G.CachedItems) do
-                                    local pickup = item.act
-                                    if slua.isValid(pickup) and not pickup.bHidden then
-                                        local isPendingKill = false
-                                        pcall(function() if type(pickup.IsPendingKill) == "function" then isPendingKill = pickup:IsPendingKill() end end)
-                                        
-                                        if not isPendingKill then
-                                            local distM = 0
-                                            local lp = LocalPlayer or GameplayData.GetPlayerCharacter()
-                                            if Valid(lp) then
-                                                pcall(function() distM = lp:GetDistanceTo(pickup) / 100 end)
-                                            end
-                                            
-                                            if distM > 0 and distM <= maxItemDist then
-                                                local text = string.format("%s [%dm]", item.name, math.floor(distM))
-                                                local dynamicScale = math.max(0.5, 0.9 - (distM / 300))
-                                                
-                                                MyHUD:AddDebugText(text, pickup, 0.35, {X=0, Y=0, Z=15}, {X=0, Y=0, Z=15}, item.color, true, false, true, nil, dynamicScale, true)
                                             end
                                         end
                                     end
                                 end
                             end
                         end
-                    end
+                    end)
+                end
+
+                -- [NEW] Threat Assessment ESP
+                pcall(function()
+                    UpdateThreatAssessmentESP(LocalPlayer, PlayerController, MyHUD)
+                end)
+                
+                -- [NEW] Dynamic Ghost Mode
+                pcall(function()
+                    UpdateGhostMode()
                 end)
             end
-
-            -- [NEW] Threat Assessment ESP
-            pcall(function()
-                UpdateThreatAssessmentESP(LocalPlayer, PlayerController, MyHUD)
-            end)
-            
-            -- [NEW] Dynamic Ghost Mode
-            pcall(function()
-                UpdateGhostMode()
-            end)
         end
     end)
 end
