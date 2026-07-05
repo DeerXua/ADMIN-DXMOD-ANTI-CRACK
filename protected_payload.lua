@@ -2381,11 +2381,6 @@ table.insert(StackESP, {
         
         table.insert(StackAimbot, { UI = AliasMap.Title, Text = "PHẦN 2: MAGIC BULLET SMART" })
         AddToggle(StackAimbot, "MAGIC_SMART", "MAGIC BULLET SMART (Dưới 50m - Cỡ 50)")
-        
-        table.insert(StackAimbot, { UI = AliasMap.Title, Text = "PHẦN 3: MAGIC BULLET THƯỜNG" })
-        AddSlider(StackAimbot, "MAGIC_HEAD", "MAGIC ĐẦU (Thường)", 0, 300)
-        AddSlider(StackAimbot, "MAGIC_BODY", "MAGIC THÂN (Thường)", 0, 300)
-        AddSlider(StackAimbot, "MAGIC_LEGS", "MAGIC CHÂN (Thường)", 0, 300)
 
         -- =========================================================================================
         -- [MỚI] TÍCH HỢP TOÀN BỘ GIAO DIỆN VÀ LOGIC TAB 3 CỦA CODE 2 SANG CODE 1 (AIMBOT ROYAL & CUSTOM)
@@ -2446,6 +2441,11 @@ table.insert(StackESP, {
             { Key = "ModMenu_AT_Sniper_Pred", UI = AliasMap.Slider, Text = "      Dự Đoán Hướng Chạy (0-100)", ExpandHandle = "ModMenu_AT_Sniper_Ex", MinValue = 0, MaxValue = 100, min = 0, max = 100, GetFunc = function() return _G.HK_Settings.AimTouchSniperPred or 0 end, SetFunc = function(_, v) _G.HK_Settings.AimTouchSniperPred = v return true end }
         }
 
+        local StackMagic = { { UI = AliasMap.Title, Text = "MAGIC BULLET" } }
+        AddSlider(StackMagic, "MAGIC_HEAD", "MAGIC ĐẦU", 0, 300)
+        AddSlider(StackMagic, "MAGIC_BODY", "MAGIC THÂN", 0, 300)
+        AddSlider(StackMagic, "MAGIC_LEGS", "MAGIC CHÂN", 0, 300)
+
 
 
         local StackEnv = { { UI = AliasMap.Title, Text = "MÔI TRƯỜNG & GÓC NHÌN" } }
@@ -2494,6 +2494,7 @@ table.insert(StackESP, {
                 { Key = "ModMenu_Cat6", loc = "ESP VẬT PHẨM", Stack = StackItemESP },
                 { Key = "ModMenu_Cat2", loc = "AIMBOT & VŨ KHÍ", Stack = StackAimbot },
                 { Key = "ModMenu_Cat5", loc = "AIMBOT ROYAL & CUSTOM", Stack = StackAimbotV2 },
+                { Key = "ModMenu_Cat3", loc = "MAGIC BULLET", Stack = StackMagic },
                 { Key = "ModMenu_Cat4", loc = "GÓC NHÌN & MÔI TRƯỜNG", Stack = StackEnv },
             }
         }
