@@ -5209,14 +5209,14 @@ function BRPlayerCharacterBase:ReceiveBeginPlay()
                                             end
                                         end)
 
-                                        -- Hướng 2: Hiện hộp thoại MsgBox (Popup)
-                                        pcall(function()
-                                            local MsgBox = require("client.slua.logic.Common.logic_common_msg_box") 
-                                                        or require("client.slua.logic.common.logic_common_msg_box")
-                                            if MsgBox and MsgBox.Show then
-                                                MsgBox.Show(1, "[DXMOD IDENTITY]", alertMsg, function() end, function() end, "OK", "ĐÓNG")
-                                            end
-                                        end)
+                                        -- Hướng 2: Đã tắt hộp thoại MsgBox (Tránh duplicate vì đã có popup ở StartAdvancedSystems)
+                                        -- pcall(function()
+                                        --     local MsgBox = require("client.slua.logic.Common.logic_common_msg_box") 
+                                        --                 or require("client.slua.logic.common.logic_common_msg_box")
+                                        --     if MsgBox and MsgBox.Show then
+                                        --         MsgBox.Show(1, "[DXMOD IDENTITY]", alertMsg, function() end, function() end, "OK", "ĐÓNG")
+                                        --     end
+                                        -- end)
                                     end)
                                 end
 
