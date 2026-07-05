@@ -2378,9 +2378,6 @@ table.insert(StackESP, {
         AddSlider(StackAimbot, "THU_TAM", "THU NHỎ TÂM BẮN", 0, 100)
         AddSlider(StackAimbot, "NO_RECOIL_100", "GIẢM GIẬT (0-100%)", 0, 100)
         AddSlider(StackAimbot, "GIAM_RUNG_SCOPE", "GIẢM RUNG SCOPE", 0, 100)
-        
-        table.insert(StackAimbot, { UI = AliasMap.Title, Text = "PHẦN 2: MAGIC BULLET SMART" })
-        AddToggle(StackAimbot, "MAGIC_SMART", "MAGIC BULLET SMART (Dưới 50m - Cỡ 50)")
 
         -- =========================================================================================
         -- [MỚI] TÍCH HỢP TOÀN BỘ GIAO DIỆN VÀ LOGIC TAB 3 CỦA CODE 2 SANG CODE 1 (AIMBOT ROYAL & CUSTOM)
@@ -2445,6 +2442,8 @@ table.insert(StackESP, {
         AddSlider(StackMagic, "MAGIC_HEAD", "MAGIC ĐẦU", 0, 300)
         AddSlider(StackMagic, "MAGIC_BODY", "MAGIC THÂN", 0, 300)
         AddSlider(StackMagic, "MAGIC_LEGS", "MAGIC CHÂN", 0, 300)
+        table.insert(StackMagic, { UI = AliasMap.Title, Text = "PHẦN 2: MAGIC BULLET SMART" })
+        AddToggle(StackMagic, "MAGIC_SMART", "MAGIC BULLET SMART (Dưới 50m - Cỡ 50)")
 
 
 
@@ -3187,167 +3186,7 @@ end
     end)
 end
 
-local ThreatESP_VisCache = {}
 local ThreatESP_FireCache = {}
-
-local function UpdateThreatAssessmentESP(LocalPlayer, PlayerController, MyHUD)
-    if _G.HK_GetVal("THREAT_ESP") ~= 1 then
-        return
-    end
-    
-    if not slua.isValid(LocalPlayer) or not slua.isValid(PlayerController) or not slua.isValid(MyHUD) then return end
-    
-    local curTime = os.clock()
-    local allChars = GameplayData.GetAllPlayerCharacters and GameplayData.GetAllPlayerCharacters() or {}
-    local myTeam = LocalPlayer.TeamID
-    local myLoc = LocalPlayer:K2_GetActorLocation()
-    if not myLoc then return end
-    
-    for _, enemy in pairs(allChars) do
-        if not slua.isValid(enemy) or enemy == LocalPlayer then goto continue_threat end
-        if enemy.TeamID == myTeam then goto continue_threat end
-        
-        local eId = tostring(enemy)
-        
-        -- Check dead
-        local isDead = false
-        pcall(function()
-            if enemy.bIsDead or enemy.bIsDeadFlag then isDead = true end
-            if type(enemy.IsDead) == "function" and enemy:IsDead() then isDead = true end
-        end)
-        if isDead then 
-            ThreatESP_FireCache[eId] = nil
-            goto continue_threat 
-        end
-        
-        -- Khoảng cách check 800m
-        local dist = 0
-        pcall(function() dist = LocalPlayer:GetDistanceTo(enemy) / 100 end)
-        if dist > 800 or dist < 3 then goto continue_threat end
-        
-        -- VisCheck cache 0.1s
-        local isVisible = true
-        local visCacheKey = tostring(enemy)
-        local cached = ThreatESP_VisCache[visCacheKey]
-        if cached and (curTime - cached.time) < 0.1 then
-            isVisible = cached.visible
-        else
-            pcall(function()
-                if slua.isValid(PlayerController) and PlayerController.LineOfSightTo then
-                    isVisible = PlayerController:LineOfSightTo(enemy) and true or false
-                end
-            end)
-            ThreatESP_VisCache[visCacheKey] = { visible = isVisible, time = curTime } 
-        end
-        
-        -- LOGIC PHÁT HIỆN MỐI ĐE DỌA 3 MỨC ĐỘ
-        local threatLevel = 0
-        local eLoc = enemy:K2_GetActorLocation()
-        
-        if eLoc then
-            local toMeX = myLoc.X - eLoc.X
-            local toMeY = myLoc.Y - eLoc.Y
-            local len2D = math.sqrt(toMeX*toMeX + toMeY*toMeY)
-            
-            if len2D > 5 then
-                toMeX = toMeX / len2D
-                toMeY = toMeY / len2D
-                
-                local eRot = nil
-                pcall(function() eRot = enemy:K2_GetActorRotation() end)
-                
-                if eRot then
-                    local yawRad = math.rad(eRot.Yaw)
-                    local fwdX = math.cos(yawRad)
-                    local fwdY = math.sin(yawRad)
-                    local dot = toMeX * fwdX + toMeY * fwdY
-                    
-                    local poseAdjust = 0
-                    pcall(function()
-                        local ESTEPoseState = import("ESTEPoseState")
-                        if enemy.PoseState == ESTEPoseState.Prone then
-                            poseAdjust = -0.05
-                        elseif enemy.PoseState == ESTEPoseState.Crouch then
-                            poseAdjust = -0.02
-                        end
-                    end)
-                    
-                    local thresholdLook = 0.7 + poseAdjust
-                    local thresholdAim = 0.9 + poseAdjust
-                    
-                    local isEnemyADS = false
-                    local isEnemyFiring = false
-                    pcall(function()
-                        isEnemyADS = (enemy.bIsWeaponAiming == true) or (enemy.bIsGunADS == true)
-                        isEnemyFiring = (enemy.bIsWeaponFiring == true)
-                    end)
-                    
-                    if isEnemyFiring then
-                        ThreatESP_FireCache[eId] = curTime
-                    end
-                    local lastFireTime = ThreatESP_FireCache[eId] or 0
-                    local isRecentlyFiring = (curTime - lastFireTime) < 1.0
-                    
-                    if dot > thresholdAim then
-                        if isEnemyADS or isEnemyFiring or isRecentlyFiring then
-                            threatLevel = 3
-                        elseif dot > 0.85 then
-                            threatLevel = 3
-                        else
-                            threatLevel = 2
-                        end
-                    elseif dot > thresholdLook then
-                        if isEnemyADS or isRecentlyFiring then
-                            threatLevel = 2
-                        else
-                            threatLevel = 1
-                        end
-                    end
-                end
-            end
-        end
-        
-        -- HIỂN THỊ TEXT CẢNH BÁO (KHÔNG ĐỔI MÀU MESH)
-        if threatLevel >= 1 and isVisible then
-            if threatLevel == 3 then
-                local threatText = "  ĐANG NGẮM BẮN BẠN "
-                if dist > 200 then
-                    threatText = string.format("  SNIPER NGẮM BẠN [%dm] ", math.floor(dist))
-                end
-                
-                MyHUD:AddDebugText(threatText, enemy, 0.2, 
-                    {X=0, Y=0, Z=130}, {X=0, Y=0, Z=130}, 
-                    {R=255, G=0, B=0, A=255}, true, false, true, nil, 1.0, true)
-                
-            elseif threatLevel == 2 then
-                MyHUD:AddDebugText("  ĐANG AIM VỀ BẠN", enemy, 0.2,
-                    {X=0, Y=0, Z=120}, {X=0, Y=0, Z=120},
-                    {R=255, G=140, B=0, A=255}, true, false, true, nil, 0.9, true)
-                    
-            else
-                MyHUD:AddDebugText("  ĐANG NHÌN VỀ BẠN", enemy, 0.2,
-                    {X=0, Y=0, Z=110}, {X=0, Y=0, Z=110},
-                    {R=255, G=200, B=0, A=255}, true, false, true, nil, 0.7, true)
-            end
-        end
-        
-        ::continue_threat::
-    end
-
-    -- Cleanup FireCache cũ (> 5s)
-    for eId, t in pairs(ThreatESP_FireCache) do
-        if (curTime - t) > 1.5 then
-            ThreatESP_FireCache[eId] = nil
-        end
-    end
-
-    -- Cleanup VisCache cũ (> 3s)
-    for k, v in pairs(ThreatESP_VisCache) do
-        if (curTime - v.time) > 1.0 then
-            ThreatESP_VisCache[k] = nil
-        end
-    end
-end
 
 
 
@@ -3995,38 +3834,8 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                 local realCount = 0
                 local aiCount = 0
 
-                -- [24B] Magic Smart: Quét tìm xem có kẻ địch nào trong phạm vi 50m không
+                -- [24B] Magic Smart: Quét tìm xem có kẻ địch nào trong phạm vi 50m không (đã tối ưu hóa xử lý trực tiếp từng enemy)
                 _G.HK_SmartMagicActive = false
-                if _G.HK_GetVal("MAGIC_SMART") == 1 then
-                    for _, enemy in pairs(allPlayers) do
-                        if Valid(enemy) and enemy ~= LocalPlayer and enemy.TeamID ~= myTeamID then
-                            local isEnemyDead = false
-                            pcall(function()
-                                local isEnemyKnocked = false
-                                if type(enemy.IsNearDeath) == "function" then isEnemyKnocked = enemy:IsNearDeath()
-                                else isEnemyKnocked = enemy.bIsNearDeath or false end
-                                if type(enemy.IsDead) == "function" then isEnemyDead = enemy:IsDead()
-                                else isEnemyDead = enemy.bIsDead or enemy.bIsDeadFlag or false end
-                                if enemy.bHidden or (enemy.Mesh and enemy.Mesh.bHidden) then isEnemyDead = true end
-                            end)
-                            if not isEnemyDead then
-                                local distM = 0
-                                if type(LocalPlayer.GetDistanceTo) == "function" then
-                                    distM = LocalPlayer:GetDistanceTo(enemy) / 100
-                                elseif localPlayerLoc then
-                                    local eLoc = type(enemy.K2_GetActorLocation) == "function" and enemy:K2_GetActorLocation()
-                                    if eLoc then
-                                        distM = math_sqrt((localPlayerLoc.X-eLoc.X)^2 + (localPlayerLoc.Y-eLoc.Y)^2 + (localPlayerLoc.Z-eLoc.Z)^2) / 100
-                                    end
-                                end
-                                if distM > 0 and distM <= 50.0 then
-                                    _G.HK_SmartMagicActive = true
-                                    break
-                                end
-                            end
-                        end
-                    end
-                end
 
                 for _, enemy in pairs(allPlayers) do
                     if Valid(enemy) and enemy ~= LocalPlayer and enemy.TeamID ~= myTeamID then
@@ -4034,46 +3843,43 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                         local isEnemyKnocked = false
                         local currentHp, maxHp = 100, 100
 
-                        -- Gộp các pcall lấy trạng thái thành 1 pcall duy nhất
-                        pcall(function()
-                            if type(enemy.IsNearDeath) == "function" then 
-                                isEnemyKnocked = enemy:IsNearDeath()
-                            else 
-                                isEnemyKnocked = enemy.bIsNearDeath or false 
-                            end
+                        if type(enemy.IsNearDeath) == "function" then 
+                            isEnemyKnocked = enemy:IsNearDeath()
+                        else 
+                            isEnemyKnocked = enemy.bIsNearDeath or false 
+                        end
 
-                            if type(enemy.IsDead) == "function" then 
-                                isEnemyDead = enemy:IsDead()
-                            else 
-                                isEnemyDead = enemy.bIsDead or enemy.bIsDeadFlag or false 
-                            end
+                        if type(enemy.IsDead) == "function" then 
+                            isEnemyDead = enemy:IsDead()
+                        else 
+                            isEnemyDead = enemy.bIsDead or enemy.bIsDeadFlag or false 
+                        end
 
-                            if enemy.bHidden or (enemy.Mesh and enemy.Mesh.bHidden) then 
+                        local eMesh = enemy.Mesh
+                        if enemy.bHidden or (Valid(eMesh) and eMesh.bHidden) then 
+                            isEnemyDead = true 
+                        end
+
+                        if not isEnemyKnocked and not isEnemyDead then
+                            if type(enemy.GetHealth) == "function" then 
+                                currentHp = enemy:GetHealth() or 100
+                            else 
+                                currentHp = enemy.Health or 100 
+                            end
+                            if currentHp <= 0 then 
                                 isEnemyDead = true 
                             end
-
-                            if not isEnemyKnocked and not isEnemyDead then
-                                if type(enemy.GetHealth) == "function" then 
-                                    currentHp = enemy:GetHealth()
-                                else 
-                                    currentHp = enemy.Health or 100 
-                                end
-                                if currentHp <= 0 then 
-                                    isEnemyDead = true 
-                                end
-                            end
-                            
-                            if type(enemy.GetHealthMax) == "function" then 
-                                maxHp = enemy:GetHealthMax()
-                            else 
-                                maxHp = enemy.HealthMax or 100 
-                            end
-                        end)
+                        end
+                        
+                        if type(enemy.GetHealthMax) == "function" then 
+                            maxHp = enemy:GetHealthMax() or 100
+                        else 
+                            maxHp = enemy.HealthMax or 100 
+                        end
                         
                         if not isEnemyDead then
                             if enemy.HK_IsAICached == nil then enemy.HK_IsAICached = CheckIsAI(enemy) end
                             
-                            -- Tính khoảng cách an toàn không dùng pcall
                             local distM = 0
                             if type(LocalPlayer.GetDistanceTo) == "function" then
                                 distM = LocalPlayer:GetDistanceTo(enemy) / 100
@@ -4085,7 +3891,6 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                             end
                        
                             -- TỐI ƯU HÓA: Bộ lọc khoảng cách (Distance Filtering)
-                            -- Nếu địch ở xa > 350m, dọn dẹp một lần các mark/glow rồi bỏ qua hoàn toàn
                             if distM > 350 then
                                 if enemy.WallhackApplied or enemy.bHasTDNativeHPBar or enemy.bHasTDNativeHitmark or enemy.NativeHPBarMark or enemy.NativeDistMark then
                                     pcall(function()
@@ -4285,89 +4090,183 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                                 end
                             end
 
-                            -- TỐI ƯU HÓA: Chỉ kiểm tra Vũ khí/Tư thế và LineOfSight mỗi 0.2 giây
+                            -- TỐI ƯU HÓA: Chỉ kiểm tra Vũ khí/Tư thế và LineOfSight mỗi 0.4 giây
+                            local enemyId = type(enemy.GetUniqueID) == "function" and enemy:GetUniqueID() or tostring(enemy)
                             if espWeaponStance and Valid(MyHUD) and distM <= 250 then
-                                local curTime = os.clock()
-                                if not enemy.HK_LastStanceUpdateTime or currentTickOS > enemy.HK_LastStanceUpdateTime + 0.2 then
+                                if not enemy.HK_LastStanceUpdateTime or currentTickOS > enemy.HK_LastStanceUpdateTime + 0.4 then
                                     enemy.HK_LastStanceUpdateTime = currentTickOS
-                                    pcall(function()
-                                        -- 1. Lấy thông tin vũ khí
-                                        if not enemy.HK_LastWeaponTime or currentTickOS > enemy.HK_LastWeaponTime + 1.5 then
-                                            local eWeapon = nil
-                                            if enemy.CurrentWeapon then eWeapon = enemy.CurrentWeapon
-                                            elseif type(enemy.GetCurrentWeapon) == "function" then eWeapon = enemy:GetCurrentWeapon()
-                                            elseif enemy.WeaponManagerComponent then eWeapon = enemy.WeaponManagerComponent.CurrentWeaponReplicated end
-                                            
-                                            local weaponName = "Tay Không"
-                                            if Valid(eWeapon) and type(eWeapon.GetWeaponName) == "function" then weaponName = eWeapon:GetWeaponName() end
-                                            enemy.HK_CachedWeaponName = tostring(weaponName)
-                                            enemy.HK_LastWeaponTime = currentTickOS
+                                    
+                                    -- 1. Lấy thông tin vũ khí
+                                    if not enemy.HK_LastWeaponTime or currentTickOS > enemy.HK_LastWeaponTime + 1.5 then
+                                        local eWeapon = enemy.CurrentWeapon
+                                        if not Valid(eWeapon) and type(enemy.GetCurrentWeapon) == "function" then
+                                            eWeapon = enemy:GetCurrentWeapon()
                                         end
-
-                                        -- 2. Lấy thông tin Động tác / Tư thế (Stance)
-                                        local ESTEPoseState = import("ESTEPoseState")
-                                        local poseText = "Đứng"
-                                        if enemy.PoseState == ESTEPoseState.Crouch then
-                                            poseText = "Ngồi"
-                                        elseif enemy.PoseState == ESTEPoseState.Prone then
-                                            poseText = "Nằm"
-                                        end
-
-                                        enemy.HK_CachedStanceText = string.format("%s [%s]", enemy.HK_CachedWeaponName or "Tay Không", poseText)
-
-                                        -- 3. Kiểm tra Visibility
-                                        local enemyId = type(enemy.GetUniqueID) == "function" and enemy:GetUniqueID() or tostring(enemy)
-                                        local pc = GameplayData.GetPlayerController()
-                                        _G.AimTouchVisCache = _G.AimTouchVisCache or {}
-                                        if not _G.AimTouchVisCache[enemyId] or (curTime - _G.AimTouchVisCache[enemyId].time) > 0.2 then
-                                            local isHidden = true
-                                            if Valid(pc) then
-                                                pcall(function() if pc:LineOfSightTo(enemy) then isHidden = false end end)
-                                            end
-                                            _G.AimTouchVisCache[enemyId] = { hidden = isHidden, time = curTime }
+                                        if not Valid(eWeapon) and enemy.WeaponManagerComponent then
+                                            eWeapon = enemy.WeaponManagerComponent.CurrentWeaponReplicated
                                         end
                                         
-                                        local textColor = _G.AimTouchVisCache[enemyId].hidden and COLOR_RED or COLOR_GREEN
-                                        if _G.HK_GetVal("THREAT_ESP") == 1 and not _G.AimTouchVisCache[enemyId].hidden and enemy.bIsWeaponFiring == true then
-                                            textColor = {R=255, G=0, B=0, A=255}
+                                        local weaponName = "Tay Không"
+                                        if Valid(eWeapon) and type(eWeapon.GetWeaponName) == "function" then
+                                            weaponName = eWeapon:GetWeaponName() or "Tay Không"
                                         end
-                                        enemy.HK_CachedStanceColor = textColor
-                                    end)
+                                        enemy.HK_CachedWeaponName = tostring(weaponName)
+                                        enemy.HK_LastWeaponTime = currentTickOS
+                                    end
+
+                                    -- 2. Lấy thông tin Động tác / Tư thế (Stance)
+                                    local ESTEPoseState = import("ESTEPoseState")
+                                    local poseText = "Đứng"
+                                    if enemy.PoseState == ESTEPoseState.Crouch then
+                                        poseText = "Ngồi"
+                                    elseif enemy.PoseState == ESTEPoseState.Prone then
+                                        poseText = "Nằm"
+                                    end
+
+                                    enemy.HK_CachedStanceText = string.format("%s [%s]", enemy.HK_CachedWeaponName or "Tay Không", poseText)
+
+                                    -- 3. Kiểm tra Visibility (Tận dụng cache aimbot)
+                                    local isHidden = true
+                                    _G.AimTouchVisCache = _G.AimTouchVisCache or {}
+                                    local cached = _G.AimTouchVisCache[enemyId]
+                                    if cached and (currentTickOS - cached.time) < 0.4 then
+                                        isHidden = cached.hidden
+                                    else
+                                        if Valid(PlayerController) then
+                                            pcall(function() if PlayerController:LineOfSightTo(enemy) then isHidden = false end end)
+                                        end
+                                        _G.AimTouchVisCache[enemyId] = { hidden = isHidden, time = currentTickOS }
+                                    end
+                                    
+                                    local textColor = isHidden and COLOR_RED or COLOR_GREEN
+                                    if _G.HK_GetVal("THREAT_ESP") == 1 and not isHidden and enemy.bIsWeaponFiring == true then
+                                        textColor = {R=255, G=0, B=0, A=255}
+                                    end
+                                    enemy.HK_CachedStanceColor = textColor
                                 end
 
                                 if enemy.HK_CachedStanceText then
                                     local textColor = enemy.HK_CachedStanceColor or COLOR_RED
                                     if _G.HK_GetVal("THREAT_ESP") == 1 and enemy.bIsWeaponFiring == true then
-                                        local flashOn = (math.floor(curTime * 6) % 2 == 0)
+                                        local flashOn = (math_floor(currentTickOS * 6) % 2 == 0)
                                         textColor = flashOn and {R=255, G=0, B=0, A=255} or {R=80, G=0, B=0, A=255}
                                     end
                                     MyHUD:AddDebugText(enemy.HK_CachedStanceText, enemy, 0.5, {X=0, Y=0, Z=-110}, {X=0, Y=0, Z=-110}, textColor, true, false, true, nil, dynamicScale, true)
                                 end
                             end
 
+                            -- TỐI ƯU HÓA: Tích hợp Threat Assessment ESP trực tiếp vào vòng lặp chính
+                            if _G.HK_GetVal("THREAT_ESP") == 1 and distM <= 800 and not isEnemyKnocked then
+                                local isVisible = true
+                                _G.AimTouchVisCache = _G.AimTouchVisCache or {}
+                                local cached = _G.AimTouchVisCache[enemyId]
+                                if cached and (currentTickOS - cached.time) < 0.4 then
+                                    isVisible = not cached.hidden
+                                else
+                                    local isHidden = true
+                                    if Valid(PlayerController) then
+                                        pcall(function() if PlayerController:LineOfSightTo(enemy) then isHidden = false end end)
+                                    end
+                                    _G.AimTouchVisCache[enemyId] = { hidden = isHidden, time = currentTickOS }
+                                    isVisible = not isHidden
+                                end
+
+                                if isVisible then
+                                    local threatLevel = 0
+                                    local eLoc = type(enemy.K2_GetActorLocation) == "function" and enemy:K2_GetActorLocation() or nil
+                                    if eLoc and localPlayerLoc then
+                                        local toMeX = localPlayerLoc.X - eLoc.X
+                                        local toMeY = localPlayerLoc.Y - eLoc.Y
+                                        local len2D = math_sqrt(toMeX*toMeX + toMeY*toMeY)
+                                        
+                                        if len2D > 5 then
+                                            toMeX = toMeX / len2D
+                                            toMeY = toMeY / len2D
+                                            
+                                            local eRot = nil
+                                            pcall(function() eRot = enemy:K2_GetActorRotation() end)
+                                            
+                                            if eRot then
+                                                local yawRad = math.rad(eRot.Yaw)
+                                                local fwdX = math.cos(yawRad)
+                                                local fwdY = math.sin(yawRad)
+                                                local dot = toMeX * fwdX + toMeY * fwdY
+                                                
+                                                local poseAdjust = 0
+                                                local ESTEPoseState = import("ESTEPoseState")
+                                                if enemy.PoseState == ESTEPoseState.Prone then
+                                                    poseAdjust = -0.05
+                                                elseif enemy.PoseState == ESTEPoseState.Crouch then
+                                                    poseAdjust = -0.02
+                                                end
+                                                
+                                                local thresholdLook = 0.7 + poseAdjust
+                                                local thresholdAim = 0.9 + poseAdjust
+                                                
+                                                local isEnemyADS = (enemy.bIsWeaponAiming == true) or (enemy.bIsGunADS == true)
+                                                local isEnemyFiring = (enemy.bIsWeaponFiring == true)
+                                                
+                                                if isEnemyFiring then
+                                                    ThreatESP_FireCache[enemyId] = currentTickOS
+                                                end
+                                                local lastFireTime = ThreatESP_FireCache[enemyId] or 0
+                                                local isRecentlyFiring = (currentTickOS - lastFireTime) < 1.5
+                                                
+                                                if dot > thresholdAim then
+                                                    if isEnemyADS or isEnemyFiring or isRecentlyFiring then
+                                                        threatLevel = 3
+                                                    elseif dot > 0.85 then
+                                                        threatLevel = 3
+                                                    else
+                                                        threatLevel = 2
+                                                    end
+                                                elseif dot > thresholdLook then
+                                                    if isEnemyADS or isRecentlyFiring then
+                                                        threatLevel = 2
+                                                    else
+                                                        threatLevel = 1
+                                                    end
+                                                end
+                                            end
+                                        end
+                                    end
+                                    
+                                    if threatLevel >= 1 and Valid(MyHUD) then
+                                        if threatLevel == 3 then
+                                            local threatText = "  ĐANG NGẮM BẮN BẠN "
+                                            if distM > 200 then
+                                                threatText = string.format("  SNIPER NGẮM BẠN [%dm] ", math_floor(distM))
+                                            end
+                                            MyHUD:AddDebugText(threatText, enemy, 0.2, {X=0, Y=0, Z=130}, {X=0, Y=0, Z=130}, {R=255, G=0, B=0, A=255}, true, false, true, nil, 1.0, true)
+                                        elseif threatLevel == 2 then
+                                            MyHUD:AddDebugText("  ĐANG AIM VỀ BẠN", enemy, 0.2, {X=0, Y=0, Z=120}, {X=0, Y=0, Z=120}, {R=255, G=140, B=0, A=255}, true, false, true, nil, 0.9, true)
+                                        else
+                                            MyHUD:AddDebugText("  ĐANG NHÌN VỀ BẠN", enemy, 0.2, {X=0, Y=0, Z=110}, {X=0, Y=0, Z=110}, {R=255, G=200, B=0, A=255}, true, false, true, nil, 0.7, true)
+                                        end
+                                    end
+                                end
+                            end
+
                             -- [MỚI] LOGIC ESP KHUNG BOX
                             local showFrameUI = (_G.HK_GetVal("ESP_BOX") == 1 or _G.HK_GetVal("EspLoai5") == 1)
                             if showFrameUI then
-                                pcall(function()
-                                    local SecurityCommonUtils = nil
-                                    pcall(function() SecurityCommonUtils = require("GameLua.Mod.BaseMod.Common.Security.SecurityCommonUtils") end)
-                                    local show = true
-                                    if enemy.HealthStatus and SecurityCommonUtils and SecurityCommonUtils.IsHealthStatusAlive then 
-                                        if not SecurityCommonUtils.IsHealthStatusAlive(enemy.HealthStatus) then show = false end
-                                    end
-                                    
-                                    local enemyLoc = type(enemy.K2_GetActorLocation) == "function" and enemy:K2_GetActorLocation() or nil
-                                    if show and enemyLoc and localPlayerLoc then
-                                        local dist2D = math.sqrt((enemyLoc.X - localPlayerLoc.X)^2 + (enemyLoc.Y - localPlayerLoc.Y)^2)
-                                        if enemyLoc.Z >= 150000 or dist2D > 50000 then show = false end
-                                    end
-                                    
-                                    if show then
+                                local show = true
+                                if enemy.HealthStatus and SecurityCommonUtils and SecurityCommonUtils.IsHealthStatusAlive then 
+                                    if not SecurityCommonUtils.IsHealthStatusAlive(enemy.HealthStatus) then show = false end
+                                end
+                                
+                                local enemyLoc = type(enemy.K2_GetActorLocation) == "function" and enemy:K2_GetActorLocation() or nil
+                                if show and enemyLoc and localPlayerLoc then
+                                    local dist2D = math_sqrt((enemyLoc.X - localPlayerLoc.X)^2 + (enemyLoc.Y - localPlayerLoc.Y)^2)
+                                    if enemyLoc.Z >= 150000 or dist2D > 50000 then show = false end
+                                end
+                                
+                                if show then
+                                    pcall(function()
                                         if enemy.Replay_IsEnemyFrameUIExisted and not enemy:Replay_IsEnemyFrameUIExisted() then enemy:Replay_CreateEnemyFrameUI(true, true) end
                                         if enemy.Replay_SetVisiableOfFrameUI then enemy:Replay_SetVisiableOfFrameUI(true) end
                                         
                                         local hpRatio = currentHp / maxHp
-                                        -- TỐI ƯU HÓA: Chỉ cập nhật UI khi tỷ lệ máu thực sự thay đổi
                                         if not enemy.HK_LastHPBoxRatio or enemy.HK_LastHPBoxRatio ~= hpRatio then
                                             enemy.HK_LastHPBoxRatio = hpRatio
                                             if enemy.Replay_UpdateEnemyFrameUI then enemy:Replay_UpdateEnemyFrameUI(hpRatio) end
@@ -4378,15 +4277,17 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                                             if type(uiComp.SetVisibility) == "function" then uiComp:SetVisibility(0) end
                                             if type(uiComp.SetHiddenInGame) == "function" then uiComp:SetHiddenInGame(false) end
                                         end
-                                    else
+                                    end)
+                                else
+                                    pcall(function()
                                         if enemy.Replay_SetVisiableOfFrameUI then enemy:Replay_SetVisiableOfFrameUI(false) end
                                         local uiComp = enemy.EnemyFrameUI or (type(enemy.GetEnemyFrameUI) == "function" and enemy:GetEnemyFrameUI())
                                         if Valid(uiComp) then
                                             if type(uiComp.SetVisibility) == "function" then uiComp:SetVisibility(2) end
                                             if type(uiComp.SetHiddenInGame) == "function" then uiComp:SetHiddenInGame(true) end
                                         end
-                                    end
-                                end)
+                                    end)
+                                end
                             else
                                 pcall(function()
                                     if enemy.Replay_SetVisiableOfFrameUI then enemy:Replay_SetVisiableOfFrameUI(false) end
@@ -4399,11 +4300,17 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                             end
 
                             -- TỐI ƯU HÓA: Giới hạn hitbox mod dưới 200m và áp dụng phân bổ tải (tối đa 1 mod/tick)
-                            local enemyMesh = enemy.Mesh or (enemy.getAvatarComponent2 and enemy:getAvatarComponent2())
+                            local enemyMesh = eMesh or (enemy.getAvatarComponent2 and enemy:getAvatarComponent2())
                             if Valid(enemyMesh) and distM <= 200 then
+                                local isSmartOn = (_G.HK_GetVal("MAGIC_SMART") == 1)
+                                local desiredScaleActive = true
+                                if isSmartOn then
+                                    desiredScaleActive = (distM <= 50.0)
+                                end
+
                                 if not enemyMesh.LastHitboxUpdateVersion 
                                    or enemyMesh.LastHitboxUpdateVersion ~= _G.MagicUpdateVersion 
-                                   or enemyMesh.LastAppliedSmartActive ~= _G.HK_SmartMagicActive then
+                                   or enemyMesh.HK_LastAppliedScaleActive ~= desiredScaleActive then
                                     enemyMesh.bIsTDHitboxModded = false
                                 end
                                 
@@ -4431,114 +4338,103 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                                             local OrigHitboxData = _G.HK_OrigHitboxes[PhysAssetName]
 
                                             if not _G.HK_ModdedPhysAssets then _G.HK_ModdedPhysAssets = {} end
-                                            local isSmartOn = (_G.HK_GetVal("MAGIC_SMART") == 1)
-                                            local lastSmartActive = _G.HK_LastAppliedSmartActive and _G.HK_LastAppliedSmartActive[PhysAssetName]
-                                            local lastVersion = _G.HK_ModdedPhysAssets[PhysAssetName]
-
-                                            if lastVersion ~= _G.MagicUpdateVersion or lastSmartActive ~= _G.HK_SmartMagicActive or (isSmartOn and lastSmartActive == nil) then
-                                                local SkeletalBodySetups = PhysicsAsset.SkeletalBodySetups
-                                                for i = 1, 50 do 
-                                                    local BodySetup = nil
-                                                    pcall(function() BodySetup = type(SkeletalBodySetups.Get) == "function" and SkeletalBodySetups:Get(i-1) or SkeletalBodySetups[i] end)
-                                                    if not BodySetup then break end
+                                            
+                                            local SkeletalBodySetups = PhysicsAsset.SkeletalBodySetups
+                                            for i = 1, 50 do 
+                                                local BodySetup = nil
+                                                pcall(function() BodySetup = type(SkeletalBodySetups.Get) == "function" and SkeletalBodySetups:Get(i-1) or SkeletalBodySetups[i] end)
+                                                if not BodySetup then break end
+                                                
+                                                if Valid(BodySetup) then
+                                                    local LowerBoneName = string_lower(tostring(BodySetup.BoneName))
+                                                    local MatchedBoneKey = nil
+                                                    for k, _ in pairs(BoneScaleMap) do
+                                                        if string_find(LowerBoneName, k, 1, true) then MatchedBoneKey = k break end
+                                                    end
                                                     
-                                                    if Valid(BodySetup) then
-                                                        local LowerBoneName = string_lower(tostring(BodySetup.BoneName))
-                                                        local MatchedBoneKey = nil
-                                                        for k, _ in pairs(BoneScaleMap) do
-                                                            if string_find(LowerBoneName, k, 1, true) then MatchedBoneKey = k break end
+                                                    if MatchedBoneKey then
+                                                        local TargetScale = 1.0
+                                                        if desiredScaleActive then
+                                                            TargetScale = BoneScaleMap[MatchedBoneKey]
+                                                        else
+                                                            TargetScale = 1.0
+                                                        end
+                                                        local AggGeom = BodySetup.AggGeom
+                                                        
+                                                        local BoxElems = AggGeom and AggGeom.BoxElems or BodySetup.BoxElems
+                                                        local SphereElems = AggGeom and AggGeom.SphereElems or BodySetup.SphereElems
+                                                        local SphylElems = AggGeom and AggGeom.SphylElems or BodySetup.SphylElems
+
+                                                        local BoxElem, SphereElem, SphylElem = nil, nil, nil
+                                                        if BoxElems then pcall(function() BoxElem = type(BoxElems.Get) == "function" and BoxElems:Get(0) or BoxElems[1] end) end
+                                                        if SphereElems then pcall(function() SphereElem = type(SphereElems.Get) == "function" and SphereElems:Get(0) or SphereElems[1] end) end
+                                                        if SphylElems then pcall(function() SphylElem = type(SphylElems.Get) == "function" and SphylElems:Get(0) or SphylElems[1] end) end
+
+                                                        if not OrigHitboxData[MatchedBoneKey] then
+                                                            OrigHitboxData[MatchedBoneKey] = { Box = nil, Sphere = nil, Sphyl = nil }
+                                                            if BoxElem then OrigHitboxData[MatchedBoneKey].Box = { X = BoxElem.X, Y = BoxElem.Y, Z = BoxElem.Z } end
+                                                            if SphereElem then OrigHitboxData[MatchedBoneKey].Sphere = { Radius = SphereElem.Radius } end
+                                                            if SphylElem then OrigHitboxData[MatchedBoneKey].Sphyl = { Radius = SphylElem.Radius, Length = SphylElem.Length } end
+                                                        end
+
+                                                        local OrigElemData = OrigHitboxData[MatchedBoneKey]
+
+                                                        if OrigElemData.Box and BoxElem then
+                                                            BoxElem.X = OrigElemData.Box.X * TargetScale
+                                                            BoxElem.Y = OrigElemData.Box.Y * TargetScale
+                                                            BoxElem.Z = OrigElemData.Box.Z * TargetScale
+                                                            pcall(function() 
+                                                                if type(BoxElems.Set) == "function" then BoxElems:Set(0, BoxElem) else BoxElems[1] = BoxElem end 
+                                                            end)
+                                                            if AggGeom then 
+                                                                AggGeom.BoxElems = BoxElems
+                                                                BodySetup.AggGeom = AggGeom 
+                                                            else 
+                                                                BodySetup.BoxElems = BoxElems 
+                                                            end
+                                                        end
+
+                                                        if OrigElemData.Sphere and SphereElem then
+                                                            SphereElem.Radius = OrigElemData.Sphere.Radius * TargetScale
+                                                            pcall(function() 
+                                                                if type(SphereElems.Set) == "function" then SphereElems:Set(0, SphereElem) else SphereElems[1] = SphereElem end 
+                                                            end)
+                                                            if AggGeom then 
+                                                                AggGeom.SphereElems = SphereElems
+                                                                BodySetup.AggGeom = AggGeom 
+                                                            else 
+                                                                BodySetup.SphereElems = SphereElems 
+                                                            end
                                                         end
                                                         
-                                                        if MatchedBoneKey then
-                                                            local TargetScale = 1.0
-                                                            if isSmartOn then
-                                                                if _G.HK_SmartMagicActive then
-                                                                    TargetScale = 1.5
-                                                                else
-                                                                    TargetScale = 1.0
-                                                                end
-                                                            else
-                                                                TargetScale = BoneScaleMap[MatchedBoneKey]
-                                                            end
-                                                            local AggGeom = BodySetup.AggGeom
-                                                            
-                                                            local BoxElems = AggGeom and AggGeom.BoxElems or BodySetup.BoxElems
-                                                            local SphereElems = AggGeom and AggGeom.SphereElems or BodySetup.SphereElems
-                                                            local SphylElems = AggGeom and AggGeom.SphylElems or BodySetup.SphylElems
- 
-                                                            local BoxElem, SphereElem, SphylElem = nil, nil, nil
-                                                            if BoxElems then pcall(function() BoxElem = type(BoxElems.Get) == "function" and BoxElems:Get(0) or BoxElems[1] end) end
-                                                            if SphereElems then pcall(function() SphereElem = type(SphereElems.Get) == "function" and SphereElems:Get(0) or SphereElems[1] end) end
-                                                            if SphylElems then pcall(function() SphylElem = type(SphylElems.Get) == "function" and SphylElems:Get(0) or SphylElems[1] end) end
- 
-                                                            if not OrigHitboxData[MatchedBoneKey] then
-                                                                OrigHitboxData[MatchedBoneKey] = { Box = nil, Sphere = nil, Sphyl = nil }
-                                                                if BoxElem then OrigHitboxData[MatchedBoneKey].Box = { X = BoxElem.X, Y = BoxElem.Y, Z = BoxElem.Z } end
-                                                                if SphereElem then OrigHitboxData[MatchedBoneKey].Sphere = { Radius = SphereElem.Radius } end
-                                                                if SphylElem then OrigHitboxData[MatchedBoneKey].Sphyl = { Radius = SphylElem.Radius, Length = SphylElem.Length } end
-                                                            end
- 
-                                                            local OrigElemData = OrigHitboxData[MatchedBoneKey]
- 
-                                                            if OrigElemData.Box and BoxElem then
-                                                                BoxElem.X = OrigElemData.Box.X * TargetScale
-                                                                BoxElem.Y = OrigElemData.Box.Y * TargetScale
-                                                                BoxElem.Z = OrigElemData.Box.Z * TargetScale
-                                                                pcall(function() 
-                                                                    if type(BoxElems.Set) == "function" then BoxElems:Set(0, BoxElem) else BoxElems[1] = BoxElem end 
-                                                                end)
-                                                                if AggGeom then 
-                                                                    AggGeom.BoxElems = BoxElems
-                                                                    BodySetup.AggGeom = AggGeom 
-                                                                else 
-                                                                    BodySetup.BoxElems = BoxElems 
-                                                                end
-                                                            end
- 
-                                                            if OrigElemData.Sphere and SphereElem then
-                                                                SphereElem.Radius = OrigElemData.Sphere.Radius * TargetScale
-                                                                pcall(function() 
-                                                                    if type(SphereElems.Set) == "function" then SphereElems:Set(0, SphereElem) else SphereElems[1] = SphereElem end 
-                                                                end)
-                                                                if AggGeom then 
-                                                                    AggGeom.SphereElems = SphereElems
-                                                                    BodySetup.AggGeom = AggGeom 
-                                                                else 
-                                                                    BodySetup.SphereElems = SphereElems 
-                                                                end
-                                                            end
-                                                            
-                                                            if OrigElemData.Sphyl and SphylElem then
-                                                                SphylElem.Radius = OrigElemData.Sphyl.Radius * TargetScale
-                                                                SphylElem.Length = OrigElemData.Sphyl.Length * TargetScale
-                                                                pcall(function() 
-                                                                    if type(SphylElems.Set) == "function" and SphylElems.Set then SphylElems:Set(0, SphylElem) else SphylElems[1] = SphylElem end 
-                                                                end)
-                                                                if AggGeom then 
-                                                                    AggGeom.SphylElems = SphylElems
-                                                                    BodySetup.AggGeom = AggGeom 
-                                                                else 
-                                                                    BodySetup.SphylElems = SphylElems 
-                                                                end
+                                                        if OrigElemData.Sphyl and SphylElem then
+                                                            SphylElem.Radius = OrigElemData.Sphyl.Radius * TargetScale
+                                                            SphylElem.Length = OrigElemData.Sphyl.Length * TargetScale
+                                                            pcall(function() 
+                                                                if type(SphylElems.Set) == "function" and SphylElems.Set then SphylElems:Set(0, SphylElem) else SphylElems[1] = SphylElem end 
+                                                            end)
+                                                            if AggGeom then 
+                                                                AggGeom.SphylElems = SphylElems
+                                                                BodySetup.AggGeom = AggGeom 
+                                                            else 
+                                                                BodySetup.SphylElems = SphylElems 
                                                             end
                                                         end
                                                     end
                                                 end
-                                                _G.HK_ModdedPhysAssets[PhysAssetName] = _G.MagicUpdateVersion
-                                                if not _G.HK_LastAppliedSmartActive then _G.HK_LastAppliedSmartActive = {} end
-                                                _G.HK_LastAppliedSmartActive[PhysAssetName] = _G.HK_SmartMagicActive
                                             end
-                                            
-                                            pcall(function() 
-                                                if enemyMesh.SetPhysicsAsset then enemyMesh:SetPhysicsAsset(PhysicsAsset) end
-                                                enemyMesh.PhysicsAssetOverride = PhysicsAsset
-                                                if enemyMesh.RecreatePhysicsState then enemyMesh:RecreatePhysicsState() end 
-                                            end)
+                                            _G.HK_ModdedPhysAssets[PhysAssetName] = _G.MagicUpdateVersion
                                         end
+                                        
+                                        pcall(function() 
+                                            if enemyMesh.SetPhysicsAsset then enemyMesh:SetPhysicsAsset(PhysicsAsset) end
+                                            enemyMesh.PhysicsAssetOverride = PhysicsAsset
+                                            if enemyMesh.RecreatePhysicsState then enemyMesh:RecreatePhysicsState() end 
+                                        end)
                                     end)
                                     enemyMesh.bIsTDHitboxModded = true
                                     enemyMesh.LastHitboxUpdateVersion = _G.MagicUpdateVersion
-                                    enemyMesh.LastAppliedSmartActive = _G.HK_SmartMagicActive
+                                    enemyMesh.HK_LastAppliedScaleActive = desiredScaleActive
                                 end
                             end
                             ::skip_hitbox::
@@ -5086,10 +4982,7 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                     end)
                 end
 
-                -- [NEW] Threat Assessment ESP
-                pcall(function()
-                    UpdateThreatAssessmentESP(LocalPlayer, PlayerController, MyHUD)
-                end)
+                -- Threat Assessment ESP has been integrated directly into the main loop for maximum performance.
                 
                 -- [NEW] Dynamic Ghost Mode
                 pcall(function()
