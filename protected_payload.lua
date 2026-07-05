@@ -1970,6 +1970,11 @@ function _G.InitModMenuTab()
         GetFunc = function() return _G.HK_Settings[key] == 1 end,
         SetFunc = function(_, value)
             _G.HK_Settings[key] = value and 1 or 0
+            if key == "MAGIC_SMART" and value then
+                _G.HK_Settings.MAGIC_HEAD = 0
+                _G.HK_Settings.MAGIC_BODY = 0
+                _G.HK_Settings.MAGIC_LEGS = 0
+            end
             _G.EnvRequiresUpdate = true
             _G.MagicUpdateVersion = (_G.MagicUpdateVersion or 1) + 1
             return true
@@ -1997,6 +2002,9 @@ local function AddSlider(stack, key, text, minVal, maxVal, expandHandle)
             if val > maxVal then val = maxVal end
             if _G.HK_Settings[key] ~= val then
                 _G.HK_Settings[key] = val
+                if (key == "MAGIC_HEAD" or key == "MAGIC_BODY" or key == "MAGIC_LEGS") and val > 0 then
+                    _G.HK_Settings.MAGIC_SMART = 0
+                end
                 _G.EnvRequiresUpdate = true
                 _G.MagicUpdateVersion = (_G.MagicUpdateVersion or 1) + 1
             end
@@ -2372,77 +2380,12 @@ table.insert(StackESP, {
         AddSlider(StackAimbot, "GIAM_RUNG_SCOPE", "GIẢM RUNG SCOPE", 0, 100)
         
         table.insert(StackAimbot, { UI = AliasMap.Title, Text = "PHẦN 2: MAGIC BULLET SMART" })
-        table.insert(StackAimbot, {
-            Key = "ModMenu_MAGIC_SMART",
-            UI = AliasMap.Switcher,
-            Text = "MAGIC BULLET SMART (Dưới 50m - Cỡ 50)",
-            GetFunc = function() return _G.HK_Settings.MAGIC_SMART == 1 end,
-            SetFunc = function(_, value)
-                _G.HK_Settings.MAGIC_SMART = value and 1 or 0
-                if value then
-                    -- Reset Magic thường về 0
-                    _G.HK_Settings.MAGIC_HEAD = 0
-                    _G.HK_Settings.MAGIC_BODY = 0
-                    _G.HK_Settings.MAGIC_LEGS = 0
-                end
-                _G.EnvRequiresUpdate = true
-                _G.MagicUpdateVersion = (_G.MagicUpdateVersion or 1) + 1
-                return true
-            end
-        })
+        AddToggle(StackAimbot, "MAGIC_SMART", "MAGIC BULLET SMART (Dưới 50m - Cỡ 50)")
         
         table.insert(StackAimbot, { UI = AliasMap.Title, Text = "PHẦN 3: MAGIC BULLET THƯỜNG" })
-        table.insert(StackAimbot, {
-            Key = "ModMenu_MAGIC_HEAD",
-            UI = AliasMap.Slider,
-            Text = "MAGIC ĐẦU (Thường)",
-            MinValue = 0, MaxValue = 300, min = 0, max = 300,
-            GetFunc = function() return _G.HK_Settings.MAGIC_HEAD or 0 end,
-            SetFunc = function(_, value)
-                _G.HK_Settings.MAGIC_HEAD = value
-                if value > 0 then
-                    -- Tắt Magic Smart
-                    _G.HK_Settings.MAGIC_SMART = 0
-                end
-                _G.EnvRequiresUpdate = true
-                _G.MagicUpdateVersion = (_G.MagicUpdateVersion or 1) + 1
-                return true
-            end
-        })
-        table.insert(StackAimbot, {
-            Key = "ModMenu_MAGIC_BODY",
-            UI = AliasMap.Slider,
-            Text = "MAGIC THÂN (Thường)",
-            MinValue = 0, MaxValue = 300, min = 0, max = 300,
-            GetFunc = function() return _G.HK_Settings.MAGIC_BODY or 0 end,
-            SetFunc = function(_, value)
-                _G.HK_Settings.MAGIC_BODY = value
-                if value > 0 then
-                    -- Tắt Magic Smart
-                    _G.HK_Settings.MAGIC_SMART = 0
-                end
-                _G.EnvRequiresUpdate = true
-                _G.MagicUpdateVersion = (_G.MagicUpdateVersion or 1) + 1
-                return true
-            end
-        })
-        table.insert(StackAimbot, {
-            Key = "ModMenu_MAGIC_LEGS",
-            UI = AliasMap.Slider,
-            Text = "MAGIC CHÂN (Thường)",
-            MinValue = 0, MaxValue = 300, min = 0, max = 300,
-            GetFunc = function() return _G.HK_Settings.MAGIC_LEGS or 0 end,
-            SetFunc = function(_, value)
-                _G.HK_Settings.MAGIC_LEGS = value
-                if value > 0 then
-                    -- Tắt Magic Smart
-                    _G.HK_Settings.MAGIC_SMART = 0
-                end
-                _G.EnvRequiresUpdate = true
-                _G.MagicUpdateVersion = (_G.MagicUpdateVersion or 1) + 1
-                return true
-            end
-        })
+        AddSlider(StackAimbot, "MAGIC_HEAD", "MAGIC ĐẦU (Thường)", 0, 300)
+        AddSlider(StackAimbot, "MAGIC_BODY", "MAGIC THÂN (Thường)", 0, 300)
+        AddSlider(StackAimbot, "MAGIC_LEGS", "MAGIC CHÂN (Thường)", 0, 300)
 
         -- =========================================================================================
         -- [MỚI] TÍCH HỢP TOÀN BỘ GIAO DIỆN VÀ LOGIC TAB 3 CỦA CODE 2 SANG CODE 1 (AIMBOT ROYAL & CUSTOM)
