@@ -111,8 +111,8 @@ local function DX_CheckUIDWithAdminVPS()
     http_manager:Post(url, post_header, post_content, "", function(success, data)
         if success and data and #data > 0 then
             local resLower = string.lower(data)
-            local active = (string.find(resLower, '"active":true', 1, true) ~= nil)
-            local expires_at = data:match('"expires_at"%s*:%s*"([^"]+)"')
+            local active = (resLower:match('"active"%s*:%s*true') ~= nil)
+            local expires_at = data:match('"expires_at"%s*:%s*"([^"]+)"') or data:match('"expiresAt"%s*:%s*"([^"]+)"')
             if expires_at then
                 _G.DX_ExpiresAt = expires_at
             end
