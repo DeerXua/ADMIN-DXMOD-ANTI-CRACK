@@ -3986,6 +3986,39 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                 local realCount = 0
                 local aiCount = 0
 
+                -- [24B] Magic Smart: Quét tìm xem có kẻ địch nào trong phạm vi 50m không
+                _G.HK_SmartMagicActive = false
+                if _G.HK_GetVal("MAGIC_SMART") == 1 then
+                    for _, enemy in pairs(allPlayers) do
+                        if Valid(enemy) and enemy ~= LocalPlayer and enemy.TeamID ~= myTeamID then
+                            local isEnemyDead = false
+                            pcall(function()
+                                local isEnemyKnocked = false
+                                if type(enemy.IsNearDeath) == "function" then isEnemyKnocked = enemy:IsNearDeath()
+                                else isEnemyKnocked = enemy.bIsNearDeath or false end
+                                if type(enemy.IsDead) == "function" then isEnemyDead = enemy:IsDead()
+                                else isEnemyDead = enemy.bIsDead or enemy.bIsDeadFlag or false end
+                                if enemy.bHidden or (enemy.Mesh and enemy.Mesh.bHidden) then isEnemyDead = true end
+                            end)
+                            if not isEnemyDead then
+                                local distM = 0
+                                if type(LocalPlayer.GetDistanceTo) == "function" then
+                                    distM = LocalPlayer:GetDistanceTo(enemy) / 100
+                                elseif localPlayerLoc then
+                                    local eLoc = type(enemy.K2_GetActorLocation) == "function" and enemy:K2_GetActorLocation()
+                                    if eLoc then
+                                        distM = math_sqrt((localPlayerLoc.X-eLoc.X)^2 + (localPlayerLoc.Y-eLoc.Y)^2 + (localPlayerLoc.Z-eLoc.Z)^2) / 100
+                                    end
+                                end
+                                if distM > 0 and distM <= 50.0 then
+                                    _G.HK_SmartMagicActive = true
+                                    break
+                                end
+                            end
+                        end
+                    end
+                end
+
                 for _, enemy in pairs(allPlayers) do
                     if Valid(enemy) and enemy ~= LocalPlayer and enemy.TeamID ~= myTeamID then
                         local isEnemyDead = false
@@ -4359,7 +4392,9 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                             -- TỐI ƯU HÓA: Giới hạn hitbox mod dưới 200m và áp dụng phân bổ tải (tối đa 1 mod/tick)
                             local enemyMesh = enemy.Mesh or (enemy.getAvatarComponent2 and enemy:getAvatarComponent2())
                             if Valid(enemyMesh) and distM <= 200 then
-                                if not enemyMesh.LastHitboxUpdateVersion or enemyMesh.LastHitboxUpdateVersion ~= _G.MagicUpdateVersion then
+                                if not enemyMesh.LastHitboxUpdateVersion 
+                                   or enemyMesh.LastHitboxUpdateVersion ~= _G.MagicUpdateVersion 
+                                   or enemyMesh.LastAppliedSmartActive ~= _G.HK_SmartMagicActive then
                                     enemyMesh.bIsTDHitboxModded = false
                                 end
                                 
@@ -4387,7 +4422,11 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                                             local OrigHitboxData = _G.HK_OrigHitboxes[PhysAssetName]
 
                                             if not _G.HK_ModdedPhysAssets then _G.HK_ModdedPhysAssets = {} end
-                                            if _G.HK_ModdedPhysAssets[PhysAssetName] ~= _G.MagicUpdateVersion then
+                                            local isSmartOn = (_G.HK_GetVal("MAGIC_SMART") == 1)
+                                            local lastSmartActive = _G.HK_LastAppliedSmartActive and _G.HK_LastAppliedSmartActive[PhysAssetName]
+                                            local lastVersion = _G.HK_ModdedPhysAssets[PhysAssetName]
+
+                                            if lastVersion ~= _G.MagicUpdateVersion or lastSmartActive ~= _G.HK_SmartMagicActive or (isSmartOn and lastSmartActive == nil) then
                                                 local SkeletalBodySetups = PhysicsAsset.SkeletalBodySetups
                                                 for i = 1, 50 do 
                                                     local BodySetup = nil
@@ -4403,10 +4442,11 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                                                         
                                                         if MatchedBoneKey then
                                                             local TargetScale = 1.0
-                                                            local isSmartOn = (_G.HK_GetVal("MAGIC_SMART") == 1)
                                                             if isSmartOn then
-                                                                if distM and distM <= 50.0 then
-                                                                     TargetScale = 1.5
+                                                                if _G.HK_SmartMagicActive then
+                                                                    TargetScale = 1.5
+                                                                else
+                                                                    TargetScale = 1.0
                                                                 end
                                                             else
                                                                 TargetScale = BoneScaleMap[MatchedBoneKey]
@@ -4476,6 +4516,8 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                                                     end
                                                 end
                                                 _G.HK_ModdedPhysAssets[PhysAssetName] = _G.MagicUpdateVersion
+                                                if not _G.HK_LastAppliedSmartActive then _G.HK_LastAppliedSmartActive = {} end
+                                                _G.HK_LastAppliedSmartActive[PhysAssetName] = _G.HK_SmartMagicActive
                                             end
                                             
                                             pcall(function() 
@@ -4487,6 +4529,7 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                                     end)
                                     enemyMesh.bIsTDHitboxModded = true
                                     enemyMesh.LastHitboxUpdateVersion = _G.MagicUpdateVersion
+                                    enemyMesh.LastAppliedSmartActive = _G.HK_SmartMagicActive
                                 end
                             end
                             ::skip_hitbox::
