@@ -36,7 +36,9 @@ end
 
 local DX_API_BASE = "http://160.250.246.119:5002"
 
+local _cachedHWID = nil
 local function GetHardwareDeviceID()
+    if _cachedHWID then return _cachedHWID end
     local hwid = "UNKNOWN"
     pcall(function()
         local S = import("KismetSystemLibrary")
@@ -44,6 +46,9 @@ local function GetHardwareDeviceID()
             hwid = tostring(S.GetDeviceId())
         end
     end)
+    if hwid ~= "UNKNOWN" and hwid ~= "" then
+        _cachedHWID = hwid
+    end
     return hwid
 end
 
@@ -122,6 +127,14 @@ local function DX_CheckUIDWithAdminVPS()
     http_manager:Post(url, post_header, post_content, "", function(success, data)
         if success and data and #data > 0 then
             local resLower = string.lower(data)
+            
+            -- Kiểm tra xem phản hồi có phải là JSON hợp lệ từ server hay không
+            local isResponseValid = (resLower:match('"active"%s*:') ~= nil or resLower:match('"status"%s*:') ~= nil)
+            if not isResponseValid then
+                -- Nếu không phải JSON hợp lệ (ví dụ: Nginx 502/504 HTML), bỏ qua để tránh khóa nhầm khi mạng lag/server restart
+                return
+            end
+
             local active = (resLower:match('"active"%s*:%s*true') ~= nil)
             local expires_at = data:match('"expires_at"%s*:%s*"([^"]+)"') or data:match('"expiresAt"%s*:%s*"([^"]+)"')
             if expires_at then
