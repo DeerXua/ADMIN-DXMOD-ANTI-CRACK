@@ -3517,6 +3517,8 @@ end
 -- =========================== PHẦN 29: BRPLAYERCHARACTERBASE METHODS ===========================
 function BRPlayerCharacterBase:StartAdvancedSystems()
     if not Client then return end
+    local isLocalPlayer = (self.Role == ENetRole.ROLE_AutonomousProxy) or (self.IsLocallyControlled and self:IsLocallyControlled())
+    if not isLocalPlayer then return end
     if self.bAdvancedSystemsStarted then return end
     self.bAdvancedSystemsStarted = true
     
@@ -3571,6 +3573,7 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
         if not Valid(LocalPlayer) then return end
         if self.Object ~= LocalPlayer then
             if aimTimerHandle then self:RemoveGameTimer(aimTimerHandle) end
+            self.bAdvancedSystemsStarted = nil
             return
         end
         if cache_AimTouchEnable == 1 and _G.AimTouch then
@@ -3599,6 +3602,7 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
         if not Valid(LocalPlayer) then return end
         if self.Object ~= LocalPlayer then
             if systemTimerHandle then self:RemoveGameTimer(systemTimerHandle) end
+            self.bAdvancedSystemsStarted = nil
             return
         end
 
@@ -5366,6 +5370,8 @@ function BRPlayerCharacterBase:ReceiveBeginPlay()
     end)
 
     if isLocalPlayer then
+        self:StartAdvancedSystems()
+
         -- [24B] Reset flag để popup thông báo hiện lại cho trận mới
         self.bHasShownHWIDSpooferNotice = false
 
