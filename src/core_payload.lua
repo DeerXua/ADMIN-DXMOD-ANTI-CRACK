@@ -5899,9 +5899,11 @@ local function cache()
         outfitRes = nil, outfitIns = nil,
         vehicleRes = nil, vehicleIns = nil, vehicleBase = nil,
         vehicles = {},
+        vehicleSlots = {},
         weapons = {},
     }
     _G.AddOutfitEquippedCache.vehicles = _G.AddOutfitEquippedCache.vehicles or {}
+    _G.AddOutfitEquippedCache.vehicleSlots = _G.AddOutfitEquippedCache.vehicleSlots or {}
     return _G.AddOutfitEquippedCache
 end
 
@@ -6052,6 +6054,12 @@ local function vehicleSettingKey(baseID)
     return baseID and ("LAST_LOBBY_VEHICLE_" .. baseID) or nil
 end
 
+local function vehicleSlotSettingKey(baseID, slotID)
+    baseID, slotID = tonumber(baseID), tonumber(slotID)
+    if not baseID or not slotID then return nil end
+    return "LAST_LOBBY_VEHICLE_" .. baseID .. "_SLOT_" .. slotID
+end
+
 local function resolveVehicleBaseFromActor(vehicle, avatar)
     if not _G.VehicleSkins then return nil end
     local keys = {}
@@ -6130,7 +6138,7 @@ local function buildVehicleUnlockTables()
     end
 end
 
-local function saveVehicleToCache(resID, insID)
+local function saveVehicleToCache(resID, insID, slotID)
     resID, insID = tonumber(resID), tonumber(insID)
     if not resID or resID <= 0 or not insID or insID <= 0 then return end
     local baseID = vehicleBaseFromSkin(resID)
@@ -6140,6 +6148,11 @@ local function saveVehicleToCache(resID, insID)
     cch.vehicleBase = baseID
     if baseID then
         cch.vehicles[baseID] = { resID = resID, insID = insID }
+        slotID = tonumber(slotID)
+        if slotID and slotID > 0 then
+            cch.vehicleSlots[baseID] = cch.vehicleSlots[baseID] or {}
+            cch.vehicleSlots[baseID][slotID] = { resID = resID, insID = insID }
+        end
     end
     _G.VehicleSkinMap = _G.VehicleSkinMap or {}
     if baseID then
@@ -6149,6 +6162,22 @@ local function saveVehicleToCache(resID, insID)
         _G.HK_Settings.LAST_LOBBY_VEHICLE = resID
         local key = vehicleSettingKey(baseID)
         if key then _G.HK_Settings[key] = resID end
+        local slotKey = vehicleSlotSettingKey(baseID, slotID)
+        if slotKey then _G.HK_Settings[slotKey] = resID end
+        _G.SaveModSettings()
+    end
+end
+
+local function removeVehicleSlotFromCache(baseID, slotID)
+    baseID, slotID = tonumber(baseID), tonumber(slotID)
+    if not baseID or not slotID then return end
+    local cch = cache()
+    if cch.vehicleSlots and cch.vehicleSlots[baseID] then
+        cch.vehicleSlots[baseID][slotID] = nil
+    end
+    if _G.HK_Settings then
+        local slotKey = vehicleSlotSettingKey(baseID, slotID)
+        if slotKey then _G.HK_Settings[slotKey] = 0 end
         _G.SaveModSettings()
     end
 end
@@ -6157,6 +6186,19 @@ local function getEquippedVehicleSkinIns(baseID)
     baseID = tonumber(baseID)
     if not baseID then return 0 end
     local cch = cache()
+    local slots = cch.vehicleSlots and cch.vehicleSlots[baseID]
+    if type(slots) == "table" then
+        local slotIDs = {}
+        for slotID in pairs(slots) do slotIDs[#slotIDs + 1] = tonumber(slotID) or 0 end
+        table.sort(slotIDs)
+        for _, slotID in ipairs(slotIDs) do
+            local item = slots[slotID]
+            local insID = tonumber(item and item.insID)
+            if insID and insID > 0 then return insID end
+            local resID = tonumber(item and item.resID)
+            if resID and R.resToIns[resID] then return R.resToIns[resID] end
+        end
+    end
     local cached = cch.vehicles and cch.vehicles[baseID]
     if cached and tonumber(cached.insID) and tonumber(cached.insID) > 0 then
         return tonumber(cached.insID)
@@ -6197,6 +6239,36 @@ local function primeVehiclePaintButton(baseID)
         end
     end)
     return true
+end
+
+local function getEquippedVehicleSkinSlotList(baseID)
+    baseID = tonumber(baseID)
+    local cch = cache()
+    local out = {}
+    local slots = baseID and cch.vehicleSlots and cch.vehicleSlots[baseID]
+    if type(slots) == "table" then
+        for slotID, item in pairs(slots) do
+            local insID = tonumber(item and item.insID)
+            local resID = tonumber(item and item.resID)
+            if (not insID or insID <= 0) and resID then insID = R.resToIns[resID] end
+            if insID and insID > 0 then out[tonumber(slotID) or (#out + 1)] = insID end
+        end
+    end
+    return out
+end
+
+local function getEquippedVehicleSkinInsBySlot(slotID)
+    slotID = tonumber(slotID)
+    if not slotID then return 0 end
+    local cch = cache()
+    for _, slots in pairs(cch.vehicleSlots or {}) do
+        local item = slots and slots[slotID]
+        local insID = tonumber(item and item.insID)
+        local resID = tonumber(item and item.resID)
+        if (not insID or insID <= 0) and resID then insID = R.resToIns[resID] end
+        if insID and insID > 0 then return insID end
+    end
+    return 0
 end
 
 local function cacheWeaponSkinFromIns(weaponID, insID)
@@ -6490,6 +6562,16 @@ local function persistCurrentLobbySkinsToSettings()
             _G.VehicleSkinMap = _G.VehicleSkinMap or {}
             _G.VehicleSkinMap[tonumber(baseID)] = resID
             changed = true
+        end
+    end
+    for baseID, slots in pairs(cch.vehicleSlots or {}) do
+        for slotID, item in pairs(slots or {}) do
+            local key = vehicleSlotSettingKey(baseID, slotID)
+            local resID = tonumber(item and item.resID)
+            if key and resID and resID > 0 then
+                _G.HK_Settings[key] = resID
+                changed = true
+            end
         end
     end
     if changed then _G.SaveModSettings() end
@@ -6825,7 +6907,7 @@ local function equipLobbyVehicleSkin(insID, slotID)
     local resID = R.insToRes[insID]
     if not resID or not isVehicleSkinRes(resID) then return false end
 
-    saveVehicleToCache(resID, insID)
+    saveVehicleToCache(resID, insID, slotID)
 
     pcall(function()
         local itemCfg = cfg(resID)
@@ -6840,6 +6922,11 @@ local function equipLobbyVehicleSkin(insID, slotID)
             DataMgr.vst_skin = insID
             DataMgr.VehicleSkinMap = DataMgr.VehicleSkinMap or {}
             if baseID then DataMgr.VehicleSkinMap[baseID] = insID end
+            DataMgr.VehicleSkinSlotMap = DataMgr.VehicleSkinSlotMap or {}
+            if baseID and slotID then
+                DataMgr.VehicleSkinSlotMap[baseID] = DataMgr.VehicleSkinSlotMap[baseID] or {}
+                DataMgr.VehicleSkinSlotMap[baseID][tonumber(slotID)] = insID
+            end
         end
     end)
 
@@ -8403,6 +8490,14 @@ local function hookGarageVehicleSlots()
                 if insID and isInjectedIns(insID) and equipLobbyVehicleSkin(insID, slotID) then
                     return
                 end
+                if (not insID or insID <= 0) then
+                    local cch = cache()
+                    for baseID, slots in pairs(cch.vehicleSlots or {}) do
+                        if slots and slots[tonumber(slotID)] then
+                            removeVehicleSlotFromCache(baseID, slotID)
+                        end
+                    end
+                end
                 return oSingle(slotID, itemInstID)
             end
         end
@@ -8426,6 +8521,13 @@ local function hookGarageVehicleSlots()
                     local insID = tonumber(itemInstID)
                     if isInjectedIns(insID) then
                         equipLobbyVehicleSkin(insID, slotID)
+                    elseif not insID or insID <= 0 then
+                        local cch = cache()
+                        for baseID, slots in pairs(cch.vehicleSlots or {}) do
+                            if slots and slots[tonumber(slotID)] then
+                                removeVehicleSlotFromCache(baseID, slotID)
+                            end
+                        end
                     else
                         normalList[slotID] = itemInstID
                     end
@@ -8446,7 +8548,34 @@ local function mergeVehicleSkinList(original, baseID)
             if baseID then break end
         end
     end
-    local extra = _G.VehicleSkinInsList and _G.VehicleSkinInsList[baseID]
+    local extra = {}
+    local cch = cache()
+    local slots = baseID and cch.vehicleSlots and cch.vehicleSlots[baseID]
+    if type(slots) == "table" then
+        local slotIDs = {}
+        for slotID in pairs(slots) do slotIDs[#slotIDs + 1] = tonumber(slotID) or 0 end
+        table.sort(slotIDs)
+        for _, slotID in ipairs(slotIDs) do
+            local item = slots[slotID]
+            local resID = tonumber(item and item.resID)
+            local insID = tonumber(item and item.insID) or (resID and R.resToIns[resID])
+            if resID and insID then
+                extra[#extra + 1] = {
+                    res_id = resID,
+                    resID = resID,
+                    instid = insID,
+                    inst_id = insID,
+                    slot_id = slotID,
+                    is_open = 1,
+                    isOpen = 1,
+                }
+            end
+        end
+    end
+    local allUnlocked = _G.VehicleSkinInsList and _G.VehicleSkinInsList[baseID]
+    for _, row in ipairs(allUnlocked or {}) do
+        extra[#extra + 1] = row
+    end
     if (not extra or #extra == 0) and not baseID then
         extra = {}
         for _, rows in pairs(_G.VehicleSkinInsList or {}) do
@@ -8545,6 +8674,13 @@ local function hookVehicleEquipState()
                     if type(old) == "function" and not obj["HK_" .. name] then
                         obj["HK_" .. name] = old
                         obj[name] = function(self, baseID, ...)
+                            if name:find("List", 1, true) then
+                                local slotList = getEquippedVehicleSkinSlotList(baseID)
+                                if next(slotList) then return slotList end
+                            elseif name:find("Slot", 1, true) then
+                                local slotInsID = getEquippedVehicleSkinInsBySlot(baseID)
+                                if slotInsID and slotInsID > 0 then return slotInsID end
+                            end
                             local insID = getEquippedVehicleSkinIns(baseID)
                             if not insID or insID <= 0 then
                                 insID = getEquippedVehicleSkinIns(self)
@@ -8780,6 +8916,15 @@ restoreLobbySkinsFromSettings = function()
                     cch.vehicles[tonumber(baseID)] = { resID = resID, insID = insID }
                     _G.VehicleSkinMap = _G.VehicleSkinMap or {}
                     _G.VehicleSkinMap[tonumber(baseID)] = resID
+                end
+                for slotID = 1, 10 do
+                    local slotKey = vehicleSlotSettingKey(baseID, slotID)
+                    if slotKey and _G.HK_Settings[slotKey] and _G.HK_Settings[slotKey] > 0 then
+                        local resID = tonumber(_G.HK_Settings[slotKey])
+                        local insID = R.resToIns[resID] or 0
+                        cch.vehicleSlots[tonumber(baseID)] = cch.vehicleSlots[tonumber(baseID)] or {}
+                        cch.vehicleSlots[tonumber(baseID)][slotID] = { resID = resID, insID = insID }
+                    end
                 end
             end
 
