@@ -2005,6 +2005,7 @@ _G.HK_Settings = _G.HK_Settings or {
     AimTouchSniperPred = 50,
 
     UNLOCK_SKIN = 0,
+    LOBBY_SKIN = 0,
     SKIN_SUIT = 0,
     SKIN_SUIT_YELLOW = 0,
     SKIN_SUIT_RED = 0,
@@ -2012,12 +2013,27 @@ _G.HK_Settings = _G.HK_Settings or {
     SKIN_HELMET = 0,
     SKIN_M416 = 0,
     SKIN_AKM = 0,
+    SKIN_M16A4 = 0,
     SKIN_SCAR = 0,
-    SKIN_M762 = 0,
+    SKIN_GROZA = 0,
     SKIN_AUG = 0,
+    SKIN_QB = 0,
+    SKIN_M762 = 0,
+    SKIN_MK47 = 0,
+    SKIN_G36C = 0,
+    SKIN_AWM = 0,
+    SKIN_M24 = 0,
+    SKIN_KAR98 = 0,
+    SKIN_WIN94 = 0,
+    SKIN_MOSIN = 0,
+    SKIN_SKS = 0,
+    SKIN_VSS = 0,
+    SKIN_MINI14 = 0,
+    SKIN_MK14 = 0,
+    SKIN_SLR = 0,
+    SKIN_QBU = 0,
     SKIN_UMP = 0,
     SKIN_UZI = 0,
-    SKIN_GROZA = 0,
     SKIN_S12K = 0,
     SKIN_DBS = 0,
     SKIN_DACIA = 0,
@@ -8610,3 +8626,5 @@ end
 pcall(function()
     start()
 end)
+    end)
+end
