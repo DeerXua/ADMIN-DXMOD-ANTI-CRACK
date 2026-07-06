@@ -6035,17 +6035,24 @@ local function saveEquip(resID, insID)
 
     if getClothKind(resID) == "full_suit" then
         cch.outfitRes, cch.outfitIns = resID, insID
+        cch.topRes, cch.topInsID = nil, nil
+        cch.pantsRes, cch.pantsInsID = nil, nil
+        cch.shoesRes, cch.shoesInsID = nil, nil
         _G.AddOutfitLastLobbyOutfitRes = resID
         invalidateSocialWearCache()
         
         -- Persist to disk
         if _G.HK_Settings then
             _G.HK_Settings.LAST_LOBBY_OUTFIT = resID
+            _G.HK_Settings.LAST_LOBBY_TOP = 0
+            _G.HK_Settings.LAST_LOBBY_PANTS = 0
+            _G.HK_Settings.LAST_LOBBY_SHOES = 0
             _G.SaveModSettings()
         end
-    elseif getClothKind(resID) == "top" then
+    elseif getClothKind(resID) == "top" or st == ST_PANTS or st == ST_SHOES then
         if cch.outfitRes and isFullSuitRes(cch.outfitRes) then
             cch.outfitRes, cch.outfitIns = nil, nil
+            _G.AddOutfitLastLobbyOutfitRes = nil
             invalidateSocialWearCache()
             
             -- Persist to disk
@@ -6200,6 +6207,36 @@ local function syncFashionBagRolewear()
     end)
 end
 
+local function isLobbyResEquipped(resID)
+    resID = tonumber(resID)
+    if not resID then return false end
+    local cch = cache()
+    if tonumber(cch.outfitRes) == resID then return true end
+    if tonumber(cch.topRes) == resID then return true end
+    if tonumber(cch.pantsRes) == resID then return true end
+    if tonumber(cch.shoesRes) == resID then return true end
+    if tonumber(cch.gloveRes) == resID then return true end
+    if tonumber(cch.faceRes) == resID then return true end
+    if type(cch.bagRes) == "table" then
+        for _, v in ipairs(cch.bagRes) do
+            if tonumber(v) == resID then return true end
+        end
+    elseif tonumber(cch.bagRes) == resID then
+        return true
+    end
+    if type(cch.helmetRes) == "table" then
+        for _, v in ipairs(cch.helmetRes) do
+            if tonumber(v) == resID then return true end
+        end
+    elseif tonumber(cch.helmetRes) == resID then
+        return true
+    end
+    for _, w in pairs(cch.weapons or {}) do
+        if tonumber(w.resID) == resID then return true end
+    end
+    return false
+end
+
 local _ticker
 pcall(function() _ticker = require("common.time_ticker") end)
 local function later(sec, fn)
@@ -6349,6 +6386,47 @@ end
 
 local function putOnOutfit(insID)
     putOnCloth(insID)
+end
+
+local function putOnSpecialWear(insID)
+    insID = tonumber(insID)
+    local resID = R.insToRes[insID]
+    if not resID then return false end
+    local itemSt = subType(cfg(resID))
+    if not itemSt then return false end
+
+    local oldIns, oldRes = findWornInsBySubType(itemSt)
+    local clearMap = { [itemSt] = true }
+    removeRoleWearBySubTypes(clearMap)
+    clearFashionBagSlots(clearMap)
+    saveEquip(resID, insID)
+
+    local slot = PKG_SLOT
+    pcall(function()
+        local wfu = require("client.slua.logic.wardrobe.fashionbag.wardrobe_fashion_utils")
+        local idx = wfu.GetRoleWearIndexBySubType and wfu:GetRoleWearIndexBySubType(itemSt)
+        if idx then slot = idx end
+    end)
+
+    local olditem
+    if oldIns and oldIns ~= insID then
+        olditem = { res_id = oldRes or R.insToRes[oldIns], count = 1, instid = oldIns }
+    end
+
+    local WRH = require("client.network.Protocol.WardRobeHandler")
+    local item = { res_id = resID, count = 1, instid = insID }
+    WRH.on_depot_put_on_rsp(NET_OK, item, olditem, slot, insID, oldIns or 0)
+
+    pcall(function()
+        local av = require("client.slua.logic.wardrobe.logic_wardrobe_avatar")
+        av:AddToWearInfo(itemSt, insID, resID, 0, 0)
+        av:AvatarChange(resID, true, 0, 0)
+        av:ProcessTakeOff()
+        syncFashionBagRolewear()
+    end)
+    refreshWardrobe()
+    onSocialWearDirty(true)
+    return true
 end
 
 local function equipWeaponSkin(weaponID, insID)
@@ -7041,7 +7119,8 @@ local function hookPageFilter()
         end
         local o3 = wl.IsCharacterUse
         wl.IsCharacterUse = function(self, resId)
-            if isInjectedRes(resId) then return true end
+            resId = tonumber(resId)
+            if isInjectedRes(resId) then return isLobbyResEquipped(resId) end
             return o3(self, resId)
         end
         local o4 = wl.GetWardrobeInsIdByResId
@@ -7292,6 +7371,68 @@ local function applyLobbyOutfitToMatch(char)
     return ok
 end
 
+local function applyLobbyAvatarSlotsToMatch(char)
+    if _G.HK_GetVal("UNLOCK_SKIN") ~= 1 then return false end
+    if not char or not slua.isValid(char) or not char.AvatarComponent2 then return false end
+
+    local comp = char.AvatarComponent2
+    local data = comp.NetAvatarData
+    local slots = data and data.SlotSyncData
+    if not slots or not slua.isValid(slots) then return false end
+
+    local slotType = _G.CustSlotType or {}
+    local cch = cache()
+    local backpackUtils
+    pcall(function() backpackUtils = import("BackpackUtils") end)
+
+    local function levelItem(mappedSkin, additionalItemID, levelFunc)
+        if type(mappedSkin) ~= "table" then return tonumber(mappedSkin) or 0 end
+        local level = 1
+        if levelFunc then
+            pcall(function() level = tonumber(levelFunc(additionalItemID)) or 1 end)
+        end
+        if level < 1 then level = 1 end
+        if level > 3 then level = 3 end
+        return tonumber(mappedSkin[level] or mappedSkin[1]) or 0
+    end
+
+    local changed = false
+    local function setSlot(slotData, targetSlot, mappedSkin, isLevelDependent, levelFunc)
+        if not targetSlot or not mappedSkin then return false end
+        if not slotData or slotData.SlotID ~= targetSlot then return false end
+        local itemID = mappedSkin
+        if isLevelDependent then
+            itemID = levelItem(mappedSkin, slotData.AdditionalItemID, levelFunc)
+        else
+            itemID = tonumber(itemID) or 0
+        end
+        if itemID <= 0 or slotData.ItemId == itemID then return false end
+        if _G.download_item then pcall(_G.download_item, itemID) end
+        slotData.ItemId = itemID
+        return true
+    end
+
+    for i = 0, slots:Num() - 1 do
+        local slotData = slots:Get(i)
+        local slotChanged = false
+        slotChanged = setSlot(slotData, slotType.ClothesEquipemtSlot, tonumber(cch.outfitRes) or tonumber(cch.topRes) or 0, false) or slotChanged
+        slotChanged = setSlot(slotData, slotType.PantsEquipemtSlot, tonumber(cch.pantsRes) or 0, false) or slotChanged
+        slotChanged = setSlot(slotData, slotType.ShoesEquipemtSlot, tonumber(cch.shoesRes) or 0, false) or slotChanged
+        slotChanged = setSlot(slotData, slotType.FaceEquipemtSlot, tonumber(cch.faceRes) or 0, false) or slotChanged
+        slotChanged = setSlot(slotData, slotType.BackpackEquipemtSlot, cch.bagRes, true, backpackUtils and backpackUtils.GetEquipmentBagLevel) or slotChanged
+        slotChanged = setSlot(slotData, slotType.HelmetEquipemtSlot, cch.helmetRes, true, backpackUtils and backpackUtils.GetEquipmentHelmetLevel) or slotChanged
+        if slotChanged then
+            slots:Set(i, slotData)
+            changed = true
+        end
+    end
+
+    if changed then
+        pcall(function() comp:OnRep_BodySlotStateChanged() end)
+    end
+    return changed
+end
+
 local function getSynMasterSkinID(weapon)
     if not slua.isValid(weapon) then return 0 end
     local id = 0
@@ -7375,6 +7516,7 @@ local function startMatchSkinWatcher(char)
         if not _matchOutfitApplied then
             _matchOutfitApplied = applyLobbyOutfitToMatch(cur)
         end
+        applyLobbyAvatarSlotsToMatch(cur)
         applyLobbyWeaponSkinToMatch(cur)
         if elapsed >= 120 then
             if cur.RemoveGameTimer then pcall(function() cur:RemoveGameTimer(_matchTimer) end) end
@@ -7530,15 +7672,11 @@ local function hookWardrobePutOnReq()
                 if getBagArray(resID) or getHelmetArray(resID) or st == 407 or st == ST_TOP or st == ST_PANTS or st == ST_SHOES or st == 402 or st == 406 then
                     isSpecial = true
                 end
-                if getClothKind(resID) or isSpecial then
-                    if isSpecial then
-                        saveEquip(resID, insID)
-                    else
-                        putOnCloth(insID)
-                    end
-                    local item = { res_id = resID, count = 1, instid = insID }
-                    local WRH = require("client.network.Protocol.WardRobeHandler")
-                    WRH.on_depot_put_on_rsp("ok", item, nil, 0, insID, 0)
+                if getClothKind(resID) then
+                    putOnCloth(insID)
+                    return
+                end
+                if isSpecial and putOnSpecialWear(insID) then
                     return
                 end
                 local item = { res_id = resID, count = 1, instid = insID }
