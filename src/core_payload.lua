@@ -7211,7 +7211,7 @@ local function hookPageFilter()
         local o3 = wl.IsCharacterUse
         wl.IsCharacterUse = function(self, resId)
             resId = tonumber(resId)
-            if isInjectedRes(resId) then return isLobbyResEquipped(resId) end
+            if isInjectedRes(resId) then return true end
             return o3(self, resId)
         end
         local o4 = wl.GetWardrobeInsIdByResId
