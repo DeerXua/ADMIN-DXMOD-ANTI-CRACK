@@ -2258,6 +2258,7 @@ local function AddSlider(stack, key, text, minVal, maxVal, expandHandle)
                 end
                 _G.EnvRequiresUpdate = true
                 _G.MagicUpdateVersion = (_G.MagicUpdateVersion or 1) + 1
+                if _G.SaveModSettings then _G.SaveModSettings() end
             end
             return true
         end
@@ -2766,6 +2767,12 @@ table.insert(StackESP, {
                 return true
             end
         })
+        table.insert(StackUnlockSkin, { UI = AliasMap.Title, Text = "Skin xe trong trận" })
+        AddSlider(StackUnlockSkin, "SKIN_DACIA", "Dacia", 0, 120)
+        AddSlider(StackUnlockSkin, "SKIN_UAZ", "UAZ", 0, 120)
+        AddSlider(StackUnlockSkin, "SKIN_COUPE", "Coupe", 0, 80)
+        AddSlider(StackUnlockSkin, "SKIN_BUGGY", "Buggy", 0, 80)
+        AddSlider(StackUnlockSkin, "SKIN_MIRADO", "Mirado", 0, 40)
         SettingPageDefine.ModMenu = {
             Key = "ModMenu", loc = "VIP MENU", UIKey = "Setting_Page_Privacy", 
             Category = {
@@ -6076,14 +6083,6 @@ local function resolveVehicleBaseFromActor(vehicle, avatar)
     return nil
 end
 
-local function isWeaponAttachmentRes(resID)
-    resID = tonumber(resID)
-    return resID and resID > 0 and (
-        (_G.BaseAttachToIndex and _G.BaseAttachToIndex[resID])
-        or (_G.VipAttachToIndex and _G.VipAttachToIndex[resID])
-    ) ~= nil
-end
-
 local function getInjectItemList()
     if _injectItemList then return _injectItemList end
     local list, seen = {}, {}
@@ -6101,14 +6100,6 @@ local function getInjectItemList()
         addID(baseID)
         for _, skinID in ipairs(skins or {}) do
             addID(skinID)
-        end
-    end
-    for attachID in pairs(_G.BaseAttachToIndex or {}) do
-        addID(attachID)
-    end
-    for _, attachList in pairs(_G.VIP_Attachments or {}) do
-        for _, attachID in ipairs(attachList or {}) do
-            addID(attachID)
         end
     end
     _injectItemList = list
@@ -6143,35 +6134,6 @@ local function buildVehicleUnlockTables()
             _G.VehicleSkinInsList[baseID] = list
         end
     end
-end
-
-local function buildAttachmentUnlockTables()
-    local map, list, seen = {}, {}, {}
-    local function addAttachment(resID)
-        resID = tonumber(resID)
-        local insID = resID and R.resToIns[resID]
-        if not resID or not insID or seen[resID] then return end
-        seen[resID] = true
-        map[resID] = insID
-        list[#list + 1] = {
-            res_id = resID,
-            resID = resID,
-            instid = insID,
-            inst_id = insID,
-            is_open = 1,
-            isOpen = 1,
-        }
-    end
-    for attachID in pairs(_G.BaseAttachToIndex or {}) do
-        addAttachment(attachID)
-    end
-    for _, attachList in pairs(_G.VIP_Attachments or {}) do
-        for _, attachID in ipairs(attachList or {}) do
-            addAttachment(attachID)
-        end
-    end
-    _G.WeaponAttachmentUnlockMap = map
-    _G.WeaponAttachmentUnlockList = list
 end
 
 local function saveVehicleToCache(resID, insID)
@@ -6693,7 +6655,6 @@ local function injectAll(entity)
         end
     end
     buildVehicleUnlockTables()
-    buildAttachmentUnlockTables()
     return n > 0
 end
 
@@ -7545,9 +7506,6 @@ local function hookPageFilter()
             if v and isInjectedRes(v.resID) and isVehicleSkinRes(v.resID, v) then
                 if v.expireTS == 0 or not t or t < v.expireTS then return true end
             end
-            if v and isInjectedRes(v.resID) and isWeaponAttachmentRes(v.resID) then
-                if v.expireTS == 0 or not t or t < v.expireTS then return true end
-            end
             if v and isInjectedRes(v.resID) and mainTab == 1 then
                 if v.expireTS == 0 or not t or t < v.expireTS then
                     local st = v.itemSubType or subType(cfg(v.resID))
@@ -7763,6 +7721,53 @@ local function buildSkinMappings()
     end
 end
 
+local function updateMatchSkinMapsFromSettings()
+    if _G.HK_GetVal("UNLOCK_SKIN") ~= 1 then return end
+    _G.WeaponSkinMap = _G.WeaponSkinMap or {}
+    _G.VehicleSkinMap = _G.VehicleSkinMap or {}
+    buildSkinMappings()
+
+    local weaponsToMap = {
+        {101004, "SKIN_M416"},
+        {101001, "SKIN_AKM"},
+        {101003, "SKIN_SCAR"},
+        {101008, "SKIN_M762"},
+        {101006, "SKIN_AUG"},
+        {102002, "SKIN_UMP"},
+        {102001, "SKIN_UZI"},
+        {101005, "SKIN_GROZA"},
+        {104003, "SKIN_S12K"},
+        {104004, "SKIN_DBS"},
+    }
+    for _, w in ipairs(weaponsToMap) do
+        local wid, key = w[1], w[2]
+        local val = tonumber(_G.HK_GetVal(key)) or 0
+        local skinId = nil
+        if val > 0 and _G.skinIdMappings and _G.skinIdMappings[wid] then
+            skinId = _G.skinIdMappings[wid][val]
+        else
+            local cch = cache()
+            if cch.weapons and cch.weapons[wid] and tonumber(cch.weapons[wid].resID) and tonumber(cch.weapons[wid].resID) > 0 then
+                skinId = tonumber(cch.weapons[wid].resID)
+            end
+        end
+        _G.WeaponSkinMap[wid] = skinId
+    end
+
+    local vehiclesToMap = {
+        {1903001, "SKIN_DACIA"},
+        {1908001, "SKIN_UAZ"},
+        {1961001, "SKIN_COUPE"},
+        {1907001, "SKIN_BUGGY"},
+        {1915001, "SKIN_MIRADO"},
+    }
+    for _, v in ipairs(vehiclesToMap) do
+        local baseID, key = v[1], v[2]
+        local val = tonumber(_G.HK_GetVal(key)) or 0
+        _G.VehicleSkinMap[baseID] = (val > 0 and _G.VehicleSkins and _G.VehicleSkins[baseID] and _G.VehicleSkins[baseID][val]) or nil
+    end
+end
+
 local function get_skin_id(currentGunId, maxIt)
     currentGunId = tonumber(currentGunId) or 0
     maxIt = tonumber(maxIt) or 0
@@ -7949,7 +7954,9 @@ end
 local function applyLobbyWeaponSkinToWeapon(weapon)
     if _G.HK_GetVal("UNLOCK_SKIN") ~= 1 then return false end
     if not slua.isValid(weapon) then return false end
-    buildSkinMappings()
+    _G.skinIdCache = _G.skinIdCache or {}
+    _G.skinIdCache2 = _G.skinIdCache2 or {}
+    updateMatchSkinMapsFromSettings()
 
     local weaponID = 0
     pcall(function()
@@ -7960,55 +7967,104 @@ local function applyLobbyWeaponSkinToWeapon(weapon)
     end)
     if weaponID <= 0 then return false end
 
-    local targetSkin = get_skin_id(weaponID, weaponID)
+    local targetSkin = (_G.WeaponSkinMap and tonumber(_G.WeaponSkinMap[weaponID])) or get_skin_id(weaponID, weaponID)
     targetSkin = tonumber(targetSkin) or 0
     if targetSkin <= 0 or targetSkin == weaponID then return false end
-    if getSynMasterSkinID(weapon) == targetSkin then return true end
 
     local arr = weapon.synData
     if not arr or not slua.isValid(arr) then return false end
     local att = arr:Get(GUN_MASTER_SYN_SLOT)
     if not att then return false end
+    local changed = false
 
-    pcall(function()
-        local ref = slua.IndexReference(att, "defineID")
-        ref.TypeSpecificID = targetSkin
-        arr:Set(GUN_MASTER_SYN_SLOT, att)
-    end)
+    if getSynMasterSkinID(weapon) ~= targetSkin then
+        pcall(function()
+            local ref = slua.IndexReference(att, "defineID")
+            ref.TypeSpecificID = targetSkin
+            arr:Set(GUN_MASTER_SYN_SLOT, att)
+        end)
 
-    pcall(function()
-        if weapon.SetWeaponAvatarID then weapon:SetWeaponAvatarID(targetSkin) end
-    end)
-    pcall(function()
-        if weapon.DelayHandleAvatarMeshChanged then weapon:DelayHandleAvatarMeshChanged() end
-    end)
-    pcall(function()
-        if weapon.OnRep_synData then weapon:OnRep_synData() end
-    end)
-    return true
+        pcall(function()
+            if weapon.SetWeaponAvatarID then weapon:SetWeaponAvatarID(targetSkin) end
+        end)
+        if not _G.skinIdCache[targetSkin] then
+            if _G.download_item then pcall(_G.download_item, targetSkin) end
+            _G.skinIdCache[targetSkin] = true
+        end
+        changed = true
+    end
+
+    if targetSkin >= 10000000 and _G.VIP_Attachments and _G.VIP_Attachments[targetSkin] then
+        for attachIdx = 0, 5 do
+            local attachData = arr:Get(attachIdx)
+            if attachData then
+                pcall(function()
+                    local defineIDRef = slua.IndexReference(attachData, "defineID")
+                    if defineIDRef then
+                        local attachmentId = tonumber(defineIDRef.TypeSpecificID) or 0
+                        local mapIndex = _G.BaseAttachToIndex[attachmentId] or _G.VipAttachToIndex[attachmentId]
+                        local targetAttachId = mapIndex and _G.VIP_Attachments[targetSkin][mapIndex] or 0
+                        targetAttachId = tonumber(targetAttachId) or 0
+                        if targetAttachId > 0 and targetAttachId ~= attachmentId then
+                            defineIDRef.TypeSpecificID = targetAttachId
+                            arr:Set(attachIdx, attachData)
+                            if not _G.skinIdCache2[targetAttachId] then
+                                if _G.download_item then pcall(_G.download_item, targetAttachId) end
+                                _G.skinIdCache2[targetAttachId] = true
+                            end
+                            changed = true
+                        end
+                    end
+                end)
+            end
+        end
+    end
+
+    if changed then
+        pcall(function()
+            if weapon.DelayHandleAvatarMeshChanged then weapon:DelayHandleAvatarMeshChanged() end
+        end)
+        pcall(function()
+            if weapon.OnRep_synData then weapon:OnRep_synData() end
+        end)
+    end
+    return changed
 end
 
 local function applyLobbyWeaponSkinToMatch(char)
     if _G.HK_GetVal("UNLOCK_SKIN") ~= 1 then return false end
     if not char or not slua.isValid(char) then return false end
+    local ok = false
+    pcall(function()
+        local WeaponManager = char.GetWeaponManager and char:GetWeaponManager()
+        if WeaponManager and slua.isValid(WeaponManager) then
+            for slot = 1, 3 do
+                local weapon = WeaponManager.GetInventoryWeaponByPropSlot and WeaponManager:GetInventoryWeaponByPropSlot(slot)
+                ok = applyLobbyWeaponSkinToWeapon(weapon) or ok
+            end
+        end
+    end)
     local weapon = char.GetCurrentWeapon and char:GetCurrentWeapon()
-    return applyLobbyWeaponSkinToWeapon(weapon)
+    ok = applyLobbyWeaponSkinToWeapon(weapon) or ok
+    return ok
 end
+_G.ApplyWeaponSkins = applyLobbyWeaponSkinToMatch
 
 local _lastVehicleEntity = nil
 local _lastVehicleSkin = nil
 
 local function resolveLobbyVehicleSkinRes(vehicle, avatar)
+    updateMatchSkinMapsFromSettings()
     local cch = cache()
     local baseID = resolveVehicleBaseFromActor(vehicle, avatar)
     if baseID then
-        local cached = cch.vehicles and cch.vehicles[baseID]
-        if cached and tonumber(cached.resID) and tonumber(cached.resID) > 0 then
-            return tonumber(cached.resID), baseID, tonumber(cached.insID) or R.resToIns[tonumber(cached.resID)] or 0
-        end
         if _G.VehicleSkinMap and tonumber(_G.VehicleSkinMap[baseID]) and tonumber(_G.VehicleSkinMap[baseID]) > 0 then
             local resID = tonumber(_G.VehicleSkinMap[baseID])
             return resID, baseID, R.resToIns[resID] or 0
+        end
+        local cached = cch.vehicles and cch.vehicles[baseID]
+        if cached and tonumber(cached.resID) and tonumber(cached.resID) > 0 then
+            return tonumber(cached.resID), baseID, tonumber(cached.insID) or R.resToIns[tonumber(cached.resID)] or 0
         end
         local key = vehicleSettingKey(baseID)
         if _G.HK_Settings and key and tonumber(_G.HK_Settings[key] or 0) > 0 then
@@ -8078,6 +8134,7 @@ local function applyLobbyVehicleSkinToMatch(char)
     end
     return ok
 end
+_G.ApplyVehicleSkins = applyLobbyVehicleSkinToMatch
 
 local function applyLobbySkinToMatch(char)
     char = char or getLocalChar()
@@ -8085,6 +8142,7 @@ local function applyLobbySkinToMatch(char)
     restoreLobbySkinsFromSettings()
     syncWeaponCacheFromLobby()
     buildSkinMappings()
+    updateMatchSkinMapsFromSettings()
     local ok = false
     ok = applyLobbyOutfitToMatch(char) or ok
     ok = applyLobbyAvatarSlotsToMatch(char) or ok
@@ -8461,68 +8519,6 @@ local function hookVehicleEquipState()
     end)
 end
 
-local function mergeAttachmentUnlockList(original)
-    buildAttachmentUnlockTables()
-    local extra = _G.WeaponAttachmentUnlockList
-    if not extra or #extra == 0 then return original end
-    local out, seen = {}, {}
-    if type(original) == "table" then
-        for k, v in pairs(original) do
-            out[k] = v
-            local resID = tonumber((type(v) == "table" and (v.res_id or v.resID or v.id or v.skin_id)) or k)
-            if resID then seen[resID] = true end
-        end
-    end
-    local numeric = #out
-    for _, row in ipairs(extra) do
-        local resID = tonumber(row.res_id or row.resID)
-        if resID and not seen[resID] then
-            if type(original) == "table" and original[resID] ~= nil then
-                out[resID] = row
-            else
-                numeric = numeric + 1
-                out[numeric] = row
-            end
-            seen[resID] = true
-        end
-    end
-    return out
-end
-
-local function hookAttachmentUnlockLists()
-    pcall(function()
-        buildAttachmentUnlockTables()
-        local candidates = {}
-        if DataMgr then candidates[#candidates + 1] = DataMgr end
-        local okArm, Arm = pcall(require, "client.logic.armory.logic_armory")
-        if okArm and Arm then candidates[#candidates + 1] = Arm end
-        local okGun, Gun = pcall(require, "client.slua.logic.wardrobe.logic_wardrobe_gun")
-        if okGun and Gun then candidates[#candidates + 1] = Gun end
-        local names = {
-            "GetAttachmentList",
-            "GetWeaponAttachmentList",
-            "GetAttachList",
-            "GetWeaponAttachList",
-            "GetCanUseAttachmentList",
-            "GetAttachmentListByWeaponID",
-            "GetAttachmentSkinList",
-        }
-        for _, obj in ipairs(candidates) do
-            if obj then
-                for _, name in ipairs(names) do
-                    local old = obj[name]
-                    if type(old) == "function" and not obj["HK_" .. name] then
-                        obj["HK_" .. name] = old
-                        obj[name] = function(...)
-                            return mergeAttachmentUnlockList(old(...))
-                        end
-                    end
-                end
-            end
-        end
-    end)
-end
-
 local function hookWardrobePutDownReq()
     pcall(function()
         local wl = require("client.slua.logic.wardrobe.logic_wardrobe_new")
@@ -8782,7 +8778,6 @@ local function start()
     hookGarageVehicleSlots()
     hookVehicleSkinLists()
     hookVehicleEquipState()
-    hookAttachmentUnlockLists()
     hookWardrobePutDownReq()
     hookWeaponSkinPersist()
     hookMatchLobbySkin()
