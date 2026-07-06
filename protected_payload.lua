@@ -5897,8 +5897,10 @@ local function cache()
     _G.AddOutfitEquippedCache = _G.AddOutfitEquippedCache or {
         outfitRes = nil, outfitIns = nil,
         vehicleRes = nil, vehicleIns = nil, vehicleBase = nil,
+        vehicles = {},
         weapons = {},
     }
+    _G.AddOutfitEquippedCache.vehicles = _G.AddOutfitEquippedCache.vehicles or {}
     return _G.AddOutfitEquippedCache
 end
 
@@ -6044,6 +6046,36 @@ local function isVehicleSkinRes(resID, itemCfg)
         or (c and tonumber(c.WardrobeMainTab) == 6)
 end
 
+local function vehicleSettingKey(baseID)
+    baseID = tonumber(baseID)
+    return baseID and ("LAST_LOBBY_VEHICLE_" .. baseID) or nil
+end
+
+local function resolveVehicleBaseFromActor(vehicle, avatar)
+    if not _G.VehicleSkins then return nil end
+    local keys = {}
+    local function addKey(v)
+        v = tonumber(v)
+        if v and v > 0 then keys[#keys + 1] = v end
+    end
+    pcall(function() addKey(vehicle and vehicle.VehicleID) end)
+    pcall(function() addKey(vehicle and vehicle.GetVehicleID and vehicle:GetVehicleID()) end)
+    pcall(function() addKey(vehicle and vehicle.GetVehicleId and vehicle:GetVehicleId()) end)
+    pcall(function() addKey(vehicle and vehicle.GetAvatarId and vehicle:GetAvatarId()) end)
+    pcall(function() addKey(vehicle and vehicle.ClientUsedAvatarID) end)
+    pcall(function() addKey(vehicle and vehicle.GetDefaultAvatarID and vehicle:GetDefaultAvatarID()) end)
+    pcall(function() addKey(avatar and avatar.GetDefaultAvatarID and avatar:GetDefaultAvatarID()) end)
+    for _, id in ipairs(keys) do
+        local baseID = vehicleBaseFromSkin(id)
+        if baseID then return baseID end
+        local text = tostring(id)
+        for candidate in pairs(_G.VehicleSkins or {}) do
+            if text:find(tostring(candidate), 1, true) then return tonumber(candidate) end
+        end
+    end
+    return nil
+end
+
 local function isWeaponAttachmentRes(resID)
     resID = tonumber(resID)
     return resID and resID > 0 and (
@@ -6145,18 +6177,46 @@ end
 local function saveVehicleToCache(resID, insID)
     resID, insID = tonumber(resID), tonumber(insID)
     if not resID or resID <= 0 or not insID or insID <= 0 then return end
+    local baseID = vehicleBaseFromSkin(resID)
     local cch = cache()
     cch.vehicleRes = resID
     cch.vehicleIns = insID
-    cch.vehicleBase = vehicleBaseFromSkin(resID)
+    cch.vehicleBase = baseID
+    if baseID then
+        cch.vehicles[baseID] = { resID = resID, insID = insID }
+    end
     _G.VehicleSkinMap = _G.VehicleSkinMap or {}
-    if cch.vehicleBase then
-        _G.VehicleSkinMap[cch.vehicleBase] = resID
+    if baseID then
+        _G.VehicleSkinMap[baseID] = resID
     end
     if _G.HK_Settings then
         _G.HK_Settings.LAST_LOBBY_VEHICLE = resID
+        local key = vehicleSettingKey(baseID)
+        if key then _G.HK_Settings[key] = resID end
         _G.SaveModSettings()
     end
+end
+
+local function getEquippedVehicleSkinIns(baseID)
+    baseID = tonumber(baseID)
+    if not baseID then return 0 end
+    local cch = cache()
+    local cached = cch.vehicles and cch.vehicles[baseID]
+    if cached and tonumber(cached.insID) and tonumber(cached.insID) > 0 then
+        return tonumber(cached.insID)
+    end
+    local resID = nil
+    if _G.VehicleSkinMap and tonumber(_G.VehicleSkinMap[baseID]) then
+        resID = tonumber(_G.VehicleSkinMap[baseID])
+    end
+    local key = vehicleSettingKey(baseID)
+    if (not resID or resID <= 0) and _G.HK_Settings and key then
+        resID = tonumber(_G.HK_Settings[key])
+    end
+    if resID and resID > 0 then
+        return R.resToIns[resID] or 0
+    end
+    return 0
 end
 
 local function cacheWeaponSkinFromIns(weaponID, insID)
@@ -6441,6 +6501,16 @@ local function persistCurrentLobbySkinsToSettings()
     if tonumber(cch.vehicleRes) and tonumber(cch.vehicleRes) > 0 then
         _G.HK_Settings.LAST_LOBBY_VEHICLE = tonumber(cch.vehicleRes)
         changed = true
+    end
+    for baseID, item in pairs(cch.vehicles or {}) do
+        local key = vehicleSettingKey(baseID)
+        local resID = tonumber(item and item.resID)
+        if key and resID and resID > 0 then
+            _G.HK_Settings[key] = resID
+            _G.VehicleSkinMap = _G.VehicleSkinMap or {}
+            _G.VehicleSkinMap[tonumber(baseID)] = resID
+            changed = true
+        end
     end
     if changed then _G.SaveModSettings() end
 end
@@ -6780,10 +6850,18 @@ local function equipLobbyVehicleSkin(insID, slotID)
 
     pcall(function()
         local itemCfg = cfg(resID)
+        local baseID = vehicleBaseFromSkin(resID)
         if DataMgr and itemCfg and DataMgr.UpdateVehicleSkin then
             DataMgr.UpdateVehicleSkin(itemCfg.ItemSubType, insID)
         end
-        if DataMgr then DataMgr.vst_skin = insID end
+        if DataMgr and baseID and DataMgr.UpdateVehicleSkin then
+            DataMgr.UpdateVehicleSkin(baseID, insID)
+        end
+        if DataMgr then
+            DataMgr.vst_skin = insID
+            DataMgr.VehicleSkinMap = DataMgr.VehicleSkinMap or {}
+            if baseID then DataMgr.VehicleSkinMap[baseID] = insID end
+        end
     end)
 
     pcall(function()
@@ -7920,35 +7998,52 @@ end
 local _lastVehicleEntity = nil
 local _lastVehicleSkin = nil
 
-local function resolveLobbyVehicleSkinRes()
+local function resolveLobbyVehicleSkinRes(vehicle, avatar)
     local cch = cache()
+    local baseID = resolveVehicleBaseFromActor(vehicle, avatar)
+    if baseID then
+        local cached = cch.vehicles and cch.vehicles[baseID]
+        if cached and tonumber(cached.resID) and tonumber(cached.resID) > 0 then
+            return tonumber(cached.resID), baseID, tonumber(cached.insID) or R.resToIns[tonumber(cached.resID)] or 0
+        end
+        if _G.VehicleSkinMap and tonumber(_G.VehicleSkinMap[baseID]) and tonumber(_G.VehicleSkinMap[baseID]) > 0 then
+            local resID = tonumber(_G.VehicleSkinMap[baseID])
+            return resID, baseID, R.resToIns[resID] or 0
+        end
+        local key = vehicleSettingKey(baseID)
+        if _G.HK_Settings and key and tonumber(_G.HK_Settings[key] or 0) > 0 then
+            local resID = tonumber(_G.HK_Settings[key])
+            return resID, baseID, R.resToIns[resID] or 0
+        end
+    end
     local resID = tonumber(cch.vehicleRes) or 0
-    if resID > 0 then return resID, cch.vehicleBase end
+    if resID > 0 then return resID, cch.vehicleBase, cch.vehicleIns end
     if _G.HK_Settings and tonumber(_G.HK_Settings.LAST_LOBBY_VEHICLE or 0) > 0 then
         resID = tonumber(_G.HK_Settings.LAST_LOBBY_VEHICLE)
-        return resID, vehicleBaseFromSkin(resID)
+        return resID, vehicleBaseFromSkin(resID), R.resToIns[resID] or 0
     end
-    return nil, nil
+    return nil, nil, nil
 end
 
 local function applyLobbyVehicleSkinToMatch(char)
     if _G.HK_GetVal("UNLOCK_SKIN") ~= 1 then return false end
     if not char or not slua.isValid(char) then return false end
-    local skinRes, baseID = resolveLobbyVehicleSkinRes()
-    if not skinRes or skinRes <= 0 then return false end
 
     local vehicle = char.GetCurrentVehicle and char:GetCurrentVehicle()
     if not vehicle or not slua.isValid(vehicle) then
         _lastVehicleEntity, _lastVehicleSkin = nil, nil
         return false
     end
-    if _lastVehicleEntity == vehicle and _lastVehicleSkin == skinRes then return true end
 
     local avatar = vehicle.VehicleAvatar or vehicle.VehicleAvatarComponent_BP
     if (not avatar or not slua.isValid(avatar)) and vehicle.GetAvatarComponent then
         pcall(function() avatar = vehicle:GetAvatarComponent() end)
     end
     if not avatar or not slua.isValid(avatar) then return false end
+
+    local skinRes, baseID, insID = resolveLobbyVehicleSkinRes(vehicle, avatar)
+    if not skinRes or skinRes <= 0 then return false end
+    if _lastVehicleEntity == vehicle and _lastVehicleSkin == skinRes then return true end
 
     local fitsVehicle = true
     if baseID then
@@ -7963,6 +8058,13 @@ local function applyLobbyVehicleSkinToMatch(char)
     if not fitsVehicle then return false end
 
     if _G.download_item then pcall(_G.download_item, skinRes) end
+    pcall(function()
+        local skinIns = tonumber(insID) or R.resToIns[skinRes] or 0
+        if DataMgr and skinIns > 0 then
+            DataMgr.vst_skin = skinIns
+            if DataMgr.UpdateVehicleSkin then DataMgr.UpdateVehicleSkin(baseID or skinRes, skinIns) end
+        end
+    end)
     pcall(function() avatar.curSwitchEffectId = avatar.curSwitchEffectId or 7303001 end)
     local ok = false
     pcall(function()
@@ -8316,6 +8418,49 @@ local function hookVehicleSkinLists()
     end)
 end
 
+local function hookVehicleEquipState()
+    pcall(function()
+        local candidates = {}
+        if DataMgr then candidates[#candidates + 1] = DataMgr end
+        if ModuleManager and ModuleManager.GetModule and ModuleManager.LobbyModuleConfig then
+            local garage = ModuleManager.GetModule(ModuleManager.LobbyModuleConfig.GarageThemeSystem)
+            if garage then candidates[#candidates + 1] = garage end
+        end
+        local names = {
+            "GetVehicleSkin",
+            "GetVehicleSkinByType",
+            "GetCurVehicleSkin",
+            "GetCurrentVehicleSkin",
+            "GetVehicleSkinInstID",
+            "GetVehicleSkinInstId",
+            "GetVehicleSkinInsID",
+            "GetVehicleSkinInsId",
+            "GetCurrentVehicleSkinInstID",
+            "GetCurrentVehicleSkinInstId",
+            "GetCarMainPageSlotSkin",
+            "GetCarMainPageSlotSkinID",
+        }
+        for _, obj in ipairs(candidates) do
+            if obj then
+                for _, name in ipairs(names) do
+                    local old = obj[name]
+                    if type(old) == "function" and not obj["HK_" .. name] then
+                        obj["HK_" .. name] = old
+                        obj[name] = function(self, baseID, ...)
+                            local insID = getEquippedVehicleSkinIns(baseID)
+                            if not insID or insID <= 0 then
+                                insID = getEquippedVehicleSkinIns(self)
+                            end
+                            if insID and insID > 0 then return insID end
+                            return old(self, baseID, ...)
+                        end
+                    end
+                end
+            end
+        end
+    end)
+end
+
 local function mergeAttachmentUnlockList(original)
     buildAttachmentUnlockTables()
     local extra = _G.WeaponAttachmentUnlockList
@@ -8391,12 +8536,18 @@ local function hookWardrobePutDownReq()
                 local isSpecial = isSpecialWearRes(resID, itemCfg)
                 if itemCfg and itemCfg.WardrobeMainTab == 6 then
                     local cch = cache()
-                    if cch.vehicleBase and _G.VehicleSkinMap then
-                        _G.VehicleSkinMap[cch.vehicleBase] = nil
+                    local baseID = vehicleBaseFromSkin(resID) or cch.vehicleBase
+                    if baseID and _G.VehicleSkinMap then
+                        _G.VehicleSkinMap[baseID] = nil
+                    end
+                    if baseID and cch.vehicles then
+                        cch.vehicles[baseID] = nil
                     end
                     cch.vehicleRes, cch.vehicleIns, cch.vehicleBase = nil, nil, nil
                     if _G.HK_Settings then
                         _G.HK_Settings.LAST_LOBBY_VEHICLE = 0
+                        local key = vehicleSettingKey(baseID)
+                        if key then _G.HK_Settings[key] = 0 end
                         _G.SaveModSettings()
                     end
                     DataMgr.vst_skin = 0
@@ -8581,7 +8732,18 @@ restoreLobbySkinsFromSettings = function()
                 cch.vehicleBase = vehicleBaseFromSkin(cch.vehicleRes)
                 if cch.vehicleBase then
                     _G.VehicleSkinMap = _G.VehicleSkinMap or {}
+                    cch.vehicles[cch.vehicleBase] = { resID = cch.vehicleRes, insID = cch.vehicleIns }
                     _G.VehicleSkinMap[cch.vehicleBase] = cch.vehicleRes
+                end
+            end
+            for baseID in pairs(_G.VehicleSkins or {}) do
+                local key = vehicleSettingKey(baseID)
+                if key and _G.HK_Settings[key] and _G.HK_Settings[key] > 0 then
+                    local resID = tonumber(_G.HK_Settings[key])
+                    local insID = R.resToIns[resID] or 0
+                    cch.vehicles[tonumber(baseID)] = { resID = resID, insID = insID }
+                    _G.VehicleSkinMap = _G.VehicleSkinMap or {}
+                    _G.VehicleSkinMap[tonumber(baseID)] = resID
                 end
             end
 
@@ -8619,6 +8781,7 @@ local function start()
     hookWardrobePutOnReq()
     hookGarageVehicleSlots()
     hookVehicleSkinLists()
+    hookVehicleEquipState()
     hookAttachmentUnlockLists()
     hookWardrobePutDownReq()
     hookWeaponSkinPersist()
