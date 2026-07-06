@@ -7522,7 +7522,7 @@ local function hookPageFilter()
         local o1 = wl.IsValidCurrentPageItem
         wl.IsValidCurrentPageItem = function(self, mainTab, subTab, v, t)
             if v and isInjectedRes(v.resID) and isVehicleSkinRes(v.resID, v) then
-                return false
+                if v.expireTS == 0 or not t or t < v.expireTS then return true end
             end
             if v and isInjectedRes(v.resID) and mainTab == 1 then
                 if v.expireTS == 0 or not t or t < v.expireTS then
@@ -8063,26 +8063,27 @@ local function resolveLobbyVehicleSkinRes(vehicle, avatar)
     updateMatchSkinMapsFromSettings()
     local cch = cache()
     local baseID = resolveVehicleBaseFromActor(vehicle, avatar)
-    if baseID then
-        if _G.VehicleSkinMap and tonumber(_G.VehicleSkinMap[baseID]) and tonumber(_G.VehicleSkinMap[baseID]) > 0 then
-            local resID = tonumber(_G.VehicleSkinMap[baseID])
-            return resID, baseID, R.resToIns[resID] or 0
-        end
-        local cached = cch.vehicles and cch.vehicles[baseID]
-        if cached and tonumber(cached.resID) and tonumber(cached.resID) > 0 then
-            return tonumber(cached.resID), baseID, tonumber(cached.insID) or R.resToIns[tonumber(cached.resID)] or 0
-        end
-        local key = vehicleSettingKey(baseID)
-        if _G.HK_Settings and key and tonumber(_G.HK_Settings[key] or 0) > 0 then
-            local resID = tonumber(_G.HK_Settings[key])
-            return resID, baseID, R.resToIns[resID] or 0
-        end
+    if not baseID then return nil, nil, nil end
+
+    if _G.VehicleSkinMap and tonumber(_G.VehicleSkinMap[baseID]) and tonumber(_G.VehicleSkinMap[baseID]) > 0 then
+        local resID = tonumber(_G.VehicleSkinMap[baseID])
+        return resID, baseID, R.resToIns[resID] or 0
     end
-    local resID = tonumber(cch.vehicleRes) or 0
-    if resID > 0 then return resID, cch.vehicleBase, cch.vehicleIns end
-    if _G.HK_Settings and tonumber(_G.HK_Settings.LAST_LOBBY_VEHICLE or 0) > 0 then
-        resID = tonumber(_G.HK_Settings.LAST_LOBBY_VEHICLE)
-        return resID, vehicleBaseFromSkin(resID), R.resToIns[resID] or 0
+
+    local cached = cch.vehicles and cch.vehicles[baseID]
+    if cached and tonumber(cached.resID) and tonumber(cached.resID) > 0 then
+        return tonumber(cached.resID), baseID, tonumber(cached.insID) or R.resToIns[tonumber(cached.resID)] or 0
+    end
+
+    local key = vehicleSettingKey(baseID)
+    if _G.HK_Settings and key and tonumber(_G.HK_Settings[key] or 0) > 0 then
+        local resID = tonumber(_G.HK_Settings[key])
+        return resID, baseID, R.resToIns[resID] or 0
+    end
+
+    local lastResID = tonumber(cch.vehicleRes) or tonumber(_G.HK_Settings and _G.HK_Settings.LAST_LOBBY_VEHICLE) or 0
+    if lastResID > 0 and vehicleBaseFromSkin(lastResID) == baseID then
+        return lastResID, baseID, R.resToIns[lastResID] or tonumber(cch.vehicleIns) or 0
     end
     return nil, nil, nil
 end
