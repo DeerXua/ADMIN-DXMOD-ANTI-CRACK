@@ -5879,6 +5879,7 @@ local NET_OK = NetErrorCode_NONE or "ok"
 local R = { insToRes = {}, resToIns = {} }
 local _matchApplied = false
 local _weaponSkinCache = {}
+local _injectItemList = nil
 _G.AddOutfitWeaponSkinCacheEx = _weaponSkinCache
 local function cache()
     _G.AddOutfitEquippedCache = _G.AddOutfitEquippedCache or {
@@ -6029,6 +6030,64 @@ local function isVehicleSkinRes(resID, itemCfg)
     local c = itemCfg or cfg(resID)
     return vehicleBaseFromSkin(resID) ~= nil
         or (c and tonumber(c.WardrobeMainTab) == 6)
+end
+
+local function getInjectItemList()
+    if _injectItemList then return _injectItemList end
+    local list, seen = {}, {}
+    for _, id in ipairs(ITEMS or {}) do
+        id = tonumber(id)
+        if id and id > 0 and not seen[id] then
+            seen[id] = true
+            list[#list + 1] = id
+        end
+    end
+    for baseID, skins in pairs(_G.VehicleSkins or {}) do
+        baseID = tonumber(baseID)
+        if baseID and baseID > 0 and not seen[baseID] then
+            seen[baseID] = true
+            list[#list + 1] = baseID
+        end
+        for _, skinID in ipairs(skins or {}) do
+            skinID = tonumber(skinID)
+            if skinID and skinID > 0 and not seen[skinID] then
+                seen[skinID] = true
+                list[#list + 1] = skinID
+            end
+        end
+    end
+    _injectItemList = list
+    return _injectItemList
+end
+
+local function buildVehicleUnlockTables()
+    _G.VehicleSkinInsMap = _G.VehicleSkinInsMap or {}
+    _G.VehicleSkinInsList = _G.VehicleSkinInsList or {}
+    for baseID, skins in pairs(_G.VehicleSkins or {}) do
+        baseID = tonumber(baseID)
+        if baseID then
+            local map, list = {}, {}
+            local function addVehicleSkin(resID)
+                resID = tonumber(resID)
+                local insID = resID and R.resToIns[resID]
+                if resID and insID then
+                    map[resID] = insID
+                    list[#list + 1] = {
+                        res_id = resID,
+                        resID = resID,
+                        instid = insID,
+                        inst_id = insID,
+                        is_open = 1,
+                        isOpen = 1,
+                    }
+                end
+            end
+            addVehicleSkin(baseID)
+            for _, skinID in ipairs(skins or {}) do addVehicleSkin(skinID) end
+            _G.VehicleSkinInsMap[baseID] = map
+            _G.VehicleSkinInsList[baseID] = list
+        end
+    end
 end
 
 local function saveVehicleToCache(resID, insID)
@@ -6460,7 +6519,7 @@ local function injectAll(entity)
     entity = entity or getEntity()
     if not entity or not entity.bInit then return false end
     local n = 0
-    for i, resID in ipairs(ITEMS) do
+    for i, resID in ipairs(getInjectItemList()) do
         local insID = INS_BASE + i
         if injectOne(entity, resID, insID) then
             n = n + 1
@@ -6470,6 +6529,7 @@ local function injectAll(entity)
             end
         end
     end
+    buildVehicleUnlockTables()
     return n > 0
 end
 
@@ -7310,6 +7370,9 @@ local function hookPageFilter()
         local wl = require("client.slua.logic.wardrobe.logic_wardrobe_new")
         local o1 = wl.IsValidCurrentPageItem
         wl.IsValidCurrentPageItem = function(self, mainTab, subTab, v, t)
+            if v and isInjectedRes(v.resID) and isVehicleSkinRes(v.resID, v) then
+                if v.expireTS == 0 or not t or t < v.expireTS then return true end
+            end
             if v and isInjectedRes(v.resID) and mainTab == 1 then
                 if v.expireTS == 0 or not t or t < v.expireTS then
                     local st = v.itemSubType or subType(cfg(v.resID))
@@ -8092,6 +8155,70 @@ local function hookGarageVehicleSlots()
     end)
 end
 
+local function mergeVehicleSkinList(original, baseID)
+    buildVehicleUnlockTables()
+    local extra = _G.VehicleSkinInsList and _G.VehicleSkinInsList[tonumber(baseID)]
+    if not extra or #extra == 0 then return original end
+    local out, seen = {}, {}
+    if type(original) == "table" then
+        for k, v in pairs(original) do
+            out[k] = v
+            local resID = tonumber((type(v) == "table" and (v.res_id or v.resID or v.id or v.skin_id)) or k)
+            if resID then seen[resID] = true end
+        end
+    end
+    local numeric = #out
+    for _, row in ipairs(extra) do
+        local resID = tonumber(row.res_id or row.resID)
+        if resID and not seen[resID] then
+            if type(original) == "table" and original[resID] ~= nil then
+                out[resID] = row
+            else
+                numeric = numeric + 1
+                out[numeric] = row
+            end
+            seen[resID] = true
+        end
+    end
+    return out
+end
+
+local function hookVehicleSkinLists()
+    pcall(function()
+        buildVehicleUnlockTables()
+
+        local candidates = {}
+        if DataMgr then candidates[#candidates + 1] = DataMgr end
+        if ModuleManager and ModuleManager.GetModule and ModuleManager.LobbyModuleConfig then
+            local garage = ModuleManager.GetModule(ModuleManager.LobbyModuleConfig.GarageThemeSystem)
+            if garage then candidates[#candidates + 1] = garage end
+        end
+        local names = {
+            "GetVehicleSkinList",
+            "GetVehicleSkinListByType",
+            "GetVehicleSkinListBySubType",
+            "GetSportscarSkinList",
+            "GetCarSkinList",
+            "GetVehicleSkinDataList",
+        }
+        for _, obj in ipairs(candidates) do
+            if obj then
+                for _, name in ipairs(names) do
+                    local old = obj[name]
+                    if type(old) == "function" and not obj["HK_" .. name] then
+                        obj["HK_" .. name] = old
+                        obj[name] = function(self, baseID, ...)
+                            local ret = old(self, baseID, ...)
+                            local realBaseID = tonumber(baseID) or tonumber(self)
+                            return mergeVehicleSkinList(ret, realBaseID)
+                        end
+                    end
+                end
+            end
+        end
+    end)
+end
+
 local function hookWardrobePutDownReq()
     pcall(function()
         local wl = require("client.slua.logic.wardrobe.logic_wardrobe_new")
@@ -8331,6 +8458,7 @@ local function start()
     hookLobbySwipePersistence()
     hookWardrobePutOnReq()
     hookGarageVehicleSlots()
+    hookVehicleSkinLists()
     hookWardrobePutDownReq()
     hookWeaponSkinPersist()
     hookMatchLobbySkin()
