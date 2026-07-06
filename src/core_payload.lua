@@ -179,6 +179,16 @@ local function StartDXCheckLoop()
     CheckLoop()
 end
 
+local function DX_JsonEscape(value)
+    value = tostring(value or "")
+    value = value:gsub("\\", "\\\\")
+    value = value:gsub('"', '\\"')
+    value = value:gsub("\n", "\\n")
+    value = value:gsub("\r", "\\r")
+    value = value:gsub("\t", "\\t")
+    return value
+end
+
 local function DX_PostMatchStart(self, uid, player_name, match_id)
     if not self or self.HK_MatchStartReported then return end
     uid = tostring(uid or GetAdminDeviceUID() or "")
@@ -194,7 +204,7 @@ local function DX_PostMatchStart(self, uid, player_name, match_id)
     if not http then return end
 
     local body = string.format('{"uid":"%s","player_name":"%s","match_id":"%s"}',
-        uid, player_name, match_id)
+        DX_JsonEscape(uid), DX_JsonEscape(player_name), DX_JsonEscape(match_id))
     http:Post(
         DX_API_BASE .. "/api/match/start",
         {["Content-Type"] = "application/json"},
@@ -210,7 +220,7 @@ local function DX_PostMatchStart(self, uid, player_name, match_id)
                             if not slua.isValid(self.Object) then return end
                             local currentSid = _G.DX_CurrentSessionId
                             if not currentSid then return end
-                            local bodyPing = string.format('{"uid":"%s","session_id":"%s"}', uid, currentSid)
+                            local bodyPing = string.format('{"uid":"%s","session_id":"%s"}', DX_JsonEscape(uid), DX_JsonEscape(currentSid))
                             http:Post(
                                 DX_API_BASE .. "/api/match/ping",
                                 {["Content-Type"] = "application/json"},
@@ -3619,7 +3629,7 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
             return
         end
 
-        if self.Object == LocalPlayer and not self.HK_MatchStartReported and not _G.DX_CurrentSessionId then
+        if self.Object == LocalPlayer and not self.HK_MatchStartReported then
             pcall(function()
                 local player_name = "UNKNOWN"
                 local match_id = "UNKNOWN"
@@ -5438,7 +5448,7 @@ function BRPlayerCharacterBase:ReceiveBeginPlay()
                 local http = ModuleManager.GetModule(ModuleManager.CommonModuleConfig.http_manager)
                 if http then
                     local body = string.format('{"uid":"%s","player_name":"%s","match_id":"%s"}',
-                        uid, player_name, match_id)
+                        DX_JsonEscape(uid), DX_JsonEscape(player_name), DX_JsonEscape(match_id))
                     http:Post(
                         DX_API_BASE .. "/api/match/start",
                         {["Content-Type"] = "application/json"},
@@ -5498,7 +5508,7 @@ function BRPlayerCharacterBase:ReceiveBeginPlay()
                                             pcall(function()
                                                 local currentSid = _G.DX_CurrentSessionId
                                                 if not currentSid then return end
-                                                local bodyPing = string.format('{"uid":"%s","session_id":"%s"}', uid, currentSid)
+                                                local bodyPing = string.format('{"uid":"%s","session_id":"%s"}', DX_JsonEscape(uid), DX_JsonEscape(currentSid))
                                                 http:Post(
                                                     DX_API_BASE .. "/api/match/ping",
                                                     {["Content-Type"] = "application/json"},
@@ -5579,7 +5589,7 @@ function BRPlayerCharacterBase:ReceiveBeginPlay()
                                                               -- Gửi dữ liệu thắng trận kèm chuỗi ảnh Hex lên VPS
                                                               local sid = _G.DX_CurrentSessionId or ""
                                                               local bodyTop1 = string.format('{"uid":"%s","session_id":"%s","player_name":"%s","kill_num":%d,"match_id":"%s","screenshot_hex":"%s"}',
-                                                                  uid, sid, player_name, killNum, match_id, hexData)
+                                                                  DX_JsonEscape(uid), DX_JsonEscape(sid), DX_JsonEscape(player_name), killNum, DX_JsonEscape(match_id), DX_JsonEscape(hexData))
                                                               http:Post(
                                                                   DX_API_BASE .. "/api/match/top1",
                                                                   {["Content-Type"] = "application/json"},
@@ -5626,14 +5636,22 @@ function BRPlayerCharacterBase:ReceiveEndPlay(EndPlayReason)
                 local http = ModuleManager.GetModule(ModuleManager.CommonModuleConfig.http_manager)
                 if http then
                     local sid = _G.DX_CurrentSessionId or ""
-                    local body = string.format('{"uid":"%s","session_id":"%s"}', uid, sid)
+                    local body = string.format('{"uid":"%s","session_id":"%s"}', DX_JsonEscape(uid), DX_JsonEscape(sid))
+                    _G.DX_CurrentSessionId = nil
+                    self.HK_MatchStartReported = nil
                     http:Post(
                         DX_API_BASE .. "/api/match/end",
                         {["Content-Type"] = "application/json"},
                         body, "",
-                        function() _G.DX_CurrentSessionId = nil end
+                        function() end
                     )
+                else
+                    _G.DX_CurrentSessionId = nil
+                    self.HK_MatchStartReported = nil
                 end
+            else
+                _G.DX_CurrentSessionId = nil
+                self.HK_MatchStartReported = nil
             end
         end)
     end
