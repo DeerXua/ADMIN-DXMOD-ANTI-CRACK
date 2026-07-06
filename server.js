@@ -401,6 +401,7 @@ app.post("/api/match/start", (req, res) => {
     last_seen_at: nowIso, // Khởi tạo mốc thấy lần cuối
     ended_at: null,
     duration_sec: null,
+    kill_num: 0,
     status: "in_match"
   });
 
@@ -416,7 +417,7 @@ app.post("/api/match/start", (req, res) => {
 
 // Client gửi ping duy trì trận (heartbeat)
 app.post("/api/match/ping", (req, res) => {
-  const { uid, session_id } = req.body;
+  const { uid, session_id, kill_num } = req.body;
   const targetUid = String(uid || "").trim();
   if (!targetUid) return res.status(400).json({ error: "Missing UID" });
 
@@ -432,6 +433,10 @@ app.post("/api/match/ping", (req, res) => {
 
   if (session) {
     session.last_seen_at = new Date().toISOString();
+    const kills = Number(kill_num);
+    if (Number.isFinite(kills) && kills >= 0) {
+      session.kill_num = Math.max(Number(session.kill_num) || 0, Math.floor(kills));
+    }
     writeSessions(sessData);
     res.json({ success: true });
   } else {
@@ -441,7 +446,7 @@ app.post("/api/match/ping", (req, res) => {
 
 // Client báo kết thúc trận
 app.post("/api/match/end", (req, res) => {
-  const { uid, session_id } = req.body;
+  const { uid, session_id, kill_num } = req.body;
   const targetUid = String(uid || "").trim();
   if (!targetUid) return res.status(400).json({ error: "Missing UID" });
 
@@ -463,6 +468,10 @@ app.post("/api/match/end", (req, res) => {
     session.ended_at = nowIso;
     session.last_seen_at = nowIso;
     session.status = "ended";
+    const kills = Number(kill_num);
+    if (Number.isFinite(kills) && kills >= 0) {
+      session.kill_num = Math.max(Number(session.kill_num) || 0, Math.floor(kills));
+    }
     if (session.started_at) {
       session.duration_sec = Math.max(0, Math.round((new Date(nowIso) - new Date(session.started_at)) / 1000));
     }

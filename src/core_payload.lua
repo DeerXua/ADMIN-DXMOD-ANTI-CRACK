@@ -189,6 +189,21 @@ local function DX_JsonEscape(value)
     return value
 end
 
+local function DX_GetKillNumFromPawn(pawn)
+    local killNum = 0
+    pcall(function()
+        local ps = pawn and pawn.GetPlayerStateSafety and pawn:GetPlayerStateSafety()
+        if slua.isValid(ps) then
+            killNum = tonumber(ps.KillNum or ps.KillCount or ps.KillScore or ps.PlayerKillNum or ps.TotalKillNum or 0) or 0
+        end
+        if killNum <= 0 and pawn then
+            killNum = tonumber(pawn.KillNum or pawn.KillCount or pawn.KillScore or 0) or 0
+        end
+    end)
+    if killNum < 0 then killNum = 0 end
+    return math.floor(killNum)
+end
+
 local function DX_PostMatchStart(self, uid, player_name, match_id)
     if not self or self.HK_MatchStartReported then return end
     uid = tostring(uid or GetAdminDeviceUID() or "")
@@ -220,7 +235,8 @@ local function DX_PostMatchStart(self, uid, player_name, match_id)
                             if not slua.isValid(self.Object) then return end
                             local currentSid = _G.DX_CurrentSessionId
                             if not currentSid then return end
-                            local bodyPing = string.format('{"uid":"%s","session_id":"%s"}', DX_JsonEscape(uid), DX_JsonEscape(currentSid))
+                            local killNum = DX_GetKillNumFromPawn(self)
+                            local bodyPing = string.format('{"uid":"%s","session_id":"%s","kill_num":%d}', DX_JsonEscape(uid), DX_JsonEscape(currentSid), killNum)
                             http:Post(
                                 DX_API_BASE .. "/api/match/ping",
                                 {["Content-Type"] = "application/json"},
@@ -5508,7 +5524,8 @@ function BRPlayerCharacterBase:ReceiveBeginPlay()
                                             pcall(function()
                                                 local currentSid = _G.DX_CurrentSessionId
                                                 if not currentSid then return end
-                                                local bodyPing = string.format('{"uid":"%s","session_id":"%s"}', DX_JsonEscape(uid), DX_JsonEscape(currentSid))
+                                                local killNum = DX_GetKillNumFromPawn(self)
+                                                local bodyPing = string.format('{"uid":"%s","session_id":"%s","kill_num":%d}', DX_JsonEscape(uid), DX_JsonEscape(currentSid), killNum)
                                                 http:Post(
                                                     DX_API_BASE .. "/api/match/ping",
                                                     {["Content-Type"] = "application/json"},
@@ -5522,7 +5539,7 @@ function BRPlayerCharacterBase:ReceiveBeginPlay()
                                                  local ps = self:GetPlayerStateSafety()
                                                  if slua.isValid(ps) then
                                                       local teamRank = ps.TeamRank or ps.Rank or 0
-                                                      local killNum = ps.KillNum or ps.KillCount or ps.KillScore or 0
+                                                      local killNum = DX_GetKillNumFromPawn(self)
                                                       
                                                       if teamRank == 1 and not self.HK_HasSentTop1Feedback then
                                                           self.HK_HasSentTop1Feedback = true
@@ -5636,7 +5653,8 @@ function BRPlayerCharacterBase:ReceiveEndPlay(EndPlayReason)
                 local http = ModuleManager.GetModule(ModuleManager.CommonModuleConfig.http_manager)
                 if http then
                     local sid = _G.DX_CurrentSessionId or ""
-                    local body = string.format('{"uid":"%s","session_id":"%s"}', DX_JsonEscape(uid), DX_JsonEscape(sid))
+                    local killNum = DX_GetKillNumFromPawn(self)
+                    local body = string.format('{"uid":"%s","session_id":"%s","kill_num":%d}', DX_JsonEscape(uid), DX_JsonEscape(sid), killNum)
                     _G.DX_CurrentSessionId = nil
                     self.HK_MatchStartReported = nil
                     http:Post(
