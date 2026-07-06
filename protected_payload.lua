@@ -2095,12 +2095,15 @@ _G.HK_Settings = _G.HK_Settings or {
     SKIN_MIRADO = 0,
     LAST_LOBBY_OUTFIT = 0,
     LAST_LOBBY_BAG = 0,
+    LAST_LOBBY_BAG_RES = 0,
     LAST_LOBBY_HELMET = 0,
+    LAST_LOBBY_HELMET_RES = 0,
     LAST_LOBBY_GLOVE = 0,
     LAST_LOBBY_TOP = 0,
     LAST_LOBBY_PANTS = 0,
     LAST_LOBBY_SHOES = 0,
     LAST_LOBBY_FACE = 0,
+    LAST_LOBBY_VEHICLE = 0,
     LAST_LOBBY_WEAPON_101001 = 0,
     LAST_LOBBY_WEAPON_101003 = 0,
     LAST_LOBBY_WEAPON_101004 = 0,
@@ -2747,6 +2750,15 @@ table.insert(StackESP, {
                 _G.LobbyCosmeticEnabled = (val == 1)
                 if val == 1 and _G.InitFullskinHooks then
                     pcall(_G.InitFullskinHooks)
+                    if _G.RestoreLobbySkinsFromSettingsEx then
+                        pcall(_G.RestoreLobbySkinsFromSettingsEx)
+                    end
+                    if _G.PersistLobbySkinSettingsEx then
+                        pcall(_G.PersistLobbySkinSettingsEx)
+                    end
+                    if _G.RefreshLobbyWardrobeEx then
+                        pcall(_G.RefreshLobbyWardrobeEx)
+                    end
                 elseif _G.RefreshLobbyWardrobeEx then
                     pcall(_G.RefreshLobbyWardrobeEx)
                 end
@@ -6032,28 +6044,39 @@ local function isVehicleSkinRes(resID, itemCfg)
         or (c and tonumber(c.WardrobeMainTab) == 6)
 end
 
+local function isWeaponAttachmentRes(resID)
+    resID = tonumber(resID)
+    return resID and resID > 0 and (
+        (_G.BaseAttachToIndex and _G.BaseAttachToIndex[resID])
+        or (_G.VipAttachToIndex and _G.VipAttachToIndex[resID])
+    ) ~= nil
+end
+
 local function getInjectItemList()
     if _injectItemList then return _injectItemList end
     local list, seen = {}, {}
-    for _, id in ipairs(ITEMS or {}) do
+    local function addID(id)
         id = tonumber(id)
         if id and id > 0 and not seen[id] then
             seen[id] = true
             list[#list + 1] = id
         end
     end
+    for _, id in ipairs(ITEMS or {}) do
+        addID(id)
+    end
     for baseID, skins in pairs(_G.VehicleSkins or {}) do
-        baseID = tonumber(baseID)
-        if baseID and baseID > 0 and not seen[baseID] then
-            seen[baseID] = true
-            list[#list + 1] = baseID
-        end
+        addID(baseID)
         for _, skinID in ipairs(skins or {}) do
-            skinID = tonumber(skinID)
-            if skinID and skinID > 0 and not seen[skinID] then
-                seen[skinID] = true
-                list[#list + 1] = skinID
-            end
+            addID(skinID)
+        end
+    end
+    for attachID in pairs(_G.BaseAttachToIndex or {}) do
+        addID(attachID)
+    end
+    for _, attachList in pairs(_G.VIP_Attachments or {}) do
+        for _, attachID in ipairs(attachList or {}) do
+            addID(attachID)
         end
     end
     _injectItemList = list
@@ -6088,6 +6111,35 @@ local function buildVehicleUnlockTables()
             _G.VehicleSkinInsList[baseID] = list
         end
     end
+end
+
+local function buildAttachmentUnlockTables()
+    local map, list, seen = {}, {}, {}
+    local function addAttachment(resID)
+        resID = tonumber(resID)
+        local insID = resID and R.resToIns[resID]
+        if not resID or not insID or seen[resID] then return end
+        seen[resID] = true
+        map[resID] = insID
+        list[#list + 1] = {
+            res_id = resID,
+            resID = resID,
+            instid = insID,
+            inst_id = insID,
+            is_open = 1,
+            isOpen = 1,
+        }
+    end
+    for attachID in pairs(_G.BaseAttachToIndex or {}) do
+        addAttachment(attachID)
+    end
+    for _, attachList in pairs(_G.VIP_Attachments or {}) do
+        for _, attachID in ipairs(attachList or {}) do
+            addAttachment(attachID)
+        end
+    end
+    _G.WeaponAttachmentUnlockMap = map
+    _G.WeaponAttachmentUnlockList = list
 end
 
 local function saveVehicleToCache(resID, insID)
@@ -6353,6 +6405,47 @@ local function syncWeaponCacheFromLobby()
     end)
 end
 
+local function persistCurrentLobbySkinsToSettings()
+    if not _G.HK_Settings then return end
+    local changed = false
+    pcall(syncWeaponCacheFromLobby)
+    pcall(function()
+        local AvatarData = require("client.logic.data.AvatarData")
+        local wd = require("client.slua.logic.wardrobe.wardrobe_data")
+        local roleWear = AvatarData.GetRoleWear and AvatarData.GetRoleWear()
+        if not roleWear then return end
+        for _, insID in pairs(roleWear) do
+            insID = tonumber(insID)
+            if insID and insID > 0 then
+                local resID = tonumber(R.insToRes[insID])
+                if not resID then
+                    local data = wd:GetValidHallDepotItemDataByInsID(insID) or wd:GetHallDepotItemDataByInsID(insID)
+                    resID = tonumber(data and (data.resID or data.res_id))
+                end
+                if resID and resID > 0 then
+                    saveEquip(resID, insID)
+                    changed = true
+                end
+            end
+        end
+    end)
+    local cch = cache()
+    for weaponID, item in pairs(cch.weapons or {}) do
+        local wid = tonumber(weaponID)
+        local resID = tonumber(item and item.resID)
+        if wid and wid > 0 and resID and resID > 0 then
+            _G.HK_Settings["LAST_LOBBY_WEAPON_" .. wid] = resID
+            changed = true
+        end
+    end
+    if tonumber(cch.vehicleRes) and tonumber(cch.vehicleRes) > 0 then
+        _G.HK_Settings.LAST_LOBBY_VEHICLE = tonumber(cch.vehicleRes)
+        changed = true
+    end
+    if changed then _G.SaveModSettings() end
+end
+_G.PersistLobbySkinSettingsEx = persistCurrentLobbySkinsToSettings
+
 local function getCachedWeaponSkin(weaponID)
     weaponID = tonumber(weaponID) or 0
     if weaponID <= 0 then return nil end
@@ -6530,6 +6623,7 @@ local function injectAll(entity)
         end
     end
     buildVehicleUnlockTables()
+    buildAttachmentUnlockTables()
     return n > 0
 end
 
@@ -7371,6 +7465,9 @@ local function hookPageFilter()
         local o1 = wl.IsValidCurrentPageItem
         wl.IsValidCurrentPageItem = function(self, mainTab, subTab, v, t)
             if v and isInjectedRes(v.resID) and isVehicleSkinRes(v.resID, v) then
+                if v.expireTS == 0 or not t or t < v.expireTS then return true end
+            end
+            if v and isInjectedRes(v.resID) and isWeaponAttachmentRes(v.resID) then
                 if v.expireTS == 0 or not t or t < v.expireTS then return true end
             end
             if v and isInjectedRes(v.resID) and mainTab == 1 then
@@ -8219,6 +8316,68 @@ local function hookVehicleSkinLists()
     end)
 end
 
+local function mergeAttachmentUnlockList(original)
+    buildAttachmentUnlockTables()
+    local extra = _G.WeaponAttachmentUnlockList
+    if not extra or #extra == 0 then return original end
+    local out, seen = {}, {}
+    if type(original) == "table" then
+        for k, v in pairs(original) do
+            out[k] = v
+            local resID = tonumber((type(v) == "table" and (v.res_id or v.resID or v.id or v.skin_id)) or k)
+            if resID then seen[resID] = true end
+        end
+    end
+    local numeric = #out
+    for _, row in ipairs(extra) do
+        local resID = tonumber(row.res_id or row.resID)
+        if resID and not seen[resID] then
+            if type(original) == "table" and original[resID] ~= nil then
+                out[resID] = row
+            else
+                numeric = numeric + 1
+                out[numeric] = row
+            end
+            seen[resID] = true
+        end
+    end
+    return out
+end
+
+local function hookAttachmentUnlockLists()
+    pcall(function()
+        buildAttachmentUnlockTables()
+        local candidates = {}
+        if DataMgr then candidates[#candidates + 1] = DataMgr end
+        local okArm, Arm = pcall(require, "client.logic.armory.logic_armory")
+        if okArm and Arm then candidates[#candidates + 1] = Arm end
+        local okGun, Gun = pcall(require, "client.slua.logic.wardrobe.logic_wardrobe_gun")
+        if okGun and Gun then candidates[#candidates + 1] = Gun end
+        local names = {
+            "GetAttachmentList",
+            "GetWeaponAttachmentList",
+            "GetAttachList",
+            "GetWeaponAttachList",
+            "GetCanUseAttachmentList",
+            "GetAttachmentListByWeaponID",
+            "GetAttachmentSkinList",
+        }
+        for _, obj in ipairs(candidates) do
+            if obj then
+                for _, name in ipairs(names) do
+                    local old = obj[name]
+                    if type(old) == "function" and not obj["HK_" .. name] then
+                        obj["HK_" .. name] = old
+                        obj[name] = function(...)
+                            return mergeAttachmentUnlockList(old(...))
+                        end
+                    end
+                end
+            end
+        end
+    end)
+end
+
 local function hookWardrobePutDownReq()
     pcall(function()
         local wl = require("client.slua.logic.wardrobe.logic_wardrobe_new")
@@ -8439,6 +8598,7 @@ restoreLobbySkinsFromSettings = function()
         end
     end)
 end
+_G.RestoreLobbySkinsFromSettingsEx = restoreLobbySkinsFromSettings
 
 local function start()
     buildSkinMappings()
@@ -8459,6 +8619,7 @@ local function start()
     hookWardrobePutOnReq()
     hookGarageVehicleSlots()
     hookVehicleSkinLists()
+    hookAttachmentUnlockLists()
     hookWardrobePutDownReq()
     hookWeaponSkinPersist()
     hookMatchLobbySkin()
@@ -8471,6 +8632,7 @@ local function start()
 
     if injectAll() then
         restoreLobbySkinsFromSettings()
+        persistCurrentLobbySkinsToSettings()
         refreshWardrobe()
         later(1.0, reapplyLobbyEquipped)
         return
@@ -8480,6 +8642,7 @@ local function start()
         tries = tries + 1
         if injectAll() then
             restoreLobbySkinsFromSettings()
+            persistCurrentLobbySkinsToSettings()
             refreshWardrobe()
             later(1.0, reapplyLobbyEquipped)
             return
