@@ -2767,12 +2767,6 @@ table.insert(StackESP, {
                 return true
             end
         })
-        table.insert(StackUnlockSkin, { UI = AliasMap.Title, Text = "Skin xe trong trận" })
-        AddSlider(StackUnlockSkin, "SKIN_DACIA", "Dacia", 0, 120)
-        AddSlider(StackUnlockSkin, "SKIN_UAZ", "UAZ", 0, 120)
-        AddSlider(StackUnlockSkin, "SKIN_COUPE", "Coupe", 0, 80)
-        AddSlider(StackUnlockSkin, "SKIN_BUGGY", "Buggy", 0, 80)
-        AddSlider(StackUnlockSkin, "SKIN_MIRADO", "Mirado", 0, 40)
         SettingPageDefine.ModMenu = {
             Key = "ModMenu", loc = "VIP MENU", UIKey = "Setting_Page_Privacy", 
             Category = {
@@ -6178,7 +6172,31 @@ local function getEquippedVehicleSkinIns(baseID)
     if resID and resID > 0 then
         return R.resToIns[resID] or 0
     end
+    local skins = _G.VehicleSkins and _G.VehicleSkins[baseID]
+    if type(skins) == "table" then
+        for _, skinRes in ipairs(skins) do
+            skinRes = tonumber(skinRes)
+            local insID = skinRes and R.resToIns[skinRes]
+            if insID and insID > 0 then return insID end
+        end
+    end
     return 0
+end
+
+local function primeVehiclePaintButton(baseID)
+    baseID = tonumber(baseID)
+    if not baseID then return false end
+    local insID = getEquippedVehicleSkinIns(baseID)
+    if not insID or insID <= 0 then return false end
+    pcall(function()
+        if DataMgr then
+            DataMgr.vst_skin = insID
+            DataMgr.VehicleSkinMap = DataMgr.VehicleSkinMap or {}
+            DataMgr.VehicleSkinMap[baseID] = insID
+            if DataMgr.UpdateVehicleSkin then DataMgr.UpdateVehicleSkin(baseID, insID) end
+        end
+    end)
+    return true
 end
 
 local function cacheWeaponSkinFromIns(weaponID, insID)
@@ -7504,7 +7522,7 @@ local function hookPageFilter()
         local o1 = wl.IsValidCurrentPageItem
         wl.IsValidCurrentPageItem = function(self, mainTab, subTab, v, t)
             if v and isInjectedRes(v.resID) and isVehicleSkinRes(v.resID, v) then
-                if v.expireTS == 0 or not t or t < v.expireTS then return true end
+                return false
             end
             if v and isInjectedRes(v.resID) and mainTab == 1 then
                 if v.expireTS == 0 or not t or t < v.expireTS then
@@ -7754,18 +7772,6 @@ local function updateMatchSkinMapsFromSettings()
         _G.WeaponSkinMap[wid] = skinId
     end
 
-    local vehiclesToMap = {
-        {1903001, "SKIN_DACIA"},
-        {1908001, "SKIN_UAZ"},
-        {1961001, "SKIN_COUPE"},
-        {1907001, "SKIN_BUGGY"},
-        {1915001, "SKIN_MIRADO"},
-    }
-    for _, v in ipairs(vehiclesToMap) do
-        local baseID, key = v[1], v[2]
-        local val = tonumber(_G.HK_GetVal(key)) or 0
-        _G.VehicleSkinMap[baseID] = (val > 0 and _G.VehicleSkins and _G.VehicleSkins[baseID] and _G.VehicleSkins[baseID][val]) or nil
-    end
 end
 
 local function get_skin_id(currentGunId, maxIt)
@@ -8098,7 +8104,11 @@ local function applyLobbyVehicleSkinToMatch(char)
     if not avatar or not slua.isValid(avatar) then return false end
 
     local skinRes, baseID, insID = resolveLobbyVehicleSkinRes(vehicle, avatar)
-    if not skinRes or skinRes <= 0 then return false end
+    if not skinRes or skinRes <= 0 then
+        local currentBaseID = resolveVehicleBaseFromActor(vehicle, avatar)
+        if currentBaseID then primeVehiclePaintButton(currentBaseID) end
+        return false
+    end
     if _lastVehicleEntity == vehicle and _lastVehicleSkin == skinRes then return true end
 
     local fitsVehicle = true
@@ -8229,6 +8239,19 @@ local function hookMatchLobbySkin()
                 VAC.__inner_impl.ChangeItemAvatar = function(self, avatarID, ...)
                     local ret = oChange(self, avatarID, ...)
                     pcall(function()
+                        local selectedSkin = tonumber(avatarID) or 0
+                        if selectedSkin > 0 and isVehicleSkinRes(selectedSkin) then
+                            local vehicle = nil
+                            pcall(function()
+                                if self.GetOwner then vehicle = self:GetOwner() end
+                            end)
+                            local baseID = resolveVehicleBaseFromActor(vehicle, self) or vehicleBaseFromSkin(selectedSkin)
+                            local insID = R.resToIns[selectedSkin] or getEquippedVehicleSkinIns(baseID)
+                            if baseID and insID and insID > 0 then
+                                saveVehicleToCache(selectedSkin, insID)
+                                primeVehiclePaintButton(baseID)
+                            end
+                        end
                         local char = getLocalChar()
                         if char and char.AddGameTimer then
                             char:AddGameTimer(0.2, false, function()
@@ -8414,7 +8437,23 @@ end
 
 local function mergeVehicleSkinList(original, baseID)
     buildVehicleUnlockTables()
-    local extra = _G.VehicleSkinInsList and _G.VehicleSkinInsList[tonumber(baseID)]
+    baseID = tonumber(baseID)
+    if not baseID and type(original) == "table" then
+        for k, v in pairs(original) do
+            local resID = tonumber((type(v) == "table" and (v.res_id or v.resID or v.id or v.skin_id)) or k)
+            baseID = vehicleBaseFromSkin(resID)
+            if baseID then break end
+        end
+    end
+    local extra = _G.VehicleSkinInsList and _G.VehicleSkinInsList[baseID]
+    if (not extra or #extra == 0) and not baseID then
+        extra = {}
+        for _, rows in pairs(_G.VehicleSkinInsList or {}) do
+            for _, row in ipairs(rows or {}) do
+                extra[#extra + 1] = row
+            end
+        end
+    end
     if not extra or #extra == 0 then return original end
     local out, seen = {}, {}
     if type(original) == "table" then
