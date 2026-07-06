@@ -3536,6 +3536,7 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
     end)
 
     local systemTimerHandle
+    local matchSkinSyncTicks = 0
     systemTimerHandle = self:AddGameTimer(0.25, true, function()
         if not Valid(self.Object) then
             if systemTimerHandle then self:RemoveGameTimer(systemTimerHandle) end
@@ -3551,6 +3552,13 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
         cache_AimTouchEnable = _G.HK_GetVal("AimTouchEnable") or 0
         cache_AUTO_BUNNYHOP = _G.HK_GetVal("AUTO_BUNNYHOP") or 0
+
+        if self.Object == LocalPlayer and _G.HK_ApplyLobbySkinToMatch then
+            matchSkinSyncTicks = matchSkinSyncTicks + 1
+            if matchSkinSyncTicks <= 240 and (matchSkinSyncTicks % 4) == 0 then
+                pcall(_G.HK_ApplyLobbySkinToMatch, LocalPlayer)
+            end
+        end
 
 
 
@@ -5959,6 +5967,13 @@ local function getHelmetArray(resID)
     return nil
 end
 
+local function isSpecialWearRes(resID, itemCfg)
+    local st = subType(itemCfg or cfg(resID))
+    return getBagArray(resID) or getHelmetArray(resID)
+        or st == 407 or st == ST_TOP or st == ST_PANTS or st == ST_SHOES
+        or st == 402 or st == 406
+end
+
 local function saveEquip(resID, insID)
     resID, insID = tonumber(resID), tonumber(insID)
     if not resID or not insID then return end
@@ -7209,6 +7224,9 @@ local function hookPutOn()
                     putOnCloth(insID)
                     return
                 end
+                if isSpecialWearRes(resID, c) and putOnSpecialWear(insID) then
+                    return
+                end
                 if GUN_SUB[st] then
                     local wid = weaponIdFromSkin(resID)
                     if wid then equipWeaponSkin(wid, insID) end
@@ -7260,7 +7278,8 @@ local function hookAvatarValid()
         if comp and comp.CheckItemValid then
             local o = comp.CheckItemValid
             comp.CheckItemValid = function(self, resID)
-                if isInjectedRes(resID) then return true end
+                local id = tonumber(resID)
+                if isInjectedRes(id) or isInjectedIns(id) then return true end
                 return o(self, resID)
             end
         end
@@ -7292,6 +7311,8 @@ end
 
 _G.AddOutfitSkinIdMappings = _G.AddOutfitSkinIdMappings or {}
 _G.AddOutfitLastAppliedSkin = _G.AddOutfitLastAppliedSkin or {}
+
+local restoreLobbySkinsFromSettings
 
 local function buildSkinMappings()
     syncWeaponCacheFromLobby()
@@ -7346,12 +7367,30 @@ local function getLobbyOutfitForMatch()
     return nil
 end
 
+local function getAvatarComp2(char, needSlotData)
+    if not char or not slua.isValid(char) then return nil end
+    local comp
+    if needSlotData then
+        comp = char.AvatarComponent2
+        if comp and slua.isValid(comp) and comp.NetAvatarData and comp.NetAvatarData.SlotSyncData then return comp end
+    end
+    comp = char.CharacterAvatarComp2_BP
+    if comp and slua.isValid(comp) then return comp end
+    comp = char.AvatarComponent2
+    if comp and slua.isValid(comp) then return comp end
+    pcall(function()
+        if char.getAvatarComponent2 then comp = char:getAvatarComponent2() end
+    end)
+    if comp and slua.isValid(comp) then return comp end
+    return nil
+end
+
 local function applyLobbyOutfitToMatch(char)
     if _G.HK_GetVal("UNLOCK_SKIN") ~= 1 then return false end
     local outfitRes = getLobbyOutfitForMatch()
     if not outfitRes or outfitRes <= 0 then return false end
-    local comp = char and (char.CharacterAvatarComp2_BP or char.AvatarComponent2)
-    if not slua.isValid(comp) then return false end
+    local comp = getAvatarComp2(char, false)
+    if not comp then return false end
 
     local ok = false
     pcall(function()
@@ -7373,9 +7412,9 @@ end
 
 local function applyLobbyAvatarSlotsToMatch(char)
     if _G.HK_GetVal("UNLOCK_SKIN") ~= 1 then return false end
-    if not char or not slua.isValid(char) or not char.AvatarComponent2 then return false end
+    local comp = getAvatarComp2(char, true)
+    if not comp then return false end
 
-    local comp = char.AvatarComponent2
     local data = comp.NetAvatarData
     local slots = data and data.SlotSyncData
     if not slots or not slua.isValid(slots) then return false end
@@ -7497,6 +7536,21 @@ local function applyLobbyWeaponSkinToMatch(char)
     return applyLobbyWeaponSkinToWeapon(weapon)
 end
 
+local function applyLobbySkinToMatch(char)
+    char = char or getLocalChar()
+    if not char or not slua.isValid(char) then return false end
+    restoreLobbySkinsFromSettings()
+    syncWeaponCacheFromLobby()
+    buildSkinMappings()
+    local ok = false
+    ok = applyLobbyOutfitToMatch(char) or ok
+    ok = applyLobbyAvatarSlotsToMatch(char) or ok
+    ok = applyLobbyWeaponSkinToMatch(char) or ok
+    return ok
+end
+
+_G.HK_ApplyLobbySkinToMatch = applyLobbySkinToMatch
+
 local _matchTimer = nil
 local _matchOutfitApplied = false
 
@@ -7516,8 +7570,7 @@ local function startMatchSkinWatcher(char)
         if not _matchOutfitApplied then
             _matchOutfitApplied = applyLobbyOutfitToMatch(cur)
         end
-        applyLobbyAvatarSlotsToMatch(cur)
-        applyLobbyWeaponSkinToMatch(cur)
+        applyLobbySkinToMatch(cur)
         if elapsed >= 120 then
             if cur.RemoveGameTimer then pcall(function() cur:RemoveGameTimer(_matchTimer) end) end
             _matchTimer = nil
@@ -7668,10 +7721,7 @@ local function hookWardrobePutOnReq()
                 local resID = R.insToRes[insID]
                 local itemCfg = cfg(resID)
                 local st = subType(itemCfg)
-                local isSpecial = false
-                if getBagArray(resID) or getHelmetArray(resID) or st == 407 or st == ST_TOP or st == ST_PANTS or st == ST_SHOES or st == 402 or st == 406 then
-                    isSpecial = true
-                end
+                local isSpecial = isSpecialWearRes(resID, itemCfg)
                 if getClothKind(resID) then
                     putOnCloth(insID)
                     return
@@ -7707,10 +7757,7 @@ local function hookWardrobePutDownReq()
                 local resID = R.insToRes[insID]
                 local itemCfg = cfg(resID)
                 local st = subType(itemCfg)
-                local isSpecial = false
-                if getBagArray(resID) or getHelmetArray(resID) or st == 407 or st == ST_TOP or st == ST_PANTS or st == ST_SHOES or st == 402 or st == 406 then
-                    isSpecial = true
-                end
+                local isSpecial = isSpecialWearRes(resID, itemCfg)
                 if itemCfg and itemCfg.WardrobeMainTab == 6 then
                     DataMgr.vst_skin = 0
                     local HallThemeUtils = require("client.logic.lobby.hall_theme_utils")
@@ -7807,7 +7854,7 @@ local function hookWeaponSkinPersist()
     end)
 end
 
-local function restoreLobbySkinsFromSettings()
+restoreLobbySkinsFromSettings = function()
     pcall(function()
         if _G.HK_Settings then
             local cch = cache()
