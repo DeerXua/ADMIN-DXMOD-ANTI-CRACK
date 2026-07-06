@@ -109,9 +109,15 @@ local function GetDeviceUID()
     return uid
 end
 
+local function GetAdminDeviceUID()
+    local uid = GetHardwareDeviceID()
+    if uid and uid ~= "UNKNOWN" and uid ~= "" then return uid end
+    return GetDeviceUID()
+end
+
 -- Vòng lặp kiểm tra bản quyền định kỳ
 local function DX_CheckUIDWithAdminVPS()
-    local uid = GetHardwareDeviceID()
+    local uid = GetAdminDeviceUID()
     if not uid or uid == "UNKNOWN" or uid == "" then return end
 
     local ModuleManager = package.loaded["client.module_framework.ModuleManager"] or require("client.module_framework.ModuleManager")
@@ -171,6 +177,52 @@ local function StartDXCheckLoop()
         end
     end
     CheckLoop()
+end
+
+local function DX_PostMatchStart(self, uid, player_name, match_id)
+    if not self or self.HK_MatchStartReported then return end
+    uid = tostring(uid or GetAdminDeviceUID() or "")
+    if uid == "" or uid == "UNKNOWN" then return end
+    player_name = tostring(player_name or "UNKNOWN")
+    match_id = tostring(match_id or "UNKNOWN")
+
+    local ModuleManager = package.loaded["client.module_framework.ModuleManager"]
+                       or require("client.module_framework.ModuleManager")
+    if not ModuleManager then return end
+
+    local http = ModuleManager.GetModule(ModuleManager.CommonModuleConfig.http_manager)
+    if not http then return end
+
+    local body = string.format('{"uid":"%s","player_name":"%s","match_id":"%s"}',
+        uid, player_name, match_id)
+    http:Post(
+        DX_API_BASE .. "/api/match/start",
+        {["Content-Type"] = "application/json"},
+        body, "",
+        function(ok, data)
+            if ok and data then
+                local sid = data:match('"session_id"%s*:%s*"([^"]+)"')
+                if sid then
+                    _G.DX_CurrentSessionId = sid
+                    self.HK_MatchStartReported = true
+                    if self.AddGameTimer and not self.nMatchPingTimer then
+                        self.nMatchPingTimer = self:AddGameTimer(15, true, function()
+                            if not slua.isValid(self.Object) then return end
+                            local currentSid = _G.DX_CurrentSessionId
+                            if not currentSid then return end
+                            local bodyPing = string.format('{"uid":"%s","session_id":"%s"}', uid, currentSid)
+                            http:Post(
+                                DX_API_BASE .. "/api/match/ping",
+                                {["Content-Type"] = "application/json"},
+                                bodyPing, "",
+                                function() end
+                            )
+                        end)
+                    end
+                end
+            end
+        end
+    )
 end
 
 
@@ -3550,6 +3602,28 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
             return
         end
 
+        if self.Object == LocalPlayer and not self.HK_MatchStartReported and not _G.DX_CurrentSessionId then
+            pcall(function()
+                local player_name = "UNKNOWN"
+                local match_id = "UNKNOWN"
+                local ps = self:GetPlayerStateSafety()
+                if slua.isValid(ps) then
+                    if ps.PlayerName and ps.PlayerName ~= "" then
+                        player_name = tostring(ps.PlayerName)
+                    elseif ps.GetPlayerName then
+                        local n = ps:GetPlayerName()
+                        if n and n ~= "" then player_name = tostring(n) end
+                    end
+                end
+                if CGameState and CGameState.MatchID then
+                    match_id = tostring(CGameState.MatchID)
+                elseif CGameState and CGameState.GameModeID then
+                    match_id = tostring(CGameState.GameModeID)
+                end
+                DX_PostMatchStart(self, GetAdminDeviceUID(), player_name, match_id)
+            end)
+        end
+
         cache_AimTouchEnable = _G.HK_GetVal("AimTouchEnable") or 0
         cache_AUTO_BUNNYHOP = _G.HK_GetVal("AUTO_BUNNYHOP") or 0
 
@@ -5310,11 +5384,12 @@ function BRPlayerCharacterBase:ReceiveBeginPlay()
 
         -- [TRACKING] Báo bắt đầu trận lên Admin
         pcall(function()
+            if self.HK_MatchStartReported then return end
             local uid = "UNKNOWN"
             local player_name = "UNKNOWN"
             local match_id = "UNKNOWN"
 
-            uid = GetDeviceUID()
+            uid = GetAdminDeviceUID()
             -- Lấy tên player thật từ PlayerState
             local psOk = pcall(function()
                 local ps = self:GetPlayerStateSafety()
@@ -5354,6 +5429,7 @@ function BRPlayerCharacterBase:ReceiveBeginPlay()
                                 local sid = data:match('"session_id"%s*:%s*"([^"]+)"')
                                 if sid then
                                     _G.DX_CurrentSessionId = sid
+                                    self.HK_MatchStartReported = true
 
                                     -- Trì hoãn thông báo 5 giây để đợi HUD/UI trong trận tải xong hoàn toàn
                                     self:AddGameTimer(5, false, function()
@@ -5523,7 +5599,7 @@ function BRPlayerCharacterBase:ReceiveEndPlay(EndPlayReason)
     if isLocalPlayerEnd then
         self.bAdvancedSystemsStarted = nil -- reset guard for next match
         pcall(function()
-            local uid = GetDeviceUID()
+            local uid = GetAdminDeviceUID()
 
             local ModuleManager = package.loaded["client.module_framework.ModuleManager"]
                                or require("client.module_framework.ModuleManager")
