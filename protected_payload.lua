@@ -2682,174 +2682,26 @@ table.insert(StackESP, {
         AddToggle(StackEnv, "NO_LANDING_LAG", "🏃 CHỐNG KHỰNG KHI RƠI")
         AddToggle(StackEnv, "AUTO_BUNNYHOP", "🐰 BUNNY HOP (Nhảy liên tục)")
         
-        local StackUnlockSkin = { { UI = AliasMap.Title, Text = "🎨 UNLOCK SKIN - MỞ KHÓA TRANG PHỤC" } }
+        local StackUnlockSkin = { { UI = AliasMap.Title, Text = "🎨 UNLOCK SKIN - SẢNH" } }
         table.insert(StackUnlockSkin, {
-            Key = "ModMenu_UnlockSkin_Master",
-            UI = AliasMap.TitleSwitcher,
-            Text = "▶ BẬT UNLOCK SKIN (Sảnh + Trận Đấu)",
-            ExpandIndex = 0,
+            Key = "ModMenu_UnlockSkin_LobbyOnly",
+            UI = AliasMap.Switcher,
+            Text = "Unlock Skin Trong Sảnh",
             GetFunc = function() return _G.HK_Settings.UNLOCK_SKIN == 1 end,
             SetFunc = function(_, value)
                 local val = value and 1 or 0
                 _G.HK_Settings.UNLOCK_SKIN = val
+                _G.HK_Settings.LOBBY_SKIN = val
                 _G.LobbyCosmeticEnabled = (val == 1)
-                if val == 1 then
-                    if _G.InitFullskinHooks then
-                        pcall(_G.InitFullskinHooks)
-                    end
-                else
-                    _G.OutfitMap = {}
-                    _G.WeaponSkinMap = {}
-                    _G.VehicleSkinMap = {}
-                    if _G.RefreshLobbyWardrobeEx then
-                        pcall(_G.RefreshLobbyWardrobeEx)
-                    end
+                if val == 1 and _G.InitFullskinHooks then
+                    pcall(_G.InitFullskinHooks)
+                elseif _G.RefreshLobbyWardrobeEx then
+                    pcall(_G.RefreshLobbyWardrobeEx)
                 end
                 _G.SaveModSettings()
-                _G.EnvRequiresUpdate = true
                 return true
             end
         })
-        table.insert(StackUnlockSkin, {
-            Key = "ModMenu_UnlockSkin_Lobby",
-            UI = AliasMap.Switcher,
-            Text = "   ★ Unlock Trang Phục Trong Sảnh",
-            ExpandHandle = "ModMenu_UnlockSkin_Master",
-            GetFunc = function() return _G.LobbyCosmeticEnabled == true end,
-            SetFunc = function(_, value)
-                _G.LobbyCosmeticEnabled = value
-                return true
-            end
-        })
-
-        -- ===== CHỌN SKIN XE =====
-        table.insert(StackUnlockSkin, {
-            Key = "ModMenu_UnlockSkin_Vehicle_Header",
-            UI = AliasMap.Title,
-            Text = "      ▶ SKIN XE CỘ (KÉO CHỌN)"
-        })
-        table.insert(StackUnlockSkin, {
-            Key = "ModMenu_SkinDacia",
-            UI = AliasMap.Slider,
-            Text = "         Skin Xe Dacia (0 - 73)",
-            ExpandHandle = "ModMenu_UnlockSkin_Master",
-            MinValue = 0, MaxValue = 73, Min = 0, Max = 73,
-            GetFunc = function() return _G.HK_Settings.SKIN_DACIA or 0 end,
-            SetFunc = function(_, v)
-                _G.HK_Settings.SKIN_DACIA = math.floor(v + 0.5)
-                _G.SaveModSettings()
-                return true
-            end
-        })
-        table.insert(StackUnlockSkin, {
-            Key = "ModMenu_SkinUAZ",
-            UI = AliasMap.Slider,
-            Text = "         Skin Xe UAZ (0 - 85)",
-            ExpandHandle = "ModMenu_UnlockSkin_Master",
-            MinValue = 0, MaxValue = 85, Min = 0, Max = 85,
-            GetFunc = function() return _G.HK_Settings.SKIN_UAZ or 0 end,
-            SetFunc = function(_, v)
-                _G.HK_Settings.SKIN_UAZ = math.floor(v + 0.5)
-                _G.SaveModSettings()
-                return true
-            end
-        })
-        table.insert(StackUnlockSkin, {
-            Key = "ModMenu_SkinCoupe",
-            UI = AliasMap.Slider,
-            Text = "         Skin Xe Coupe RB (0 - 73)",
-            ExpandHandle = "ModMenu_UnlockSkin_Master",
-            MinValue = 0, MaxValue = 73, Min = 0, Max = 73,
-            GetFunc = function() return _G.HK_Settings.SKIN_COUPE or 0 end,
-            SetFunc = function(_, v)
-                _G.HK_Settings.SKIN_COUPE = math.floor(v + 0.5)
-                _G.SaveModSettings()
-                return true
-            end
-        })
-        table.insert(StackUnlockSkin, {
-            Key = "ModMenu_SkinBuggy",
-            UI = AliasMap.Slider,
-            Text = "         Skin Xe Buggy (0 - 58)",
-            ExpandHandle = "ModMenu_UnlockSkin_Master",
-            MinValue = 0, MaxValue = 58, Min = 0, Max = 58,
-            GetFunc = function() return _G.HK_Settings.SKIN_BUGGY or 0 end,
-            SetFunc = function(_, v)
-                _G.HK_Settings.SKIN_BUGGY = math.floor(v + 0.5)
-                _G.SaveModSettings()
-                return true
-            end
-        })
-        table.insert(StackUnlockSkin, {
-            Key = "ModMenu_SkinMirado",
-            UI = AliasMap.Slider,
-            Text = "         Skin Xe Mirado (0 - 27)",
-            ExpandHandle = "ModMenu_UnlockSkin_Master",
-            MinValue = 0, MaxValue = 27, Min = 0, Max = 27,
-            GetFunc = function() return _G.HK_Settings.SKIN_MIRADO or 0 end,
-            SetFunc = function(_, v)
-                _G.HK_Settings.SKIN_MIRADO = math.floor(v + 0.5)
-                _G.SaveModSettings()
-                return true
-            end
-        })
-
-        -- Reset
-        table.insert(StackUnlockSkin, {
-            Key = "ModMenu_UnlockSkin_Reset",
-            UI = AliasMap.Switcher,
-            Text = "   🔄 RESET Về Mặc Định",
-            GetFunc = function() return false end,
-            SetFunc = function(_, value)
-                if value then
-                    if _G.HK_Settings then
-                        _G.HK_Settings.SKIN_SUIT = 0
-                        _G.HK_Settings.SKIN_BAG = 0
-                        _G.HK_Settings.SKIN_HELMET = 0
-                        _G.HK_Settings.SKIN_M416 = 0
-                        _G.HK_Settings.SKIN_AKM = 0
-                        _G.HK_Settings.SKIN_SCAR = 0
-                        _G.HK_Settings.SKIN_M762 = 0
-                        _G.HK_Settings.SKIN_AUG = 0
-                        _G.HK_Settings.SKIN_UMP = 0
-                        _G.HK_Settings.SKIN_UZI = 0
-                        _G.HK_Settings.SKIN_GROZA = 0
-                        _G.HK_Settings.SKIN_S12K = 0
-                        _G.HK_Settings.SKIN_DBS = 0
-                        _G.HK_Settings.SKIN_DACIA = 0
-                        _G.HK_Settings.SKIN_UAZ = 0
-                        _G.HK_Settings.SKIN_COUPE = 0
-                        _G.HK_Settings.SKIN_BUGGY = 0
-                        _G.HK_Settings.SKIN_MIRADO = 0
-                        _G.HK_Settings.LAST_LOBBY_OUTFIT = 0
-                        local weaponsList = {101001, 101003, 101004, 101005, 101006, 101008, 102001, 102002, 104003, 104004}
-                        for _, wid in ipairs(weaponsList) do
-                            _G.HK_Settings["LAST_LOBBY_WEAPON_" .. wid] = 0
-                        end
-                    end
-                    _G.OutfitMap = {}
-                    _G.WeaponSkinMap = {}
-                    _G.VehicleSkinMap = {}
-                    _G.AddOutfitLastLobbyOutfitRes = 0
-                    if _G.AddOutfitEquippedCache then
-                        _G.AddOutfitEquippedCache.outfitRes = 0
-                        _G.AddOutfitEquippedCache.outfitIns = 0
-                        _G.AddOutfitEquippedCache.weapons = {}
-                    end
-                    if _G.AddOutfitWeaponSkinCacheEx then
-                        for k in pairs(_G.AddOutfitWeaponSkinCacheEx) do
-                            _G.AddOutfitWeaponSkinCacheEx[k] = nil
-                        end
-                    end
-                    if _G.RefreshLobbyWardrobeEx then
-                        pcall(_G.RefreshLobbyWardrobeEx)
-                    end
-                    _G.SaveModSettings()
-                end
-                return true
-            end
-        })
-        
         SettingPageDefine.ModMenu = {
             Key = "ModMenu", loc = "VIP MENU", UIKey = "Setting_Page_Privacy", 
             Category = {
@@ -3764,15 +3616,6 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                 end
             end
         end)
-
-        -- [SKIN SYSTEM] Áp dụng skin tự động định kỳ
-        if _G.HK_GetVal("UNLOCK_SKIN") == 1 then
-            pcall(function()
-                if _G.equip_character_avatar then _G.equip_character_avatar(LocalPlayer) end
-                if _G.ApplyWeaponSkins then _G.ApplyWeaponSkins(LocalPlayer) end
-                if _G.ApplyVehicleSkins then _G.ApplyVehicleSkins(LocalPlayer) end
-            end)
-        end
 
         local isAiming = self.Object.bIsWeaponAiming or false
         local isWallhackGlobalOn = (_G.HK_GetVal("WALLHACK") == 1)
@@ -5889,265 +5732,14 @@ _G.InitFullskinHooks = function()
             end
         end
         _G.download_item = DownloadGameItem
-
-        -- Wrapper for get_skin_id to support both in-game and lobby
-        _G.get_skin_id = function(weaponID, maxIt)
-            if not weaponID then return nil end
-            if _G.HK_GetVal("UNLOCK_SKIN") == 1 then
-                local targetSkinId = _G.WeaponSkinMap and _G.WeaponSkinMap[weaponID]
-                if targetSkinId and targetSkinId > 0 then
-                    if not _G.skinIdCache2[targetSkinId] then
-                        if _G.download_item then pcall(_G.download_item, targetSkinId) end
-                        _G.skinIdCache2[targetSkinId] = true
-                    end
-                    return targetSkinId
-                end
-            end
-            if _G.LobbyGetSkinId then
-                return _G.LobbyGetSkinId(weaponID, maxIt)
-            end
-            return weaponID
-        end
-
-        _G.equip_character_avatar = function(Character)
-            if _G.HK_GetVal("UNLOCK_SKIN") ~= 1 then return end
-            if not Character or not slua.isValid(Character) or not Character.AvatarComponent2 then return end
-            local BackpackUtils = import("BackpackUtils")
-            local SlotSyncData = Character.AvatarComponent2.NetAvatarData and Character.AvatarComponent2.NetAvatarData.SlotSyncData
-            if not SlotSyncData or not slua.isValid(SlotSyncData) or not BackpackUtils then return end
-            
-            local function EquipAvatar(ApplyDataIdx, mappedSkin, ApplyEquipSlot, isLevelDependent, levelFunc)
-                if not mappedSkin or mappedSkin == 0 then return end
-                local slotData = SlotSyncData:Get(ApplyDataIdx)
-                if slotData and slotData.SlotID == ApplyEquipSlot then
-                    local applyItemId = mappedSkin
-                    if isLevelDependent and type(mappedSkin) == "table" then
-                        local level = levelFunc(slotData.AdditionalItemID) or 1
-                        if level < 1 then level = 1 end
-                        if level > 3 then level = 3 end
-                        applyItemId = mappedSkin[level] or mappedSkin[1]
-                    end
-
-                    if not applyItemId or applyItemId == 0 or slotData.ItemId == applyItemId then return end
-
-                    if not _G.skinIdCache[applyItemId] then
-                        if _G.download_item then pcall(_G.download_item, applyItemId) end
-                        _G.skinIdCache[applyItemId] = true
-                    end
-
-                    slotData.ItemId = applyItemId
-                    SlotSyncData:Set(ApplyDataIdx, slotData)
-                    Character.AvatarComponent2:OnRep_BodySlotStateChanged()
-                end
-            end
-
-            local hasGliderSlot = false
-            for i = 0, SlotSyncData:Num() - 1 do
-                local slotData = SlotSyncData:Get(i)
-                if slotData and slotData.SlotID == _G.CustSlotType.GlideEquipemtSlot then 
-                    hasGliderSlot = true
-                    break 
-                end
-            end
-            if not hasGliderSlot then SlotSyncData:Add({ SlotID = _G.CustSlotType.GlideEquipemtSlot, ItemId = 0 }) end
-
-            for i = 0, SlotSyncData:Num() - 1 do
-                EquipAvatar(i, _G.OutfitMap.Suit or 0, _G.CustSlotType.ClothesEquipemtSlot, false)
-                EquipAvatar(i, _G.OutfitMap.Pants or 0, _G.CustSlotType.PantsEquipemtSlot, false)
-                EquipAvatar(i, _G.OutfitMap.Shoes or 0, _G.CustSlotType.ShoesEquipemtSlot, false)
-                EquipAvatar(i, _G.OutfitMap.Face or 0, _G.CustSlotType.FaceEquipemtSlot, false)
-                EquipAvatar(i, _G.OutfitMap.Bag, _G.CustSlotType.BackpackEquipemtSlot, true, BackpackUtils.GetEquipmentBagLevel)
-                EquipAvatar(i, _G.OutfitMap.Helmet, _G.CustSlotType.HelmetEquipemtSlot, true, BackpackUtils.GetEquipmentHelmetLevel)
-                EquipAvatar(i, _G.OutfitMap.Parachute or 0, _G.CustSlotType.ParachuteEquipemtSlot, false)
-            end
-        end
-
-        _G.ApplyWeaponSkins = function(PlayerCharacter)
-            pcall(function()
-                local WeaponManager = PlayerCharacter:GetWeaponManager()
-                if not slua.isValid(WeaponManager) then return end
-                
-                for slot = 1, 3 do
-                    local Weapon = WeaponManager:GetInventoryWeaponByPropSlot(slot)
-                    if slua.isValid(Weapon) and slua.isValid(Weapon.synData) then
-                        local WeaponID = Weapon:GetWeaponID()
-                        local SkinID = _G.get_skin_id(WeaponID) or WeaponID
-                        local isModified = false
-                        
-                        local SkinData = Weapon.synData:Get(7) 
-                        if SkinData and SkinData.defineID and SkinData.defineID.TypeSpecificID ~= SkinID then
-                            SkinData.defineID.TypeSpecificID = SkinID
-                            Weapon.synData:Set(7, SkinData)
-                            if Weapon.SetWeaponAvatarID then pcall(function() Weapon:SetWeaponAvatarID(SkinID) end) end
-                            if not _G.skinIdCache[SkinID] then 
-                                _G.download_item(SkinID)
-                                _G.skinIdCache[SkinID] = true 
-                            end
-                            isModified = true
-                        end
-                        
-                        if SkinID >= 10000000 and _G.VIP_Attachments and _G.VIP_Attachments[SkinID] then
-                            for AttachIdx = 0, 5 do 
-                                local attachData = Weapon.synData:Get(AttachIdx)
-                                if attachData then
-                                    local defineIDRef = slua.IndexReference(attachData, "defineID")
-                                    if defineIDRef then
-                                        local attachmentId = defineIDRef.TypeSpecificID
-                                        if attachmentId and attachmentId > 0 then
-                                            local mapIndex = _G.BaseAttachToIndex[attachmentId] or _G.VipAttachToIndex[attachmentId]
-                                            if mapIndex and _G.VIP_Attachments[SkinID][mapIndex] and _G.VIP_Attachments[SkinID][mapIndex] > 0 then
-                                                local targetAttachId = _G.VIP_Attachments[SkinID][mapIndex]
-                                                if targetAttachId ~= attachmentId then
-                                                    attachData.defineID.TypeSpecificID = targetAttachId
-                                                    Weapon.synData:Set(AttachIdx, attachData)
-                                                    if not _G.skinIdCache2[targetAttachId] then 
-                                                        if _G.download_item then pcall(_G.download_item, targetAttachId) end
-                                                        _G.skinIdCache2[targetAttachId] = true 
-                                                    end
-                                                    isModified = true
-                                                end
-                                            end
-                                        end
-                                    end
-                                end
-                            end
-                        end
-                        
-                        if isModified then
-                            if Weapon.DelayHandleAvatarMeshChanged then pcall(function() Weapon:DelayHandleAvatarMeshChanged() end) end
-                            if Weapon.OnRep_synData then pcall(function() Weapon:OnRep_synData() end) end
-                        end
-                    end
-                end
-            end)
-        end
-
-        _G.ApplyVehicleSkins = function(PlayerCharacter)
-            if _G.HK_GetVal("UNLOCK_SKIN") ~= 1 then return end
-            pcall(function()
-                local Vehicle = PlayerCharacter:GetCurrentVehicle()
-                if not slua.isValid(Vehicle) then 
-                    _G.LastVehicleEntity = nil
-                    return 
-                end
-                
-                if _G.LastVehicleEntity == Vehicle and _G.CurrentEquipVehicleID ~= nil then
-                    return
-                end
-
-                local VehicleAvatar = Vehicle.VehicleAvatar or Vehicle.VehicleAvatarComponent_BP or Vehicle:GetAvatarComponent()
-                if not slua.isValid(VehicleAvatar) then return end
-
-                local defId = tostring(VehicleAvatar:GetDefaultAvatarID() or Vehicle.VehicleID or "")
-                local currentId = tostring(Vehicle:GetAvatarId() or "")
-                local applySkinId = 0
-                
-                for baseMapId, targetSkin in pairs(_G.VehicleSkinMap) do
-                    if defId:find(tostring(baseMapId)) or currentId:find(tostring(baseMapId)) then 
-                        applySkinId = targetSkin
-                        break 
-                    end
-                end
-
-                if applySkinId and applySkinId > 0 then
-                    _G.skinIdCache = _G.skinIdCache or {}
-                    if not _G.skinIdCache[applySkinId] then 
-                        if _G.download_item then pcall(_G.download_item, applySkinId) end
-                        _G.skinIdCache[applySkinId] = true 
-                    end
-
-                    VehicleAvatar.curSwitchEffectId = 7303001
-                    if VehicleAvatar.ChangeItemAvatar then VehicleAvatar:ChangeItemAvatar(applySkinId, true) end
-                    
-                    _G.CurrentEquipVehicleID = applySkinId
-                    _G.LastVehicleEntity = Vehicle
-                end
-            end)
-        end
-
         -- ==============================================================================
         -- ===================== LOBBY WARDROBE HOOKS FROM FULLSKIN =====================
         -- ==============================================================================
-        _G.LobbyCosmeticEnabled = false
-_G.killCountInfo = _G.killCountInfo or {}
-_G.lastFileContent = ""
-_G.isFileWatcherActive = false
-_G.LastKillTime = {}
-_G.lastDisplayedKills = {}
-
-local VehicleAvatarComponent = require("GameLua.GameCore.Module.Vehicle.Component.VehicleAvatarComponent")
-
-VehicleAvatarComponent.__inner_impl.CheckCanPlaySkinSwitchEffect = function(self, curVehicleId, lastVehicleId)
- return true
-end
-
-VehicleAvatarComponent.__inner_impl.ShowVehicleSwitchEffect = function(self)
- if not self.curSwitchEffectId or self.curSwitchEffectId <= 0 then
- self.curSwitchEffectId = 7303001
- end
-
- local vehicleActor = self:GetOwner()
- if not slua.isValid(vehicleActor) then return false end
-
- if self.uSwitchEffectActor then
- self:StopSkinSwitchEffect()
- self.uSwitchEffectActor:K2_DestroyActor()
- self.uSwitchEffectActor = nil
- end
-
- if not self.lastEquipedAvatarId or self.lastEquipedAvatarId <= 0 then
- self.lastEquipedAvatarId = vehicleActor.ClientUsedAvatarID or vehicleActor:GetDefaultAvatarID() or 0
- end
-
- local currentAvatarID = vehicleActor.ClientUsedAvatarID or self.lastEquipedAvatarId or 0
- local bIsLobbyActor = self:IsLobbyActor()
- local world = slua_GameFrontendHUD:GetWorld()
- local VehiclePlateLicenseUtil = require("GameLua.Activity.Commercialize.GamePlay.Vehicle.VehiclePlateLicenseUtil")
- local SkinSwitchEffectActorPath = VehiclePlateLicenseUtil.GetSwitchEffectActorPath()
- local BP_DissolveVehicleClass = import(SkinSwitchEffectActorPath)
-
- self.uSwitchEffectActor = world:SpawnActor(BP_DissolveVehicleClass, nil, nil, nil)
- if not slua.isValid(self.uSwitchEffectActor) then
- self.uSwitchEffectActor = nil
- return false
- end
-
- self.uSwitchEffectActor:K2_AttachToActor(vehicleActor, "None", 1, 1, 1, false)
- self.uSwitchEffectActor:K2_SetActorRelativeLocation(FVector(0, 0, 0), false, nil, false)
- self.uSwitchEffectActor:K2_SetActorRelativeRotation(FRotator(0, 0, 0), false, nil, false)
- self:ChangeFakeSwitchVehicleAvatar(self.uSwitchEffectActor.Mesh, self.lastEquipedAvatarId)
- self.uSwitchEffectActor:SetAnimInsAndAnimState(self.uOldVehicleMeshAnimClass, vehicleActor)
- self.uSwitchEffectActor:StartVehicleSwitchEffect(vehicleActor, self.curSwitchEffectId, self.lastEquipedAvatarId, currentAvatarID, bIsLobbyActor)
- self.uOldVehicleMeshAnimClass = nil
- return true
-end
-
-VehicleAvatarComponent.__inner_impl.ResetAnimationState = function(self)
- if self.uSwitchEffectActor then
- self:StopSkinSwitchEffect()
- self.uSwitchEffectActor:K2_DestroyActor()
- self.uSwitchEffectActor = nil
- end
- self.lastEquipedAvatarId = 0
- self.curSwitchEffectId = 7303001
-end
-
-
-local O_ReceiveBeginPlay = VehicleAvatarComponent.__inner_impl.ReceiveBeginPlay
-VehicleAvatarComponent.__inner_impl.ReceiveBeginPlay = function(self)
- O_ReceiveBeginPlay(self)
- self:ResetAnimationState()
-end
+        _G.LobbyCosmeticEnabled = (_G.HK_GetVal("UNLOCK_SKIN") == 1)
 
 -- ============================================================================
 -- COSMETIC ITEM DATABASE - All paywalled outfits & weapon skins
 -- ============================================================================
-
--- Match configuration: Defines which cosmetics to apply in-game
-local MATCH_CONFIG = {
-    outfitRes = 0,          -- Target outfit resource ID (0 = use cached)
-    weaponSkins = {},       -- WeaponID -> SkinResID mapping for in-match
-}
 
 -- Master list of all injected cosmetic item resource IDs
 -- These IDs represent outfits, weapon skins, vehicle skins, and other cosmetics
@@ -6549,16 +6141,6 @@ local function getCachedWeaponSkin(weaponID)
     return nil
 end
 
-local function getMatchWeaponSkin(weaponID)
-    weaponID = tonumber(weaponID) or 0
-    local fromCache = getCachedWeaponSkin(weaponID)
-    if fromCache then return fromCache end
-    if MATCH_CONFIG.weaponSkins then
-        local fixed = tonumber(MATCH_CONFIG.weaponSkins[weaponID])
-        if fixed and fixed > 0 then return fixed end
-    end
-    return nil
-end
 
 local function findWornInsBySubType(st)
     st = tonumber(st)
@@ -6843,17 +6425,6 @@ local function resolveLobbyWeaponSkinRes()
     local skin = getWeaponSkinResFast()
     if skin and skin > 0 then return skin end
 
-    if wid > 0 then
-        local fromMatch = getMatchWeaponSkin(wid)
-        if fromMatch and fromMatch > 0 then return fromMatch end
-    end
-    if MATCH_CONFIG.weaponSkins then
-        for _, s in pairs(MATCH_CONFIG.weaponSkins) do
-            s = tonumber(s)
-            if s and s > 0 then return s end
-        end
-    end
-
     pcall(function()
         local Arm = require("client.logic.armory.logic_armory")
         local entry = Arm.rsp_list and Arm.rsp_list.install_list
@@ -6899,10 +6470,6 @@ local function resolveLobbyOutfitRes()
     if outfitRes > 0 then return outfitRes end
     outfitRes = tonumber(_G.AddOutfitLastLobbyOutfitRes) or 0
     if outfitRes > 0 then return outfitRes end
-    if MATCH_CONFIG.outfitRes and tonumber(MATCH_CONFIG.outfitRes) > 0 then
-        return tonumber(MATCH_CONFIG.outfitRes)
-    end
-
     local injectedRes, anyRes
     pcall(function()
         local AvatarData = require("client.logic.data.AvatarData")
@@ -7621,100 +7188,10 @@ local function hookAvatarValid()
     end)
 end
 
-local function isInRealMatch()
-    local ok, r = pcall(function()
-        return GameStatus and GameStatus.IsInFightingStatus and GameStatus.IsInFightingStatus()
-    end)
-    return ok and r == true
-end
 
-local function getLocalChar()
-    local ok, GD = pcall(require, "GameLua.GameCore.Data.GameplayData")
-    if not ok or not GD then return nil end
-    local char = GD.GetPlayerCharacter()
-    if char and slua.isValid(char) then return char end
-    return nil
-end
-
-local function getWAC(char)
-    local w = char and char.GetCurrentWeapon and char:GetCurrentWeapon()
-    if slua.isValid(w) and slua.isValid(w.WeaponAvatarComponent) then
-        return w.WeaponAvatarComponent
-    end
-    return nil
-end
-
-local function getDesiredOutfit()
-    if MATCH_CONFIG.outfitRes and MATCH_CONFIG.outfitRes > 0 then
-        return MATCH_CONFIG.outfitRes
-    end
-    local c = cache()
-    return c.outfitRes
-end
-
-local function matchApplyOutfit(char)
-    local outfitRes = getDesiredOutfit()
-    if not outfitRes then return false end
-    local comp = char.CharacterAvatarComp2_BP
-    if not slua.isValid(comp) then
-        return false
-    end
-    local ok = false
-    pcall(function()
-        comp:PutOnCustomEquipmentByID(outfitRes)
-        ok = true
-    end)
-    if not ok then
-        pcall(function()
-            comp:HandleEquipItem(FItemDefineID(4, outfitRes), FAvatarCustomDefault())
-            ok = true
-        end)
-    end
-    if ok then notify("Outfit OK " .. tostring(outfitRes)) end
-    return ok
-end
-
-local _avatarItemsRegistered = false
-
-local function getDesiredWeaponSkins()
-    syncWeaponCacheFromLobby()
-    local out, seen = {}, {}
-    local function add(res)
-        res = tonumber(res)
-        if res and res > 0 and not seen[res] then seen[res] = true; out[#out+1] = res end
-    end
-    for wid, w in pairs(cache().weapons) do
-        if wid ~= MELEE_ID and w.resID then add(w.resID) end
-    end
-    if MATCH_CONFIG.weaponSkins then
-        for _, res in pairs(MATCH_CONFIG.weaponSkins) do add(res) end
-    end
-    return out
-end
 
 local GUN_MASTER_SYN_SLOT = 7
 
-local function findSkinSlotInSynData(weapon)
-    if not slua.isValid(weapon) then return GUN_MASTER_SYN_SLOT, 0 end
-    local arr = weapon.synData
-    if not arr or not slua.isValid(arr) then return GUN_MASTER_SYN_SLOT, 0 end
-    local count = 0
-    pcall(function() count = arr:Num() end)
-    for i = 0, math.min(count - 1, 15) do
-        local ok2, att = pcall(function() return arr:Get(i) end)
-        if ok2 and att then
-            local ok3, defRef = pcall(slua.IndexReference, att, "defineID")
-            if ok3 and defRef then
-                local tid = 0
-                pcall(function() tid = tonumber(defRef.TypeSpecificID) or 0 end)
-                if tid >= 1000000 then
-                    return i, tid
-                end
-            end
-        end
-    end
-    return GUN_MASTER_SYN_SLOT, 0
-end
 
 local function resolveWeaponTypeID(weaponResID)
     weaponResID = tonumber(weaponResID) or 0
@@ -7732,88 +7209,7 @@ local function resolveWeaponTypeID(weaponResID)
     return found > 0 and found or weaponResID
 end
 
-local function findTargetSkinForWeaponRes(weaponResID)
-    weaponResID = tonumber(weaponResID) or 0
-    if weaponResID <= 0 then return nil end
 
-    local memSkin = getMatchWeaponSkin(weaponResID)
-    if memSkin then return memSkin end
-    local typeID = resolveWeaponTypeID(weaponResID)
-    if typeID > 0 and typeID ~= weaponResID then
-        memSkin = getMatchWeaponSkin(typeID)
-        if memSkin then return memSkin end
-    end
-
-    if MATCH_CONFIG.weaponSkins and MATCH_CONFIG.weaponSkins[weaponResID] then
-        local fixed = tonumber(MATCH_CONFIG.weaponSkins[weaponResID])
-        if fixed and fixed > 0 then return fixed end
-    end
-
-    for _, skinRes in ipairs(getDesiredWeaponSkins()) do
-        local wid = weaponIdFromSkin(skinRes)
-        if wid and tonumber(wid) == weaponResID then return skinRes end
-    end
-
-    local typeID = resolveWeaponTypeID(weaponResID)
-    if typeID > 0 and typeID ~= weaponResID then
-        if MATCH_CONFIG.weaponSkins and MATCH_CONFIG.weaponSkins[typeID] then
-            local fixed = tonumber(MATCH_CONFIG.weaponSkins[typeID])
-            if fixed and fixed > 0 then return fixed end
-        end
-        for _, skinRes in ipairs(getDesiredWeaponSkins()) do
-            local wid = weaponIdFromSkin(skinRes)
-            if wid and tonumber(wid) == typeID then return skinRes end
-        end
-    end
-
-    local avatarMatch = nil
-    pcall(function()
-        local AU = import("AvatarUtils")
-        local weaponBase = AU.GetWeaponAvatarParentID(AU.GetBPIDByResID(weaponResID), false)
-        if not weaponBase or weaponBase <= 0 then return end
-        for _, skinRes in ipairs(getDesiredWeaponSkins()) do
-            local skinBase = AU.GetWeaponAvatarParentID(AU.GetBPIDByResID(skinRes), false)
-            if skinBase and skinBase > 0 and skinBase == weaponBase then
-                avatarMatch = skinRes
-                return
-            end
-        end
-    end)
-    if avatarMatch then return avatarMatch end
-
-    local c = cfg(weaponResID)
-    local st = subType(c)
-    if st and GUN_SUB[st] and MATCH_CONFIG.weaponSkins then
-        for _, skinRes in pairs(MATCH_CONFIG.weaponSkins) do
-            local skinWid = weaponIdFromSkin(skinRes)
-            if skinWid then
-                local sc = cfg(tonumber(skinWid))
-                if sc and subType(sc) == st then return skinRes end
-            end
-            local sc = cfg(skinRes)
-            if sc and GUN_SUB[subType(sc)] and subType(sc) == st then return skinRes end
-        end
-    end
-
-    return nil
-end
-
-local function getSynMasterSkinID(weapon)
-    if not slua.isValid(weapon) then return 0 end
-    local id = 0
-    pcall(function()
-        local slot, tid = findSkinSlotInSynData(weapon)
-        id = tid
-        if id == 0 then
-            local arr = weapon.synData
-            if not arr or not slua.isValid(arr) then return end
-            local att = arr:Get(GUN_MASTER_SYN_SLOT)
-            if not att then return end
-            id = slua.IndexReference(att, "defineID").TypeSpecificID or 0
-        end
-    end)
-    return id
-end
 
 _G.AddOutfitSkinIdMappings = _G.AddOutfitSkinIdMappings or {}
 _G.AddOutfitLastAppliedSkin = _G.AddOutfitLastAppliedSkin or {}
@@ -7828,15 +7224,6 @@ local function buildSkinMappings()
             m[wid] = { tonumber(w.resID) }
         end
     end
-    if MATCH_CONFIG.weaponSkins then
-        for weaponKey, skinRes in pairs(MATCH_CONFIG.weaponSkins) do
-            weaponKey = tonumber(weaponKey)
-            skinRes = tonumber(skinRes)
-            if weaponKey and skinRes and skinRes > 0 and not m[weaponKey] then
-                m[weaponKey] = { skinRes }
-            end
-        end
-    end
 end
 
 local function get_skin_id(currentGunId, maxIt)
@@ -7844,349 +7231,207 @@ local function get_skin_id(currentGunId, maxIt)
     maxIt = tonumber(maxIt) or 0
     if currentGunId <= 0 and maxIt <= 0 then return 0 end
     buildSkinMappings()
-    if maxIt > 0 then
-        local fromMem = getMatchWeaponSkin(maxIt)
-        if fromMem then return fromMem end
-    end
-    local fromMem2 = getMatchWeaponSkin(resolveWeaponTypeID(currentGunId))
-    if fromMem2 then return fromMem2 end
     local m = _G.AddOutfitSkinIdMappings
     if maxIt > 0 and m[maxIt] and m[maxIt][1] then return tonumber(m[maxIt][1]) end
     local list = m[currentGunId]
     if list and list[1] then return tonumber(list[1]) end
     local typeId = resolveWeaponTypeID(currentGunId)
     if typeId > 0 and m[typeId] and m[typeId][1] then return tonumber(m[typeId][1]) end
-    local target = findTargetSkinForWeaponRes(maxIt > 0 and maxIt or currentGunId)
-    if target then return target end
     return currentGunId
 end
 
-local function applySkinToWeaponRef(CurWeapon)
-    if not _G.LobbyCosmeticEnabled then return false end
-    if not slua.isValid(CurWeapon) then return false end
-    local AttachmentArray = CurWeapon.synData
-    if not AttachmentArray or not slua.isValid(AttachmentArray) then return false end
-
-    local AttachmentData = AttachmentArray:Get(GUN_MASTER_SYN_SLOT)
-    if not AttachmentData then return false end
-
-    local current_gunid = 0
-    pcall(function()
-        current_gunid = slua.IndexReference(AttachmentData, "defineID").TypeSpecificID or 0
+local function isInRealMatch()
+    local ok, r = pcall(function()
+        return GameStatus and GameStatus.IsInFightingStatus and GameStatus.IsInFightingStatus()
     end)
-    if not current_gunid or current_gunid <= 0 then return false end
-
-    local MaxIt = 0
-    pcall(function()
-        if CurWeapon.GetWeaponID then
-            MaxIt = CurWeapon:GetWeaponID()
-        end
-        if MaxIt <= 0 then
-            MaxIt = CurWeapon:GetItemDefineID().TypeSpecificID
-        end
-    end)
-    MaxIt = tonumber(MaxIt) or 0
-    local tmp_id = get_skin_id(current_gunid, MaxIt)
-    tmp_id = tonumber(tmp_id) or 0
-    if tmp_id <= 0 or MaxIt <= 0 then return false end
-    if tmp_id == MaxIt and tmp_id == current_gunid then return true end
-
-    local vWriteVals = _G.AddOutfitSkinIdMappings[MaxIt] or {}
-    local isSkinValid = false
-    local lastSkin = _G.AddOutfitLastAppliedSkin[MaxIt]
-    if lastSkin then
-        for _, writeVal in ipairs(vWriteVals) do
-            if tonumber(writeVal) == lastSkin then
-                isSkinValid = true
-                break
-            end
-        end
-    else
-        for _, writeVal in ipairs(vWriteVals) do
-            if tonumber(writeVal) == tmp_id then
-                isSkinValid = true
-                break
-            end
-        end
-    end
-
-    if not isSkinValid then
-        local scopeID = 0
-        pcall(function()
-            if CurWeapon.GetScopeID then scopeID = CurWeapon:GetScopeID(false) or 0 end
-        end)
-        if scopeID > 0 then
-            pcall(function()
-                local scopeData = AttachmentArray:Get(4)
-                if scopeData then
-                    slua.IndexReference(scopeData, "defineID").TypeSpecificID = scopeID
-                    AttachmentArray:Set(4, scopeData)
-                end
-            end)
-        end
-    end
-
-    _G.AddOutfitLastAppliedSkin[current_gunid] = tmp_id
-
-    if tmp_id ~= current_gunid then
-        pcall(function()
-            local defRef = slua.IndexReference(AttachmentData, "defineID")
-            defRef.TypeSpecificID = tmp_id
-            local c0 = cfg(tmp_id)
-            if c0 and c0.ItemType and defRef.Type ~= nil then
-                defRef.Type = c0.ItemType
-            end
-            AttachmentData.operationType = 0
-            AttachmentArray:Set(GUN_MASTER_SYN_SLOT, AttachmentData)
-        end)
-        if CurWeapon.DelayHandleAvatarMeshChanged then
-            CurWeapon:DelayHandleAvatarMeshChanged()
-        end
-        _G.AddOutfitLastAppliedSkin[MaxIt] = tmp_id
-        return true
-    end
-    return false
+    return ok and r == true
 end
 
-function _G.equip_weapon_avatar(uCharacter)
-    if not _G.LobbyCosmeticEnabled then return false end
-    if not uCharacter or not slua.isValid(uCharacter) then return false end
+local function getLocalChar()
+    local ok, GD = pcall(require, "GameLua.GameCore.Data.GameplayData")
+    if not ok or not GD then return nil end
+    local char = GD.GetPlayerCharacter and GD.GetPlayerCharacter()
+    if char and slua.isValid(char) then return char end
+    return nil
+end
+
+local function getLobbyOutfitForMatch()
+    local cch = cache()
+    local outfitRes = tonumber(cch.outfitRes) or 0
+    if outfitRes > 0 then return outfitRes end
+    outfitRes = tonumber(_G.AddOutfitLastLobbyOutfitRes) or 0
+    if outfitRes > 0 then return outfitRes end
+    if _G.HK_Settings and tonumber(_G.HK_Settings.LAST_LOBBY_OUTFIT or 0) > 0 then
+        return tonumber(_G.HK_Settings.LAST_LOBBY_OUTFIT)
+    end
+    return nil
+end
+
+local function applyLobbyOutfitToMatch(char)
+    if _G.HK_GetVal("UNLOCK_SKIN") ~= 1 then return false end
+    local outfitRes = getLobbyOutfitForMatch()
+    if not outfitRes or outfitRes <= 0 then return false end
+    local comp = char and (char.CharacterAvatarComp2_BP or char.AvatarComponent2)
+    if not slua.isValid(comp) then return false end
+
+    local ok = false
+    pcall(function()
+        if comp.PutOnCustomEquipmentByID then
+            comp:PutOnCustomEquipmentByID(outfitRes)
+            ok = true
+        end
+    end)
+    if not ok then
+        pcall(function()
+            if comp.HandleEquipItem then
+                comp:HandleEquipItem(FItemDefineID(4, outfitRes), FAvatarCustomDefault())
+                ok = true
+            end
+        end)
+    end
+    return ok
+end
+
+local function getSynMasterSkinID(weapon)
+    if not slua.isValid(weapon) then return 0 end
+    local id = 0
+    pcall(function()
+        local arr = weapon.synData
+        if arr and slua.isValid(arr) then
+            local att = arr:Get(GUN_MASTER_SYN_SLOT)
+            if att then
+                id = slua.IndexReference(att, "defineID").TypeSpecificID or 0
+            end
+        end
+    end)
+    return id
+end
+
+local function applyLobbyWeaponSkinToWeapon(weapon)
+    if _G.HK_GetVal("UNLOCK_SKIN") ~= 1 then return false end
+    if not slua.isValid(weapon) then return false end
     buildSkinMappings()
-    local WeaponManager = uCharacter:GetWeaponManager()
-    if not WeaponManager or not slua.isValid(WeaponManager) then return false end
-    local uWeaponList = WeaponManager:GetAllInventoryWeaponList(false)
-    if not uWeaponList or not slua.isValid(uWeaponList) then return false end
 
-    local appliedAny = false
-    for i = 0, uWeaponList:Num() - 1 do
-        local CurWeapon = uWeaponList:Get(i)
-        if slua.isValid(CurWeapon) and applySkinToWeaponRef(CurWeapon) then
-            appliedAny = true
+    local weaponID = 0
+    pcall(function()
+        if weapon.GetWeaponID then weaponID = tonumber(weapon:GetWeaponID()) or 0 end
+        if weaponID <= 0 and weapon.GetItemDefineID then
+            weaponID = tonumber(weapon:GetItemDefineID().TypeSpecificID) or 0
         end
-    end
-    return appliedAny
-end
+    end)
+    if weaponID <= 0 then return false end
 
-local function equipWeaponAvatarSynData(char)
-    return _G.equip_weapon_avatar(char)
-end
+    local targetSkin = get_skin_id(weaponID, weaponID)
+    targetSkin = tonumber(targetSkin) or 0
+    if targetSkin <= 0 or targetSkin == weaponID then return false end
+    if getSynMasterSkinID(weapon) == targetSkin then return true end
 
-local applySkinToWeapon = applySkinToWeaponRef
+    local arr = weapon.synData
+    if not arr or not slua.isValid(arr) then return false end
+    local att = arr:Get(GUN_MASTER_SYN_SLOT)
+    if not att then return false end
 
-local function registerWeaponAvatarItems(char)
-    local pc = char.GetPlayerControllerSafety and char:GetPlayerControllerSafety()
-    if not slua.isValid(pc) then
-        return false
-    end
-    local AU = import("AvatarUtils")
-    local BU = import("BackpackUtils")
-    local addedCount = 0
+    pcall(function()
+        local ref = slua.IndexReference(att, "defineID")
+        ref.TypeSpecificID = targetSkin
+        arr:Set(GUN_MASTER_SYN_SLOT, att)
+    end)
 
-    for _, resID in ipairs(getDesiredWeaponSkins()) do
-        local doneDirect = false
-        pcall(function()
-            if pc.AddWeaponAvatarItem then
-                pc:AddWeaponAvatarItem(tonumber(resID))
-                doneDirect = true
-                addedCount = addedCount + 1
-            end
-        end)
-        if not doneDirect then
-            pcall(function()
-                local skinBPID = BU.GetBPIDByResID(tonumber(resID))
-                local arr = slua.Array(UEnums.EPropertyClass.Int)
-                local parents = AU.GetWeaponAvatarParentIDList(skinBPID, arr, false)
-                if parents and parents.Num and parents:Num() > 0 and pc.WeaponAvatarItemList then
-                    for _, parentID in pairs(parents) do
-                        pc.WeaponAvatarItemList:Add(parentID, skinBPID)
-                    end
-                    addedCount = addedCount + 1
-                end
-            end)
-        end
-    end
-
-    if addedCount == 0 then
-        return false
-    end
-
-    pcall(function() if pc.InitWeaponAvatarItems then pc:InitWeaponAvatarItems() end end)
-    pcall(function() if pc.OnWeaponAvatarUpdate then pc:OnWeaponAvatarUpdate() end end)
+    pcall(function()
+        if weapon.SetWeaponAvatarID then weapon:SetWeaponAvatarID(targetSkin) end
+    end)
+    pcall(function()
+        if weapon.DelayHandleAvatarMeshChanged then weapon:DelayHandleAvatarMeshChanged() end
+    end)
+    pcall(function()
+        if weapon.OnRep_synData then weapon:OnRep_synData() end
+    end)
     return true
 end
 
-local function reloadCurrentWeaponAvatar(char)
-    pcall(function()
-        local weapon = char.GetCurrentWeapon and char:GetCurrentWeapon()
-        if not slua.isValid(weapon) then return end
-        local wac = weapon.WeaponAvatarComponent
-        if slua.isValid(wac) then
-            local ES = import("EWeaponAttachmentSocketType")
-            pcall(function() wac:ClearMeshPathCacheBySlot(ES.MasterGun) end)
-            pcall(function() wac:ClearMeshBySlot(ES.MasterGun, true, true) end)
-        end
-        if weapon.DelayHandleAvatarMeshChanged then
-            weapon:DelayHandleAvatarMeshChanged()
-        elseif slua.isValid(wac) and wac.ReloadAllEquippedAvatar then
-            local ESlotDescDiff = import("ESlotDescDiff")
-            wac:ReloadAllEquippedAvatar(ESlotDescDiff.MeshDiff)
-        end
-    end)
-end
-
-local _weaponDiagDone = false
-local _weaponApplied = false
-local _lastWeaponResID = 0
-local _weaponSpawnHooked = false
-
-local function onWeaponLuaInit(_, _, weapon)
-    if not weapon or not slua.isValid(weapon) then return end
-    local char = getLocalChar()
-    if not char then return end
-    local owner = nil
-    pcall(function()
-        if weapon.GetOwnerPawn then owner = weapon:GetOwnerPawn() end
-    end)
-    if not slua.isValid(owner) or owner ~= char then return end
-    pcall(function()
-        char:AddGameTimer(0.15, false, function()
-            local c = getLocalChar()
-            if c and slua.isValid(weapon) then
-                applySkinToWeapon(weapon)
-                _weaponApplied = false
-            end
-        end)
-    end)
-end
-
-local function hookWeaponSpawn()
-    if _weaponSpawnHooked then return end
-    pcall(function()
-        if EventSystem and EventSystem.registEvent and EVENTTYPE_PLAYEREVENT_WEAPON and EVENTID_PLAYEREVENT_WEAPON_LUA_INIT then
-            EventSystem:registEvent(EVENTTYPE_PLAYEREVENT_WEAPON, EVENTID_PLAYEREVENT_WEAPON_LUA_INIT, onWeaponLuaInit)
-            _weaponSpawnHooked = true
-        end
-    end)
-end
-
-local function matchApplyWeaponSkin(char)
-    if not _avatarItemsRegistered then
-        _avatarItemsRegistered = registerWeaponAvatarItems(char)
-    end
-
-    local curWeapon = char.GetCurrentWeapon and char:GetCurrentWeapon()
-    if not slua.isValid(curWeapon) then return false end
-
-    local curWeaponResID = 0
-    pcall(function() curWeaponResID = curWeapon:GetItemDefineID().TypeSpecificID end)
-    if curWeaponResID ~= _lastWeaponResID then
-        _lastWeaponResID = curWeaponResID
-        _weaponApplied = false
-        _weaponDiagDone = false
-    end
-
-    if _weaponApplied then return true end
-
-    local targetSkin = findTargetSkinForWeaponRes(curWeaponResID)
-    local loadedSkin = 0
-    pcall(function()
-        local wac = getWAC(char)
-        if wac then
-            loadedSkin = wac.CachedLoadedID or 0
-            if loadedSkin <= 0 then
-                local ES = import("EWeaponAttachmentSocketType")
-                loadedSkin = wac:GetEquippedItemDefineID(ES.MasterGun).TypeSpecificID or 0
-            end
-        end
-    end)
-
-    local synSkin = getSynMasterSkinID(curWeapon)
-    if targetSkin and (loadedSkin == targetSkin or synSkin == targetSkin) then
-        _weaponApplied = true
-        return true
-    end
-
-    buildSkinMappings()
-    local okSyn = applySkinToWeapon(curWeapon) or equipWeaponAvatarSynData(char)
-
-    if not _weaponDiagDone then
-        _weaponDiagDone = true
-        local list = table.concat(getDesiredWeaponSkins(), ",")
-        notify("Weapon: res=" .. tostring(curWeaponResID)
-            .. " type=" .. tostring(resolveWeaponTypeID(curWeaponResID))
-            .. " target=" .. tostring(targetSkin)
-            .. " syn=" .. tostring(synSkin)
-            .. " loaded=" .. tostring(loadedSkin)
-            .. " ctrl=" .. tostring(_avatarItemsRegistered)
-            .. " skins=[" .. list .. "]")
-    end
-
-    if okSyn and char.AddGameTimer then
-        pcall(function()
-            char:AddGameTimer(1.0, false, function()
-                local c = getLocalChar()
-                if not c then return end
-                local w = c.GetCurrentWeapon and c:GetCurrentWeapon()
-                if not slua.isValid(w) then return end
-                local wac2 = w.WeaponAvatarComponent
-                if not slua.isValid(wac2) then return end
-                local cid = wac2.CachedLoadedID or 0
-                local synId = getSynMasterSkinID(w)
-                notify("Verify: syn=" .. tostring(synId) .. " cached=" .. tostring(cid) .. " target=" .. tostring(targetSkin))
-                if targetSkin and (synId == targetSkin or cid == targetSkin) then
-                    _weaponApplied = true
-                end
-            end)
-        end)
-    end
-
-    return okSyn
+local function applyLobbyWeaponSkinToMatch(char)
+    if _G.HK_GetVal("UNLOCK_SKIN") ~= 1 then return false end
+    if not char or not slua.isValid(char) then return false end
+    local weapon = char.GetCurrentWeapon and char:GetCurrentWeapon()
+    return applyLobbyWeaponSkinToWeapon(weapon)
 end
 
 local _matchTimer = nil
-local _matchOutfitDone = false
+local _matchOutfitApplied = false
 
-local function startMatchWatcher(char)
+local function startMatchSkinWatcher(char)
     if _matchTimer then return end
-    _matchOutfitDone = false
-    _avatarItemsRegistered = false
-    _weaponDiagDone = false
-    _weaponApplied = false
-    _lastWeaponResID = 0
-    local elapsed = 0
+    char = char or getLocalChar()
+    if not char or not slua.isValid(char) or not char.AddGameTimer then return end
+    syncWeaponCacheFromLobby()
+    buildSkinMappings()
+    _matchOutfitApplied = false
 
+    local elapsed = 0
     _matchTimer = char:AddGameTimer(1.5, true, function()
         elapsed = elapsed + 1.5
         local cur = getLocalChar()
-        if not cur or not slua.isValid(cur) then return end
-
-        if not _matchOutfitDone then
-            _matchOutfitDone = matchApplyOutfit(cur)
+        if not cur then return end
+        if not _matchOutfitApplied then
+            _matchOutfitApplied = applyLobbyOutfitToMatch(cur)
         end
-        matchApplyWeaponSkin(cur)
-
+        applyLobbyWeaponSkinToMatch(cur)
         if elapsed >= 120 then
-            if _matchTimer and cur.RemoveGameTimer then
-                pcall(function() cur:RemoveGameTimer(_matchTimer) end)
-            end
+            if cur.RemoveGameTimer then pcall(function() cur:RemoveGameTimer(_matchTimer) end) end
             _matchTimer = nil
         end
     end)
 end
 
-local function stopMatchWatcher()
+local function stopMatchSkinWatcher()
     if _matchTimer then
         pcall(function()
             local char = getLocalChar()
             if char and char.RemoveGameTimer then char:RemoveGameTimer(_matchTimer) end
         end)
-        _matchTimer = nil
     end
-    _matchOutfitDone = false
-    _avatarItemsRegistered = false
-    _weaponApplied = false
-    _weaponDiagDone = false
-    _lastWeaponResID = 0
+    _matchTimer = nil
+    _matchOutfitApplied = false
+end
+
+local function hookMatchLobbySkin()
+    pcall(function()
+        local CAC = require("GameLua.Mod.Library.GamePlay.Avatar.Component.CharacterAvatarComponent")
+        local o = CAC.OnAvatarAllMeshLoadedLua
+        CAC.OnAvatarAllMeshLoadedLua = function(self)
+            o(self)
+            pcall(function()
+                if self.IsLobbyActor and self:IsLobbyActor() then return end
+                if self.IsSelf and not self:IsSelf() then return end
+                startMatchSkinWatcher(getLocalChar())
+            end)
+        end
+    end)
+
+    pcall(function()
+        local WAC = require("GameLua.Mod.Library.GamePlay.Avatar.Component.WeaponAvatarComponent")
+        local oLoad = WAC.OnWeaponAvatarLoadedLua
+        WAC.OnWeaponAvatarLoadedLua = function(self, slotID, definedID)
+            oLoad(self, slotID, definedID)
+            pcall(function()
+                if self.IsLobbyActor and self:IsLobbyActor() then return end
+                if self.IsSelf and not self:IsSelf() then return end
+                local char = getLocalChar()
+                if char and char.AddGameTimer then
+                    char:AddGameTimer(0.2, false, function() applyLobbyWeaponSkinToMatch(getLocalChar()) end)
+                end
+            end)
+        end
+    end)
+
+    pcall(function()
+        if EventSystem and EventSystem.registEvent and EVENTTYPE_LOBBY and EVENTID_ENTER_GAME_BEGIN then
+            EventSystem:registEvent(EVENTTYPE_LOBBY, EVENTID_ENTER_GAME_BEGIN, function()
+                syncWeaponCacheFromLobby()
+                stopMatchSkinWatcher()
+            end)
+        end
+    end)
 end
 
 local function hookPutOnRsp()
@@ -8424,77 +7669,6 @@ local function hookWeaponSkinPersist()
     end)
 end
 
-local _bootstrapNotified = false
-
-local function bootstrapMatch(char)
-    char = char or getLocalChar()
-    if not char or not slua.isValid(char) then return false end
-    syncWeaponCacheFromLobby()
-    _weaponApplied = false
-    _weaponDiagDone = false
-    _matchApplied = false
-    if not _bootstrapNotified then
-        _bootstrapNotified = true
-        local cch = cache()
-        local w = cch.weapons[101004]
-    end
-    startMatchWatcher(char)
-    return true
-end
-
-local function hookMatchAvatar()
-    pcall(function()
-        local CAC = require("GameLua.Mod.Library.GamePlay.Avatar.Component.CharacterAvatarComponent")
-        local o = CAC.OnAvatarAllMeshLoadedLua
-        CAC.OnAvatarAllMeshLoadedLua = function(self)
-            o(self)
-            pcall(function()
-                if self.IsLobbyActor and self:IsLobbyActor() then return end
-                local isSelf = self.IsSelf and self:IsSelf()
-                if not isSelf then return end
-                local char = getLocalChar()
-                if char and char.AddGameTimer then
-                    char:AddGameTimer(0.5, false, function() bootstrapMatch(char) end)
-                end
-            end)
-        end
-    end)
-    pcall(function()
-        local WAC = require("GameLua.Mod.Library.GamePlay.Avatar.Component.WeaponAvatarComponent")
-        local oLoad = WAC.OnWeaponAvatarLoadedLua
-        WAC.OnWeaponAvatarLoadedLua = function(self, slotID, definedID)
-            oLoad(self, slotID, definedID)
-            pcall(function()
-                if self.IsLobbyActor and self:IsLobbyActor() then return end
-                local isSelf = self.IsSelf and self:IsSelf()
-                if not isSelf then return end
-                local char = getLocalChar()
-                if not char then return end
-                bootstrapMatch(char)
-                _weaponApplied = false
-                if char.AddGameTimer then
-                    char:AddGameTimer(0.2, false, function()
-                        local c = getLocalChar()
-                        if c then matchApplyWeaponSkin(c) end
-                    end)
-                end
-            end)
-        end
-    end)
-end
-
-local function hookEnterGame()
-    pcall(function()
-        if EventSystem and EventSystem.registEvent and EVENTTYPE_LOBBY and EVENTID_ENTER_GAME_BEGIN then
-            EventSystem:registEvent(EVENTTYPE_LOBBY, EVENTID_ENTER_GAME_BEGIN, function()
-                syncWeaponCacheFromLobby()
-                stopMatchWatcher()
-                _bootstrapNotified = false
-            end)
-        end
-    end)
-end
-
 local function restoreLobbySkinsFromSettings()
     pcall(function()
         if _G.HK_Settings then
@@ -8587,17 +7761,11 @@ local function start()
     hookWardrobePutOnReq()
     hookWardrobePutDownReq()
     hookWeaponSkinPersist()
-    hookMatchAvatar()
-    hookWeaponSpawn()
-    hookEnterGame()
+    hookMatchLobbySkin()
 
     pcall(function()
         if isInRealMatch() then
-            local char = getLocalChar()
-            if char then
-                notify("Script injected in match - Starting application")
-                bootstrapMatch(char)
-            end
+            startMatchSkinWatcher(getLocalChar())
         end
     end)
 
@@ -8621,11 +7789,7 @@ local function start()
     later(1.5, retry)
 end
 
-
--- =========================== KÍCH HOẠT HỆ THỐNG SKIN ===========================
-pcall(function()
-    start()
-end)
+        start()
     end)
 end
 
