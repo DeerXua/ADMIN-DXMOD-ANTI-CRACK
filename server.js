@@ -131,6 +131,11 @@ function checkAdminAuth(req, res, next) {
 
 // API endpoint to serve protected payload
 app.post("/api/payload", (req, res) => {
+  res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
+  res.setHeader("Pragma", "no-cache");
+  res.setHeader("Expires", "0");
+  res.setHeader("Surrogate-Control", "no-store");
+
   const { uid } = req.body;
   const targetUid = String(uid || "").trim();
 
@@ -196,7 +201,8 @@ app.post("/api/payload", (req, res) => {
   res.json({
     status: "approved",
     payload: encryptedCode,
-    expires_at: device.expires_at
+    expires_at: device.expires_at,
+    payload_mtime: lastPayloadMtime
   });
 });
 
