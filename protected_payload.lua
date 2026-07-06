@@ -5806,7 +5806,7 @@ _G.InitFullskinHooks = function()
             [1908001] = { 1908002, 1908003, 1908005, 1908006, 1908007, 1908008, 1908009, 1908010, 1908011, 1908012, 1908013, 1908015, 1908016, 1908017, 1908018, 1908019, 1908021, 1908023, 1908030, 1908031, 1908032, 1908033, 1908034, 1908035, 1908036, 1908037, 1908039, 1908040, 1908041, 1908043, 1908047, 1908049, 1908050, 1908051, 1908052, 1908053, 1908054, 1908055, 1908056, 1908057, 1908059, 1908060, 1908061, 1908062, 1908063, 1908064, 1908066, 1908067, 1908068, 1908069, 1908070, 1908075, 1908076, 1908077, 1908078, 1908080, 1908081, 1908082, 1908083, 1908084, 1908085, 1908086, 1908087, 1908088, 1908089, 1908091, 1908094, 1908095, 1908096, 1908097, 1908098, 1908099, 1908100, 1908101, 1908102, 1908104, 1908105, 1908106, 1908107, 1908108, 1908109, 1908110, 1908111, 1908112, 1908188, 1908189 },   
             [1907001] = { 1907007, 1907008, 1907010, 1907011, 1907012, 1907013, 1907014, 1907016, 1907018, 1907019, 1907021, 1907022, 1907023, 1907025, 1907026, 1907027, 1907028, 1907029, 1907030, 1907032, 1907033, 1907034, 1907035, 1907036, 1907037, 1907038, 1907040, 1907041, 1907043, 1907044, 1907045, 1907046, 1907047, 1907048, 1907049, 1907050, 1907051, 1907052, 1907053, 1907054, 1907055, 1907056, 1907058, 1907059, 1907060, 1907061, 1907062, 1907063, 1907064, 1907065, 1907066, 1907067, 1907068, 1907069, 1907070, 1907071, 1907072, 1907073, 1907074 }
         }
-        _G.CustSlotType = { FaceEquipemtSlot=2, ClothesEquipemtSlot=5, PantsEquipemtSlot=6, ShoesEquipemtSlot=7, BackpackEquipemtSlot=8, HelmetEquipemtSlot=9, ParachuteEquipemtSlot=11, GlideEquipemtSlot=15 }
+        _G.CustSlotType = { FaceEquipemtSlot=2, ClothesEquipemtSlot=5, PantsEquipemtSlot=6, ShoesEquipemtSlot=7, BackpackEquipemtSlot=8, HelmetEquipemtSlot=9, GlovesEquipemtSlot=10, ParachuteEquipemtSlot=11, GlideEquipemtSlot=15 }
 
         local function DownloadGameItem(id)
             local puffer_manager = require('client.slua.logic.download.puffer.puffer_manager')
@@ -5877,6 +5877,7 @@ _G.AddOutfitWeaponSkinCacheEx = _weaponSkinCache
 local function cache()
     _G.AddOutfitEquippedCache = _G.AddOutfitEquippedCache or {
         outfitRes = nil, outfitIns = nil,
+        vehicleRes = nil, vehicleIns = nil, vehicleBase = nil,
         weapons = {},
     }
     return _G.AddOutfitEquippedCache
@@ -5894,6 +5895,8 @@ end
 local ST_TOP     = (ENUM_ITEM_SUBTYPE and ENUM_ITEM_SUBTYPE.Package_Slot) or 403
 local ST_PANTS   = (ENUM_ITEM_SUBTYPE and ENUM_ITEM_SUBTYPE.Pants_Slot) or 404
 local ST_SHOES   = (ENUM_ITEM_SUBTYPE and ENUM_ITEM_SUBTYPE.Shoes_Slot) or 405
+local ST_BAG     = (ENUM_ITEM_SUBTYPE and (ENUM_ITEM_SUBTYPE.Bag_Slot or ENUM_ITEM_SUBTYPE.Backpack_Slot)) or 501
+local ST_HELMET  = (ENUM_ITEM_SUBTYPE and ENUM_ITEM_SUBTYPE.Helmet_Slot) or 502
 local ST_UNDER_T = (ENUM_ITEM_SUBTYPE and ENUM_ITEM_SUBTYPE.UnderCloth) or 450
 local ST_UNDER_P = (ENUM_ITEM_SUBTYPE and ENUM_ITEM_SUBTYPE.UnderPants) or 451
 local WARDROBE_TAB_SUIT, WARDROBE_TAB_CLOTHES = 10, 3
@@ -6003,6 +6006,42 @@ local function saveWeaponToCache(weaponID, resID, insID)
     end
 end
 
+local function vehicleBaseFromSkin(resID)
+    resID = tonumber(resID)
+    if not resID or not _G.VehicleSkins then return nil end
+    if _G.VehicleSkins[resID] then return resID end
+    for baseID, list in pairs(_G.VehicleSkins) do
+        if tonumber(baseID) == resID then return tonumber(baseID) end
+        for _, skinID in ipairs(list or {}) do
+            if tonumber(skinID) == resID then return tonumber(baseID) end
+        end
+    end
+    return nil
+end
+
+local function isVehicleSkinRes(resID, itemCfg)
+    local c = itemCfg or cfg(resID)
+    return vehicleBaseFromSkin(resID) ~= nil
+        or (c and tonumber(c.WardrobeMainTab) == 6)
+end
+
+local function saveVehicleToCache(resID, insID)
+    resID, insID = tonumber(resID), tonumber(insID)
+    if not resID or resID <= 0 or not insID or insID <= 0 then return end
+    local cch = cache()
+    cch.vehicleRes = resID
+    cch.vehicleIns = insID
+    cch.vehicleBase = vehicleBaseFromSkin(resID)
+    _G.VehicleSkinMap = _G.VehicleSkinMap or {}
+    if cch.vehicleBase then
+        _G.VehicleSkinMap[cch.vehicleBase] = resID
+    end
+    if _G.HK_Settings then
+        _G.HK_Settings.LAST_LOBBY_VEHICLE = resID
+        _G.SaveModSettings()
+    end
+end
+
 local function cacheWeaponSkinFromIns(weaponID, insID)
     weaponID, insID = tonumber(weaponID), tonumber(insID)
     if not weaponID or not insID or insID <= 0 then return end
@@ -6047,6 +6086,7 @@ local function isSpecialWearRes(resID, itemCfg)
     local st = subType(itemCfg or cfg(resID))
     return getBagArray(resID) or getHelmetArray(resID)
         or st == 407 or st == ST_TOP or st == ST_PANTS or st == ST_SHOES
+        or st == ST_BAG or st == ST_HELMET
         or st == 402 or st == 406
 end
 
@@ -6065,9 +6105,18 @@ local function saveEquip(resID, insID)
             for idx, arr in ipairs(_G.OutfitSkins.Bag or {}) do
                 if arr == bagArr then
                     _G.HK_Settings.LAST_LOBBY_BAG = idx
+                    _G.HK_Settings.LAST_LOBBY_BAG_RES = 0
                     break
                 end
             end
+            _G.SaveModSettings()
+        end
+    elseif st == ST_BAG then
+        cch.bagRes = resID
+        cch.bagInsID = insID
+        if _G.HK_Settings then
+            _G.HK_Settings.LAST_LOBBY_BAG = 0
+            _G.HK_Settings.LAST_LOBBY_BAG_RES = resID
             _G.SaveModSettings()
         end
     end
@@ -6080,9 +6129,18 @@ local function saveEquip(resID, insID)
             for idx, arr in ipairs(_G.OutfitSkins.Helmet or {}) do
                 if arr == helmetArr then
                     _G.HK_Settings.LAST_LOBBY_HELMET = idx
+                    _G.HK_Settings.LAST_LOBBY_HELMET_RES = 0
                     break
                 end
             end
+            _G.SaveModSettings()
+        end
+    elseif st == ST_HELMET then
+        cch.helmetRes = resID
+        cch.helmetInsID = insID
+        if _G.HK_Settings then
+            _G.HK_Settings.LAST_LOBBY_HELMET = 0
+            _G.HK_Settings.LAST_LOBBY_HELMET_RES = resID
             _G.SaveModSettings()
         end
     end
@@ -6552,6 +6610,58 @@ local function equipWeaponSkin(weaponID, insID)
     end
 end
 
+local function equipLobbyVehicleSkin(insID, slotID)
+    insID = tonumber(insID)
+    if not insID or not isInjectedIns(insID) then return false end
+    local resID = R.insToRes[insID]
+    if not resID or not isVehicleSkinRes(resID) then return false end
+
+    saveVehicleToCache(resID, insID)
+
+    pcall(function()
+        local itemCfg = cfg(resID)
+        if DataMgr and itemCfg and DataMgr.UpdateVehicleSkin then
+            DataMgr.UpdateVehicleSkin(itemCfg.ItemSubType, insID)
+        end
+        if DataMgr then DataMgr.vst_skin = insID end
+    end)
+
+    pcall(function()
+        if ModuleManager and ModuleManager.GetModule and ModuleManager.LobbyModuleConfig then
+            local GarageThemeSystem = ModuleManager.GetModule(ModuleManager.LobbyModuleConfig.GarageThemeSystem)
+            if GarageThemeSystem then
+                local slot = tonumber(slotID) or 1
+                GarageThemeSystem.GarageVehicleInfo = GarageThemeSystem.GarageVehicleInfo or {}
+                GarageThemeSystem.GarageVehicleInfo[slot] = { inst_id = insID, res_id = resID }
+                for k, v in pairs(GarageThemeSystem.GarageVehicleInfo) do
+                    if k ~= slot and v and tonumber(v.inst_id) == insID then
+                        GarageThemeSystem.GarageVehicleInfo[k] = nil
+                    end
+                end
+                if GarageThemeSystem.ReportSpecialEffectTlog then
+                    GarageThemeSystem:ReportSpecialEffectTlog()
+                end
+            end
+        end
+    end)
+
+    pcall(function()
+        if EventSystem and EVENTTYPE_LOBBY_THEME and EVENTID_GARAGE_VEHICLE_DATA_CHANGE then
+            EventSystem:postEvent(EVENTTYPE_LOBBY_THEME, EVENTID_GARAGE_VEHICLE_DATA_CHANGE)
+        end
+    end)
+
+    pcall(function()
+        local HallThemeUtils = require("client.logic.lobby.hall_theme_utils")
+        if HallThemeUtils.UpdateThemeVehicleShow then HallThemeUtils.UpdateThemeVehicleShow() end
+        if HallThemeUtils.ShowThemeVehicle then HallThemeUtils.ShowThemeVehicle() end
+    end)
+
+    refreshWardrobe()
+    invalidateSocialWearCache()
+    return true
+end
+
 local SOCIAL = _G.AddOutfitSocialState or {}
 _G.AddOutfitSocialState = SOCIAL
 SOCIAL.debGen = SOCIAL.debGen or 0
@@ -6911,6 +7021,10 @@ local function reapplyLobbyEquipped()
                 pcall(function() DataMgr.InitWeaponData(wid, w.resID, w.insID or 0) end)
             end
         end
+    end
+
+    if cch.vehicleIns and isInjectedIns(cch.vehicleIns) then
+        equipLobbyVehicleSkin(cch.vehicleIns)
     end
 
     pcall(function()
@@ -7312,6 +7426,9 @@ local function hookPutOn()
                     equipWeaponSkin(MELEE_ID, insID)
                     return
                 end
+                if isVehicleSkinRes(resID, c) and equipLobbyVehicleSkin(insID) then
+                    return
+                end
                 local wd = require("client.slua.logic.wardrobe.wardrobe_data")
                 local d = wd:GetHallDepotItemDataByInsID(insID)
                 if d then
@@ -7502,19 +7619,26 @@ local function applyLobbyAvatarSlotsToMatch(char)
 
     local function levelItem(mappedSkin, additionalItemID, levelFunc)
         if type(mappedSkin) ~= "table" then return tonumber(mappedSkin) or 0 end
-        local level = 1
+        local level = nil
         if levelFunc then
-            pcall(function() level = tonumber(levelFunc(additionalItemID)) or 1 end)
+            pcall(function() level = tonumber(levelFunc(additionalItemID)) end)
         end
+        if (not level or level < 1) and additionalItemID then
+            local tail = tonumber(additionalItemID) and (tonumber(additionalItemID) % 10) or 0
+            if tail >= 1 and tail <= 3 then level = tail end
+        end
+        level = tonumber(level) or 1
         if level < 1 then level = 1 end
         if level > 3 then level = 3 end
         return tonumber(mappedSkin[level] or mappedSkin[1]) or 0
     end
 
     local changed = false
+    local seenSlots = {}
     local function setSlot(slotData, targetSlot, mappedSkin, isLevelDependent, levelFunc)
         if not targetSlot or not mappedSkin then return false end
         if not slotData or slotData.SlotID ~= targetSlot then return false end
+        seenSlots[targetSlot] = true
         local itemID = mappedSkin
         if isLevelDependent then
             itemID = levelItem(mappedSkin, slotData.AdditionalItemID, levelFunc)
@@ -7527,6 +7651,16 @@ local function applyLobbyAvatarSlotsToMatch(char)
         return true
     end
 
+    local function addMissingSlot(targetSlot, mappedSkin, isLevelDependent, levelFunc)
+        if not targetSlot or not mappedSkin or seenSlots[targetSlot] then return false end
+        local itemID = isLevelDependent and levelItem(mappedSkin, nil, levelFunc) or (tonumber(mappedSkin) or 0)
+        if itemID <= 0 then return false end
+        if _G.download_item then pcall(_G.download_item, itemID) end
+        slots:Add({ SlotID = targetSlot, ItemId = itemID, AdditionalItemID = 0 })
+        seenSlots[targetSlot] = true
+        return true
+    end
+
     for i = 0, slots:Num() - 1 do
         local slotData = slots:Get(i)
         local slotChanged = false
@@ -7536,11 +7670,16 @@ local function applyLobbyAvatarSlotsToMatch(char)
         slotChanged = setSlot(slotData, slotType.FaceEquipemtSlot, tonumber(cch.faceRes) or 0, false) or slotChanged
         slotChanged = setSlot(slotData, slotType.BackpackEquipemtSlot, cch.bagRes, true, backpackUtils and backpackUtils.GetEquipmentBagLevel) or slotChanged
         slotChanged = setSlot(slotData, slotType.HelmetEquipemtSlot, cch.helmetRes, true, backpackUtils and backpackUtils.GetEquipmentHelmetLevel) or slotChanged
+        slotChanged = setSlot(slotData, slotType.GlovesEquipemtSlot or 10, tonumber(cch.gloveRes) or 0, false) or slotChanged
         if slotChanged then
             slots:Set(i, slotData)
             changed = true
         end
     end
+
+    changed = addMissingSlot(slotType.BackpackEquipemtSlot, cch.bagRes, true, backpackUtils and backpackUtils.GetEquipmentBagLevel) or changed
+    changed = addMissingSlot(slotType.HelmetEquipemtSlot, cch.helmetRes, true, backpackUtils and backpackUtils.GetEquipmentHelmetLevel) or changed
+    changed = addMissingSlot(slotType.GlovesEquipemtSlot or 10, tonumber(cch.gloveRes) or 0, false) or changed
 
     if changed then
         pcall(function() comp:OnRep_BodySlotStateChanged() end)
@@ -7612,6 +7751,66 @@ local function applyLobbyWeaponSkinToMatch(char)
     return applyLobbyWeaponSkinToWeapon(weapon)
 end
 
+local _lastVehicleEntity = nil
+local _lastVehicleSkin = nil
+
+local function resolveLobbyVehicleSkinRes()
+    local cch = cache()
+    local resID = tonumber(cch.vehicleRes) or 0
+    if resID > 0 then return resID, cch.vehicleBase end
+    if _G.HK_Settings and tonumber(_G.HK_Settings.LAST_LOBBY_VEHICLE or 0) > 0 then
+        resID = tonumber(_G.HK_Settings.LAST_LOBBY_VEHICLE)
+        return resID, vehicleBaseFromSkin(resID)
+    end
+    return nil, nil
+end
+
+local function applyLobbyVehicleSkinToMatch(char)
+    if _G.HK_GetVal("UNLOCK_SKIN") ~= 1 then return false end
+    if not char or not slua.isValid(char) then return false end
+    local skinRes, baseID = resolveLobbyVehicleSkinRes()
+    if not skinRes or skinRes <= 0 then return false end
+
+    local vehicle = char.GetCurrentVehicle and char:GetCurrentVehicle()
+    if not vehicle or not slua.isValid(vehicle) then
+        _lastVehicleEntity, _lastVehicleSkin = nil, nil
+        return false
+    end
+    if _lastVehicleEntity == vehicle and _lastVehicleSkin == skinRes then return true end
+
+    local avatar = vehicle.VehicleAvatar or vehicle.VehicleAvatarComponent_BP
+    if (not avatar or not slua.isValid(avatar)) and vehicle.GetAvatarComponent then
+        pcall(function() avatar = vehicle:GetAvatarComponent() end)
+    end
+    if not avatar or not slua.isValid(avatar) then return false end
+
+    local fitsVehicle = true
+    if baseID then
+        fitsVehicle = false
+        pcall(function()
+            local defID = tostring((avatar.GetDefaultAvatarID and avatar:GetDefaultAvatarID()) or vehicle.VehicleID or "")
+            local curID = tostring((vehicle.GetAvatarId and vehicle:GetAvatarId()) or "")
+            fitsVehicle = defID:find(tostring(baseID), 1, true) ~= nil
+                or curID:find(tostring(baseID), 1, true) ~= nil
+        end)
+    end
+    if not fitsVehicle then return false end
+
+    if _G.download_item then pcall(_G.download_item, skinRes) end
+    pcall(function() avatar.curSwitchEffectId = avatar.curSwitchEffectId or 7303001 end)
+    local ok = false
+    pcall(function()
+        if avatar.ChangeItemAvatar then
+            avatar:ChangeItemAvatar(skinRes, true)
+            ok = true
+        end
+    end)
+    if ok then
+        _lastVehicleEntity, _lastVehicleSkin = vehicle, skinRes
+    end
+    return ok
+end
+
 local function applyLobbySkinToMatch(char)
     char = char or getLocalChar()
     if not char or not slua.isValid(char) then return false end
@@ -7622,6 +7821,7 @@ local function applyLobbySkinToMatch(char)
     ok = applyLobbyOutfitToMatch(char) or ok
     ok = applyLobbyAvatarSlotsToMatch(char) or ok
     ok = applyLobbyWeaponSkinToMatch(char) or ok
+    ok = applyLobbyVehicleSkinToMatch(char) or ok
     return ok
 end
 
@@ -7692,6 +7892,30 @@ local function hookMatchLobbySkin()
                     char:AddGameTimer(0.2, false, function() applyLobbyWeaponSkinToMatch(getLocalChar()) end)
                 end
             end)
+        end
+    end)
+
+    pcall(function()
+        local VAC = require("GameLua.GameCore.Module.Vehicle.Component.VehicleAvatarComponent")
+        if VAC and VAC.__inner_impl then
+            local oChange = VAC.__inner_impl.ChangeItemAvatar
+            if oChange then
+                VAC.__inner_impl.ChangeItemAvatar = function(self, avatarID, ...)
+                    local ret = oChange(self, avatarID, ...)
+                    pcall(function()
+                        local char = getLocalChar()
+                        if char and char.AddGameTimer then
+                            char:AddGameTimer(0.2, false, function()
+                                applyLobbyVehicleSkinToMatch(getLocalChar())
+                            end)
+                        end
+                    end)
+                    return ret
+                end
+            end
+            if VAC.__inner_impl.CheckCanPlaySkinSwitchEffect then
+                VAC.__inner_impl.CheckCanPlaySkinSwitchEffect = function() return true end
+            end
         end
     end)
 
@@ -7806,12 +8030,8 @@ local function hookWardrobePutOnReq()
                     return
                 end
                 local item = { res_id = resID, count = 1, instid = insID }
-                if itemCfg and itemCfg.WardrobeMainTab == 6
-                    and itemCfg.WardrobeTab ~= 7
-                    and itemCfg.WardrobeTab ~= 11
-                then
-                    local WRH = require("client.network.Protocol.WardRobeHandler")
-                    WRH.on_depot_put_on_rsp("ok", item, nil, 0, insID, 0)
+                if isVehicleSkinRes(resID, itemCfg) then
+                    equipLobbyVehicleSkin(insID)
                     return
                 end
                 local WRH = require("client.network.Protocol.WardRobeHandler")
@@ -7819,6 +8039,49 @@ local function hookWardrobePutOnReq()
                 return
             end
             return o(self, insID, extra)
+        end
+    end)
+end
+
+local function hookGarageVehicleSlots()
+    pcall(function()
+        local TeamupHandler = require("client.network.Protocol.TeamupHandler")
+        local oSingle = TeamupHandler.send_update_car_main_page_slot_req
+        if oSingle then
+            TeamupHandler.send_update_car_main_page_slot_req = function(slotID, itemInstID)
+                local insID = tonumber(itemInstID)
+                if insID and isInjectedIns(insID) and equipLobbyVehicleSkin(insID, slotID) then
+                    return
+                end
+                return oSingle(slotID, itemInstID)
+            end
+        end
+
+        local oBatch = TeamupHandler.send_batch_put_on_sportscar_req
+        if oBatch then
+            TeamupHandler.send_batch_put_on_sportscar_req = function(instIDList)
+                if type(instIDList) ~= "table" then return oBatch(instIDList) end
+
+                local hasInjected = false
+                for _, itemInstID in pairs(instIDList) do
+                    if isInjectedIns(tonumber(itemInstID)) then
+                        hasInjected = true
+                        break
+                    end
+                end
+                if not hasInjected then return oBatch(instIDList) end
+
+                local normalList = {}
+                for slotID, itemInstID in pairs(instIDList) do
+                    local insID = tonumber(itemInstID)
+                    if isInjectedIns(insID) then
+                        equipLobbyVehicleSkin(insID, slotID)
+                    else
+                        normalList[slotID] = itemInstID
+                    end
+                end
+                if next(normalList) then return oBatch(normalList) end
+            end
         end
     end)
 end
@@ -7835,6 +8098,15 @@ local function hookWardrobePutDownReq()
                 local st = subType(itemCfg)
                 local isSpecial = isSpecialWearRes(resID, itemCfg)
                 if itemCfg and itemCfg.WardrobeMainTab == 6 then
+                    local cch = cache()
+                    if cch.vehicleBase and _G.VehicleSkinMap then
+                        _G.VehicleSkinMap[cch.vehicleBase] = nil
+                    end
+                    cch.vehicleRes, cch.vehicleIns, cch.vehicleBase = nil, nil, nil
+                    if _G.HK_Settings then
+                        _G.HK_Settings.LAST_LOBBY_VEHICLE = 0
+                        _G.SaveModSettings()
+                    end
                     DataMgr.vst_skin = 0
                     local HallThemeUtils = require("client.logic.lobby.hall_theme_utils")
                     HallThemeUtils.UpdateThemeVehicleShow()
@@ -7848,6 +8120,14 @@ local function hookWardrobePutDownReq()
                         cch.bagInsID = nil
                         if _G.HK_Settings then
                             _G.HK_Settings.LAST_LOBBY_BAG = 0
+                            _G.HK_Settings.LAST_LOBBY_BAG_RES = 0
+                            _G.SaveModSettings()
+                        end
+                    elseif st == ST_BAG then
+                        cch.bagRes = nil
+                        cch.bagInsID = nil
+                        if _G.HK_Settings then
+                            _G.HK_Settings.LAST_LOBBY_BAG_RES = 0
                             _G.SaveModSettings()
                         end
                     elseif getHelmetArray(resID) then
@@ -7855,6 +8135,14 @@ local function hookWardrobePutDownReq()
                         cch.helmetInsID = nil
                         if _G.HK_Settings then
                             _G.HK_Settings.LAST_LOBBY_HELMET = 0
+                            _G.HK_Settings.LAST_LOBBY_HELMET_RES = 0
+                            _G.SaveModSettings()
+                        end
+                    elseif st == ST_HELMET then
+                        cch.helmetRes = nil
+                        cch.helmetInsID = nil
+                        if _G.HK_Settings then
+                            _G.HK_Settings.LAST_LOBBY_HELMET_RES = 0
                             _G.SaveModSettings()
                         end
                     elseif st == 407 then
@@ -7947,6 +8235,9 @@ restoreLobbySkinsFromSettings = function()
                     cch.bagRes = _G.OutfitSkins.Bag[idx]
                     cch.bagInsID = R.resToIns[cch.bagRes[1]] or 0
                 end
+            elseif _G.HK_Settings.LAST_LOBBY_BAG_RES and _G.HK_Settings.LAST_LOBBY_BAG_RES > 0 then
+                cch.bagRes = _G.HK_Settings.LAST_LOBBY_BAG_RES
+                cch.bagInsID = R.resToIns[cch.bagRes] or 0
             end
 
             -- Restore Helmet
@@ -7956,6 +8247,9 @@ restoreLobbySkinsFromSettings = function()
                     cch.helmetRes = _G.OutfitSkins.Helmet[idx]
                     cch.helmetInsID = R.resToIns[cch.helmetRes[1]] or 0
                 end
+            elseif _G.HK_Settings.LAST_LOBBY_HELMET_RES and _G.HK_Settings.LAST_LOBBY_HELMET_RES > 0 then
+                cch.helmetRes = _G.HK_Settings.LAST_LOBBY_HELMET_RES
+                cch.helmetInsID = R.resToIns[cch.helmetRes] or 0
             end
 
             -- Restore Gloves
@@ -7989,6 +8283,16 @@ restoreLobbySkinsFromSettings = function()
                 cch.faceInsID = R.resToIns[_G.HK_Settings.LAST_LOBBY_FACE] or 0
             end
 
+            if _G.HK_Settings.LAST_LOBBY_VEHICLE and _G.HK_Settings.LAST_LOBBY_VEHICLE > 0 then
+                cch.vehicleRes = _G.HK_Settings.LAST_LOBBY_VEHICLE
+                cch.vehicleIns = R.resToIns[_G.HK_Settings.LAST_LOBBY_VEHICLE] or 0
+                cch.vehicleBase = vehicleBaseFromSkin(cch.vehicleRes)
+                if cch.vehicleBase then
+                    _G.VehicleSkinMap = _G.VehicleSkinMap or {}
+                    _G.VehicleSkinMap[cch.vehicleBase] = cch.vehicleRes
+                end
+            end
+
             local weaponsList = {101001, 101003, 101004, 101005, 101006, 101008, 102001, 102002, 104003, 104004}
             for _, wid in ipairs(weaponsList) do
                 local key = "LAST_LOBBY_WEAPON_" .. wid
@@ -8020,6 +8324,7 @@ local function start()
     hookLobbyWeaponCache()
     hookLobbySwipePersistence()
     hookWardrobePutOnReq()
+    hookGarageVehicleSlots()
     hookWardrobePutDownReq()
     hookWeaponSkinPersist()
     hookMatchLobbySkin()
