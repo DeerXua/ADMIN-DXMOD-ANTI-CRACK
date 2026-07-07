@@ -8,15 +8,8 @@ local function InitAllModSystems()
     end)
 
     local GameplayData = package.loaded["GameLua.GameCore.Data.GameplayData"] or require("GameLua.GameCore.Data.GameplayData")
-    if not GameplayData then 
-        -- Nếu chưa load GameplayData, thử lại sau 1s
-        pcall(function()
-            require("common.time_ticker").AddTimerOnce(1.0, InitAllModSystems)
-        end)
-        return 
-    end
+    if not GameplayData then return end
 
-    local initialized = false
     pcall(function()
         local LocalPlayer = GameplayData.GetPlayerCharacter and GameplayData.GetPlayerCharacter()
         if slua.isValid(LocalPlayer) then
@@ -36,16 +29,8 @@ local function InitAllModSystems()
                     LocalPlayer:StartAdvancedSystems() 
                 end)
             end
-            initialized = true
         end
     end)
-
-    -- Nếu chưa có LocalPlayer (chưa vào đảo chờ/trận đấu), tiếp tục loop thử lại sau 1s
-    if not initialized then
-        pcall(function()
-            require("common.time_ticker").AddTimerOnce(1.0, InitAllModSystems)
-        end)
-    end
 end
 
 pcall(function() 

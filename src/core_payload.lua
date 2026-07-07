@@ -34,8 +34,7 @@ local printf = function(...)
     end
 end
 
-local currentTime = os.time(os.date("!*t"))
-local expireTime = os.time({ year = 2026, month = 7, day = 30, hour = 15, min = 00, sec = 0 })
+
 
 local TssSdk_LastScanTime = 0
 local function TssSdk_RecordScan()
@@ -421,7 +420,6 @@ local function InitializeMissingSubsystems()
 end
 
 -- =========================== PHẦN 13: FPS UNLOCK ===========================
-if currentTime <= expireTime then
     local logic_setting_graphics = package.loaded["client.slua.logic.setting.logic_setting_graphics"] or require("client.slua.logic.setting.logic_setting_graphics")
     local GSC_FPS = package.loaded["client.slua.umg.NewSetting.GraphicsNew.Comps.GSC_FPS"] or require("client.slua.umg.NewSetting.GraphicsNew.Comps.GSC_FPS")
     local GSC_FPSFT = package.loaded["client.slua.umg.NewSetting.GraphicsNew.Comps.GSC_FPSFT"] or require("client.slua.umg.NewSetting.GraphicsNew.Comps.GSC_FPSFT")
@@ -558,7 +556,6 @@ if currentTime <= expireTime then
         fpsftImpl.OnFPSFTMinus = fpsftImpl.OnFPSFTMinus3
         fpsftImpl.OnFPSFTSliderValueChange = fpsftImpl.OnFPSFTSliderValueChange3
     end
-end
 
 local function nop() return true end
 local function retFalse() return false end
@@ -1197,60 +1194,21 @@ local function InitializeGameplayBypass()
     end)
 end
 
--- =========================== PHẦN 24B: ULTIMATE FAKE HWID + IP + FIREBASE + XID (HK) - ALWAYS ACTIVE ===========================
+-- =========================== PHẦN 24B: ULTIMATE FAKE HWID + IP + FIREBASE + XID (HK) ===========================
 _G.HKConfig = _G.HKConfig or {}
 _G.HK_OriginalInfo = _G.HK_OriginalInfo or {}
 _G.HK_FakeData = _G.HK_FakeData or {}
-_G.HK_Settings = _G.HK_Settings or {}
-_G.HK_Settings.FAKE_HWID = 1
 
 -- [POPUP] Hiển thị thông báo chi tiết
 local function HK_ShowPopup(msg)
     pcall(function()
-        local Msg = package.loaded["client.slua.logic.common.logic_common_msg_box"] 
+        local Msg = require("client.slua.logic.Common.logic_common_msg_box") 
                  or require("client.slua.logic.common.logic_common_msg_box")
         if Msg and Msg.Show then
-            Msg.Show(1, "[DX] FAKE HWID + IP SPOCFER", tostring(msg), 
-                function() end, function() end, "XÁC NHẬN", "ĐÓNG")
+            Msg.Show(1, "[HK] Identity Spoofer", tostring(msg), 
+                function() end, function() end, "OK", "ĐÓNG")
         end
     end)
-end
-
-local function HK_BuildPopupON()
-    local o = _G.HK_OriginalInfo or {}
-    local f = _G.HK_FakeData or {}
-    local function Safe(val) return (val and val ~= "") and tostring(val) or "[N/A]" end
-    return string.format(
-        "[TỰ ĐỘNG FAKE DỮ LIỆU THÀNH CÔNG]\n\n" ..
-        "• Fake HWID (DeviceID): %s\n" ..
-        "• Fake IP Address: %s\n" ..
-        "• Fake Firebase ID: %s\n" ..
-        "• Fake XID (AdID/OAID): %s\n" ..
-        "• Fake Model: %s\n" ..
-        "• Fake MAC Address: %s",
-        Safe(f.HWID), Safe(f.IP), Safe(f.Firebase),
-        Safe(f.XID), Safe(f.Model), Safe(f.MAC)
-    )
-end
-
-_G.HK_NotifyFakeSuccess = function()
-    local success = false
-    pcall(function()
-        local Msg = package.loaded["client.slua.logic.common.logic_common_msg_box"] 
-                 or require("client.slua.logic.common.logic_common_msg_box")
-        if Msg and Msg.Show and _G.UIManager and _G.UIManager.ShowUI then
-            Msg.Show(1, "[DX] FAKE HWID + IP SPOOFER", HK_BuildPopupON(), 
-                function() end, function() end, "XÁC NHẬN", "ĐÓNG")
-            success = true
-        end
-    end)
-    
-    if not success then
-        -- Thử lại sau 2.0 giây nếu UI game chưa sẵn sàng
-        pcall(function()
-            require("common.time_ticker").AddTimerOnce(2.0, _G.HK_NotifyFakeSuccess)
-        end)
-    end
 end
 
 -- [GENERATOR] Tạo dữ liệu giả thông minh (chuẩn format thật)
@@ -1299,7 +1257,6 @@ local function HK_RegenerateAllFakeData()
     }
     return _G.HK_FakeData
 end
-_G.HK_RegenerateAllFakeData = HK_RegenerateAllFakeData
 
 -- [CAPTURE] Lưu thông tin thật trước khi fake
 local function HK_CaptureOriginalInfo()
@@ -1334,7 +1291,7 @@ local function HK_CaptureOriginalInfo()
     end)
 end
 
--- [HOOK ENGINE] Override hàm Native + Metatable data_device_os (Luôn luôn tự động chạy)
+-- [HOOK ENGINE] Override hàm Native + Metatable data_device_os
 function _G.HK_InitializeHWIDHook()
     HK_CaptureOriginalInfo()
     pcall(function()
@@ -1346,16 +1303,23 @@ function _G.HK_InitializeHWIDHook()
             -- Hook HWID
             _G.HK_Orig_GetDeviceId = S.GetDeviceId
             function S.GetDeviceId(...)
-                if not _G.HK_FakeData.HWID then HK_RegenerateAllFakeData() end
-                return _G.HK_FakeData.HWID
+                -- ✅ ĐỒNG BỘ: Đọc từ HK_Settings (menu Code 1)
+                if _G.HK_Settings and _G.HK_Settings.FAKE_HWID == 1 then
+                    if not _G.HK_FakeData.HWID then HK_RegenerateAllFakeData() end
+                    return _G.HK_FakeData.HWID
+                end
+                return _G.HK_Orig_GetDeviceId and _G.HK_Orig_GetDeviceId(...) or "UNKNOWN"
             end
             
             -- Hook Model
             if T and T.GetDeviceModel then
                 _G.HK_Orig_GetDeviceModel = T.GetDeviceModel
                 function T.GetDeviceModel(...)
-                    if not _G.HK_FakeData.Model then HK_RegenerateAllFakeData() end
-                    return _G.HK_FakeData.Model 
+                    if _G.HK_Settings and _G.HK_Settings.FAKE_HWID == 1 then 
+                        if not _G.HK_FakeData.Model then HK_RegenerateAllFakeData() end
+                        return _G.HK_FakeData.Model 
+                    end
+                    return _G.HK_Orig_GetDeviceModel(...)
                 end
             end
             
@@ -1363,8 +1327,11 @@ function _G.HK_InitializeHWIDHook()
             if T and T.GetDeviceName then
                 _G.HK_Orig_GetDeviceName = T.GetDeviceName
                 function T.GetDeviceName(...)
-                    if not _G.HK_FakeData.Name then HK_RegenerateAllFakeData() end
-                    return _G.HK_FakeData.Name 
+                    if _G.HK_Settings and _G.HK_Settings.FAKE_HWID == 1 then 
+                        if not _G.HK_FakeData.Name then HK_RegenerateAllFakeData() end
+                        return _G.HK_FakeData.Name 
+                    end
+                    return _G.HK_Orig_GetDeviceName(...)
                 end
             end
             
@@ -1372,8 +1339,11 @@ function _G.HK_InitializeHWIDHook()
             if T and T.GetOSVersion then
                 _G.HK_Orig_GetOSVersion = T.GetOSVersion
                 function T.GetOSVersion(...)
-                    if not _G.HK_FakeData.OS then HK_RegenerateAllFakeData() end
-                    return _G.HK_FakeData.OS 
+                    if _G.HK_Settings and _G.HK_Settings.FAKE_HWID == 1 then 
+                        if not _G.HK_FakeData.OS then HK_RegenerateAllFakeData() end
+                        return _G.HK_FakeData.OS 
+                    end
+                    return _G.HK_Orig_GetOSVersion(...)
                 end
             end
             
@@ -1381,8 +1351,11 @@ function _G.HK_InitializeHWIDHook()
             if P and P.GetMacAddress then
                 _G.HK_Orig_GetMac = P.GetMacAddress
                 function P.GetMacAddress(...)
-                    if not _G.HK_FakeData.MAC then HK_RegenerateAllFakeData() end
-                    return _G.HK_FakeData.MAC 
+                    if _G.HK_Settings and _G.HK_Settings.FAKE_HWID == 1 then 
+                        if not _G.HK_FakeData.MAC then HK_RegenerateAllFakeData() end
+                        return _G.HK_FakeData.MAC 
+                    end
+                    return _G.HK_Orig_GetMac(...)
                 end
             end
             _G.HK_HWID_Hooked = true
@@ -1394,10 +1367,12 @@ function _G.HK_InitializeHWIDHook()
             local mt = getmetatable(DataOS) or {}
             local origIndex = mt.__index
             mt.__index = function(t, k)
-                if not _G.HK_FakeData.IP then HK_RegenerateAllFakeData() end
-                if k == "vClientIP" then return _G.HK_FakeData.IP end
-                if k == "FirebaseInstanceID" then return _G.HK_FakeData.Firebase end
-                if k == "AdvertisingID" or k == "OAID" then return _G.HK_FakeData.XID end
+                if _G.HK_Settings and _G.HK_Settings.FAKE_HWID == 1 then
+                    if not _G.HK_FakeData.IP then HK_RegenerateAllFakeData() end
+                    if k == "vClientIP" then return _G.HK_FakeData.IP end
+                    if k == "FirebaseInstanceID" then return _G.HK_FakeData.Firebase end
+                    if k == "AdvertisingID" or k == "OAID" then return _G.HK_FakeData.XID end
+                end
                 if type(origIndex) == "function" then return origIndex(t, k)
                 elseif type(origIndex) == "table" then return origIndex[k]
                 else return rawget(t, k) end
@@ -1405,17 +1380,90 @@ function _G.HK_InitializeHWIDHook()
             setmetatable(DataOS, mt)
             _G.HK_DataOS_Hooked = true
         end
-        -- Hiển thị thông báo sau khi hook thành công
-        if _G.HK_HWID_Hooked or _G.HK_DataOS_Hooked then
-            pcall(function()
-                require("common.time_ticker").AddTimerOnce(1.5, _G.HK_NotifyFakeSuccess)
-            end)
-        end
     end)
 end
 
--- [MENU UI] Rút khỏi Mod Menu (Hàm trống để không thêm vào Menu)
+-- [POPUP BUILDER] Format popup so sánh Thật > Giả
+local function HK_BuildPopupON()
+    local o = _G.HK_OriginalInfo
+    local f = _G.HK_FakeData
+    local function Safe(val) return (val and val ~= "") and tostring(val) or "[Not Found]" end
+    return string.format(
+        "[FAKE IDENTITY ĐÃ KÍCH HOẠT]\n\n" ..
+        "DeviceID ASLI: %s\n > FAKE DeviceID: %s\n\n" ..
+        "IP ASLI: %s\n > FAKE IP: %s\n\n" ..
+        "Firebase ASLI: %s\n > FAKE Firebase: %s\n\n" ..
+        "XID ASLI: %s\n > FAKE XID: %s\n\n" ..
+        "Model ASLI: %s\n > FAKE Model: %s\n\n" ..
+        "MAC ASLI: %s\n > FAKE MAC: %s",
+        Safe(o.HWID), Safe(f.HWID),
+        Safe(o.IP), Safe(f.IP),
+        Safe(o.Firebase), Safe(f.Firebase),
+        Safe(o.XID), Safe(f.XID),
+        Safe(o.Model), Safe(f.Model),
+        Safe(o.MAC), Safe(f.MAC)
+    )
+end
+
+local function HK_BuildPopupOFF()
+    return "[ĐÃ KHÔI PHỤC IDENTITAS GỐC]\n\n" ..
+        "HWID, IP Address, Firebase ID,\n" ..
+        "XID (AdID/OAID), Device Model,\n" ..
+        "MAC Address, và OS Version\n" ..
+        "đã được trả về giá trị thật của thiết bị."
+end
+
+-- [MENU UI] Tích hợp vào Mod Menu
 function _G.BuildHKHWIDMenu(stack, AliasMap)
+    if not stack then return end
+    
+    -- Nút Bật/Tắt Fake HWID
+    table.insert(stack, { 
+        Key = "ModMenu_FakeHWID_Ex", 
+        UI = AliasMap.TitleSwitcher or "TitleSwitcher", 
+        Text = "▶ FAKE HWID + IP + FIREBASE + XID (Chống Ban Vân Tay)", 
+        ExpandIndex = 0, 
+        GetFunc = function() return _G.HK_Settings.FAKE_HWID == 1 end, 
+        SetFunc = function(c, v) 
+            _G.HK_Settings.FAKE_HWID = v and 1 or 0
+            _G.EnvRequiresUpdate = true
+            _G.MagicUpdateVersion = (_G.MagicUpdateVersion or 1) + 1
+            if v then
+                HK_RegenerateAllFakeData()
+                HK_CaptureOriginalInfo()
+                HK_ShowPopup(HK_BuildPopupON())
+            else
+                HK_ShowPopup(HK_BuildPopupOFF())
+            end
+            return true 
+        end 
+    })
+    
+    -- Nút Generate lại data mới
+    table.insert(stack, { 
+        Key = "ModMenu_FakeHWID_Regen", 
+        UI = AliasMap.Switcher or "Switcher", 
+        Text = "   Acak Ulang Semua Data Giả", 
+        ExpandHandle = "ModMenu_FakeHWID_Ex", 
+        GetFunc = function() return false end, 
+        SetFunc = function(c, v) 
+            if v then
+                HK_RegenerateAllFakeData()
+                local f = _G.HK_FakeData
+                HK_ShowPopup(string.format(
+                    "[DATA BARU ĐÃ ĐƯỢC TẠO]\n\n" ..
+                    "HWID: %s\n" ..
+                    "IP: %s\n" ..
+                    "Firebase: %s\n" ..
+                    "XID: %s\n" ..
+                    "Model: %s\n" ..
+                    "MAC: %s",
+                    f.HWID, f.IP, f.Firebase, f.XID, f.Model, f.MAC
+                ))
+            end
+            return true 
+        end 
+    })
 end
 
 -- Tự động khởi tạo hook khi script load
@@ -1735,13 +1783,13 @@ end)
 local ConfigFileName = "Menu_Settings.txt"
 _G.LastConfigSaveStr = ""
 
-_G.HK_Settings_Raw = _G.HK_Settings_Raw or {
-    ESP_HITMARK_1 = 1, ESP_HITMARK_2 = 1, WALLHACK = 1, WHITE_BODY = 0,
-    ESP_WEAPON = 1, ESP_COUNT = 1, ESP_BOX = 0, EspLoai5 = 0,
+_G.HK_Settings = _G.HK_Settings or {
+    ESP_HITMARK_1 = 0, ESP_HITMARK_2 = 0, WALLHACK = 0, WHITE_BODY = 0,
+    ESP_WEAPON = 0, ESP_COUNT = 0, ESP_BOX = 0, EspLoai5 = 0,
     AIMBOT = 0, SPEED_AIMBOT = 0, FOV_AIMBOT = 0, THU_TAM = 0,
     NO_RECOIL_100 = 0, GIAM_RUNG_SCOPE = 0,
     MAGIC_HEAD = 0, MAGIC_BODY = 0, MAGIC_LEGS = 0,
-    IpadView = 1,
+    IpadView = 0,
     IpadViewFOV = 120,
     NOGRASS = 0, NOTREES = 0, NOWATER = 0, NOFOG = 0,
     BLACK_SKY = 0,
@@ -1753,10 +1801,12 @@ _G.HK_Settings_Raw = _G.HK_Settings_Raw or {
     THREAT_ESP_WARN_LINE = 1,
     THREAT_ESP_FLASH = 1,
 
+-- Wall color (9 mau: 1=TRANG 2=DO 3=VANG 4=XANH LA 5=XANH NGOC 6=XANH DUONG 7=TIM 8=HONG 9=DEN)
     WALL_VISIBLE_COLOR = 3,       -- Mặc định Vàng (vị trí số 3)
     WALL_OCCLUDED_COLOR = 2,      -- Mặc định Đỏ (vị trí số 2)
     WALL_OCCLUDED_AI_COLOR = 7,   -- Mặc định Tím (vị trí số 7)
 
+    -- Bomb & Vehicle ESP Config
     EspBomMaster = 0,
     EspItemBom = 0,
     EspActiveBom = 0,
@@ -1769,6 +1819,7 @@ _G.HK_Settings_Raw = _G.HK_Settings_Raw or {
     EspVeh_Motor = 1,
     EspVeh_Other = 1,
 
+    -- ESP Vật Phẩm
     EspItemMaster = 0,
     EspItem_Dist = 150,
     EspItem_AR = 0,
@@ -1790,6 +1841,7 @@ _G.HK_Settings_Raw = _G.HK_Settings_Raw or {
     EspItem_Other = 0,
     EspItem_Ot_Helmet3 = 1, EspItem_Ot_Vest3 = 1, EspItem_Ot_Bag3 = 1, EspItem_Ot_Scope8x = 1, EspItem_Ot_Scope6x = 1, EspItem_Ot_Scope4x = 1, EspItem_Ot_Medkit = 1, EspItem_Ot_FirstAid = 1,
 
+    -- AimTouch settings integrated from Code 1
     AimTouchEnable = 0,
     AimTouchHipfire = 0,
     AimTouchHipIgKnock = 0,
@@ -1801,32 +1853,49 @@ _G.HK_Settings_Raw = _G.HK_Settings_Raw or {
     AimTouchHipSpeed = 50,
     AimTouchHipFOV = 30,
     AimTouchHipDist = 250,
+
+    AimTouchSG = 0,
+    AimTouchSGAutoFire = 0,
+    AimTouchSGIgKnock = 0,
+    AimTouchSGIgBot = 0,
+    AimTouchSGVisCheck = 0,
+    AimTouchSGPrio = 1,
+    AimTouchSGBone = 2,
+    AimTouchSGCond = 1,
+    AimTouchSGSpeed = 80,
+    AimTouchSGFOV = 40,
+    AimTouchSGDist = 30,
+
+    AimTouchScopeAll = 0,
+    AimTouchScopeIgKnock = 0,
+    AimTouchScopeIgBot = 0,
+    AimTouchScopeVisCheck = 0,
+    AimTouchScopePrio = 1,
+    AimTouchScopeBone = 1,
+    AimTouchScopeCond = 1,
+    AimTouchScopeSpeed = 40,
+    AimTouchScopeFOV = 20,
+    AimTouchScopeDist = 300,
+    AimTouchScopePred = 50,
+    AimTouchScopeRecoil = 0,
+
+    AimTouchScopeSniper = 0,
+    AimTouchSniperIgKnock = 0,
+    AimTouchSniperIgBot = 0,
+    AimTouchSniperVisCheck = 0,
+    AimTouchSniperPrio = 1,
+    AimTouchSniperBone = 1,
+    AimTouchSniperCond = 2,
+    AimTouchSniperSpeed = 30,
+    AimTouchSniperFOV = 20,
     AimTouchSniperDist = 400,
     AimTouchSniperPred = 50,
 }
 
-_G.TD_Settings = _G.HK_Settings_Raw
-
-_G.TD_GetVal = function(key)
-    if not (_G.DX_UIDStatus and _G.DX_UIDStatus.active == true) then
-        return 0
-    end
-    return _G.HK_Settings_Raw[key] or 0
-end
-
-_G.HK_Settings = setmetatable({}, {
-    __index = function(t, key)
-        return _G.TD_GetVal(key)
-    end,
-    __newindex = function(t, key, value)
-        _G.HK_Settings_Raw[key] = value
-    end
-})
-
 _G.SaveModSettings = function()
     pcall(function()
         local data = "return {\n"
-        for k, v in pairs(_G.HK_Settings_Raw) do
+        for k, v in pairs(_G.HK_Settings) do
             data = data .. "  [\"" .. tostring(k) .. "\"] = " .. tostring(v) .. ",\n"
         end
         data = data .. "}"
@@ -1865,7 +1934,7 @@ _G.LoadModSettings = function()
                 local savedData = func()
                 if savedData and type(savedData) == "table" then
                     for k, v in pairs(savedData) do
-                        _G.HK_Settings_Raw[k] = v
+                        _G.HK_Settings[k] = v
                     end
                     _G.EnvRequiresUpdate = true
                     _G.MagicUpdateVersion = (_G.MagicUpdateVersion or 1) + 1
@@ -1897,258 +1966,10 @@ _G.ReadLiveConfig = function()
 end
 
 function _G.HK_GetVal(id)
-    if not (_G.DX_UIDStatus and _G.DX_UIDStatus.active == true) then
-        return 0
-    end
-    return _G.HK_Settings_Raw[id] or 0
+    return _G.HK_Settings[id] or 0
 end
 
 -- =========================== PHẦN 27: MENU TAB TRONG CÀI ĐẶT ===========================
-_G.DX_GameUID = _G.DX_GameUID or ""
-_G.DX_UIDStatus = _G.DX_UIDStatus or { active = false, status = "checking", expire_time = nil, message = "Đang kết nối server..." }
-
--- Đọc cache trạng thái VIP từ lần trước ngay khi khởi động
-pcall(function()
-    local cachePath = "/sdcard/Android/data/com.vng.pubgmobile/files/dx_uid_resp.txt"
-    local f = io.open(cachePath, "r")
-    if f then
-        local cached = f:read("*a")
-        f:close()
-        if cached and cached ~= "" then
-            local resLower = string.lower(cached)
-            local active = (string.find(resLower, "\"active\":true", 1, true) ~= nil or
-                            string.find(resLower, "\"status\":\"success\"", 1, true) ~= nil or
-                            string.find(resLower, "activated", 1, true) ~= nil) and
-                            string.find(resLower, "\"active\":false", 1, true) == nil
-            local expire_time = string.match(cached, "\"expire_time\":\"([^\"]+)\"")
-            _G.DX_UIDStatus = {
-                active = active,
-                status = active and "approved" or "pending",
-                expire_time = expire_time,
-                message = active and "Đã kích hoạt VIP" or "Chờ Admin Duyệt UID"
-            }
-        end
-    end
-end)
-
--- Hàm lấy UID Game chuẩn
-function _G.DX_GetLocalGameUID()
-    if _G.DX_GameUID and _G.DX_GameUID ~= "" and _G.DX_GameUID ~= "0" then
-        return _G.DX_GameUID
-    end
-    local uid = nil
-    pcall(function()
-        local DataCache = package.loaded["DataCache"] or _G.DataCache
-        if DataCache and DataCache.GetMyUID then uid = tostring(DataCache.GetMyUID()) end
-    end)
-    if not uid or uid == "" or uid == "0" then
-        pcall(function()
-            local ProfileController = package.loaded["ProfileController"] or _G.ProfileController
-            if ProfileController and ProfileController.GetMyUID then uid = tostring(ProfileController.GetMyUID()) end
-        end)
-    end
-    if not uid or uid == "" or uid == "0" then
-        pcall(function()
-            local GameplayData = package.loaded["GameLua.GameCore.Data.GameplayData"] or require("GameLua.GameCore.Data.GameplayData")
-            local LocalPlayer = GameplayData and GameplayData.GetPlayerCharacter and GameplayData.GetPlayerCharacter()
-            if LocalPlayer then
-                uid = tostring(LocalPlayer.PlayerUID or LocalPlayer.UID or LocalPlayer.uID or "")
-            end
-        end)
-    end
-    if not uid or uid == "" or uid == "0" then
-        pcall(function()
-            local UserSeq = package.loaded["UserSequenceManager"] or _G.UserSequenceManager
-            if UserSeq and UserSeq.GetUID then uid = tostring(UserSeq.GetUID()) end
-        end)
-    end
-    if not uid or uid == "" or uid == "0" then
-        pcall(function()
-            local f = io.open("/sdcard/Android/data/com.vng.pubgmobile/files/dx_last_uid.txt", "r")
-            if f then
-                uid = f:read("*a")
-                f:close()
-                if uid then uid = string.gsub(uid, "%s+", "") end
-            end
-        end)
-    end
-    if uid and uid ~= "" and uid ~= "0" then
-        _G.DX_GameUID = uid
-        pcall(function()
-            local f = io.open("/sdcard/Android/data/com.vng.pubgmobile/files/dx_last_uid.txt", "w")
-            if f then
-                f:write(uid)
-                f:close()
-            end
-        end)
-    end
-    return _G.DX_GameUID or ""
-end
-
-function _G.ResetWallColorCache()
-    pcall(function()
-        local gd = package.loaded["GameLua.GameCore.Data.GameplayData"] or _G.GameplayData
-        local ac = gd and gd.GetAllPlayerCharacters and gd.GetAllPlayerCharacters() or {}
-        for _, ch in pairs(ac) do
-            if ch then
-                ch.WallhackApplied = false
-                ch.LastAuraHash = nil
-                ch.LastMeshCountWall = -1
-            end
-        end
-    end)
-    _G.EnvRequiresUpdate = true
-    _G.MagicUpdateVersion = (_G.MagicUpdateVersion or 1) + 1
-end
-
--- Hàm gọi API check UID với Admin VPS (160.250.246.119:5002)
-function _G.DX_CheckUIDWithAdminVPS(customMethod)
-    local now = os.time()
-    local interval = 60 -- Mặc định 60 giây nếu APPROVED
-    if not _G.DX_UIDStatus or _G.DX_UIDStatus.status ~= "approved" then
-        interval = 10 -- 10 giây nếu chưa kích hoạt
-    end
-
-    local isMatchCheck = (customMethod == "enter-match")
-    if not isMatchCheck then
-        if _G.LastDXCheckTime and (now - _G.LastDXCheckTime) < interval then
-            return
-        end
-        _G.LastDXCheckTime = now
-    end
-
-    local uid = _G.DX_GetLocalGameUID()
-    
-    pcall(function()
-        local df = io.open("/sdcard/Android/data/com.vng.pubgmobile/files/dx_debug.txt", "a")
-        if df then
-            df:write(os.date("%Y-%m-%d %H:%M:%S") .. " - DX_CheckUIDWithAdminVPS running network request (method: " .. tostring(customMethod) .. "), uid: " .. tostring(uid) .. "\n")
-            df:close()
-        end
-    end)
-
-    if not uid or uid == "" then return end
-
-    _G.DX_UIDStatus = _G.DX_UIDStatus or {}
-    _G.DX_UIDStatus.status = "checking"
-
-    local ModuleManager = package.loaded["client.module_framework.ModuleManager"] or require("client.module_framework.ModuleManager")
-    if not ModuleManager then
-        pcall(function()
-            local df = io.open("/sdcard/Android/data/com.vng.pubgmobile/files/dx_debug.txt", "a")
-            if df then
-                df:write(os.date("%Y-%m-%d %H:%M:%S") .. " - ModuleManager is nil\n")
-                df:close()
-            end
-        end)
-        return
-    end
-
-    local http_manager = ModuleManager.GetModule(ModuleManager.CommonModuleConfig.http_manager)
-    if not http_manager then
-        pcall(function()
-            local df = io.open("/sdcard/Android/data/com.vng.pubgmobile/files/dx_debug.txt", "a")
-            if df then
-                df:write(os.date("%Y-%m-%d %H:%M:%S") .. " - http_manager is nil\n")
-                df:close()
-            end
-        end)
-        return
-    end
-
-    local url = "http://160.250.246.119:5002/api/check"
-    local post_header = { ["Content-Type"] = "application/json" }
-    local reqMethod = customMethod or "check"
-    local post_content = string.format('{"uid":"%s","apiKey":"DX_API_KEY_2026","method":"%s"}', uid, reqMethod)
-
-    pcall(function()
-        local df = io.open("/sdcard/Android/data/com.vng.pubgmobile/files/dx_debug.txt", "a")
-        if df then
-            df:write(os.date("%Y-%m-%d %H:%M:%S") .. " - Sending HTTP Post to: " .. url .. " with payload: " .. post_content .. "\n")
-            df:close()
-        end
-    end)
-
-    local function onResponse(success, data)
-        pcall(function()
-            local df = io.open("/sdcard/Android/data/com.vng.pubgmobile/files/dx_debug.txt", "a")
-            if df then
-                df:write(os.date("%Y-%m-%d %H:%M:%S") .. " - HTTP Response: success=" .. tostring(success) .. ", data=" .. tostring(data) .. "\n")
-                df:close()
-            end
-        end)
-
-        if success and data and #data > 0 then
-            -- Ghi đè vào cache file dx_uid_resp.txt
-            pcall(function()
-                local f = io.open("/sdcard/Android/data/com.vng.pubgmobile/files/dx_uid_resp.txt", "w")
-                if f then
-                    f:write(data)
-                    f:close()
-                end
-            end)
-
-            -- Xử lý phản hồi
-            local resLower = string.lower(data)
-            local active = (string.find(resLower, '"active":true', 1, true) ~= nil or 
-                            string.find(resLower, '"status":"success"', 1, true) ~= nil or
-                            string.find(resLower, "activated", 1, true) ~= nil) and
-                            string.find(resLower, '"active":false', 1, true) == nil
-            
-            local expire_time = string.match(data, '"expire_time":"([^"]+)"')
-            local prevActive = _G.DX_UIDStatus and _G.DX_UIDStatus.active
-            
-            _G.DX_UIDStatus = {
-                active = active,
-                status = active and "approved" or "pending",
-                expire_time = expire_time,
-                message = active and "Đã kích hoạt VIP" or "Chờ Admin Duyệt UID"
-            }
-
-            -- Nếu trạng thái active thay đổi, làm mới Menu UI ngay lập tức!
-            if prevActive ~= active then
-                _G.LastVIPApprovalState = nil
-                pcall(function()
-                    if _G.InitModMenuTab then
-                        _G.InitModMenuTab()
-                    end
-                end)
-                pcall(function()
-                    if _G.ResetWallColorCache then
-                        _G.ResetWallColorCache()
-                    end
-                end)
-            end
-        end
-    end
-
-    local okRequest, errRequest = pcall(function()
-        http_manager:Post(url, post_header, post_content, nil, onResponse)
-    end)
-
-    if not okRequest then
-        pcall(function()
-            local df = io.open("/sdcard/Android/data/com.vng.pubgmobile/files/dx_debug.txt", "a")
-            if df then
-                df:write(os.date("%Y-%m-%d %H:%M:%S") .. " - Error in http_manager:Post: " .. tostring(errRequest) .. "\n")
-                df:close()
-            end
-        end)
-    end
-end
-
--- Tự động chạy vòng lặp check UID mỗi 5 giây
-pcall(function()
-    local function CheckLoop()
-        pcall(_G.DX_CheckUIDWithAdminVPS)
-        local okTicker, ticker = pcall(require, "common.time_ticker")
-        if okTicker and ticker and ticker.AddTimerOnce then
-            ticker.AddTimerOnce(5.0, CheckLoop)
-        end
-    end
-    CheckLoop()
-end)
-
 function _G.InitModMenuTab()
     local LocUtil = _G.LocUtil
     if not LocUtil and package.loaded["client.common.LocUtil"] then LocUtil = require("client.common.LocUtil") end
@@ -2165,177 +1986,221 @@ function _G.InitModMenuTab()
     local SettingPageDefine = require("client.logic.NewSetting.SettingPageDefine")
     local SettingCatalog = require("client.logic.NewSetting.SettingCatalog")
     
-    pcall(_G.DX_CheckUIDWithAdminVPS)
-    
-    local isApproved = _G.DX_UIDStatus and _G.DX_UIDStatus.active == true
-    local currentUID = _G.DX_GetLocalGameUID()
-    if currentUID == "" then currentUID = "Chưa nhận diện" end
-    
-    if not SettingPageDefine.ModMenu or _G.LastVIPApprovalState ~= isApproved then
-        _G.LastVIPApprovalState = isApproved
+    if not SettingPageDefine.ModMenu then
         local AliasMap = require("client.slua.umg.NewSetting.Item.AliasMap")
         
         local function AddToggle(stack, key, text, expandHandle)
-            local item = {
-                Key = "ModMenu_" .. key,
-                UI = AliasMap.Switcher,
-                Text = text,
-                GetFunc = function() return _G.HK_Settings_Raw[key] == 1 end,
-                SetFunc = function(_, value)
-                    _G.HK_Settings_Raw[key] = value and 1 or 0
-                    _G.EnvRequiresUpdate = true
-                    _G.MagicUpdateVersion = (_G.MagicUpdateVersion or 1) + 1
-                    return true
-                end
-            }
-            if expandHandle then item.ExpandHandle = expandHandle end
-            table.insert(stack, item)
-        end
-
-        local function AddSlider(stack, key, text, minVal, maxVal, expandHandle)
-            local item = {
-                Key = "ModMenu_" .. key,
-                UI = AliasMap.Slider,
-                Text = text,
-                MinValue = minVal,
-                MaxValue = maxVal,
-                Min = minVal,
-                Max = maxVal,
-                GetFunc = function() return _G.HK_Settings_Raw[key] or minVal end,
-                SetFunc = function(_, value)
-                    local val = math.floor(tonumber(value) or minVal)
-                    if val < minVal then val = minVal end
-                    if val > maxVal then val = maxVal end
-                    if _G.HK_Settings_Raw[key] ~= val then
-                        _G.HK_Settings_Raw[key] = val
-                        _G.EnvRequiresUpdate = true
-                        _G.MagicUpdateVersion = (_G.MagicUpdateVersion or 1) + 1
-                    end
-                    return true
-                end
-            }
-            if expandHandle then item.ExpandHandle = expandHandle end
-            table.insert(stack, item)
-        end
-
-        -- TAB 1: THÔNG TIN XÁC THỰC UID GAME
-        local StackUIDInfo = { { UI = AliasMap.Title, Text = "📌 THÔNG TIN XÁC THỰC UID GAME" } }
-        table.insert(StackUIDInfo, {
-            Key = "ModMenu_UID_Display", UI = AliasMap.Title, Text = "🎮 UID GAME CỦA BẠN: " .. currentUID
-        })
-        table.insert(StackUIDInfo, {
-            Key = "ModMenu_UID_Status", UI = AliasMap.Title,
-            GetFunc = function() end,
-            Text = (isApproved and "✅ TRẠNG THÁI: ĐÃ KÍCH HOẠT VIP (ADMIN DUYỆT)" or "⚠️ TRẠNG THÁI: CHỜ ADMIN DUYỆT (Gửi UID này cho Admin Telegram @DeerXua)")
-        })
-        table.insert(StackUIDInfo, {
-            Key = "ModMenu_UID_Server", UI = AliasMap.Title, Text = "🌐 VPS DUYỆT SERVER: http://160.250.246.119:5000"
-        })
-
-        -- TAB 2: ESP (FULL THAO TÁC)
-        local StackESP = { { UI = AliasMap.Title, Text = "ESP (UID: " .. currentUID .. ")" } }
-        table.insert(StackESP, {
-            Key = "ModMenu_Wall_Ex",
-            UI = AliasMap.TitleSwitcher,
-            Text = "▶ WALLHACK (1 Trắng|2 Đỏ|3 Vàng|4 Xanh lá|5 Xanh Ngọc|6Xanh Dương|7 Tím|8 Hồng|9 Đen)",
-            ExpandIndex = 0,
-            GetFunc = function() return _G.HK_Settings_Raw.WALLHACK == 1 end,
-            SetFunc = function(_, value)
-                _G.HK_Settings_Raw.WALLHACK = value and 1 or 0
-                _G.EnvRequiresUpdate = true
-                _G.MagicUpdateVersion = (_G.MagicUpdateVersion or 1) + 1
-                return true
-            end
-        })
-
-        local function ResetWallColorCache()
-            pcall(function()
-                local gd = GameplayData
-                local ac = gd.GetAllPlayerCharacters and gd.GetAllPlayerCharacters() or {}
-                for _, ch in pairs(ac) do
-                    if ch then
-                        ch.WallhackApplied = false
-                        ch.LastAuraHash = nil
-                        ch.LastMeshCountWall = -1
-                    end
-                end
-            end)
+    local item = {
+        Key = "ModMenu_" .. key,
+        UI = AliasMap.Switcher,
+        Text = text,
+        GetFunc = function() return _G.HK_Settings[key] == 1 end,
+        SetFunc = function(_, value)
+            _G.HK_Settings[key] = value and 1 or 0
             _G.EnvRequiresUpdate = true
             _G.MagicUpdateVersion = (_G.MagicUpdateVersion or 1) + 1
+            return true
         end
+    }
+    if expandHandle then
+        item.ExpandHandle = expandHandle
+    end
+    table.insert(stack, item)
+end
 
-        table.insert(StackESP, {
-            Key = "ModMenu_Wall_VisColor", UI = AliasMap.Slider or "Slider", Text = "   Màu nhìn thấy (1-9)", ExpandHandle = "ModMenu_Wall_Ex", MinValue = 1, MaxValue = 9, Min = 1, Max = 9,
-            GetFunc = function() return _G.HK_Settings_Raw.WALL_VISIBLE_COLOR or 3 end,
-            SetFunc = function(_, value)
-                local v = math.floor(tonumber(value) or 3)
-                _G.HK_Settings_Raw.WALL_VISIBLE_COLOR = math.max(1, math.min(9, v))
-                ResetWallColorCache()
-                return true
+local function AddSlider(stack, key, text, minVal, maxVal, expandHandle)
+    local item = {
+        Key = "ModMenu_" .. key,
+        UI = AliasMap.Slider,
+        Text = text,
+        MinValue = minVal,
+        MaxValue = maxVal,
+        Min = minVal,
+        Max = maxVal,
+        GetFunc = function() return _G.HK_Settings[key] or minVal end,
+        SetFunc = function(_, value)
+            local val = math.floor(tonumber(value) or minVal)
+            if val < minVal then val = minVal end
+            if val > maxVal then val = maxVal end
+            if _G.HK_Settings[key] ~= val then
+                _G.HK_Settings[key] = val
+                _G.EnvRequiresUpdate = true
+                _G.MagicUpdateVersion = (_G.MagicUpdateVersion or 1) + 1
             end
-        })
+            return true
+        end
+    }
+    if expandHandle then
+        item.ExpandHandle = expandHandle
+    end
+    table.insert(stack, item)
+end
+        
+        local StackESP = { { UI = AliasMap.Title, Text = "ESP" } }
+table.insert(StackESP, {
+    Key = "ModMenu_Wall_Ex",
+    UI = AliasMap.TitleSwitcher,
+    Text = "▶ WALLHACK (1 Trắng|2 Đỏ|3 Vàng|4 Xanh lá|5 Xanh Ngọc|6Xanh Dương|7 Tím|8 Hồng|9 Đen)",
+    ExpandIndex = 0,
+    GetFunc = function() return _G.HK_Settings.WALLHACK == 1 end,
+    SetFunc = function(_, value)
+        _G.HK_Settings.WALLHACK = value and 1 or 0
+        _G.EnvRequiresUpdate = true
+        _G.MagicUpdateVersion = (_G.MagicUpdateVersion or 1) + 1
+        return true
+    end
+})
 
-        table.insert(StackESP, {
-            Key = "ModMenu_Wall_OccColor", UI = AliasMap.Slider or "Slider", Text = "   Màu bị che - Người (1-9)", ExpandHandle = "ModMenu_Wall_Ex", MinValue = 1, MaxValue = 9, Min = 1, Max = 9,
-            GetFunc = function() return _G.HK_Settings_Raw.WALL_OCCLUDED_COLOR or 2 end,
-            SetFunc = function(_, value)
-                local v = math.floor(tonumber(value) or 2)
-                _G.HK_Settings_Raw.WALL_OCCLUDED_COLOR = math.max(1, math.min(9, v))
-                ResetWallColorCache()
-                return true
+-- Hàm reset cache màu
+local function ResetWallColorCache()
+    pcall(function()
+        local gd = GameplayData
+        local ac = gd.GetAllPlayerCharacters and gd.GetAllPlayerCharacters() or {}
+        for _, ch in pairs(ac) do
+            if ch then
+                ch.WallhackApplied = false
+                ch.LastAuraHash = nil
+                ch.LastMeshCountWall = -1
             end
-        })
+        end
+    end)
+    _G.EnvRequiresUpdate = true
+    _G.MagicUpdateVersion = (_G.MagicUpdateVersion or 1) + 1
+end
 
-        table.insert(StackESP, {
-            Key = "ModMenu_Wall_AIColor", UI = AliasMap.Slider or "Slider", Text = "   Màu bị che - Bot/AI (1-9)", ExpandHandle = "ModMenu_Wall_Ex", MinValue = 1, MaxValue = 9, Min = 1, Max = 9,
-            GetFunc = function() return _G.HK_Settings_Raw.WALL_OCCLUDED_AI_COLOR or 7 end,
-            SetFunc = function(_, value)
-                local v = math.floor(tonumber(value) or 7)
-                _G.HK_Settings_Raw.WALL_OCCLUDED_AI_COLOR = math.max(1, math.min(9, v))
-                ResetWallColorCache()
-                return true
-            end
-        })
+-- Màu nhìn thấy (Slider 1-9)
+table.insert(StackESP, {
+    Key = "ModMenu_Wall_VisColor",
+    UI = AliasMap.Slider or "Slider",
+    Text = "   Màu nhìn thấy (1-9)",
+    ExpandHandle = "ModMenu_Wall_Ex",
+    MinValue = 1,
+    MaxValue = 9,
+    Min = 1,
+    Max = 9,
+    GetFunc = function() return _G.HK_Settings.WALL_VISIBLE_COLOR or 3 end,
+    SetFunc = function(_, value)
+        local v = math.floor(tonumber(value) or 3)
+        _G.HK_Settings.WALL_VISIBLE_COLOR = math.max(1, math.min(9, v))
+        ResetWallColorCache()
+        return true
+    end
+})
+
+-- Màu bị che - Người (Slider 1-9)
+table.insert(StackESP, {
+    Key = "ModMenu_Wall_OccColor",
+    UI = AliasMap.Slider or "Slider",
+    Text = "   Màu bị che - Người (1-9)",
+    ExpandHandle = "ModMenu_Wall_Ex",
+    MinValue = 1,
+    MaxValue = 9,
+    Min = 1,
+    Max = 9,
+    GetFunc = function() return _G.HK_Settings.WALL_OCCLUDED_COLOR or 2 end,
+    SetFunc = function(_, value)
+        local v = math.floor(tonumber(value) or 2)
+        _G.HK_Settings.WALL_OCCLUDED_COLOR = math.max(1, math.min(9, v))
+        ResetWallColorCache()
+        return true
+    end
+})
+
+-- Màu bị che - Bot/AI (Slider 1-9)
+table.insert(StackESP, {
+    Key = "ModMenu_Wall_AIColor",
+    UI = AliasMap.Slider or "Slider",
+    Text = "   Màu bị che - Bot/AI (1-9)",
+    ExpandHandle = "ModMenu_Wall_Ex",
+    MinValue = 1,
+    MaxValue = 9,
+    Min = 1,
+    Max = 9,
+    GetFunc = function() return _G.HK_Settings.WALL_OCCLUDED_AI_COLOR or 7 end,
+    SetFunc = function(_, value)
+        local v = math.floor(tonumber(value) or 7)
+        _G.HK_Settings.WALL_OCCLUDED_AI_COLOR = math.max(1, math.min(9, v))
+        ResetWallColorCache()
+        return true
+    end
+})
         AddToggle(StackESP, "WHITE_BODY", "NGƯỜI MÀU TRẮNG")
         AddToggle(StackESP, "ESP_WEAPON", "ESP ĐỘNG TÁC NHÂN VẬT")
         AddToggle(StackESP, "ESP_HITMARK_1", "ESP ĐỊNH VỊ")
         AddToggle(StackESP, "ESP_HITMARK_2", "ESP THANH MÁU")
         AddToggle(StackESP, "ESP_COUNT", "ĐẾM SỐ LƯỢNG ĐỊCH")
+        -- ESP KHUNG BOX mapping to both ESP_BOX and EspLoai5
         table.insert(StackESP, {
-            Key = "ModMenu_ESP5", UI = AliasMap.Switcher, Text = "ESP KHUNG BOX",
-            GetFunc = function() return _G.HK_Settings_Raw.EspLoai5 == 1 end,
+            Key = "ModMenu_ESP5",
+            UI = AliasMap.Switcher,
+            Text = "ESP KHUNG BOX",
+            GetFunc = function() return _G.HK_Settings.EspLoai5 == 1 end,
             SetFunc = function(_, value)
                 local val = value and 1 or 0
-                _G.HK_Settings_Raw.EspLoai5 = val
-                _G.HK_Settings_Raw.ESP_BOX = val
+                _G.HK_Settings.EspLoai5 = val
+                _G.HK_Settings.ESP_BOX = val
                 _G.EnvRequiresUpdate = true
                 _G.MagicUpdateVersion = (_G.MagicUpdateVersion or 1) + 1
                 return true
             end
         })
 
-        AddToggle(StackESP, "THREAT_ESP", "ESP HIỂM HỌA (Cảnh báo địch ngắm)")
+-- ESP HIỂM HỌA (Nút bình thường)
+           AddToggle(StackESP, "THREAT_ESP", "ESP HIỂM HỌA (Cảnh báo địch ngắm)")
+
+        -- Bomb Warning & Vehicle ESP Controls
+        table.insert(StackESP, {
+            Key = "ModMenu_EspBomMaster",
+            UI = AliasMap.TitleSwitcher,
+            Text = "▶ Cảnh Báo & Định Vị Bom",
+            ExpandIndex = 0,
+            GetFunc = function() return _G.HK_Settings.EspBomMaster == 1 end,
+            SetFunc = function(_, value)
+                _G.HK_Settings.EspBomMaster = value and 1 or 0
+                _G.EnvRequiresUpdate = true
+                _G.MagicUpdateVersion = (_G.MagicUpdateVersion or 1) + 1
+                return true
+            end
+        })
+        table.insert(StackESP, {
+            Key = "ModMenu_EspItemBom",
+            UI = AliasMap.Switcher,
+            Text = "   Định Vị Vật Phẩm Bom Dưới Đất",
+            ExpandHandle = "ModMenu_EspBomMaster",
+            GetFunc = function() return _G.HK_Settings.EspItemBom == 1 end,
+            SetFunc = function(_, value)
+                _G.HK_Settings.EspItemBom = value and 1 or 0
+                _G.EnvRequiresUpdate = true
+                _G.MagicUpdateVersion = (_G.MagicUpdateVersion or 1) + 1
+                return true
+            end
+        })
+        table.insert(StackESP, {
+            Key = "ModMenu_EspActiveBom",
+            UI = AliasMap.Switcher,
+            Text = "   Cảnh Báo Địch Cầm Trên Tay & Ném",
+            ExpandHandle = "ModMenu_EspBomMaster",
+            GetFunc = function() return _G.HK_Settings.EspActiveBom == 1 end,
+            SetFunc = function(_, value)
+                _G.HK_Settings.EspActiveBom = value and 1 or 0
+                _G.EnvRequiresUpdate = true
+                _G.MagicUpdateVersion = (_G.MagicUpdateVersion or 1) + 1
+                return true
+            end
+        })
 
         table.insert(StackESP, {
-            Key = "ModMenu_EspBomMaster", UI = AliasMap.TitleSwitcher, Text = "▶ Cảnh Báo & Định Vị Bom", ExpandIndex = 0,
-            GetFunc = function() return _G.HK_Settings_Raw.EspBomMaster == 1 end,
-            SetFunc = function(_, value) _G.HK_Settings_Raw.EspBomMaster = value and 1 or 0; _G.EnvRequiresUpdate = true; return true end
-        })
-        table.insert(StackESP, {
-            Key = "ModMenu_EspItemBom", UI = AliasMap.Switcher, Text = "   Định Vị Vật Phẩm Bom Dưới Đất", ExpandHandle = "ModMenu_EspBomMaster",
-            GetFunc = function() return _G.HK_Settings_Raw.EspItemBom == 1 end,
-            SetFunc = function(_, value) _G.HK_Settings_Raw.EspItemBom = value and 1 or 0; _G.EnvRequiresUpdate = true; return true end
-        })
-        table.insert(StackESP, {
-            Key = "ModMenu_EspActiveBom", UI = AliasMap.Switcher, Text = "   Cảnh Báo Địch Cầm Trên Tay & Ném", ExpandHandle = "ModMenu_EspBomMaster",
-            GetFunc = function() return _G.HK_Settings_Raw.EspActiveBom == 1 end,
-            SetFunc = function(_, value) _G.HK_Settings_Raw.EspActiveBom = value and 1 or 0; _G.EnvRequiresUpdate = true; return true end
-        })
-
-        table.insert(StackESP, {
-            Key = "ModMenu_EspVehicle", UI = AliasMap.TitleSwitcher, Text = "▶ ESP Định Vị Xe (Mở Rộng)", ExpandIndex = 0,
-            GetFunc = function() return _G.HK_Settings_Raw.EspVehicle == 1 end,
-            SetFunc = function(_, value) _G.HK_Settings_Raw.EspVehicle = value and 1 or 0; _G.EnvRequiresUpdate = true; return true end
+            Key = "ModMenu_EspVehicle",
+            UI = AliasMap.TitleSwitcher,
+            Text = "▶ ESP Định Vị Xe (Mở Rộng)",
+            ExpandIndex = 0,
+            GetFunc = function() return _G.HK_Settings.EspVehicle == 1 end,
+            SetFunc = function(_, value)
+                _G.HK_Settings.EspVehicle = value and 1 or 0
+                _G.EnvRequiresUpdate = true
+                _G.MagicUpdateVersion = (_G.MagicUpdateVersion or 1) + 1
+                return true
+            end
         })
         
         local vehTypes = {
@@ -2349,21 +2214,186 @@ function _G.InitModMenuTab()
         }
         for _, vt in ipairs(vehTypes) do
             table.insert(StackESP, {
-                Key = "ModMenu_" .. vt.key, UI = AliasMap.Switcher, Text = vt.text, ExpandHandle = "ModMenu_EspVehicle",
-                GetFunc = function() return _G.HK_Settings_Raw[vt.key] == 1 end,
-                SetFunc = function(_, value) _G.HK_Settings_Raw[vt.key] = value and 1 or 0; _G.EnvRequiresUpdate = true; return true end
+                Key = "ModMenu_" .. vt.key,
+                UI = AliasMap.Switcher,
+                Text = vt.text,
+                ExpandHandle = "ModMenu_EspVehicle",
+                GetFunc = function() return _G.HK_Settings[vt.key] == 1 end,
+                SetFunc = function(_, value)
+                    _G.HK_Settings[vt.key] = value and 1 or 0
+                    _G.EnvRequiresUpdate = true
+                    _G.MagicUpdateVersion = (_G.MagicUpdateVersion or 1) + 1
+                    return true
+                end
             })
         end
 
         local StackItemESP = { { UI = AliasMap.Title, Text = "ESP VẬT PHẨM" } }
         table.insert(StackItemESP, {
-            Key = "ModMenu_EspItemMaster", UI = AliasMap.TitleSwitcher, Text = "▶ BẬT/TẮT TOÀN BỘ ESP VẬT PHẨM", ExpandIndex = 0,
-            GetFunc = function() return _G.HK_Settings_Raw.EspItemMaster == 1 end,
-            SetFunc = function(_, value) _G.HK_Settings_Raw.EspItemMaster = value and 1 or 0; _G.EnvRequiresUpdate = true; return true end
+            Key = "ModMenu_EspItemMaster",
+            UI = AliasMap.TitleSwitcher,
+            Text = "▶ BẬT/TẮT TOÀN BỘ ESP VẬT PHẨM",
+            ExpandIndex = 0,
+            GetFunc = function() return _G.HK_Settings.EspItemMaster == 1 end,
+            SetFunc = function(_, value)
+                _G.HK_Settings.EspItemMaster = value and 1 or 0
+                _G.EnvRequiresUpdate = true
+                return true
+            end
         })
-        AddSlider(StackItemESP, "EspItem_Dist", "   Bán Kính Quét Vật Phẩm (m)", 10, 300, "ModMenu_EspItemMaster")
+        table.insert(StackItemESP, {
+            Key = "ModMenu_EspItem_Dist",
+            UI = AliasMap.Slider or "Slider",
+            Text = "   Bán Kính Quét Vật Phẩm (m)",
+            ExpandHandle = "ModMenu_EspItemMaster",
+            MinValue = 1,
+            MaxValue = 500,
+            Min = 1,
+            Max = 500,
+            GetFunc = function() return _G.HK_Settings.EspItem_Dist or 150 end,
+            SetFunc = function(_, value)
+                local v = math.floor(tonumber(value) or 150)
+                _G.HK_Settings.EspItem_Dist = math.max(1, math.min(500, v))
+                return true
+            end
+        })
+        
+        local itemCategories = {
+            {
+                key = "EspItem_AR", text = "   ▶ Súng trường tấn công",
+                weapons = {
+                    { key = "EspItem_AR_M416", text = "      Hiện M416" },
+                    { key = "EspItem_AR_AKM", text = "      Hiện AKM" },
+                    { key = "EspItem_AR_SCAR", text = "      Hiện SCAR-L" },
+                    { key = "EspItem_AR_Groza", text = "      Hiện Groza" },
+                    { key = "EspItem_AR_AUG", text = "      Hiện AUG" },
+                    { key = "EspItem_AR_QBZ", text = "      Hiện QBZ" },
+                    { key = "EspItem_AR_M762", text = "      Hiện M762" },
+                    { key = "EspItem_AR_G36C", text = "      Hiện G36C" },
+                    { key = "EspItem_AR_FAMAS", text = "      Hiện FAMAS" },
+                    { key = "EspItem_AR_ACE32", text = "      Hiện ACE32" },
+                    { key = "EspItem_AR_Honey", text = "      Hiện Honey Badger" }
+                }
+            },
+            {
+                key = "EspItem_SR", text = "   ▶ Súng bắn tỉa (SR)",
+                weapons = {
+                    { key = "EspItem_SR_Kar98", text = "      Hiện Kar98k" },
+                    { key = "EspItem_SR_M24", text = "      Hiện M24" },
+                    { key = "EspItem_SR_AWM", text = "      Hiện AWM" },
+                    { key = "EspItem_SR_Mosin", text = "      Hiện Mosin" },
+                    { key = "EspItem_SR_Win94", text = "      Hiện Win94" },
+                    { key = "EspItem_SR_AMR", text = "      Hiện AMR" }
+                }
+            },
+            {
+                key = "EspItem_DMR", text = "   ▶ Súng bắn tỉa bán tự động (DMR)",
+                weapons = {
+                    { key = "EspItem_DMR_SKS", text = "      Hiện SKS" },
+                    { key = "EspItem_DMR_SLR", text = "      Hiện SLR" },
+                    { key = "EspItem_DMR_Mini14", text = "      Hiện Mini14" },
+                    { key = "EspItem_DMR_Mk14", text = "      Hiện Mk14" },
+                    { key = "EspItem_DMR_QBU", text = "      Hiện QBU" },
+                    { key = "EspItem_DMR_Mk12", text = "      Hiện Mk12" },
+                    { key = "EspItem_DMR_VSS", text = "      Hiện VSS" }
+                }
+            },
+            {
+                key = "EspItem_SMG", text = "   ▶ Súng tiểu liên (SMG)",
+                weapons = {
+                    { key = "EspItem_SMG_UZI", text = "      Hiện UZI" },
+                    { key = "EspItem_SMG_UMP45", text = "      Hiện UMP45" },
+                    { key = "EspItem_SMG_Vector", text = "      Hiện Vector" },
+                    { key = "EspItem_SMG_Tommy", text = "      Hiện Tommy Gun" },
+                    { key = "EspItem_SMG_Bizon", text = "      Hiện PP-19 Bizon" },
+                    { key = "EspItem_SMG_MP5K", text = "      Hiện MP5K" },
+                    { key = "EspItem_SMG_P90", text = "      Hiện P90" }
+                }
+            },
+            {
+                key = "EspItem_SG", text = "   ▶ Súng săn (Shotgun)",
+                weapons = {
+                    { key = "EspItem_SG_S686", text = "      Hiện S686" },
+                    { key = "EspItem_SG_S1897", text = "      Hiện S1897" },
+                    { key = "EspItem_SG_S12K", text = "      Hiện S12K" },
+                    { key = "EspItem_SG_DBS", text = "      Hiện DBS" },
+                    { key = "EspItem_SG_M1014", text = "      Hiện M1014" }
+                }
+            },
+            {
+                key = "EspItem_LMG", text = "   ▶ Súng máy hạng nhẹ (LMG)",
+                weapons = {
+                    { key = "EspItem_LMG_DP28", text = "      Hiện DP-28" },
+                    { key = "EspItem_LMG_M249", text = "      Hiện M249" },
+                    { key = "EspItem_LMG_MG3", text = "      Hiện MG3" }
+                }
+            },
+            {
+                key = "EspItem_Pistol", text = "   ▶ Súng lục",
+                weapons = {
+                    { key = "EspItem_Pistol_P1911", text = "      Hiện P1911" },
+                    { key = "EspItem_Pistol_P92", text = "      Hiện P92" },
+                    { key = "EspItem_Pistol_R1895", text = "      Hiện R1895" },
+                    { key = "EspItem_Pistol_Deagle", text = "      Hiện Desert Eagle" },
+                    { key = "EspItem_Pistol_Skorpion", text = "      Hiện Skorpion" },
+                    { key = "EspItem_Pistol_P18C", text = "      Hiện P18C" }
+                }
+            },
+            {
+                key = "EspItem_Melee", text = "   ▶ Vũ khí cận chiến",
+                weapons = {
+                    { key = "EspItem_Melee_Pan", text = "      Hiện Chảo (Pan)" },
+                    { key = "EspItem_Melee_Sickle", text = "      Hiện Liềm (Sickle)" },
+                    { key = "EspItem_Melee_Machete", text = "      Hiện Rựa (Machete)" },
+                    { key = "EspItem_Melee_Crowbar", text = "      Hiện Xà beng (Crowbar)" }
+                }
+            },
+            {
+                key = "EspItem_Other", text = "   ▶ Vật phẩm khác",
+                weapons = {
+                    { key = "EspItem_Ot_Helmet3", text = "      Hiện Mũ Cấp 3" },
+                    { key = "EspItem_Ot_Vest3", text = "      Hiện Giáp Cấp 3" },
+                    { key = "EspItem_Ot_Bag3", text = "      Hiện Balo Cấp 3" },
+                    { key = "EspItem_Ot_Scope8x", text = "      Hiện Scope 8x" },
+                    { key = "EspItem_Ot_Scope6x", text = "      Hiện Scope 6x" },
+                    { key = "EspItem_Ot_Scope4x", text = "      Hiện Scope 4x" },
+                    { key = "EspItem_Ot_Medkit", text = "      Hiện Medkit" },
+                    { key = "EspItem_Ot_FirstAid", text = "      Hiện First Aid" }
+                }
+            }
+        }
+        
+        for _, cat in ipairs(itemCategories) do
+            table.insert(StackItemESP, {
+                Key = "ModMenu_" .. cat.key,
+                UI = AliasMap.TitleSwitcher,
+                Text = cat.text,
+                ExpandHandle = "ModMenu_EspItemMaster",
+                ExpandIndex = 0,
+                GetFunc = function() return _G.HK_Settings[cat.key] == 1 end,
+                SetFunc = function(_, value)
+                    _G.HK_Settings[cat.key] = value and 1 or 0
+                    _G.EnvRequiresUpdate = true
+                    return true
+                end
+            })
+            for _, wp in ipairs(cat.weapons) do
+                table.insert(StackItemESP, {
+                    Key = "ModMenu_" .. wp.key,
+                    UI = AliasMap.Switcher,
+                    Text = wp.text,
+                    ExpandHandle = "ModMenu_" .. cat.key,
+                    GetFunc = function() return _G.HK_Settings[wp.key] == 1 end,
+                    SetFunc = function(_, value)
+                        _G.HK_Settings[wp.key] = value and 1 or 0
+                        _G.EnvRequiresUpdate = true
+                        return true
+                    end
+                })
+            end
+        end
 
-        local StackAimbot = { { UI = AliasMap.Title, Text = "AIMBOT & VŨ KHÍ" } }
+        local StackAimbot = { { UI = AliasMap.Title, Text = "AIMBOT & GIẢM GIẬT" } }
         AddToggle(StackAimbot, "AIMBOT", "BẬT AIMBOT")
         AddSlider(StackAimbot, "SPEED_AIMBOT", "TỐC ĐỘ AIMBOT", 0, 100)
         AddSlider(StackAimbot, "FOV_AIMBOT", "FOV AIMBOT", 0, 100)
@@ -2371,18 +2401,63 @@ function _G.InitModMenuTab()
         AddSlider(StackAimbot, "NO_RECOIL_100", "GIẢM GIẬT (0-100%)", 0, 100)
         AddSlider(StackAimbot, "GIAM_RUNG_SCOPE", "GIẢM RUNG SCOPE", 0, 100)
 
+        -- =========================================================================================
+        -- [MỚI] TÍCH HỢP TOÀN BỘ GIAO DIỆN VÀ LOGIC TAB 3 CỦA CODE 2 SANG CODE 1 (AIMBOT ROYAL & CUSTOM)
+        -- =========================================================================================
         local StackAimbotV2 = {
-            { Key = "ModMenu_AT_Ex", UI = AliasMap.TitleSwitcher, Text = "▶ Bật Aimbot Roy & Custom", ExpandIndex = 0, GetFunc = function() return _G.HK_Settings_Raw.AimTouchEnable == 1 end, SetFunc = function(_, v) _G.HK_Settings_Raw.AimTouchEnable = v and 1 or 0; _G.EnvRequiresUpdate = true; return true end },
-            { Key = "ModMenu_AT_Hip_Ex", UI = AliasMap.TitleSwitcher, Text = "   ▶ Aimbot Tâm Trắng", ExpandHandle = "ModMenu_AT_Ex", ExpandIndex = 0, GetFunc = function() return _G.HK_Settings_Raw.AimTouchHipfire == 1 end, SetFunc = function(_, v) _G.HK_Settings_Raw.AimTouchHipfire = v and 1 or 0; _G.EnvRequiresUpdate = true; return true end },
-            { Key = "ModMenu_AT_Hip_IgKnock", UI = AliasMap.Switcher, Text = "      Bỏ Qua Địch Knock", ExpandHandle = "ModMenu_AT_Hip_Ex", GetFunc = function() return _G.HK_Settings_Raw.AimTouchHipIgKnock == 1 end, SetFunc = function(_, v) _G.HK_Settings_Raw.AimTouchHipIgKnock = v and 1 or 0 return true end },
-            { Key = "ModMenu_AT_Hip_IgBot", UI = AliasMap.Switcher, Text = "      Bỏ Qua Bot", ExpandHandle = "ModMenu_AT_Hip_Ex", GetFunc = function() return _G.HK_Settings_Raw.AimTouchHipIgBot == 1 end, SetFunc = function(_, v) _G.HK_Settings_Raw.AimTouchHipIgBot = v and 1 or 0 return true end },
-            { Key = "ModMenu_AT_Hip_Vis", UI = AliasMap.Switcher, Text = "      Check Tường (VisCheck)", ExpandHandle = "ModMenu_AT_Hip_Ex", GetFunc = function() return _G.HK_Settings_Raw.AimTouchHipVisCheck == 1 end, SetFunc = function(_, v) _G.HK_Settings_Raw.AimTouchHipVisCheck = v and 1 or 0 return true end },
-            { Key = "ModMenu_AT_Hip_Prio", UI = AliasMap.Slider, Text = "      Ưu Tiên (1:Tâm 2:Gần 3:HP 4:%HP)", ExpandHandle = "ModMenu_AT_Hip_Ex", MinValue = 1, MaxValue = 4, min = 1, max = 4, Min = 1, Max = 4, GetFunc = function() return _G.HK_Settings_Raw.AimTouchHipPrio or 1 end, SetFunc = function(_, v) _G.HK_Settings_Raw.AimTouchHipPrio = math.floor(v+0.5) return true end },
-            { Key = "ModMenu_AT_Hip_Bone", UI = AliasMap.Slider, Text = "      Vị Trí (1:Đầu 2:Ngực 3:Bụng 4:Hông)", ExpandHandle = "ModMenu_AT_Hip_Ex", MinValue = 1, MaxValue = 4, min = 1, max = 4, Min = 1, Max = 4, GetFunc = function() return _G.HK_Settings_Raw.AimTouchHipBone or 1 end, SetFunc = function(_, v) _G.HK_Settings_Raw.AimTouchHipBone = math.floor(v+0.5) return true end },
-            { Key = "ModMenu_AT_Hip_Cond", UI = AliasMap.Slider, Text = "      Điều Kiện (1:Bắn mới Aim, 2:Luôn Aim)", ExpandHandle = "ModMenu_AT_Hip_Ex", MinValue = 1, MaxValue = 2, min = 1, max = 2, Min = 1, Max = 2, GetFunc = function() return _G.HK_Settings_Raw.AimTouchHipCond or 1 end, SetFunc = function(_, v) _G.HK_Settings_Raw.AimTouchHipCond = math.floor(v+0.5) return true end },
-            { Key = "ModMenu_AT_Hip_Spd", UI = AliasMap.Slider, Text = "      Độ Mượt / Tốc Độ (1-100)", ExpandHandle = "ModMenu_AT_Hip_Ex", MinValue = 1, MaxValue = 100, min = 1, max = 100, GetFunc = function() return _G.HK_Settings_Raw.AimTouchHipSpeed or 50 end, SetFunc = function(_, v) _G.HK_Settings_Raw.AimTouchHipSpeed = v return true end },
-            { Key = "ModMenu_AT_Hip_FOV", UI = AliasMap.Slider, Text = "      Vòng FOV (1-100)", ExpandHandle = "ModMenu_AT_Hip_Ex", MinValue = 1, MaxValue = 100, min = 1, max = 100, GetFunc = function() return _G.HK_Settings_Raw.AimTouchHipFOV or 30 end, SetFunc = function(_, v) _G.HK_Settings_Raw.AimTouchHipFOV = v return true end },
-            { Key = "ModMenu_AT_Hip_Dist", UI = AliasMap.Slider, Text = "      Khoảng Cách (1-500m)", ExpandHandle = "ModMenu_AT_Hip_Ex", MinValue = 1, MaxValue = 100, min = 1, max = 100, GetFunc = function() return math.floor((_G.HK_Settings_Raw.AimTouchHipDist or 250) / 5) end, SetFunc = function(_, v) _G.HK_Settings_Raw.AimTouchHipDist = v * 5 return true end }
+            { Key = "ModMenu_AT_Ex", UI = AliasMap.TitleSwitcher, Text = "▶ Bật Aimbot Roy & Custom", ExpandIndex = 0, GetFunc = function() return _G.HK_Settings.AimTouchEnable == 1 end, SetFunc = function(_, v) _G.HK_Settings.AimTouchEnable = v and 1 or 0; _G.EnvRequiresUpdate = true; return true end },
+            
+            -- HIPFIRE (TÂM TRẮNG)
+            { Key = "ModMenu_AT_Hip_Ex", UI = AliasMap.TitleSwitcher, Text = "   ▶ Aimbot Tâm Trắng", ExpandHandle = "ModMenu_AT_Ex", ExpandIndex = 0, GetFunc = function() return _G.HK_Settings.AimTouchHipfire == 1 end, SetFunc = function(_, v) _G.HK_Settings.AimTouchHipfire = v and 1 or 0; _G.EnvRequiresUpdate = true; return true end },
+            { Key = "ModMenu_AT_Hip_IgKnock", UI = AliasMap.Switcher, Text = "      Bỏ Qua Địch Knock", ExpandHandle = "ModMenu_AT_Hip_Ex", GetFunc = function() return _G.HK_Settings.AimTouchHipIgKnock == 1 end, SetFunc = function(_, v) _G.HK_Settings.AimTouchHipIgKnock = v and 1 or 0 return true end },
+            { Key = "ModMenu_AT_Hip_IgBot", UI = AliasMap.Switcher, Text = "      Bỏ Qua Bot", ExpandHandle = "ModMenu_AT_Hip_Ex", GetFunc = function() return _G.HK_Settings.AimTouchHipIgBot == 1 end, SetFunc = function(_, v) _G.HK_Settings.AimTouchHipIgBot = v and 1 or 0 return true end },
+            { Key = "ModMenu_AT_Hip_Vis", UI = AliasMap.Switcher, Text = "      Check Tường (VisCheck)", ExpandHandle = "ModMenu_AT_Hip_Ex", GetFunc = function() return _G.HK_Settings.AimTouchHipVisCheck == 1 end, SetFunc = function(_, v) _G.HK_Settings.AimTouchHipVisCheck = v and 1 or 0 return true end },
+            { Key = "ModMenu_AT_Hip_Prio", UI = AliasMap.Slider, Text = "      Ưu Tiên (1:Tâm 2:Gần 3:HP 4:%HP)", ExpandHandle = "ModMenu_AT_Hip_Ex", MinValue = 1, MaxValue = 4, min = 1, max = 4, Min = 1, Max = 4, GetFunc = function() return _G.HK_Settings.AimTouchHipPrio or 1 end, SetFunc = function(_, v) _G.HK_Settings.AimTouchHipPrio = math.floor(v+0.5) return true end },
+            { Key = "ModMenu_AT_Hip_Bone", UI = AliasMap.Slider, Text = "      Vị Trí (1:Đầu 2:Ngực 3:Bụng 4:Hông)", ExpandHandle = "ModMenu_AT_Hip_Ex", MinValue = 1, MaxValue = 4, min = 1, max = 4, Min = 1, Max = 4, GetFunc = function() return _G.HK_Settings.AimTouchHipBone or 1 end, SetFunc = function(_, v) _G.HK_Settings.AimTouchHipBone = math.floor(v+0.5) return true end },
+            { Key = "ModMenu_AT_Hip_Cond", UI = AliasMap.Slider, Text = "      Điều Kiện (1:Bắn mới Aim, 2:Luôn Aim)", ExpandHandle = "ModMenu_AT_Hip_Ex", MinValue = 1, MaxValue = 2, min = 1, max = 2, Min = 1, Max = 2, GetFunc = function() return _G.HK_Settings.AimTouchHipCond or 1 end, SetFunc = function(_, v) _G.HK_Settings.AimTouchHipCond = math.floor(v+0.5) return true end },
+            { Key = "ModMenu_AT_Hip_Spd", UI = AliasMap.Slider, Text = "      Độ Mượt / Tốc Độ (1-100)", ExpandHandle = "ModMenu_AT_Hip_Ex", MinValue = 1, MaxValue = 100, min = 1, max = 100, GetFunc = function() return _G.HK_Settings.AimTouchHipSpeed or 50 end, SetFunc = function(_, v) _G.HK_Settings.AimTouchHipSpeed = v return true end },
+            { Key = "ModMenu_AT_Hip_FOV", UI = AliasMap.Slider, Text = "      Vòng FOV (1-100)", ExpandHandle = "ModMenu_AT_Hip_Ex", MinValue = 1, MaxValue = 100, min = 1, max = 100, GetFunc = function() return _G.HK_Settings.AimTouchHipFOV or 30 end, SetFunc = function(_, v) _G.HK_Settings.AimTouchHipFOV = v return true end },
+            { Key = "ModMenu_AT_Hip_Dist", UI = AliasMap.Slider, Text = "      Khoảng Cách (1-500m)", ExpandHandle = "ModMenu_AT_Hip_Ex", MinValue = 1, MaxValue = 100, min = 1, max = 100, GetFunc = function() return math.floor((_G.HK_Settings.AimTouchHipDist or 250) / 5) end, SetFunc = function(_, v) _G.HK_Settings.AimTouchHipDist = v * 5 return true end },
+
+            -- AIMBOT SHOTGUN
+            { Key = "ModMenu_AT_SG_Ex", UI = AliasMap.TitleSwitcher, Text = "   ▶ Aimbot Shotgun (Chỉ nhận Shotgun)", ExpandHandle = "ModMenu_AT_Ex", ExpandIndex = 0, GetFunc = function() return _G.HK_Settings.AimTouchSG == 1 end, SetFunc = function(_, v) _G.HK_Settings.AimTouchSG = v and 1 or 0; _G.EnvRequiresUpdate = true; return true end },
+            { Key = "ModMenu_AT_SG_AutoFire", UI = AliasMap.Switcher, Text = "      Tự Động Bắn lúc tự động bắn chịu khó bấm bắn nhận dame và auto bắn sẽ không lỗi dame", ExpandHandle = "ModMenu_AT_SG_Ex", GetFunc = function() return _G.HK_Settings.AimTouchSGAutoFire == 1 end, SetFunc = function(_, v) _G.HK_Settings.AimTouchSGAutoFire = v and 1 or 0 return true end },
+            { Key = "ModMenu_AT_SG_IgKnock", UI = AliasMap.Switcher, Text = "      Bỏ Qua Địch Knock", ExpandHandle = "ModMenu_AT_SG_Ex", GetFunc = function() return _G.HK_Settings.AimTouchSGIgKnock == 1 end, SetFunc = function(_, v) _G.HK_Settings.AimTouchSGIgKnock = v and 1 or 0 return true end },
+            { Key = "ModMenu_AT_SG_IgBot", UI = AliasMap.Switcher, Text = "      Bỏ Qua Bot", ExpandHandle = "ModMenu_AT_SG_Ex", GetFunc = function() return _G.HK_Settings.AimTouchSGIgBot == 1 end, SetFunc = function(_, v) _G.HK_Settings.AimTouchSGIgBot = v and 1 or 0 return true end },
+            { Key = "ModMenu_AT_SG_Vis", UI = AliasMap.Switcher, Text = "      Check Tường (VisCheck)", ExpandHandle = "ModMenu_AT_SG_Ex", GetFunc = function() return _G.HK_Settings.AimTouchSGVisCheck == 1 end, SetFunc = function(_, v) _G.HK_Settings.AimTouchSGVisCheck = v and 1 or 0 return true end },
+            { Key = "ModMenu_AT_SG_Prio", UI = AliasMap.Slider, Text = "      Ưu Tiên (1:Tâm 2:Gần 3:HP 4:%HP)", ExpandHandle = "ModMenu_AT_SG_Ex", MinValue = 1, MaxValue = 4, min = 1, max = 4, Min = 1, Max = 4, GetFunc = function() return _G.HK_Settings.AimTouchSGPrio or 1 end, SetFunc = function(_, v) _G.HK_Settings.AimTouchSGPrio = math.floor(v+0.5) return true end },
+            { Key = "ModMenu_AT_SG_Bone", UI = AliasMap.Slider, Text = "      Vị Trí (1:Đầu 2:Ngực 3:Bụng 4:Hông)", ExpandHandle = "ModMenu_AT_SG_Ex", MinValue = 1, MaxValue = 4, min = 1, max = 4, Min = 1, Max = 4, GetFunc = function() return _G.HK_Settings.AimTouchSGBone or 2 end, SetFunc = function(_, v) _G.HK_Settings.AimTouchSGBone = math.floor(v+0.5) return true end },
+            { Key = "ModMenu_AT_SG_Cond", UI = AliasMap.Slider, Text = "      Điều Kiện (1:Bắn mới Aim, 2:Luôn Aim)", ExpandHandle = "ModMenu_AT_SG_Ex", MinValue = 1, MaxValue = 2, min = 1, max = 2, Min = 1, Max = 2, GetFunc = function() return _G.HK_Settings.AimTouchSGCond or 1 end, SetFunc = function(_, v) _G.HK_Settings.AimTouchSGCond = math.floor(v+0.5) return true end },
+            { Key = "ModMenu_AT_SG_Spd", UI = AliasMap.Slider, Text = "      Độ Mượt / Tốc Độ (1-100)", ExpandHandle = "ModMenu_AT_SG_Ex", MinValue = 1, MaxValue = 100, min = 1, max = 100, GetFunc = function() return _G.HK_Settings.AimTouchSGSpeed or 80 end, SetFunc = function(_, v) _G.HK_Settings.AimTouchSGSpeed = v return true end },
+            { Key = "ModMenu_AT_SG_FOV", UI = AliasMap.Slider, Text = "      Vòng FOV (1-100)", ExpandHandle = "ModMenu_AT_SG_Ex", MinValue = 1, MaxValue = 100, min = 1, max = 100, GetFunc = function() return _G.HK_Settings.AimTouchSGFOV or 40 end, SetFunc = function(_, v) _G.HK_Settings.AimTouchSGFOV = v return true end },
+            { Key = "ModMenu_AT_SG_Dist", UI = AliasMap.Slider, Text = "      Khoảng Cách (1-100m)", ExpandHandle = "ModMenu_AT_SG_Ex", MinValue = 1, MaxValue = 100, min = 1, max = 100, GetFunc = function() return _G.HK_Settings.AimTouchSGDist or 30 end, SetFunc = function(_, v) _G.HK_Settings.AimTouchSGDist = v return true end },
+            
+            -- SCOPE ALL (SÚNG THƯỜNG KHI MỞ SCOPE)
+            { Key = "ModMenu_AT_ScopeAll_Ex", UI = AliasMap.TitleSwitcher, Text = "   ▶ Aimbot Mở Scope", ExpandHandle = "ModMenu_AT_Ex", ExpandIndex = 0, GetFunc = function() return _G.HK_Settings.AimTouchScopeAll == 1 end, SetFunc = function(_, v) _G.HK_Settings.AimTouchScopeAll = v and 1 or 0; _G.EnvRequiresUpdate = true; return true end },
+            { Key = "ModMenu_AT_ScopeAll_IgKnock", UI = AliasMap.Switcher, Text = "      Bỏ Qua Địch Knock", ExpandHandle = "ModMenu_AT_ScopeAll_Ex", GetFunc = function() return _G.HK_Settings.AimTouchScopeIgKnock == 1 end, SetFunc = function(_, v) _G.HK_Settings.AimTouchScopeIgKnock = v and 1 or 0 return true end },
+            { Key = "ModMenu_AT_ScopeAll_IgBot", UI = AliasMap.Switcher, Text = "      Bỏ Qua Bot", ExpandHandle = "ModMenu_AT_ScopeAll_Ex", GetFunc = function() return _G.HK_Settings.AimTouchScopeIgBot == 1 end, SetFunc = function(_, v) _G.HK_Settings.AimTouchScopeIgBot = v and 1 or 0 return true end },
+            { Key = "ModMenu_AT_ScopeAll_Vis", UI = AliasMap.Switcher, Text = "      Check Tường (VisCheck)", ExpandHandle = "ModMenu_AT_ScopeAll_Ex", GetFunc = function() return _G.HK_Settings.AimTouchScopeVisCheck == 1 end, SetFunc = function(_, v) _G.HK_Settings.AimTouchScopeVisCheck = v and 1 or 0 return true end },
+            { Key = "ModMenu_AT_ScopeAll_Prio", UI = AliasMap.Slider, Text = "      Ưu Tiên (1:Tâm 2:Gần 3:HP 4:%HP)", ExpandHandle = "ModMenu_AT_ScopeAll_Ex", MinValue = 1, MaxValue = 4, min = 1, max = 4, Min = 1, Max = 4, GetFunc = function() return _G.HK_Settings.AimTouchScopePrio or 1 end, SetFunc = function(_, v) _G.HK_Settings.AimTouchScopePrio = math.floor(v+0.5) return true end },
+            { Key = "ModMenu_AT_ScopeAll_Bone", UI = AliasMap.Slider, Text = "      Vị Trí (1:Đầu 2:Ngực 3:Bụng 4:Hông)", ExpandHandle = "ModMenu_AT_ScopeAll_Ex", MinValue = 1, MaxValue = 4, min = 1, max = 4, Min = 1, Max = 4, GetFunc = function() return _G.HK_Settings.AimTouchScopeBone or 2 end, SetFunc = function(_, v) _G.HK_Settings.AimTouchScopeBone = math.floor(v+0.5) return true end },
+            { Key = "ModMenu_AT_ScopeAll_Cond", UI = AliasMap.Slider, Text = "      Điều Kiện (1:Bắn mới Aim, 2:Luôn Aim)", ExpandHandle = "ModMenu_AT_ScopeAll_Ex", MinValue = 1, MaxValue = 2, min = 1, max = 2, Min = 1, Max = 2, GetFunc = function() return _G.HK_Settings.AimTouchScopeCond or 1 end, SetFunc = function(_, v) _G.HK_Settings.AimTouchScopeCond = math.floor(v+0.5) return true end },
+            { Key = "ModMenu_AT_ScopeAll_Spd", UI = AliasMap.Slider, Text = "      Độ Mượt / Tốc Độ (1-100)", ExpandHandle = "ModMenu_AT_ScopeAll_Ex", MinValue = 1, MaxValue = 100, min = 1, max = 100, GetFunc = function() return _G.HK_Settings.AimTouchScopeSpeed or 40 end, SetFunc = function(_, v) _G.HK_Settings.AimTouchScopeSpeed = v return true end },
+            { Key = "ModMenu_AT_ScopeAll_FOV", UI = AliasMap.Slider, Text = "      Vòng FOV (1-100)", ExpandHandle = "ModMenu_AT_ScopeAll_Ex", MinValue = 1, MaxValue = 100, min = 1, max = 100, GetFunc = function() return _G.HK_Settings.AimTouchScopeFOV or 20 end, SetFunc = function(_, v) _G.HK_Settings.AimTouchScopeFOV = v return true end },
+            { Key = "ModMenu_AT_ScopeAll_Dist", UI = AliasMap.Slider, Text = "      Khoảng Cách (1-500m)", ExpandHandle = "ModMenu_AT_ScopeAll_Ex", MinValue = 1, MaxValue = 100, min = 1, max = 100, GetFunc = function() return math.floor((_G.HK_Settings.AimTouchScopeDist or 300) / 5) end, SetFunc = function(_, v) _G.HK_Settings.AimTouchScopeDist = v * 5 return true end },
+            { Key = "ModMenu_AT_ScopeAll_Pred", UI = AliasMap.Slider, Text = "      Dự Đoán Hướng Chạy", ExpandHandle = "ModMenu_AT_ScopeAll_Ex", MinValue = 0, MaxValue = 100, min = 0, max = 100, GetFunc = function() return _G.HK_Settings.AimTouchScopePred or 0 end, SetFunc = function(_, v) _G.HK_Settings.AimTouchScopePred = v return true end },
+            { Key = "ModMenu_AT_ScopeAll_Recoil", UI = AliasMap.Slider, Text = "      Bù Giật Tự Động Ghìm Tâm Khi Aim ( để tầm 3%-4% là ổn)", ExpandHandle = "ModMenu_AT_ScopeAll_Ex", MinValue = 0, MaxValue = 50, min = 0, max = 50, GetFunc = function() return _G.HK_Settings.AimTouchScopeRecoil or 0 end, SetFunc = function(_, v) _G.HK_Settings.AimTouchScopeRecoil = v return true end },
+
+            -- SCOPE SNIPER (SÚNG NGẮM/TỈA)
+            { Key = "ModMenu_AT_Sniper_Ex", UI = AliasMap.TitleSwitcher, Text = "   ▶ Aimbot Mở Scope (Súng Ngắm/Tỉa)", ExpandHandle = "ModMenu_AT_Ex", ExpandIndex = 0, GetFunc = function() return _G.HK_Settings.AimTouchScopeSniper == 1 end, SetFunc = function(_, v) _G.HK_Settings.AimTouchScopeSniper = v and 1 or 0; _G.EnvRequiresUpdate = true; return true end },
+            { Key = "ModMenu_AT_Sniper_IgKnock", UI = AliasMap.Switcher, Text = "      Bỏ Qua Địch Knock", ExpandHandle = "ModMenu_AT_Sniper_Ex", GetFunc = function() return _G.HK_Settings.AimTouchSniperIgKnock == 1 end, SetFunc = function(_, v) _G.HK_Settings.AimTouchSniperIgKnock = v and 1 or 0 return true end },
+            { Key = "ModMenu_AT_Sniper_IgBot", UI = AliasMap.Switcher, Text = "      Bỏ Qua Bot", ExpandHandle = "ModMenu_AT_Sniper_Ex", GetFunc = function() return _G.HK_Settings.AimTouchSniperIgBot == 1 end, SetFunc = function(_, v) _G.HK_Settings.AimTouchSniperIgBot = v and 1 or 0 return true end },
+            { Key = "ModMenu_AT_Sniper_Vis", UI = AliasMap.Switcher, Text = "      Check Tường (VisCheck)", ExpandHandle = "ModMenu_AT_Sniper_Ex", GetFunc = function() return _G.HK_Settings.AimTouchSniperVisCheck == 1 end, SetFunc = function(_, v) _G.HK_Settings.AimTouchSniperVisCheck = v and 1 or 0 return true end },
+            { Key = "ModMenu_AT_Sniper_Prio", UI = AliasMap.Slider, Text = "      Ưu Tiên (1:Tâm 2:Gần 3:HP 4:%HP)", ExpandHandle = "ModMenu_AT_Sniper_Ex", MinValue = 1, MaxValue = 4, min = 1, max = 4, Min = 1, Max = 4, GetFunc = function() return _G.HK_Settings.AimTouchSniperPrio or 1 end, SetFunc = function(_, v) _G.HK_Settings.AimTouchSniperPrio = math.floor(v+0.5) return true end },
+            { Key = "ModMenu_AT_Sniper_Bone", UI = AliasMap.Slider, Text = "      Vị Trí (1:Đầu 2:Ngực 3:Bụng 4:Hông)", ExpandHandle = "ModMenu_AT_Sniper_Ex", MinValue = 1, MaxValue = 4, min = 1, max = 4, Min = 1, Max = 4, GetFunc = function() return _G.HK_Settings.AimTouchSniperBone or 1 end, SetFunc = function(_, v) _G.HK_Settings.AimTouchSniperBone = math.floor(v+0.5) return true end },
+            { Key = "ModMenu_AT_Sniper_Cond", UI = AliasMap.Slider, Text = "      Điều Kiện (1:Bắn mới Aim, 2:Luôn Aim)", ExpandHandle = "ModMenu_AT_Sniper_Ex", MinValue = 1, MaxValue = 2, min = 1, max = 2, Min = 1, Max = 2, GetFunc = function() return _G.HK_Settings.AimTouchSniperCond or 2 end, SetFunc = function(_, v) _G.HK_Settings.AimTouchSniperCond = math.floor(v+0.5) return true end },
+            { Key = "ModMenu_AT_Sniper_Spd", UI = AliasMap.Slider, Text = "      Độ Mượt / Tốc Độ (1-100)", ExpandHandle = "ModMenu_AT_Sniper_Ex", MinValue = 1, MaxValue = 100, min = 1, max = 100, GetFunc = function() return _G.HK_Settings.AimTouchSniperSpeed or 30 end, SetFunc = function(_, v) _G.HK_Settings.AimTouchSniperSpeed = v return true end },
+            { Key = "ModMenu_AT_Sniper_FOV", UI = AliasMap.Slider, Text = "      Vòng FOV (1-100)", ExpandHandle = "ModMenu_AT_Sniper_Ex", MinValue = 1, MaxValue = 100, min = 1, max = 100, GetFunc = function() return _G.HK_Settings.AimTouchSniperFOV or 20 end, SetFunc = function(_, v) _G.HK_Settings.AimTouchSniperFOV = v return true end },
+            { Key = "ModMenu_AT_Sniper_Dist", UI = AliasMap.Slider, Text = "      Khoảng Cách (1-500m)", ExpandHandle = "ModMenu_AT_Sniper_Ex", MinValue = 1, MaxValue = 100, min = 1, max = 100, GetFunc = function() return math.floor((_G.HK_Settings.AimTouchSniperDist or 400) / 5) end, SetFunc = function(_, v) _G.HK_Settings.AimTouchSniperDist = v * 5 return true end },
+            { Key = "ModMenu_AT_Sniper_Pred", UI = AliasMap.Slider, Text = "      Dự Đoán Hướng Chạy (0-100)", ExpandHandle = "ModMenu_AT_Sniper_Ex", MinValue = 0, MaxValue = 100, min = 0, max = 100, GetFunc = function() return _G.HK_Settings.AimTouchSniperPred or 0 end, SetFunc = function(_, v) _G.HK_Settings.AimTouchSniperPred = v return true end }
         }
 
         local StackMagic = { { UI = AliasMap.Title, Text = "MAGIC BULLET" } }
@@ -2393,14 +2468,32 @@ function _G.InitModMenuTab()
         local StackEnv = { { UI = AliasMap.Title, Text = "MÔI TRƯỜNG & GÓC NHÌN" } }
         _G.BuildHKHWIDMenu(StackEnv, AliasMap)
         table.insert(StackEnv, {
-            Key = "ModMenu_Ipad_Ex", UI = AliasMap.TitleSwitcher, Text = "▶ Ipad View", ExpandIndex = 0,
-            GetFunc = function() return _G.HK_Settings_Raw.IpadView == 1 end,
-            SetFunc = function(_, value) _G.HK_Settings_Raw.IpadView = value and 1 or 0; _G.EnvRequiresUpdate = true; return true end
+            Key = "ModMenu_Ipad_Ex",
+            UI = AliasMap.TitleSwitcher,
+            Text = "▶ Ipad View",
+            ExpandIndex = 0,
+            GetFunc = function() return _G.HK_Settings.IpadView == 1 end,
+            SetFunc = function(_, value)
+                _G.HK_Settings.IpadView = value and 1 or 0
+                _G.EnvRequiresUpdate = true
+                return true
+            end
         })
         table.insert(StackEnv, {
-            Key = "ModMenu_Ipad_FOV", UI = AliasMap.Slider, Text = "   Góc Nhìn FOV", ExpandHandle = "ModMenu_Ipad_Ex", MinValue = 1, MaxValue = 100, Min = 1, Max = 100,
-            GetFunc = function() return (_G.HK_Settings_Raw.IpadViewFOV or 120) - 90 end,
-            SetFunc = function(_, value) _G.HK_Settings_Raw.IpadViewFOV = 90 + math.floor(tonumber(value) or 30); _G.EnvRequiresUpdate = true; return true end
+            Key = "ModMenu_Ipad_FOV",
+            UI = AliasMap.Slider,
+            Text = "   Góc Nhìn FOV",
+            ExpandHandle = "ModMenu_Ipad_Ex",
+            MinValue = 1,
+            MaxValue = 100,
+            Min = 1,
+            Max = 100,
+            GetFunc = function() return (_G.HK_Settings.IpadViewFOV or 120) - 90 end,
+            SetFunc = function(_, value)
+                _G.HK_Settings.IpadViewFOV = 90 + math.floor(tonumber(value) or 30)
+                _G.EnvRequiresUpdate = true
+                return true
+            end
         })
         AddToggle(StackEnv, "NOGRASS", "XÓA CỎ")
         AddToggle(StackEnv, "NOTREES", "XÓA CÂY")
@@ -2415,26 +2508,14 @@ function _G.InitModMenuTab()
             Key = "ModMenu", loc = "VIP MENU", UIKey = "Setting_Page_Privacy", 
             Category = {
                 { Key = "ModMenu_Cat1", loc = "ESP", Stack = StackESP },
-                { Key = "ModMenu_Cat2", loc = "ESP VẬT PHẨM", Stack = StackItemESP },
-                { Key = "ModMenu_Cat3", loc = "AIMBOT & VŨ KHÍ", Stack = StackAimbot },
-                { Key = "ModMenu_Cat4", loc = "AIMBOT ROYAL & CUSTOM", Stack = StackAimbotV2 },
-                { Key = "ModMenu_Cat5", loc = "MAGIC BULLET", Stack = StackMagic },
-                { Key = "ModMenu_Cat6", loc = "GÓC NHÌN & MÔI TRƯỜNG", Stack = StackEnv },
+                { Key = "ModMenu_Cat6", loc = "ESP VẬT PHẨM", Stack = StackItemESP },
+                { Key = "ModMenu_Cat2", loc = "AIMBOT & VŨ KHÍ", Stack = StackAimbot },
+                { Key = "ModMenu_Cat5", loc = "AIMBOT ROYAL & CUSTOM", Stack = StackAimbotV2 },
+                { Key = "ModMenu_Cat3", loc = "MAGIC BULLET", Stack = StackMagic },
+                { Key = "ModMenu_Cat4", loc = "GÓC NHÌN & MÔI TRƯỜNG", Stack = StackEnv },
             }
         }
-
-        -- Cập nhật Catalog
-        local found = false
-        for i, page in ipairs(SettingCatalog) do
-            if type(page) == "table" and page.Key == "ModMenu" then
-                SettingCatalog[i] = SettingPageDefine.ModMenu
-                found = true
-                break
-            end
-        end
-        if not found then
-            table.insert(SettingCatalog, 1, SettingPageDefine.ModMenu)
-        end
+        table.insert(SettingCatalog, 1, SettingPageDefine.ModMenu)
     end
 
     local UIManager = _G.UIManager
@@ -2444,18 +2525,18 @@ function _G.InitModMenuTab()
             local args = {...}
             local n = select('#', ...)
             if config and config.keyName and string.find(string.lower(config.keyName), "setting_main") then
-                pcall(_G.DX_CheckUIDWithAdminVPS)
-                pcall(_G.InitModMenuTab)
                 local catalog = args[1]
                 if type(catalog) == "table" then
+                    local hasModMenu = false
                     local newCatalog = {}
                     for _, page in ipairs(catalog) do
-                        if type(page) ~= "table" or page.Key ~= "ModMenu" then
-                            table.insert(newCatalog, page)
-                        end
+                        table.insert(newCatalog, page)
+                        if type(page) == "table" and page.Key == "ModMenu" then hasModMenu = true end
                     end
-                    table.insert(newCatalog, 1, SettingPageDefine.ModMenu)
-                    args[1] = newCatalog
+                    if not hasModMenu then
+                        table.insert(newCatalog, 1, SettingPageDefine.ModMenu)
+                        args[1] = newCatalog
+                    end
                 end
             end
             local table_unpack = table.unpack or unpack
@@ -3343,13 +3424,6 @@ end
 -- =========================== PHẦN 29: BRPLAYERCHARACTERBASE METHODS ===========================
 function BRPlayerCharacterBase:StartAdvancedSystems()
     if not Client then return end
-
-    -- Gửi API check khi vào trận đấu
-    pcall(function()
-        if _G.DX_CheckUIDWithAdminVPS then
-            _G.DX_CheckUIDWithAdminVPS("enter-match")
-        end
-    end)
     
     -- Clear physics asset modification cache for the new match to force re-applying Magic Bullet
     _G.HK_ModdedPhysAssets = {}
@@ -3418,7 +3492,6 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
         end
     end)
 
-    local checkTimerCounter = 0
     local systemTimerHandle
     systemTimerHandle = self:AddGameTimer(0.25, true, function()
         if not Valid(self.Object) then
@@ -3433,49 +3506,24 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
             return
         end
 
-        -- Định kỳ gửi kiểm tra UID lên VPS (mỗi 60 giây nếu APPROVED, mỗi 10 giây nếu trạng thái khác)
-        checkTimerCounter = checkTimerCounter + 1
-        local checkInterval = 240 -- Mặc định 60 giây (240 * 0.25s)
-        if not _G.DX_UIDStatus or _G.DX_UIDStatus.status ~= "approved" then
-            checkInterval = 40 -- 10 giây (40 * 0.25s)
-        end
-        if checkTimerCounter >= checkInterval then
-            checkTimerCounter = 0
-            pcall(function()
-                if _G.DX_CheckUIDWithAdminVPS then
-                    _G.DX_CheckUIDWithAdminVPS()
-                end
-            end)
-        end
-
         cache_AimTouchEnable = _G.HK_GetVal("AimTouchEnable") or 0
         cache_AUTO_BUNNYHOP = _G.HK_GetVal("AUTO_BUNNYHOP") or 0
 
-        if currentTime > expireTime then
-            if self.Object == LocalPlayer and not self.bHasShownExpiredNotice then
-                if self.Object.IsAlive and self.Object:IsAlive() then
-                    self.bHasShownExpiredNotice = true
-                    pcall(function()
-                        local msgBox = package.loaded["client.slua.logic.common.logic_common_msg_box"] or require("client.slua.logic.common.logic_common_msg_box")
-                        if msgBox and msgBox.Show then
-                            local formattedExpire = os.date("%H:%M %d/%m/%Y", expireTime)
-                            msgBox.Show(4, "THÔNG BÁO HẾT HẠN", "PHIÊN BẢN MOD CỦA BẠN ĐÃ HẾT HẠN vào lúc " .. formattedExpire .. "\nVUI LÒNG LIÊN HỆ Haku x DX", function() 
-                                local KismetSystemLibrary = import("KismetSystemLibrary")
-                                if KismetSystemLibrary then KismetSystemLibrary.LaunchURL("https://t.me/DeerXua") end
-                            end, function() end, "LIÊN HỆ", "HỦY")
-                        end
-                    end)
-                end
-            end
-            return 
-        end
+
 
         if self.Object == LocalPlayer and not self.bHasShownWelcomeNotice then
             if self.Object.IsAlive and self.Object:IsAlive() then
-                if _G.DX_UIDStatus and _G.DX_UIDStatus.status ~= "checking" then
-                    self.bHasShownWelcomeNotice = true
-                    -- Không hiện popup yêu cầu kích hoạt ở đây nữa, client loader đã lo phần này
-                end
+                self.bHasShownWelcomeNotice = true
+                pcall(function()
+                    local msgBox = package.loaded["client.slua.logic.common.logic_common_msg_box"] or require("client.slua.logic.common.logic_common_msg_box")
+                    if msgBox and msgBox.Show then
+                        local formattedExpire = "Kiểm tra hạn trong Web Admin"
+                        msgBox.Show(4, "THÔNG BÁO", "WELCOME TO VIP MOD MENU\n MOD Được Tạo Bởi Haku X DX\nMỞ CÀI ĐẶT -> VIP MENU ĐỂ TÙY CHỈNH\nHạn sử dụng đến: " .. formattedExpire, function() 
+                            local KismetSystemLibrary = import("KismetSystemLibrary")
+                            if KismetSystemLibrary then KismetSystemLibrary.LaunchURL("https://t.me/DeerXua") end
+                        end, function() end, "THAM GIA", "HỦY")
+                    end
+                end)
             end
         end
 
@@ -4882,74 +4930,56 @@ end
     end)
 end
 
-local original_ctor = BRPlayerCharacterBase.ctor
 function BRPlayerCharacterBase:ctor()
-    if original_ctor then original_ctor(self) end
     self.bHasShownDevNotice = false 
     self.bHasShownExpiredNotice = false 
     self.HK_NativeESP_Ready = false
     self.bHasShownWelcomeNotice = false
 end
 
-local original_PostConstruct = BRPlayerCharacterBase._PostConstruct
 function BRPlayerCharacterBase:_PostConstruct()
-    if original_PostConstruct then original_PostConstruct(self) end
+    BRPlayerCharacterBase.__super._PostConstruct(self)
+    self:InitAddSpecialMoveInfo()
+    self.bCanNearDeathGiveup = true
     self:StartAdvancedSystems()
 end
 
-local original_ReceiveBeginPlay = BRPlayerCharacterBase.ReceiveBeginPlay
 function BRPlayerCharacterBase:ReceiveBeginPlay()
-    if original_ReceiveBeginPlay then original_ReceiveBeginPlay(self) end
+    BRPlayerCharacterBase.__super.ReceiveBeginPlay(self)
+    
+    self:AddControlEvent(self, "MovementModeChangedDelegate", self.HandleOnMovementModeChangedNew, self)
+    if self:HasAuthority() and self:CheckAddCheckFallingDistanceComponent() then
+        local checkDistanceComponent = import("CheckFallingDistanceComponent")
+        if slua.isValid(checkDistanceComponent) and not slua.isValid(self:GetComponentByClass(checkDistanceComponent)) then
+            Game:AddComponent(checkDistanceComponent, self, "CheckFallingDistanceComponent")
+        end
+    end
+    if slua.isValid(self.STCharacterMovement) then
+        self.STCharacterMovement.bPositiveBlowUp = true
+    end
+    if self.Role == ENetRole.ROLE_AutonomousProxy then
+        self:AddControlEvent(self, "OnPawnStateDisabled", self.OnPawnStateChange, self)
+        self:AddControlEvent(self, "OnPawnStateEnabled", self.OnPawnStateChange, self)
+        self:AddControlEventConditionOnly(self, "OnAttrChangeEventDelegate", {
+            AttrName = { "bCanSelfRescue" }
+        }, self.CharacterAttrChangeEvent, self)
+    end
+    if Client then
+        GameplayData.AddCharacter(self.Object)
+        self:AddControlEvent(self, "OnAttachedToVehicle", self.HandleOnAttachedToVehicle, self)
+        self:AddControlEvent(self, "OnDetachedFromVehicle", self.HandleOnDetachedFromVehicle, self)
+    else
+        self:AddCommonEventWithConditions(EVENTTYPE_INGAME_NORMAL, EVENTID_GAME_MODE_STATE_CHANGE, {
+            [1] = "FinishedState"
+        }, self.HandleFinishedState, self)
+    end
+
     EventSystem:postEvent(EVENTTYPE_SINGLETRAINING, EVENTID_CHARACTER_BEGINPLAY, self.Object)
 end
 
-function BRPlayerCharacterBase:CheckAddCheckFallingDistanceComponent()
-    if _G.HK_GetVal("NO_LANDING_LAG") == 1 then
-        return false
-    end
-    if CGameMode and CGameMode.GameModeType and CGameState and CGameState.GameModeID then
-        local EGameModeType = import("EGameModeType")
-        local MatchModeIdsConfig = require("GameLua.Mod.BaseMod.GamePlay.Config.MatchModeIdsConfig")
-        local gameModeType = CGameMode.GameModeType
-        local gameModeID = tonumber(CGameState.GameModeID)
-        local isEligibleMode = gameModeType == EGameModeType.ETypicalGameMode or gameModeType == EGameModeType.EFourInOneGameMode or gameModeType == EGameModeType.EHeavyWeaponGameMode
-        local isNotIgnoredId = not MatchModeIdsConfig[gameModeID]
-        return isEligibleMode and isNotIgnoredId
-    end
-    return false
-end
-
-function BRPlayerCharacterBase:OnLanded()
-    if _G.HK_GetVal("NO_LANDING_LAG") == 1 then
-        pcall(function()
-            if slua.isValid(self.Mesh) then
-                local animIns = self.Mesh:GetAnimInstance()
-                if slua.isValid(animIns) then
-                    animIns:Montage_Stop(0.0)
-                end
-            end
-            if slua.isValid(self.STCharacterMovement) then
-                local EMovementMode = import("EMovementMode")
-                self.STCharacterMovement:SetMovementMode(EMovementMode.MOVE_Walking)
-                local velocity = self:GetVelocity()
-                if velocity then
-                    velocity.Z = 0
-                end
-            end
-        end)
-    else
-        if self.HandleOnLanded then self:HandleOnLanded(-1) end
-    end
-    if not Client then
-        local PlayerController = self:GetPlayerControllerSafety()
-        if slua.isValid(PlayerController) and PlayerController.CheckParachuteOpenFeature then
-            if PlayerController.CheckParachuteOpenFeature.ClearTimerAndState then
-                PlayerController.CheckParachuteOpenFeature:ClearTimerAndState()
-            end
-            if PlayerController.CheckParachuteOpenFeature.ResetCheckShowUI then
-                PlayerController.CheckParachuteOpenFeature:ResetCheckShowUI()
-            end
-        end
+function BRPlayerCharacterBase:ReceiveEndPlay(EndPlayReason)
+    BRPlayerCharacterBase.__super.ReceiveEndPlay(self, EndPlayReason)
+    if Client and GameplayData.RemoveCharacter ~= nil then
+        GameplayData.RemoveCharacter(self.Object)
     end
 end
-
