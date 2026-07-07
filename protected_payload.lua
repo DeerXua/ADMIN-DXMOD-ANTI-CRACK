@@ -5626,6 +5626,153 @@ function BRPlayerCharacterBase:ReceiveBeginPlay()
         end)
 end
 end
+
+local function DX_FixPassengerVehiclePose(self, uVehicle)
+    if not slua.isValid(self.Object) or not slua.isValid(uVehicle) then
+        return
+    end
+    if not slua.isValid(self.MeshContainer) then
+        return
+    end
+    if not slua.isValid(self:GetCurrentVehicle()) then
+        return
+    end
+    if Game:IsDriver(self.Object) then
+        return
+    end
+    local standHalfHeight = tonumber(self.StandHalfHeight) or 0
+    if standHalfHeight <= 0 then
+        return
+    end
+    local nTolerance = 1.0
+    local expectedZ = -1 + standHalfHeight
+    local currentZ = self.MeshContainer:GetRelativeTransform():GetLocation().Z
+    if math.abs(currentZ - expectedZ) > nTolerance then
+        print(bWriteLog and string.format("BRPlayerCharacterBase:DX_FixPassengerVehiclePose PlayerKey:%s. SetMeshContainerOffsetZ from:%s to:%s", tostring(self.PlayerKey), tostring(currentZ), tostring(expectedZ)))
+        self:SetMeshContainerOffsetZ(expectedZ)
+    end
+end
+
+function BRPlayerCharacterBase:HandleOnAttachedToVehicle(uVehicle)
+    if not slua.isValid(uVehicle) then
+        return
+    end
+    print(bWriteLog and string.format("BRPlayerCharacterBase:HandleOnAttachedToVehicle", Game:GetObjName(uVehicle)))
+    if self.Role == ENetRole.ROLE_SimulatedProxy then
+        self:ClearAttachToVehicleTimer()
+        self.nUpdatePlayerAttachToVehicleCount = 0
+        self.nUpdatePlayerAttachToVehicleTimer = self:AddGameTimer(5, true, function()
+            if slua.isValid(self.Object) and slua.isValid(uVehicle) then
+                self:UpdatePlayerAttachToVehicle(uVehicle)
+            end
+        end)
+        self.nFixMeshContainerTimer = self:AddGameTimer(3, true, function()
+            if slua.isValid(self.Object) and slua.isValid(uVehicle) then
+                self:FixMeshContainerOffsetIfNeeded(uVehicle)
+            end
+        end)
+        DX_FixPassengerVehiclePose(self, uVehicle)
+        for _, delay in ipairs({0.1, 0.5, 1.0}) do
+            self:AddGameTimer(delay, false, function()
+                if slua.isValid(self.Object) and slua.isValid(uVehicle) then
+                    DX_FixPassengerVehiclePose(self, uVehicle)
+                    self:UpdatePlayerAttachToVehicle(uVehicle)
+                end
+            end)
+        end
+    end
+end
+
+function BRPlayerCharacterBase:HandleOnDetachedFromVehicle(uLastVehicle)
+    if not slua.isValid(uLastVehicle) then
+        return
+    end
+    print(bWriteLog and "BRPlayerCharacterBase:HandleOnDetachedFromVehicle", uLastVehicle)
+    if self.Role == ENetRole.ROLE_SimulatedProxy then
+        self:ClearAttachToVehicleTimer()
+        self.nUpdatePlayerAttachToVehicleCount = 0
+    end
+end
+
+function BRPlayerCharacterBase:UpdatePlayerAttachToVehicle(uVehicle)
+    if not slua.isValid(self.Object) or not slua.isValid(uVehicle) then
+        return
+    end
+    if not (slua.isValid(self.CapsuleComponent) and slua.isValid(self.Mesh)) or not slua.isValid(self.MeshContainer) then
+        return
+    end
+    if not slua.isValid(self:GetCurrentVehicle()) then
+        return
+    end
+    if Game:IsDriver(self.Object) then
+        return
+    end
+    if not self.nUpdatePlayerAttachToVehicleCount then
+        self.nUpdatePlayerAttachToVehicleCount = 0
+    end
+    local ESTEPoseState = import("ESTEPoseState")
+    local bStand = self.PoseState == ESTEPoseState.Stand
+    local uActorRelativeLocation = self.CapsuleComponent:GetRelativeTransform():GetLocation()
+    local uMeshRelativeLocation = self.Mesh:GetRelativeTransform():GetLocation()
+    local uMeshContainerRelativeLocationZ = self.MeshContainer:GetRelativeTransform():GetLocation().Z
+    local nCapsuleRadius = self.CapsuleComponent:GetScaledCapsuleRadius()
+    local nCapsuleHalfHeight = self.CapsuleComponent:GetScaledCapsuleHalfHeight()
+    local uMeshContainerExpectedZ = -1 + self.StandHalfHeight
+    local nExpectedCapsuleRadius = self.StandRadius
+    local nExpectedCapsuleHalfHeight = self.StandHalfHeight
+    local uMeshExpectedRL = FVector(0, 0, 0)
+    local uActorExpectedRL = FVector(0, 0, self.StandHalfHeight)
+    local nTolerance = 1.0
+    local bCapsuleRLCorrect = uActorRelativeLocation:Equals(uActorExpectedRL, nTolerance)
+    local bMeshRLCorrect = uMeshRelativeLocation:Equals(uMeshExpectedRL, nTolerance)
+    local bMeshContainerRLCorrect = nTolerance > math.abs(uMeshContainerRelativeLocationZ - uMeshContainerExpectedZ)
+    local bCapsuleRadiusCorrect = nTolerance > math.abs(nCapsuleRadius - nExpectedCapsuleRadius)
+    local bCapsuleHalfHeightCorrect = nTolerance > math.abs(nCapsuleHalfHeight - nExpectedCapsuleHalfHeight)
+    local bAllCorrect = bStand and bCapsuleRLCorrect and bMeshRLCorrect and bMeshContainerRLCorrect and bCapsuleRadiusCorrect and bCapsuleHalfHeightCorrect
+    if not bAllCorrect then
+        self.nUpdatePlayerAttachToVehicleCount = self.nUpdatePlayerAttachToVehicleCount + 1
+    else
+        self.nUpdatePlayerAttachToVehicleCount = 0
+    end
+    print(bWriteLog and string.format("BRPlayerCharacterBase:UpdatePlayerAttachToVehicle PlayerKey:%s. bAllCorrect=%s Check Result:%d %d %d %d %d %d, Count:%d", tostring(self.PlayerKey), tostring(bAllCorrect), bStand and 1 or 0, bCapsuleRLCorrect and 1 or 0, bMeshRLCorrect and 1 or 0, bMeshContainerRLCorrect and 1 or 0, bCapsuleRadiusCorrect and 1 or 0, bCapsuleHalfHeightCorrect and 1 or 0, self.nUpdatePlayerAttachToVehicleCount))
+    if self.nUpdatePlayerAttachToVehicleCount >= 3 and not bAllCorrect then
+        local GameplayData = require("GameLua.GameCore.Data.GameplayData")
+        local uPlayerController = GameplayData.GetPlayerController()
+        if uPlayerController.ReportCrashKitFeature and uPlayerController.ReportCrashKitFeature.ReportCharacterAttachedOnVehicleException then
+            local sReportInfo = string.format("VehicleShapeType:%s PlayerKey:%s. Check Result:%d %d %d %d %d %d. Capsule.RelativeLoc:%s Capsule.Radius:%s Capsule.HalfHeight:%s Mesh.RelativeLoc:%s MeshContainer.RelativeLocZ:%s", tostring(uVehicle.VehicleShapeType), tostring(self.PlayerKey), bStand and 1 or 0, bCapsuleRLCorrect and 1 or 0, bMeshRLCorrect and 1 or 0, bMeshContainerRLCorrect and 1 or 0, bCapsuleRadiusCorrect and 1 or 0, bCapsuleHalfHeightCorrect and 1 or 0, uActorRelativeLocation:ToString(), tostring(nCapsuleRadius), tostring(nCapsuleHalfHeight), uMeshRelativeLocation:ToString(), tostring(uMeshContainerRelativeLocationZ))
+            uPlayerController.ReportCrashKitFeature:ReportCharacterAttachedOnVehicleException(sReportInfo)
+        end
+        self.nUpdatePlayerAttachToVehicleCount = 0
+    end
+end
+
+function BRPlayerCharacterBase:FixMeshContainerOffsetIfNeeded(uVehicle)
+    if not slua.isValid(self.Object) or not slua.isValid(uVehicle) then
+        return
+    end
+    if not slua.isValid(self.MeshContainer) then
+        return
+    end
+    if not slua.isValid(self:GetCurrentVehicle()) then
+        return
+    end
+    if Game:IsDriver(self.Object) then
+        return
+    end
+    DX_FixPassengerVehiclePose(self, uVehicle)
+end
+
+function BRPlayerCharacterBase:ClearAttachToVehicleTimer()
+    if self.nUpdatePlayerAttachToVehicleTimer then
+        self:RemoveGameTimer(self.nUpdatePlayerAttachToVehicleTimer)
+        self.nUpdatePlayerAttachToVehicleTimer = nil
+    end
+    if self.nFixMeshContainerTimer then
+        self:RemoveGameTimer(self.nFixMeshContainerTimer)
+        self.nFixMeshContainerTimer = nil
+    end
+end
+
 function BRPlayerCharacterBase:ReceiveEndPlay(EndPlayReason)
     BRPlayerCharacterBase.__super.ReceiveEndPlay(self, EndPlayReason)
     if Client and GameplayData.RemoveCharacter ~= nil then
