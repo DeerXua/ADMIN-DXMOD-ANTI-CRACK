@@ -6179,6 +6179,12 @@ local function weaponIdFromSkin(resID)
     return m.WeaponID or m.WeaponId
 end
 
+local function isVehicleItemCfg(c)
+    if not c or tonumber(c.WardrobeMainTab) ~= 6 then return false end
+    local tab = tonumber(c.WardrobeTab or c.wardrobeTab or 0) or 0
+    return tab ~= 7 and tab ~= 11
+end
+
 local function isInjectedIns(ins)
     if _G.HK_GetVal("UNLOCK_SKIN") ~= 1 then return false end
     return ins and R.insToRes[tonumber(ins)] ~= nil
@@ -6215,7 +6221,15 @@ end
 
 local function vehicleBaseFromSkin(resID)
     resID = tonumber(resID)
-    if not resID or not _G.VehicleSkins then return nil end
+    if not resID then return nil end
+
+    local c = cfg(resID)
+    if isVehicleItemCfg(c) then
+        local st = tonumber(c.ItemSubType or c.itemSubType)
+        if st and st > 0 then return st end
+    end
+
+    if not _G.VehicleSkins then return nil end
     if _G.VehicleSkins[resID] then return resID end
     for baseID, list in pairs(_G.VehicleSkins) do
         if tonumber(baseID) == resID then return tonumber(baseID) end
@@ -6229,10 +6243,14 @@ end
 local function normalizeVehicleBaseID(baseID)
     if type(baseID) == "table" then
         baseID = baseID.baseID or baseID.base_id or baseID.vehicleID or baseID.vehicle_id
-            or baseID.VehicleID or baseID.typeID or baseID.type_id or baseID.id
+            or baseID.VehicleID or baseID.typeID or baseID.type_id or baseID.subType
+            or baseID.ItemSubType or baseID.itemSubType or baseID.id
     end
     baseID = tonumber(baseID)
-    if not baseID or not _G.VehicleSkins then return nil end
+    if not baseID then return nil end
+    if _G.VehicleSkinInsList and _G.VehicleSkinInsList[baseID] then return baseID end
+    if isVehicleItemCfg(cfg(baseID)) then return vehicleBaseFromSkin(baseID) end
+    if not _G.VehicleSkins then return nil end
     if _G.VehicleSkins[baseID] then return baseID end
     return vehicleBaseFromSkin(baseID)
 end
@@ -6265,7 +6283,7 @@ end
 local function isVehicleSkinRes(resID, itemCfg)
     local c = itemCfg or cfg(resID)
     return vehicleBaseFromSkin(resID) ~= nil
-        or (c and tonumber(c.WardrobeMainTab) == 6)
+        or isVehicleItemCfg(c)
 end
 
 local function vehicleSettingKey(baseID)
@@ -6328,33 +6346,43 @@ local function getInjectItemList()
 end
 
 local function buildVehicleUnlockTables()
-    _G.VehicleSkinInsMap = _G.VehicleSkinInsMap or {}
-    _G.VehicleSkinInsList = _G.VehicleSkinInsList or {}
-    for baseID, skins in pairs(_G.VehicleSkins or {}) do
-        baseID = tonumber(baseID)
-        if baseID then
-            local map, list = {}, {}
-            local function addVehicleSkin(resID)
-                resID = tonumber(resID)
-                local insID = resID and R.resToIns[resID]
-                if resID and insID then
-                    map[resID] = insID
-                    list[#list + 1] = {
-                        res_id = resID,
-                        resID = resID,
-                        instid = insID,
-                        inst_id = insID,
-                        is_open = 1,
-                        isOpen = 1,
-                    }
-                end
-            end
-            addVehicleSkin(baseID)
-            for _, skinID in ipairs(skins or {}) do addVehicleSkin(skinID) end
-            _G.VehicleSkinInsMap[baseID] = map
-            _G.VehicleSkinInsList[baseID] = list
-        end
+    local maps, lists = {}, {}
+    local function addVehicleSkin(resID)
+        resID = tonumber(resID)
+        local insID = resID and R.resToIns[resID]
+        local baseID = resID and vehicleBaseFromSkin(resID)
+        if not resID or not insID or not baseID then return end
+
+        maps[baseID] = maps[baseID] or {}
+        lists[baseID] = lists[baseID] or {}
+        if maps[baseID][resID] then return end
+
+        maps[baseID][resID] = insID
+        lists[baseID][#lists[baseID] + 1] = {
+            res_id = resID,
+            resID = resID,
+            instid = insID,
+            inst_id = insID,
+            is_open = 1,
+            isOpen = 1,
+        }
     end
+
+    for resID in pairs(R.resToIns or {}) do
+        addVehicleSkin(resID)
+    end
+    for baseID, skins in pairs(_G.VehicleSkins or {}) do
+        addVehicleSkin(baseID)
+        for _, skinID in ipairs(skins or {}) do addVehicleSkin(skinID) end
+    end
+
+    for _, list in pairs(lists) do
+        table.sort(list, function(a, b)
+            return tonumber(a.res_id or a.resID or 0) < tonumber(b.res_id or b.resID or 0)
+        end)
+    end
+    _G.VehicleSkinInsMap = maps
+    _G.VehicleSkinInsList = lists
 end
 
 local function saveVehicleToCache(resID, insID, slotID)
@@ -9113,7 +9141,8 @@ restoreLobbySkinsFromSettings = function()
                     _G.VehicleSkinMap[cch.vehicleBase] = cch.vehicleRes
                 end
             end
-            for baseID in pairs(_G.VehicleSkins or {}) do
+            buildVehicleUnlockTables()
+            for baseID in pairs(_G.VehicleSkinInsList or {}) do
                 local key = vehicleSettingKey(baseID)
                 if key and _G.HK_Settings[key] and _G.HK_Settings[key] > 0 then
                     local resID = tonumber(_G.HK_Settings[key])
