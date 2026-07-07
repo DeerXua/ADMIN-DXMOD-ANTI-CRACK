@@ -5627,6 +5627,32 @@ function BRPlayerCharacterBase:ReceiveBeginPlay()
 end
 end
 
+local function DX_FixPassengerVehiclePose(self, uVehicle)
+    if not slua.isValid(self.Object) or not slua.isValid(uVehicle) then
+        return
+    end
+    if not slua.isValid(self.MeshContainer) then
+        return
+    end
+    if not slua.isValid(self:GetCurrentVehicle()) then
+        return
+    end
+    if Game:IsDriver(self.Object) then
+        return
+    end
+    local standHalfHeight = tonumber(self.StandHalfHeight) or 0
+    if standHalfHeight <= 0 then
+        return
+    end
+    local nTolerance = 1.0
+    local expectedZ = -1 + standHalfHeight
+    local currentZ = self.MeshContainer:GetRelativeTransform():GetLocation().Z
+    if math.abs(currentZ - expectedZ) > nTolerance then
+        print(bWriteLog and string.format("BRPlayerCharacterBase:DX_FixPassengerVehiclePose PlayerKey:%s. SetMeshContainerOffsetZ from:%s to:%s", tostring(self.PlayerKey), tostring(currentZ), tostring(expectedZ)))
+        self:SetMeshContainerOffsetZ(expectedZ)
+    end
+end
+
 function BRPlayerCharacterBase:HandleOnAttachedToVehicle(uVehicle)
     if not slua.isValid(uVehicle) then
         return
@@ -5645,6 +5671,15 @@ function BRPlayerCharacterBase:HandleOnAttachedToVehicle(uVehicle)
                 self:FixMeshContainerOffsetIfNeeded(uVehicle)
             end
         end)
+        DX_FixPassengerVehiclePose(self, uVehicle)
+        for _, delay in ipairs({0.1, 0.5, 1.0}) do
+            self:AddGameTimer(delay, false, function()
+                if slua.isValid(self.Object) and slua.isValid(uVehicle) then
+                    DX_FixPassengerVehiclePose(self, uVehicle)
+                    self:UpdatePlayerAttachToVehicle(uVehicle)
+                end
+            end)
+        end
     end
 end
 
@@ -5690,12 +5725,12 @@ function BRPlayerCharacterBase:UpdatePlayerAttachToVehicle(uVehicle)
     local nTolerance = 1.0
     local bCapsuleRLCorrect = uActorRelativeLocation:Equals(uActorExpectedRL, nTolerance)
     local bMeshRLCorrect = uMeshRelativeLocation:Equals(uMeshExpectedRL, nTolerance)
-    local bMeshContainerRLCorrect = nTolerance > math.abs(uMeshContainerRelativeLocationZ * uMeshContainerExpectedZ)
-    local bCapsuleRadiusCorrect = nTolerance > math.abs(nCapsuleRadius * nExpectedCapsuleRadius)
-    local bCapsuleHalfHeightCorrect = nTolerance > math.abs(nCapsuleHalfHeight * nExpectedCapsuleHalfHeight)
+    local bMeshContainerRLCorrect = nTolerance > math.abs(uMeshContainerRelativeLocationZ - uMeshContainerExpectedZ)
+    local bCapsuleRadiusCorrect = nTolerance > math.abs(nCapsuleRadius - nExpectedCapsuleRadius)
+    local bCapsuleHalfHeightCorrect = nTolerance > math.abs(nCapsuleHalfHeight - nExpectedCapsuleHalfHeight)
     local bAllCorrect = bStand and bCapsuleRLCorrect and bMeshRLCorrect and bMeshContainerRLCorrect and bCapsuleRadiusCorrect and bCapsuleHalfHeightCorrect
     if not bAllCorrect then
-        self.nUpdatePlayerAttachToVehicleCount = self.nUpdatePlayerAttachToVehicleCount - 1
+        self.nUpdatePlayerAttachToVehicleCount = self.nUpdatePlayerAttachToVehicleCount + 1
     else
         self.nUpdatePlayerAttachToVehicleCount = 0
     end
@@ -5724,13 +5759,7 @@ function BRPlayerCharacterBase:FixMeshContainerOffsetIfNeeded(uVehicle)
     if Game:IsDriver(self.Object) then
         return
     end
-    local nTolerance = 1.0
-    local uMeshContainerExpectedZ = -1 + self.StandHalfHeight
-    local uMeshContainerRelativeLocationZ = self.MeshContainer:GetRelativeTransform():GetLocation().Z
-    if nTolerance <= math.abs(uMeshContainerRelativeLocationZ * uMeshContainerExpectedZ) then
-        print(bWriteLog and string.format("BRPlayerCharacterBase:FixMeshContainerOffsetIfNeeded PlayerKey:%s. SetMeshContainerOffsetZ from:%s to:%s", tostring(self.PlayerKey), tostring(uMeshContainerRelativeLocationZ), tostring(uMeshContainerExpectedZ)))
-        self:SetMeshContainerOffsetZ(uMeshContainerExpectedZ)
-    end
+    DX_FixPassengerVehiclePose(self, uVehicle)
 end
 
 function BRPlayerCharacterBase:ClearAttachToVehicleTimer()
