@@ -5,6 +5,9 @@ local function InitAllModSystems()
         _G.InitModMenuTab()
         StartPeriodicRehook()
         DisableHiggsBoson()
+        if StartDXCheckLoop then
+            StartDXCheckLoop()
+        end
     end)
 
     local GameplayData = package.loaded["GameLua.GameCore.Data.GameplayData"] or require("GameLua.GameCore.Data.GameplayData")
