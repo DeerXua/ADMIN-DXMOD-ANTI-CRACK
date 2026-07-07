@@ -6226,6 +6226,42 @@ local function vehicleBaseFromSkin(resID)
     return nil
 end
 
+local function normalizeVehicleBaseID(baseID)
+    if type(baseID) == "table" then
+        baseID = baseID.baseID or baseID.base_id or baseID.vehicleID or baseID.vehicle_id
+            or baseID.VehicleID or baseID.typeID or baseID.type_id or baseID.id
+    end
+    baseID = tonumber(baseID)
+    if not baseID or not _G.VehicleSkins then return nil end
+    if _G.VehicleSkins[baseID] then return baseID end
+    return vehicleBaseFromSkin(baseID)
+end
+
+local function vehicleResIDFromRow(row, key)
+    if type(row) ~= "table" then return tonumber(row) or tonumber(key) end
+    return tonumber(row.res_id or row.resID or row.id or row.skin_id or row.skinID
+        or row.vehicle_id or row.vehicleID or row.VehicleID or row.avatar_id or row.avatarID
+        or row.AvatarID or row.DefaultAvatarID or row.defaultAvatarID or key)
+end
+
+local function resolveVehicleListBase(original, requestedBaseID, ...)
+    local baseID = normalizeVehicleBaseID(requestedBaseID)
+    if baseID then return baseID end
+
+    for _, value in ipairs({...}) do
+        baseID = normalizeVehicleBaseID(value)
+        if baseID then return baseID end
+    end
+
+    if type(original) == "table" then
+        for k, v in pairs(original) do
+            baseID = vehicleBaseFromSkin(vehicleResIDFromRow(v, k))
+            if baseID then return baseID end
+        end
+    end
+    return nil
+end
+
 local function isVehicleSkinRes(resID, itemCfg)
     local c = itemCfg or cfg(resID)
     return vehicleBaseFromSkin(resID) ~= nil
@@ -8721,16 +8757,11 @@ local function hookGarageVehicleSlots()
     end)
 end
 
-local function mergeVehicleSkinList(original, baseID)
+local function mergeVehicleSkinList(original, baseID, ...)
     buildVehicleUnlockTables()
-    baseID = tonumber(baseID)
-    if not baseID and type(original) == "table" then
-        for k, v in pairs(original) do
-            local resID = tonumber((type(v) == "table" and (v.res_id or v.resID or v.id or v.skin_id)) or k)
-            baseID = vehicleBaseFromSkin(resID)
-            if baseID then break end
-        end
-    end
+    baseID = resolveVehicleListBase(original, baseID, ...)
+    if not baseID then return original end
+
     local extra = {}
     local cch = cache()
     local slots = baseID and cch.vehicleSlots and cch.vehicleSlots[baseID]
@@ -8759,20 +8790,12 @@ local function mergeVehicleSkinList(original, baseID)
     for _, row in ipairs(allUnlocked or {}) do
         extra[#extra + 1] = row
     end
-    if (not extra or #extra == 0) and not baseID then
-        extra = {}
-        for _, rows in pairs(_G.VehicleSkinInsList or {}) do
-            for _, row in ipairs(rows or {}) do
-                extra[#extra + 1] = row
-            end
-        end
-    end
     if not extra or #extra == 0 then return original end
     local out, seen = {}, {}
     if type(original) == "table" then
         for k, v in pairs(original) do
             out[k] = v
-            local resID = tonumber((type(v) == "table" and (v.res_id or v.resID or v.id or v.skin_id)) or k)
+            local resID = vehicleResIDFromRow(v, k)
             if resID then seen[resID] = true end
         end
     end
@@ -8818,8 +8841,7 @@ local function hookVehicleSkinLists()
                         obj["HK_" .. name] = old
                         obj[name] = function(self, baseID, ...)
                             local ret = old(self, baseID, ...)
-                            local realBaseID = tonumber(baseID) or tonumber(self)
-                            return mergeVehicleSkinList(ret, realBaseID)
+                            return mergeVehicleSkinList(ret, baseID, ...)
                         end
                     end
                 end
