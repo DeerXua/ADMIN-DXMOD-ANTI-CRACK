@@ -31,7 +31,7 @@ Write-Host ""
 Write-Host "Lệnh này sẽ tự động:" -ForegroundColor Yellow
 Write-Host "  ✅ Cài Node.js + PM2 (nếu chưa có)"
 Write-Host "  ✅ Clone/pull code từ GitHub repo mới"
-Write-Host "  ✅ Tạo ecosystem.config.js (lưu mật khẩu vĩnh viễn)"
+Write-Host "  ✅ Tạo ecosystem.config.cjs (lưu mật khẩu vĩnh viễn)"
 Write-Host "  ✅ npm install"
 Write-Host "  ✅ Chạy server bảo mật với PM2 trên port 5002"
 Write-Host ""

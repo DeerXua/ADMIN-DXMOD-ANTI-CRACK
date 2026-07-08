@@ -78,8 +78,8 @@ cd "$VPS_DIR"
 # Cài đặt dependencies
 npm install --omit=dev --silent
 
-# 4. Tạo ecosystem.config.js (lưu env vĩnh viễn, không bị mất khi restart)
-ECOSYSTEM_FILE="$VPS_DIR/ecosystem.config.js"
+# 4. Tạo ecosystem.config.cjs (lưu env vĩnh viễn, không bị mất khi restart)
+ECOSYSTEM_FILE="$VPS_DIR/ecosystem.config.cjs"
 if [ ! -f "$ECOSYSTEM_FILE" ]; then
     echo "  → Creating $ECOSYSTEM_FILE..."
     cat > "$ECOSYSTEM_FILE" <<EOF

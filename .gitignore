@@ -3,6 +3,6 @@ data.json
 data.json.tmp
 sessions.json
 sessions.json.tmp
-ecosystem.config.js
+ecosystem.config.*
 .env
 .DS_Store
