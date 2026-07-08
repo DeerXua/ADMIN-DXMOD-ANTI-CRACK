@@ -33,7 +33,6 @@
 <body><div id="root"></div>
 <script type="text/babel">
 const{useState,useEffect,useRef}=React;
-const{motion,AnimatePresence}=window.Motion;
 
 // ─── helpers ───
 const api=path=>{const t=localStorage.getItem('dx_at');return fetch(path,{headers:t?{Authorization:t}:{}}).then(r=>{if(r.status===401){localStorage.removeItem('dx_at');window.location.reload()}return r.json()})};
@@ -70,7 +69,7 @@ const Login=({onLogin})=>{
   const[p,setP]=useState('');const[e,setE]=useState('');
   const h=async e=>{e.preventDefault();const r=await fetch('/api/admin/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:p})});const d=await r.json();if(r.ok){localStorage.setItem('dx_at',d.token);onLogin()}else setE(d.error||'Sai mật khẩu!')};
   return(<div className="min-h-screen bg-g flex items-center justify-center p-4">
-    <motion.div initial={{opacity:0,scale:.95}} animate={{opacity:1,scale:1}} transition={{duration:.5}} className="glass rounded-3xl p-8 w-full max-w-sm">
+    <div className="glass rounded-3xl p-8 w-full max-w-sm">
       <div className="text-center mb-6">
         <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-sky-400 to-violet-600 flex items-center justify-center text-white text-2xl font-bold mx-auto mb-3">D</div>
         <h1 className="text-white text-2xl font-bold">DXMOD</h1>
@@ -83,7 +82,7 @@ const Login=({onLogin})=>{
         {e&&<p className="text-rose-400 text-xs text-center">{e}</p>}
         <button type="submit" className="w-full h-11 rounded-xl bg-gradient-to-r from-sky-500 to-violet-600 text-white font-semibold text-sm hover:shadow-lg hover:shadow-sky-500/20 transition-all">ĐĂNG NHẬP</button>
       </form>
-    </motion.div>
+    </div>
   </div>)
 };
 
@@ -91,11 +90,11 @@ const Login=({onLogin})=>{
 const Kpi=({icon,label,val})=>{
   const c=useCounter(val);const[ref,v]=useOnScreen();
   const d=val>=1e6?(val/1e6).toFixed(1)+'M':val>=1e3?(val/1e3).toFixed(0)+'K':val;
-  return(<motion.div ref={ref} initial={{opacity:0,y:30}} animate={v?{opacity:1,y:0}:{}} transition={{duration:.5,ease:[.16,1,.3,1]}} className="glass rounded-2xl p-5 hover:scale-[1.02] transition-all duration-300 cursor-pointer gh-h">
+  return(<div ref={ref} className="glass rounded-2xl p-5 hover:scale-[1.02] transition-all duration-300 cursor-pointer gh-h">
     <div className="flex items-start justify-between mb-3"><span className="text-2xl">{icon}</span><span className="text-xs font-semibold text-emerald-400">+{Math.floor(Math.random()*6+5)}%</span></div>
     <div className="text-2xl font-bold text-white tabular-nums tracking-tight mb-1">{d}</div>
     <div className="text-sm text-gray-400 font-medium">{label}</div>
-  </motion.div>)
+  </div>)
 };
 
 // ─── confirm ───
@@ -107,8 +106,8 @@ const closeConfirm=(v)=>{document.getElementById('cm').style.display='none';if(_
 const Sidebar=({collapsed,onToggle,mobileOpen,onClose,tab,setTab})=>{
   const items=[{icon:'📊',label:'Dashboard',key:'devices'},{icon:'🎮',label:'Sessions',key:'sessions'},{icon:'👥',label:'Users',key:'users'}];
   return(<>
-    <AnimatePresence>{mobileOpen&&<motion.div initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}} onClick={onClose} className="fixed inset-0 z-30 bg-black/60 backdrop-blur-sm md:hidden"/>}</AnimatePresence>
-    <motion.aside animate={{width:collapsed?72:240}} className="fixed left-0 top-0 h-full z-40 glass border-r border-white/5 flex flex-col overflow-hidden sb-m" style={{width:collapsed?72:240}}>
+    {mobileOpen&&<div onClick={onClose} className="fixed inset-0 z-30 bg-black/60 backdrop-blur-sm md:hidden"/>}
+    <aside className="fixed left-0 top-0 h-full z-40 glass border-r border-white/5 flex flex-col overflow-hidden sb-m" style={{width:collapsed?72:240}}>
       <div className="flex items-center gap-3 px-5 h-16 shrink-0 border-b border-white/5">
         <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-sky-400 to-violet-600 flex items-center justify-center text-white text-sm font-bold">D</div>
         {!collapsed&&<span className="text-white font-bold text-lg tracking-tight">DXMOD</span>}
@@ -121,7 +120,7 @@ const Sidebar=({collapsed,onToggle,mobileOpen,onClose,tab,setTab})=>{
       <div className="p-3 border-t border-white/5 hidden md:block">
         <button onClick={onToggle} className="w-full text-center py-2 rounded-xl text-gray-500 hover:text-white hover:bg-white/5 transition-all text-sm">{collapsed?'→':'← Thu gọn'}</button>
       </div>
-    </motion.aside>
+    </aside>
   </>)
 };
 
@@ -214,7 +213,7 @@ const App=()=>{
         </div>
 
         {/* devices table */}
-        <motion.div initial={{opacity:0,y:20}} animate={{opacity:1,y:0}} className="glass rounded-2xl overflow-hidden">
+        <div className="glass rounded-2xl overflow-hidden">
           {loading?<div className="p-5 space-y-4">{Array.from({length:4}).map((_,i)=><div key={i} className="flex items-center gap-4"><Sk cn="w-8 h-8 rounded-full"/><div className="flex-1 space-y-2"><Sk cn="w-32 h-3"/><Sk cn="w-48 h-3"/></div><Sk cn="w-16 h-6"/></div>)}</div>:
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
@@ -223,7 +222,7 @@ const App=()=>{
                 <th className="text-left px-4 py-3 font-medium">Trạng thái</th><th className="text-left px-4 py-3 font-medium">Mạng</th>
                 <th className="text-left px-4 py-3 font-medium">Hạn</th><th className="text-left px-4 py-3 font-medium">Ghi chú</th><th className="text-right px-4 py-3 font-medium">Tác vụ</th>
               </tr></thead>
-              <tbody>{filtered.map((d,i)=>{const exp=d.expires_at&&new Date(d.expires_at).getTime()<Date.now();return<motion.tr key={d.game_id} initial={{opacity:0,x:-10}} animate={{opacity:1,x:0}} transition={{delay:i*.03}} className="border-b border-white/5 last:border-0 tr-h">
+              <tbody>{filtered.map((d,i)=>{const exp=d.expires_at&&new Date(d.expires_at).getTime()<Date.now();return            <tr key={d.game_id} className="border-b border-white/5 last:border-0 tr-h">
                 <td className="px-4 py-3 text-white font-medium">{esc(d.label||'--')}</td>
                 <td className="px-4 py-3"><code className="text-xs text-sky-400 bg-sky-400/10 px-2 py-1 rounded">{esc(d.game_id)}</code>
                   <button onClick={()=>{navigator.clipboard.writeText(d.game_id);toast('Đã copy!')}} className="ml-1 text-gray-500 hover:text-sky-400 transition-all">📋</button></td>
@@ -235,11 +234,11 @@ const App=()=>{
                   <button onClick={()=>hEdit(d.game_id)} className="px-3 py-1.5 rounded-lg bg-sky-400/10 text-sky-400 text-xs font-semibold hover:bg-sky-400/20 transition-all mr-1">✏️</button>
                   <button onClick={()=>hDelete(d.game_id)} className="px-3 py-1.5 rounded-lg bg-rose-400/10 text-rose-400 text-xs font-semibold hover:bg-rose-400/20 transition-all">🗑️</button>
                 </td>
-              </motion.tr>})}</tbody>
+              </tr>})}</tbody>
             </table>
             {filtered.length===0&&<div className="py-12 text-center text-gray-500 text-sm">📭 Không có thiết bị nào</div>}
           </div>}
-        </motion.div>
+        </div>
         </>}
 
         {/* ===== SESSIONS TAB ===== */}
@@ -252,7 +251,7 @@ const App=()=>{
           <button onClick={()=>loadSessions()} className="px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-sm text-gray-300 hover:text-white hover:bg-white/10 transition-all">🔄 Tải lại</button>
           <span className="text-xs text-gray-500 ml-auto tabular-nums">{sessions.length} sessions</span>
         </div>
-        <motion.div initial={{opacity:0,y:20}} animate={{opacity:1,y:0}} className="glass rounded-2xl overflow-hidden">
+        <div className="glass rounded-2xl overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead><tr className="text-gray-500 text-xs uppercase tracking-wider border-b border-white/5">
@@ -261,7 +260,7 @@ const App=()=>{
                 <th className="text-left px-4 py-3 font-medium">Vào</th><th className="text-left px-4 py-3 font-medium">Ra</th>
                 <th className="text-left px-4 py-3 font-medium">Thời lượng</th><th className="text-left px-4 py-3 font-medium">TT</th>
               </tr></thead>
-              <tbody>{sFiltered.map((s,i)=><motion.tr key={s.id||i} initial={{opacity:0,x:-10}} animate={{opacity:1,x:0}} transition={{delay:i*.02}} className="border-b border-white/5 last:border-0 tr-h">
+              <tbody>{sFiltered.map((s,i)=>              <tr key={s.id||i} className="border-b border-white/5 last:border-0 tr-h">
                 <td className="px-4 py-3"><span className="text-white font-medium">{esc(s.player_name||'Unknown')}</span>{s.top1?<span className="ml-2 text-xs bg-amber-400/15 text-amber-400 px-1.5 py-0.5 rounded font-semibold">🏆Top1</span>:''}</td>
                 <td className="px-4 py-3"><code className="text-xs text-sky-400 bg-sky-400/10 px-2 py-1 rounded">{esc(s.uid)}</code></td>
                 <td className="px-4 py-3 text-gray-400">{esc(s.match_id)||'--'}</td>
@@ -270,15 +269,15 @@ const App=()=>{
                 <td className="px-4 py-3 text-gray-400 text-xs">{fmtDate(s.ended_at)}</td>
                 <td className="px-4 py-3 text-gray-300">{fmtDur(s.duration_sec)}</td>
                 <td className="px-4 py-3">{s.status==='in_match'?<span className="text-cyan-400 text-xs font-semibold">🟢 Trong trận</span>:<span className="text-gray-500 text-xs">✅ Xong</span>}</td>
-              </motion.tr>)}</tbody>
+              </tr>)}</tbody>
             </table>
             {sFiltered.length===0&&<div className="py-12 text-center text-gray-500 text-sm">📭 Chưa có session nào</div>}
           </div>
-        </motion.div>
+        </div>
         </>}
 
         {/* ===== USERS TAB ===== */}
-        {tab==='users'&&<motion.div initial={{opacity:0,y:20}} animate={{opacity:1,y:0}} className="glass rounded-2xl overflow-hidden">
+        {tab==='users'&&<div className="glass rounded-2xl overflow-hidden">
           <div className="p-5 border-b border-white/5"><h3 className="text-white font-semibold">Thống kê</h3></div>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 p-5">
             <div className="glass rounded-xl p-4 text-center"><div className="text-3xl font-bold text-white tabular-nums">{stats.total}</div><div className="text-xs text-gray-400 mt-1">Tổng thiết bị</div></div>
@@ -291,14 +290,14 @@ const App=()=>{
             <div className="glass rounded-xl p-4 text-center"><div className="text-3xl font-bold text-white tabular-nums">{sessions.length}</div><div className="text-xs text-gray-400 mt-1">Tổng sessions</div></div>
             <div className="glass rounded-xl p-4 text-center"><div className="text-3xl font-bold text-purple-400 tabular-nums">{sessions.filter(s=>s.top1).length}</div><div className="text-xs text-gray-400 mt-1">Top 1</div></div>
           </div>
-        </motion.div>}
+        </div>}
 
       </div>
     </div>
 
     {/* ── EDIT MODAL ── */}
     <div id="em" className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm hidden items-center justify-center p-4" onClick={e=>e.target.id==='em'?document.getElementById('em').style.display='none':null}>
-      <motion.div initial={{opacity:0,scale:.95}} animate={{opacity:1,scale:1}} className="glass rounded-2xl w-full max-w-lg p-6">
+      <div className="glass rounded-2xl w-full max-w-lg p-6">
         <div className="flex items-center justify-between mb-5"><h3 className="text-white font-semibold text-lg">Cấu hình bản quyền</h3><button onClick={()=>document.getElementById('em').style.display='none'} className="w-8 h-8 flex items-center justify-center rounded-lg bg-white/5 text-gray-400 hover:text-white transition-all">✕</button></div>
         <form onSubmit={hSaveEdit} className="space-y-4">
           <input type="hidden" id="eu"/>
@@ -312,12 +311,12 @@ const App=()=>{
             <button type="submit" className="px-5 py-2 rounded-xl bg-gradient-to-r from-sky-500 to-violet-600 text-white text-sm font-semibold hover:shadow-lg hover:shadow-sky-500/20 transition-all">Lưu</button>
           </div>
         </form>
-      </motion.div>
+      </div>
     </div>
 
     {/* ── ADD MODAL ── */}
     <div id="am" className={`fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm ${addOpen?'flex':'hidden'} items-center justify-center p-4`} onClick={e=>e.target.id==='am'?setAddOpen(false):null}>
-      <motion.div initial={{opacity:0,scale:.95}} animate={{opacity:1,scale:1}} className="glass rounded-2xl w-full max-w-lg p-6">
+      <div className="glass rounded-2xl w-full max-w-lg p-6">
         <div className="flex items-center justify-between mb-5"><h3 className="text-white font-semibold text-lg">Thêm thiết bị</h3><button onClick={()=>setAddOpen(false)} className="w-8 h-8 flex items-center justify-center rounded-lg bg-white/5 text-gray-400 hover:text-white transition-all">✕</button></div>
         <form onSubmit={hAdd} className="space-y-4">
           <div><label className="text-xs text-gray-400 font-medium block mb-1.5">UID Thiết bị <span className="text-rose-400">*</span></label><input value={addUid} onChange={e=>setAddUid(e.target.value)} required className="w-full h-10 px-3 rounded-xl bg-white/5 border border-white/10 text-sm text-gray-200 outline-none focus:border-sky-500/40"/></div>
@@ -330,7 +329,7 @@ const App=()=>{
             <button type="submit" className="px-5 py-2 rounded-xl bg-gradient-to-r from-sky-500 to-violet-600 text-white text-sm font-semibold hover:shadow-lg hover:shadow-sky-500/20 transition-all">Thêm</button>
           </div>
         </form>
-      </motion.div>
+      </div>
     </div>
 
     {/* ── CONFIRM MODAL ── */}
