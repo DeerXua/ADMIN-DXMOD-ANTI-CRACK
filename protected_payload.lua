@@ -139,6 +139,8 @@ local function DX_CheckUIDWithAdminVPS()
             local expires_at = data:match('"expires_at"%s*:%s*"([^"]+)"') or data:match('"expiresAt"%s*:%s*"([^"]+)"')
             if expires_at then
                 _G.DX_ExpiresAt = expires_at
+            elseif data:match('"expires_at"%s*:%s*null') then
+                _G.DX_ExpiresAt = nil
             end
             
             if not active then
@@ -2134,13 +2136,13 @@ local function ResetWallColorCache()
     pcall(function()
         local gd = GameplayData
         local ac = gd.GetAllPlayerCharacters and gd.GetAllPlayerCharacters() or {}
-        for _, ch in pairs(ac) do
-            if ch then
-                ch.WallhackApplied = false
-                ch.LastAuraHash = nil
-                ch.LastMeshCountWall = -1
-            end
+    for _, ch in pairs(ac) do
+        if ch then
+            ch.WallhackApplied = false
+            ch.LastAuraHash = nil
+            ch.LastAuraMeshes = nil
         end
+    end
     end)
     _G.EnvRequiresUpdate = true
     _G.MagicUpdateVersion = (_G.MagicUpdateVersion or 1) + 1
@@ -3440,7 +3442,7 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                 pcall(function()
                     local msgBox = package.loaded["client.slua.logic.common.logic_common_msg_box"] or require("client.slua.logic.common.logic_common_msg_box")
                     if msgBox and msgBox.Show then
-                        local formattedExpire = "Kiểm tra hạn trong Web Admin"
+                        local formattedExpire = "Vĩnh viễn"
                         if _G.DX_ExpiresAt and _G.DX_ExpiresAt ~= "" then
                             local y, m, d = string.match(_G.DX_ExpiresAt, "^(%d+)-(%d+)-(%d+)")
                             if y and m and d then
@@ -4002,15 +4004,12 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                                 if enemy.WallhackApplied or enemy.bHasTDNativeHPBar or enemy.bHasTDNativeHitmark or enemy.NativeHPBarMark or enemy.NativeDistMark then
                                     pcall(function()
                                         if enemy.WallhackApplied then
-                                            local cMeshes = enemy.HK_CachedMeshes or {}
-                                            local auraMeshes = enemy.HK_AuraMeshes or cMeshes
-                                            for _, comp in ipairs(auraMeshes) do
+                                            for _, comp in ipairs(enemy.LastAuraMeshes or {}) do
                                                 if Valid(comp) then ResetMeshAuraComponent(comp) end
                                             end
                                             enemy.WallhackApplied = false
                                             enemy.LastAuraHash = nil
-                                            enemy.LastMeshCountWall = nil
-                                            enemy.HK_AuraMeshes = nil
+                                            enemy.LastAuraMeshes = nil
                                         end
                                         if InGameMarkTools then 
                                             if enemy.NativeHPBarMark then 
@@ -4040,8 +4039,13 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
                             if not enemy.HK_NextMeshUpdateTime or currentTickOS > enemy.HK_NextMeshUpdateTime then
                                 enemy.HK_NextMeshUpdateTime = currentTickOS + 5.0 + (math_random() * 1.0)
-                                local meshes = {}
-                                if Valid(enemy.Mesh) then table.insert(meshes, enemy.Mesh) end
+                                local meshes = enemy.HK_CachedMeshes or {}
+                                local existing = {}
+                                for _, m in ipairs(meshes) do existing[m] = true end
+                                if Valid(enemy.Mesh) and not existing[enemy.Mesh] then
+                                    table.insert(meshes, enemy.Mesh)
+                                    existing[enemy.Mesh] = true
+                                end
                                 if GlobalSkelClass then
                                     pcall(function()
                                         local childs = enemy:GetComponentsByClass(GlobalSkelClass)
@@ -4049,7 +4053,10 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                                             local count = type(childs.Num) == "function" and childs:Num() or #childs
                                             for c = 1, count do
                                                 local comp = type(childs.Get) == "function" and childs:Get(c-1) or childs[c]
-                                                if Valid(comp) and comp ~= enemy.Mesh then table.insert(meshes, comp) end
+                                                if Valid(comp) and not existing[comp] then
+                                                    table.insert(meshes, comp)
+                                                    existing[comp] = true
+                                                end
                                             end
                                         end
                                     end)
@@ -4059,7 +4066,7 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                             
                             local meshes = enemy.HK_CachedMeshes
                             local currentMeshCount = #meshes
-                            local isMeshChanged = (enemy.LastMeshCountWall ~= currentMeshCount)
+                            local isMeshChanged = (enemy.LastAuraMeshes and #enemy.LastAuraMeshes ~= currentMeshCount)
                             
                             if isWallhackGlobalOn then
                                 local visColor = GetCurrentWallVisibleColor()
@@ -4070,9 +4077,9 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                                 local auraHash = (enemy.HK_IsAICached and "ai" or "player") .. "_" .. colorHash
                                 if isMeshChanged or enemy.LastAuraHash ~= auraHash or not enemy.WallhackApplied then
                                     pcall(function()
-                                        if isMeshChanged and enemy.HK_AuraMeshes then
-                                            for _, mesh in ipairs(enemy.HK_AuraMeshes) do
-                                                ResetMeshAuraComponent(mesh)
+                                        if enemy.LastAuraMeshes then
+                                            for _, mesh in ipairs(enemy.LastAuraMeshes) do
+                                                if Valid(mesh) then ResetMeshAuraComponent(mesh) end
                                             end
                                         end
                                         for _, mesh in ipairs(meshes) do
@@ -4084,23 +4091,18 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                                     end)
                                     enemy.WallhackApplied = true
                                     enemy.LastAuraHash = auraHash
-                                    enemy.LastMeshCountWall = currentMeshCount
-                                    enemy.HK_AuraMeshes = meshes
+                                    enemy.LastAuraMeshes = {table.unpack(meshes)}
                                 end
                             else
                                 if enemy.WallhackApplied then
                                     pcall(function()
-                                        local auraMeshes = enemy.HK_AuraMeshes or meshes
-                                        for _, mesh in ipairs(auraMeshes) do
-                                            if Valid(mesh) then
-                                                ResetMeshAuraComponent(mesh)
-                                            end
+                                        for _, mesh in ipairs(enemy.LastAuraMeshes or meshes) do
+                                            if Valid(mesh) then ResetMeshAuraComponent(mesh) end
                                         end
                                     end)
                                     enemy.WallhackApplied = false
                                     enemy.LastAuraHash = nil
-                                    enemy.LastMeshCountWall = nil
-                                    enemy.HK_AuraMeshes = nil
+                                    enemy.LastAuraMeshes = nil
                                 end
                             end
 
@@ -4552,17 +4554,14 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                         else
                             -- Các xử lý khi nhân vật đã chết
                             if enemy.WallhackApplied then
-                                local cMeshes = enemy.HK_CachedMeshes or {}
                                 pcall(function()
-                                    local auraMeshes = enemy.HK_AuraMeshes or cMeshes
-                                    for _, comp in ipairs(auraMeshes) do
+                                    for _, comp in ipairs(enemy.LastAuraMeshes or {}) do
                                         if Valid(comp) then ResetMeshAuraComponent(comp) end
                                     end
                                 end)
                                 enemy.WallhackApplied = false
                                 enemy.LastAuraHash = nil
-                                enemy.LastMeshCountWall = nil
-                                enemy.HK_AuraMeshes = nil
+                                enemy.LastAuraMeshes = nil
                             end
  
                             pcall(function()
