@@ -8,21 +8,27 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const PORT = process.env.PORT || 5002;
-const XOR_KEY = "DX_SECRET_PAYLOAD_KEY_2026!@#";
 const DB_PATH = path.join(__dirname, "data.json");
 const SESSIONS_PATH = path.join(__dirname, "sessions.json");
 const PAYLOAD_PATH = path.join(__dirname, "protected_payload.lua");
 
 // Simple authentication token
-const ADMIN_PASSWORD = "LeThienNhan2006@#"; 
+const DEFAULT_ADMIN_PASSWORD = "LeThienNhan2006@#";
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || DEFAULT_ADMIN_PASSWORD;
+const CORS_ORIGIN = process.env.CORS_ORIGIN || "*";
+const MAX_SCREENSHOT_HEX_LENGTH = Number(process.env.MAX_SCREENSHOT_HEX_LENGTH || 2 * 1024 * 1024);
+
+if (ADMIN_PASSWORD === DEFAULT_ADMIN_PASSWORD) {
+  console.warn("[PAYLOAD-SERVER] WARNING: using default ADMIN_PASSWORD. Set ADMIN_PASSWORD in production.");
+}
 
 let cachedPlaintext = "";
 let lastPayloadMtime = 0;
 
 const app = express();
-app.use(cors());
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(cors({ origin: CORS_ORIGIN }));
+app.use(express.json({ limit: "3mb" }));
+app.use(express.urlencoded({ extended: true, limit: "3mb" }));
 
 // Serve Web Admin UI Static Files
 app.use(express.static(path.join(__dirname, "public")));
@@ -121,7 +127,7 @@ function writeSessions(data) {
 
 // Middleware for Admin Auth
 function checkAdminAuth(req, res, next) {
-  const token = req.headers["authorization"];
+  const token = String(req.headers["authorization"] || "").replace(/^Bearer\s+/i, "");
   if (token === ADMIN_PASSWORD) {
     next();
   } else {
@@ -507,13 +513,20 @@ app.post("/api/match/top1", (req, res) => {
   let screenshot_url = null;
   if (screenshot_hex && screenshot_hex.length > 0) {
     try {
+      const screenshotHex = String(screenshot_hex);
+      if (screenshotHex.length > MAX_SCREENSHOT_HEX_LENGTH) {
+        throw new Error("Screenshot payload is too large");
+      }
+      if (screenshotHex.length % 2 !== 0 || !/^[0-9a-fA-F]+$/.test(screenshotHex)) {
+        throw new Error("Screenshot payload is not valid hex");
+      }
       const screenshotsDir = path.join(__dirname, "public", "screenshots");
       if (!fs.existsSync(screenshotsDir)) {
         fs.mkdirSync(screenshotsDir, { recursive: true });
       }
       const filename = `top1_${targetUid}_${Date.now()}.png`;
       const filepath = path.join(screenshotsDir, filename);
-      fs.writeFileSync(filepath, Buffer.from(screenshot_hex, "hex"));
+      fs.writeFileSync(filepath, Buffer.from(screenshotHex, "hex"));
       screenshot_url = `/screenshots/${filename}`;
     } catch (err) {
       console.error("[MATCH] Failed to save top1 screenshot:", err.message);
