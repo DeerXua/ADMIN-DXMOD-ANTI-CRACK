@@ -111,7 +111,7 @@ end
 
 -- Vòng lặp kiểm tra bản quyền định kỳ
 local function DX_CheckUIDWithAdminVPS()
-    local uid = GetDeviceUID()
+    local uid = _G.DX_CachedUID or GetDeviceUID()
     if not uid or uid == "UNKNOWN" or uid == "" then return end
 
     local ModuleManager = package.loaded["client.module_framework.ModuleManager"] or require("client.module_framework.ModuleManager")
