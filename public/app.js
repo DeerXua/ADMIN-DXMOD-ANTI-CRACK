@@ -26,6 +26,17 @@ document.addEventListener('DOMContentLoaded', () => {
     const refreshBtn = document.getElementById('refresh-btn');
     const devicesTbody = document.getElementById('devices-tbody');
     const noDataMsg = document.getElementById('no-data-msg');
+    const refreshTimestamp = document.getElementById('refresh-timestamp');
+
+    // Bulk elements
+    const selectAllCheckbox = document.getElementById('select-all');
+    const bulkBar = document.getElementById('bulk-bar');
+    const bulkCount = document.getElementById('bulk-count');
+    const bulkApproveBtn = document.getElementById('bulk-approve-btn');
+    const bulkDeleteBtn = document.getElementById('bulk-delete-btn');
+    const bulkClearBtn = document.getElementById('bulk-clear-btn');
+    const addDeviceBtn = document.getElementById('add-device-btn');
+    const exportCsvBtn = document.getElementById('export-csv-btn');
 
     // Modal elements
     const editModal = document.getElementById('edit-modal');
@@ -39,6 +50,23 @@ document.addEventListener('DOMContentLoaded', () => {
     const editExpiryDate = document.getElementById('edit-expiry-date');
     const editNote = document.getElementById('edit-note');
     const closeModalBtns = document.querySelectorAll('.close-modal');
+
+    // Confirm modal
+    const confirmModal = document.getElementById('confirm-modal');
+    const confirmTitle = document.getElementById('confirm-title');
+    const confirmBody = document.getElementById('confirm-body');
+    const confirmOkBtn = document.getElementById('confirm-ok-btn');
+    const confirmCancelBtn = document.getElementById('confirm-cancel-btn');
+
+    // Add device modal
+    const addModal = document.getElementById('add-modal');
+    const addForm = document.getElementById('add-form');
+    const addUid = document.getElementById('add-uid');
+    const addLabel = document.getElementById('add-label');
+    const addExpirySelect = document.getElementById('add-expiry-select');
+    const addCustomExpiryContainer = document.getElementById('add-custom-expiry-container');
+    const addExpiryDate = document.getElementById('add-expiry-date');
+    const addNote = document.getElementById('add-note');
 
     const toastElement = document.getElementById('toast');
 
@@ -96,6 +124,38 @@ document.addEventListener('DOMContentLoaded', () => {
         fetchOnlineStatus();
         if (onlineStatusInterval) clearInterval(onlineStatusInterval);
         onlineStatusInterval = setInterval(fetchOnlineStatus, 15000);
+    }
+
+    function updateRefreshTimestamp() {
+        if (refreshTimestamp) {
+            refreshTimestamp.textContent = 'Cập nhật lúc: ' + new Date().toLocaleString('vi-VN');
+        }
+    }
+
+    // ── Confirm Dialog ──
+    function showConfirm(title, body) {
+        return new Promise(resolve => {
+            confirmTitle.textContent = title;
+            confirmBody.textContent = body;
+            confirmModal.style.display = 'flex';
+
+            const cleanup = () => {
+                confirmModal.style.display = 'none';
+                confirmOkBtn.removeEventListener('click', onOk);
+                confirmCancelBtn.removeEventListener('click', onCancel);
+                document.querySelectorAll('.close-confirm').forEach(el => el.removeEventListener('click', onCancel));
+                confirmModal.removeEventListener('click', onOutsideClick);
+            };
+
+            const onOk = () => { cleanup(); resolve(true); };
+            const onCancel = () => { cleanup(); resolve(false); };
+            const onOutsideClick = (e) => { if (e.target === confirmModal) onCancel(); };
+
+            confirmOkBtn.addEventListener('click', onOk);
+            confirmCancelBtn.addEventListener('click', onCancel);
+            document.querySelectorAll('.close-confirm').forEach(el => el.addEventListener('click', onCancel));
+            confirmModal.addEventListener('click', onOutsideClick);
+        });
     }
 
     // --- Fetch & Render Devices ---
@@ -168,9 +228,14 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         noDataMsg.style.display = 'none';
+        updateRefreshTimestamp();
+
+        // Track which UIDs are currently visible (for select-all)
+        window._visibleUIDs = [];
 
         filtered.forEach(d => {
             const isExpired = d.expires_at && new Date(d.expires_at).getTime() < Date.now();
+            window._visibleUIDs.push(d.game_id);
             
             let statusText = 'Chờ duyệt';
             let statusClass = 'pending';
@@ -196,11 +261,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 onlineBadge = `<span class="online-badge offline"><span class="online-dot"></span>Offline</span>`;
             }
 
+            const safeUid = escapeHtml(d.game_id);
             const tr = document.createElement('tr');
             tr.innerHTML = `
+                <td><input type="checkbox" class="device-checkbox" value="${safeUid}"></td>
                 <td><strong>#${d.id}</strong></td>
                 <td>${escapeHtml(d.label || 'Chưa đặt tên')}</td>
-                <td><code class="code-uid">${escapeHtml(d.game_id)}</code></td>
+                <td><code class="code-uid">${safeUid}</code> <button class="btn-copy-uid" data-uid="${safeUid}" title="Copy UID"><i class="fa-regular fa-copy"></i></button></td>
                 <td><span class="status-badge ${statusClass}">${statusText}</span></td>
                 <td>${onlineBadge}</td>
                 <td>${regDate}</td>
@@ -208,8 +275,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 <td class="note-cell">${escapeHtml(d.note || '-')}</td>
                 <td>
                     <div class="actions-cell">
-                        <button class="btn-icon edit" data-uid="${escapeHtml(d.game_id)}" title="Sửa bản quyền"><i class="fa-solid fa-pen-to-square"></i></button>
-                        <button class="btn-icon delete" data-uid="${escapeHtml(d.game_id)}" title="Xóa thiết bị"><i class="fa-solid fa-trash-can"></i></button>
+                        <button class="btn-icon edit" data-uid="${safeUid}" title="Sửa bản quyền"><i class="fa-solid fa-pen-to-square"></i></button>
+                        <button class="btn-icon delete" data-uid="${safeUid}" title="Xóa thiết bị"><i class="fa-solid fa-trash-can"></i></button>
                     </div>
                 </td>
             `;
@@ -223,6 +290,29 @@ document.addEventListener('DOMContentLoaded', () => {
 
         document.querySelectorAll('.btn-icon.delete').forEach(btn => {
             btn.addEventListener('click', () => handleDeleteDevice(btn.dataset.uid));
+        });
+
+        // Copy UID listeners
+        document.querySelectorAll('.btn-copy-uid').forEach(btn => {
+            btn.addEventListener('click', () => {
+                navigator.clipboard.writeText(btn.dataset.uid).then(() => {
+                    showToast('Đã copy UID!', 'success');
+                }).catch(() => {
+                    // Fallback
+                    const ta = document.createElement('textarea');
+                    ta.value = btn.dataset.uid;
+                    document.body.appendChild(ta);
+                    ta.select();
+                    document.execCommand('copy');
+                    document.body.removeChild(ta);
+                    showToast('Đã copy UID!', 'success');
+                });
+            });
+        });
+
+        // Checkbox listeners
+        document.querySelectorAll('.device-checkbox').forEach(cb => {
+            cb.addEventListener('change', updateBulkBar);
         });
     }
 
@@ -251,6 +341,159 @@ document.addEventListener('DOMContentLoaded', () => {
         // Session stats
         if (statSessions) statSessions.textContent = allSessions.length;
         if (statInMatch)  statInMatch.textContent  = allSessions.filter(s => s.status === 'in_match').length;
+    }
+
+    // ── Bulk Actions ──
+    function getSelectedUIDs() {
+        const checked = [];
+        document.querySelectorAll('.device-checkbox:checked').forEach(cb => checked.push(cb.value));
+        return checked;
+    }
+
+    function updateBulkBar() {
+        const selected = getSelectedUIDs();
+        if (selected.length === 0) {
+            bulkBar.style.display = 'none';
+            if (selectAllCheckbox) selectAllCheckbox.checked = false;
+            return;
+        }
+        bulkBar.style.display = 'flex';
+        bulkCount.textContent = `Đã chọn ${selected.length} thiết bị`;
+    }
+
+    if (selectAllCheckbox) {
+        selectAllCheckbox.addEventListener('change', () => {
+            const checked = selectAllCheckbox.checked;
+            document.querySelectorAll('.device-checkbox').forEach(cb => cb.checked = checked);
+            updateBulkBar();
+        });
+    }
+
+    if (bulkClearBtn) {
+        bulkClearBtn.addEventListener('click', () => {
+            document.querySelectorAll('.device-checkbox').forEach(cb => cb.checked = false);
+            if (selectAllCheckbox) selectAllCheckbox.checked = false;
+            updateBulkBar();
+        });
+    }
+
+    if (bulkApproveBtn) {
+        bulkApproveBtn.addEventListener('click', async () => {
+            const uids = getSelectedUIDs();
+            if (uids.length === 0) return;
+            const confirmed = await showConfirm('Duyệt thiết bị', `Bạn có chắc muốn duyệt ${uids.length} thiết bị đã chọn?`);
+            if (!confirmed) return;
+            try {
+                const res = await fetch(`${API_BASE}/api/admin/bulk-approve`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': adminToken },
+                    body: JSON.stringify({ uids })
+                });
+                if (res.ok) {
+                    showToast(`Đã duyệt ${uids.length} thiết bị!`, 'success');
+                    if (selectAllCheckbox) selectAllCheckbox.checked = false;
+                    fetchDevices();
+                } else {
+                    const data = await res.json();
+                    showToast(data.error || 'Lỗi khi duyệt!', 'error');
+                }
+            } catch { showToast('Lỗi kết nối!', 'error'); }
+        });
+    }
+
+    if (bulkDeleteBtn) {
+        bulkDeleteBtn.addEventListener('click', async () => {
+            const uids = getSelectedUIDs();
+            if (uids.length === 0) return;
+            const confirmed = await showConfirm('Xoá thiết bị', `Bạn có chắc muốn xoá VĨNH VIỄN ${uids.length} thiết bị?`);
+            if (!confirmed) return;
+            try {
+                const res = await fetch(`${API_BASE}/api/admin/bulk-delete`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': adminToken },
+                    body: JSON.stringify({ uids })
+                });
+                if (res.ok) {
+                    showToast(`Đã xoá ${uids.length} thiết bị!`, 'success');
+                    if (selectAllCheckbox) selectAllCheckbox.checked = false;
+                    fetchDevices();
+                } else {
+                    const data = await res.json();
+                    showToast(data.error || 'Lỗi khi xoá!', 'error');
+                }
+            } catch { showToast('Lỗi kết nối!', 'error'); }
+        });
+    }
+
+    // ── Add Device ──
+    if (addDeviceBtn) {
+        addDeviceBtn.addEventListener('click', () => {
+            addUid.value = '';
+            addLabel.value = '';
+            addExpirySelect.value = '30days';
+            addCustomExpiryContainer.style.display = 'none';
+            addNote.value = '';
+            addModal.style.display = 'flex';
+        });
+    }
+
+    if (addExpirySelect) {
+        addExpirySelect.addEventListener('change', () => {
+            if (addExpirySelect.value === 'custom') {
+                addCustomExpiryContainer.style.display = 'block';
+                const def = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+                const offset = def.getTimezoneOffset();
+                addExpiryDate.value = new Date(def.getTime() - offset * 60 * 1000).toISOString().slice(0, 16);
+            } else {
+                addCustomExpiryContainer.style.display = 'none';
+            }
+        });
+    }
+
+    document.querySelectorAll('.close-add').forEach(el => {
+        el.addEventListener('click', () => addModal.style.display = 'none');
+    });
+    addModal.addEventListener('click', (e) => { if (e.target === addModal) addModal.style.display = 'none'; });
+
+    if (addForm) {
+        addForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const uid = addUid.value.trim();
+            if (!uid) { showToast('Vui lòng nhập UID!', 'error'); return; }
+
+            const label = addLabel.value.trim();
+            const note = addNote.value.trim();
+            let expires_at = null;
+            const duration = addExpirySelect.value;
+            if (duration === '1day') expires_at = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+            else if (duration === '7days') expires_at = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+            else if (duration === '30days') expires_at = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+            else if (duration === 'custom') expires_at = new Date(addExpiryDate.value).toISOString();
+
+            try {
+                const res = await fetch(`${API_BASE}/api/admin/create`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': adminToken },
+                    body: JSON.stringify({ uid, label, expires_at, note })
+                });
+                if (res.ok) {
+                    addModal.style.display = 'none';
+                    showToast('Thêm thiết bị thành công!', 'success');
+                    fetchDevices();
+                } else {
+                    const data = await res.json();
+                    showToast(data.error || 'Lỗi khi thêm!', 'error');
+                }
+            } catch { showToast('Lỗi kết nối!', 'error'); }
+        });
+    }
+
+    // ── Export CSV ──
+    if (exportCsvBtn) {
+        exportCsvBtn.addEventListener('click', () => {
+            window.open(`${API_BASE}/api/admin/export/devices`, '_blank');
+            showToast('Đang tải file CSV...', 'success');
+        });
     }
 
     // --- Search & Filter Listeners ---
@@ -366,9 +609,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Delete device handler
     async function handleDeleteDevice(uid) {
-        if (!confirm(`Bạn có chắc chắn muốn xóa vĩnh viễn thiết bị UID: ${uid} khỏi hệ thống không?`)) {
-            return;
-        }
+        const confirmed = await showConfirm('Xoá thiết bị', `Bạn có chắc muốn xoá vĩnh viễn thiết bị UID: ${uid}?`);
+        if (!confirmed) return;
 
         try {
             const res = await fetch(`${API_BASE}/api/admin/delete`, {

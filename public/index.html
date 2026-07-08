@@ -120,13 +120,26 @@
                     <option value="pending">Chờ duyệt</option>
                     <option value="expired">Đã hết hạn</option>
                 </select>
+                <button id="add-device-btn" class="btn-refresh" style="background:var(--accent-purple-gradient);color:#fff;border:none">
+                    <i class="fa-solid fa-plus"></i> Thêm
+                </button>
+                <button id="export-csv-btn" class="btn-refresh"><i class="fa-solid fa-download"></i> CSV</button>
                 <button id="refresh-btn" class="btn-refresh"><i class="fa-solid fa-rotate"></i> Tải lại</button>
+            </div>
+        </div>
+        <div id="bulk-bar" class="bulk-bar glass-card" style="display:none">
+            <span id="bulk-count">Đã chọn 0 thiết bị</span>
+            <div class="bulk-actions">
+                <button id="bulk-approve-btn" class="btn-icon bulk-approve"><i class="fa-solid fa-check"></i> Duyệt</button>
+                <button id="bulk-delete-btn" class="btn-icon bulk-delete"><i class="fa-solid fa-trash-can"></i> Xoá</button>
+                <button id="bulk-clear-btn" class="btn-icon bulk-clear" style="background:#f1f5f9;color:#475569"><i class="fa-solid fa-xmark"></i> Bỏ chọn</button>
             </div>
         </div>
         <div class="content-table-wrapper glass-card">
             <table class="content-table">
                 <thead>
                     <tr>
+                        <th style="width:40px"><input type="checkbox" id="select-all"></th>
                         <th>ID</th>
                         <th>Tên thiết bị</th>
                         <th>Game UID (Mã thiết bị)</th>
@@ -146,6 +159,9 @@
                 <i class="fa-solid fa-box-open"></i>
                 <p>Không có dữ liệu thiết bị nào phù hợp!</p>
             </div>
+        </div>
+        <div class="toolbar glass-card" style="justify-content:flex-end;padding:8px 16px;margin-top:0;border-top-left-radius:0;border-top-right-radius:0;font-size:0.8rem;color:var(--text-muted)">
+            <span id="refresh-timestamp">Cập nhật lúc: --</span>
         </div>
         </div>
 
@@ -190,6 +206,63 @@
                 <p>Chưa có session nào!</p>
             </div>
         </div>
+        </div>
+    </div>
+
+    <!-- Confirm Dialog Modal -->
+    <div id="confirm-modal" class="modal">
+        <div class="modal-content glass-card" style="width:420px">
+            <div class="modal-header">
+                <h2 id="confirm-title">Xác nhận</h2>
+                <button class="close-confirm close-modal"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div id="confirm-body" style="padding:8px 0 16px;color:var(--text-secondary);line-height:1.5">Nội dung xác nhận</div>
+            <div class="modal-footer">
+                <button id="confirm-cancel-btn" class="btn-secondary close-confirm">Huỷ</button>
+                <button id="confirm-ok-btn" class="btn-primary" style="width:auto;padding:10px 24px">Xác nhận</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Device Modal -->
+    <div id="add-modal" class="modal">
+        <div class="modal-content glass-card">
+            <div class="modal-header">
+                <h2>Thêm thiết bị mới</h2>
+                <button class="close-add close-modal"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <form id="add-form">
+                <div class="form-group">
+                    <label for="add-uid">UID Thiết bị <span style="color:var(--accent-red)">*</span></label>
+                    <input type="text" id="add-uid" placeholder="Nhập UID thiết bị..." required>
+                </div>
+                <div class="form-group">
+                    <label for="add-label">Tên hiển thị</label>
+                    <input type="text" id="add-label" placeholder="Tên thiết bị...">
+                </div>
+                <div class="form-group">
+                    <label for="add-expiry-select">Thời hạn bản quyền</label>
+                    <select id="add-expiry-select">
+                        <option value="lifetime">Trọn đời (Vĩnh viễn)</option>
+                        <option value="1day">1 Ngày</option>
+                        <option value="7days">7 Ngày</option>
+                        <option value="30days" selected>30 Ngày</option>
+                        <option value="custom">Tùy chọn...</option>
+                    </select>
+                </div>
+                <div class="form-group" id="add-custom-expiry-container" style="display:none">
+                    <label for="add-expiry-date">Ngày hết hạn cụ thể</label>
+                    <input type="datetime-local" id="add-expiry-date">
+                </div>
+                <div class="form-group">
+                    <label for="add-note">Ghi chú</label>
+                    <textarea id="add-note" rows="3" placeholder="Ghi chú..."></textarea>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn-secondary close-add">Đóng</button>
+                    <button type="submit" class="btn-primary">Thêm thiết bị</button>
+                </div>
+            </form>
         </div>
     </div>
 

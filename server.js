@@ -338,6 +338,114 @@ app.post("/api/admin/delete", checkAdminAuth, (req, res) => {
   res.json({ success: true });
 });
 
+// ── ADMIN BULK & UTILITY ─────────────────────────────────────────────────────
+
+// Manually create a device (admin)
+app.post("/api/admin/create", checkAdminAuth, (req, res) => {
+  const { uid, label, expires_at, note } = req.body;
+  const targetUid = String(uid || "").trim();
+  if (!targetUid) {
+    return res.status(400).json({ error: "Missing UID" });
+  }
+
+  const db = readDatabase();
+  if ((db.devices || []).find(d => String(d.game_id || "").trim() === targetUid)) {
+    return res.status(409).json({ error: "UID đã tồn tại trong hệ thống" });
+  }
+
+  const nextId = db.nextId ?? (db.devices.length > 0 ? Math.max(...db.devices.map(d => d.id || 0)) + 1 : 1);
+  const nowIso = new Date().toISOString();
+  const device = {
+    id: nextId,
+    game_id: targetUid,
+    label: label || `Device ${targetUid}`,
+    status: "approved",
+    expires_at: expires_at || null,
+    note: note || "Created by admin",
+    first_seen_at: nowIso,
+    updated_at: nowIso
+  };
+  db.devices.push(device);
+  db.nextId = nextId + 1;
+  writeDatabase(db);
+
+  console.log(`[PAYLOAD-SERVER] Admin created device: "${targetUid}"`);
+  res.json({ success: true, device });
+});
+
+// Bulk approve devices
+app.post("/api/admin/bulk-approve", checkAdminAuth, (req, res) => {
+  const { uids, expires_at } = req.body;
+  if (!Array.isArray(uids) || uids.length === 0) {
+    return res.status(400).json({ error: "Missing UID list" });
+  }
+
+  const db = readDatabase();
+  const nowIso = new Date().toISOString();
+  let count = 0;
+
+  uids.forEach(uid => {
+    const targetUid = String(uid || "").trim();
+    if (!targetUid) return;
+    const device = db.devices.find(d => String(d.game_id || "").trim() === targetUid);
+    if (device) {
+      device.status = "approved";
+      if (expires_at !== undefined) device.expires_at = expires_at;
+      device.updated_at = nowIso;
+      count++;
+    }
+  });
+
+  if (count > 0) {
+    writeDatabase(db);
+    console.log(`[PAYLOAD-SERVER] Bulk approved ${count} devices`);
+  }
+  res.json({ success: true, count });
+});
+
+// Bulk delete devices
+app.post("/api/admin/bulk-delete", checkAdminAuth, (req, res) => {
+  const { uids } = req.body;
+  if (!Array.isArray(uids) || uids.length === 0) {
+    return res.status(400).json({ error: "Missing UID list" });
+  }
+
+  const db = readDatabase();
+  const before = db.devices.length;
+  db.devices = db.devices.filter(d => !uids.includes(String(d.game_id || "").trim()));
+  const count = before - db.devices.length;
+
+  if (count > 0) {
+    writeDatabase(db);
+    console.log(`[PAYLOAD-SERVER] Bulk deleted ${count} devices`);
+  }
+  res.json({ success: true, count });
+});
+
+// Export devices as CSV
+app.get("/api/admin/export/devices", checkAdminAuth, (req, res) => {
+  const db = readDatabase();
+  const devices = db.devices || [];
+
+  const headers = ["ID", "UID", "Label", "Status", "Expires At", "Note", "First Seen", "Updated At", "Player Name"];
+  const rows = devices.map(d => [
+    d.id,
+    d.game_id,
+    d.label,
+    d.status,
+    d.expires_at || "lifetime",
+    d.note || "",
+    d.first_seen_at || "",
+    d.updated_at || "",
+    d.player_name || ""
+  ].map(v => `"${String(v).replace(/"/g, '""')}"`).join(","));
+
+  const csv = [headers.join(","), ...rows].join("\n");
+  res.setHeader("Content-Type", "text/csv; charset=utf-8");
+  res.setHeader("Content-Disposition", `attachment; filename="devices_${new Date().toISOString().slice(0,10)}.csv"`);
+  res.send("\uFEFF" + csv); // BOM for Excel UTF-8
+});
+
 // ── MATCH TRACKING ──────────────────────────────────────────────────────────
 
 // Hàm dọn dẹp các session bị treo (không gửi ping trong 45s)
