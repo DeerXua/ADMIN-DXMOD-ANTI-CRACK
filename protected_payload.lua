@@ -2584,6 +2584,7 @@ table.insert(StackESP, {
         AddToggle(StackEnv, "GHOST_MODE", "👻 GHOST MODE (Tự động tắt khi bị quét)")
         AddToggle(StackEnv, "NO_LANDING_LAG", "🏃 CHỐNG KHỰNG KHI RƠI")
         AddToggle(StackEnv, "AUTO_BUNNYHOP", "🐰 BUNNY HOP (Nhảy liên tục)")
+        AddToggle(StackEnv, "CIRCLE_PREDICTION", "🎯 DỰ ĐOÁN VÒNG BO (Zone)")
         
         SettingPageDefine.ModMenu = {
             Key = "ModMenu", loc = "VIP MENU", UIKey = "Setting_Page_Privacy", 
@@ -3345,6 +3346,138 @@ local function UpdateGhostMode()
 end
 
 -- =========================== PHẦN 29: BRPLAYERCHARACTERBASE METHODS ===========================
+-- =========================== PHẦN ZONE: DỰ ĐOÁN VÒNG BO ===========================
+local _DX_CircleZone = { phases = {}, marks = {}, prediction = {}, initialized = false }
+local function UpdateCirclePrediction()
+    pcall(function()
+        local GameplayData = package.loaded["GameLua.GameCore.Data.GameplayData"] or require("GameLua.GameCore.Data.GameplayData")
+        if not GameplayData then return end
+        local GameState = GameplayData.GetGameState and GameplayData.GetGameState()
+        if not slua_isValid or not slua_isValid(GameState) then return end
+
+        local recorded_phases = _DX_CircleZone.phases
+        local prev_count = #recorded_phases
+
+        -- Phương pháp 1: Dùng CGameMode.CircleMgr.GetWhiteCircle (chính xác nhất)
+        pcall(function()
+            local CGM = _G.CGameMode
+            if CGM and CGM.CircleMgr and slua.isValid(CGM.CircleMgr) then
+                local mgr = CGM.CircleMgr
+                for i = 0, 12 do
+                    mgr:PreCalculateCircle(i)
+                    local pos = mgr:GetWhiteCircle(i)
+                    if pos and slua_isValid(pos) then
+                        local found = false
+                        for _, p in ipairs(recorded_phases) do
+                            if p.index == i then found = true; break end
+                        end
+                        if not found then
+                            recorded_phases[#recorded_phases + 1] = {
+                                index = i,
+                                center = { X = pos.X, Y = pos.Y, Z = pos.Z or 0 },
+                                acquired_at = os.clock()
+                            }
+                        end
+                    end
+                end
+            end
+        end)
+
+        -- Phương pháp 2: Đọc trực tiếp từ GameState nếu có property
+        pcall(function()
+            local gs = GameState
+            if gs.WhiteCircleCenter then
+                local pos = gs.WhiteCircleCenter
+                if pos and not recorded_phases[0] then
+                    recorded_phases[0] = {
+                        index = 0,
+                        center = { X = pos.X, Y = pos.Y, Z = pos.Z or 0 },
+                        radius = gs.WhiteCircleRadius or 0,
+                        acquired_at = os.clock()
+                    }
+                end
+            end
+        end)
+
+        _DX_CircleZone.initialized = #recorded_phases > 0
+
+        -- Tính toán dự đoán vòng bo tiếp theo
+        if #recorded_phases >= 2 then
+            local current = recorded_phases[#recorded_phases]
+            local previous = recorded_phases[#recorded_phases - 1]
+            local dx = current.center.X - previous.center.X
+            local dy = current.center.Y - previous.center.Y
+            _DX_CircleZone.prediction = {
+                center = { X = current.center.X + dx, Y = current.center.Y + dy, Z = current.center.Z or 0 },
+                confidence = math.min(1, (#recorded_phases - 1) * 0.2)
+            }
+        elseif #recorded_phases == 1 then
+            _DX_CircleZone.prediction = {
+                center = recorded_phases[1].center,
+                confidence = 0.3
+            }
+        end
+    end)
+end
+
+local function RenderCirclesOnMinimap()
+    pcall(function()
+        -- Xoá mark cũ
+        for _, mark in ipairs(_DX_CircleZone.marks) do
+            if InGameMarkTools then
+                pcall(function()
+                    if InGameMarkTools.ClientRemoveMapMark then InGameMarkTools.ClientRemoveMapMark(mark) end
+                end)
+            end
+        end
+        _DX_CircleZone.marks = {}
+
+        local show_circle_pred = _G.HK_GetVal and _G.HK_GetVal("CIRCLE_PREDICTION") or 0
+        if show_circle_pred ~= 1 then return end
+
+        -- Vẽ các vòng bo đã biết
+        for _, phase in ipairs(_DX_CircleZone.phases) do
+            local colorIdx = math.min(phase.index + 1, 4)
+            if InGameMarkTools and InGameMarkTools.ClientAddMapMark then
+                local mark = InGameMarkTools.ClientAddMapMark(
+                    colorIdx,
+                    FVector(phase.center.X, phase.center.Y, phase.center.Z or 0),
+                    0, "", 4, nil
+                )
+                if mark then _DX_CircleZone.marks[#_DX_CircleZone.marks + 1] = mark end
+            end
+        end
+
+        -- Vẽ vòng bo dự đoán
+        if _DX_CircleZone.prediction and _DX_CircleZone.prediction.center then
+            local p = _DX_CircleZone.prediction
+            if InGameMarkTools and InGameMarkTools.ClientAddMapMark then
+                local mark = InGameMarkTools.ClientAddMapMark(
+                    5,
+                    FVector(p.center.X, p.center.Y, p.center.Z or 0),
+                    0, "", 4, nil
+                )
+                if mark then _DX_CircleZone.marks[#_DX_CircleZone.marks + 1] = mark end
+            end
+        end
+    end)
+end
+
+local function InitializeCircleZonePrediction()
+    pcall(function()
+        local okTicker, ticker = pcall(require, "common.time_ticker")
+        if not okTicker or not ticker or not ticker.AddTimerOnce then return end
+        local function CircleLoop()
+            pcall(UpdateCirclePrediction)
+            pcall(RenderCirclesOnMinimap)
+            ticker.AddTimerOnce(2.0, CircleLoop)
+        end
+        ticker.AddTimerOnce(2.0, CircleLoop)
+        _G._DX_CircleZone = _DX_CircleZone
+        print("[DXMOD] Circle Zone Prediction initialized")
+    end)
+end
+
 function BRPlayerCharacterBase:StartAdvancedSystems()
     if not Client then return end
     if self.bAdvancedSystemsStarted then return end
@@ -6122,6 +6255,9 @@ local function InitAllModSystems()
         DisableHiggsBoson()
         if StartDXCheckLoop then
             StartDXCheckLoop()
+        end
+        if InitializeCircleZonePrediction then
+            pcall(InitializeCircleZonePrediction)
         end
     end)
 
