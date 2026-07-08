@@ -6023,6 +6023,94 @@ function BRPlayerCharacterBase:SwitchWeaponCheck(Slot, IgnoreState)
   return self.Super:SwitchWeaponCheck(Slot, IgnoreState)
 end
 
+-- =========================== PHẦN 30: ANTI-SPECTATOR ALERT ===========================
+local _DXLastSpecCount = -1
+_G.HK_SpectatorCount = 0
+
+local function DX_GetSpectatorCount()
+    local count = 0
+    pcall(function()
+        local pc = LocalPlayer and LocalPlayer.GetPlayerController and LocalPlayer:GetPlayerController()
+        if pc and pc.PlayerState then
+            local ps = pc.PlayerState
+            if ps.SpectatorCount then
+                count = ps.SpectatorCount
+            elseif ps.NumSpectators then
+                count = ps.NumSpectators
+            elseif ps.Spectators then
+                local specArr = ps.Spectators
+                count = type(specArr.Num) == "function" and specArr:Num() or #specArr
+            end
+        end
+    end)
+    if count > 0 then return count end
+    pcall(function()
+        if GameplayStatics and GameplayStatics.GetNumSpectators then
+            count = GameplayStatics.GetNumSpectators(LocalPlayer) or 0
+        end
+    end)
+    -- Minimum 1 vì server luôn đếm chính người chơi
+    return math.max(0, count - 1)
+end
+
+local function DX_ShowSpectatorAlert(count)
+    _G.HK_SpectatorCount = count
+    local specStr = "Có " .. count .. " người đang xem bạn!"
+    pcall(function()
+        local pc = LocalPlayer and LocalPlayer.GetPlayerController and LocalPlayer:GetPlayerController()
+        if pc and pc.PlayerState and pc.PlayerState.Spectators then
+            local specArr = pc.PlayerState.Spectators
+            local n = type(specArr.Num) == "function" and specArr:Num() or #specArr
+            local names = {}
+            for i = 0, n - 1 do
+                local ps = type(specArr.Get) == "function" and specArr:Get(i) or specArr[i + 1]
+                if ps and (ps.PlayerName or ps.PlayerNamePrivate) then
+                    table.insert(names, ps.PlayerName or ps.PlayerNamePrivate)
+                end
+            end
+            if #names > 0 then
+                specStr = specStr .. "\n" .. table.concat(names, ", ")
+            end
+        end
+    end)
+    pcall(function()
+        local msgBox = package.loaded["client.slua.logic.common.logic_common_msg_box"] or require("client.slua.logic.common.logic_common_msg_box")
+        if msgBox and msgBox.Show then
+            msgBox.Show(1, "CANH BAO SPECTATOR", specStr, function() end, function() end, "OK", "OK")
+        end
+    end)
+end
+
+local function InitializeAntiSpectator()
+    pcall(function()
+        local okTicker, ticker = pcall(require, "common.time_ticker")
+        if not okTicker or not ticker or not ticker.AddTimerOnce then return end
+
+        local function SpecCheckLoop()
+            pcall(function()
+                local gd = package.loaded["GameLua.GameCore.Data.GameplayData"] or require("GameLua.GameCore.Data.GameplayData")
+                if not gd then return end
+                local lp = gd.GetPlayerCharacter and gd.GetPlayerCharacter()
+                if not lp then return end
+                if not slua_isValid or not slua_isValid(lp) then return end
+
+                local count = DX_GetSpectatorCount()
+                if count ~= _DXLastSpecCount then
+                    _DXLastSpecCount = count
+                    if count > 0 then
+                        DX_ShowSpectatorAlert(count)
+                    end
+                end
+                _G.HK_SpectatorCount = count
+            end)
+            if ticker.AddTimerOnce then ticker.AddTimerOnce(2.0, SpecCheckLoop) end
+        end
+        ticker.AddTimerOnce(2.0, SpecCheckLoop)
+    end)
+end
+
+InitializeAntiSpectator()
+
 -- =========================================================================
 
 -- =========================== PHẦN 31: INIT ALL MOD SYSTEMS ===========================
