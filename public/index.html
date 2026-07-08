@@ -1,336 +1,356 @@
 <!DOCTYPE html>
 <html lang="vi">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DXMOD Security Admin Panel</title>
-    <link rel="stylesheet" href="styles.css">
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DXMOD Admin Nexus</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --nb: #38bdf8; --np: #a78bfa; --em: #34d399; --ro: #fb7185; --am: #fbbf24;
+      --glass: rgba(15,23,42,0.65); --gb: rgba(255,255,255,0.06);
+    }
+    *{margin:0;padding:0;box-sizing:border-box}
+    body{font-family:'Inter',system-ui,sans-serif;background:#080c18;color:#e2e8f0;overflow-x:hidden}
+    ::-webkit-scrollbar{width:5px;height:5px}
+    ::-webkit-scrollbar-track{background:transparent}
+    ::-webkit-scrollbar-thumb{background:#1e293b;border-radius:3px}
+    .glass{background:var(--glass);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border:1px solid var(--gb)}
+    .bg-g{background-image:linear-gradient(rgba(56,189,248,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(56,189,248,0.03) 1px,transparent 1px);background-size:60px 60px}
+    @keyframes pd{0%,100%{opacity:1}50%{opacity:.3}}
+    .a-pd{animation:pd 1.5s ease-in-out infinite}
+    @keyframes sh{0%{background-position:-200% 0}100%{background-position:200% 0}}
+    .sk{background:linear-gradient(90deg,#1e293b 25%,#334155 50%,#1e293b 75%);background-size:200% 100%;animation:sh 1.5s ease-in-out infinite;border-radius:8px}
+    .tr-h:hover{background:rgba(56,189,248,0.04);box-shadow:inset 3px 0 0 var(--nb)}
+    .gh-h:hover{box-shadow:0 0 20px rgba(56,189,248,0.15)}
+    @media(max-width:768px){.sb-m{position:fixed!important;z-index:50}}
+  </style>
 </head>
-<body>
-    <!-- Background animations -->
-    <div class="background-radial"></div>
-    <div class="circle circle-1"></div>
-    <div class="circle circle-2"></div>
+<body><div id="root"></div>
+<script type="text/babel">
+const{useState,useEffect,useRef}=React;
+const{motion,AnimatePresence}=window.Motion;
 
-    <!-- Login Area -->
-    <div id="login-container" class="glass-card active">
-        <div class="login-header">
-            <div class="logo">
-                <i class="fa-solid fa-shield-halved logo-icon"></i>
-                <h2>DXMOD SECURE</h2>
-            </div>
-            <p>Nhập mật khẩu quản trị để tiếp tục</p>
-        </div>
-        <form id="login-form">
-            <div class="input-group">
-                <i class="fa-solid fa-lock input-icon"></i>
-                <input type="password" id="admin-password" placeholder="Mật khẩu quản trị..." required>
-            </div>
-            <button type="submit" class="btn-primary">
-                <span>ĐĂNG NHẬP</span>
-                <i class="fa-solid fa-right-to-bracket"></i>
-            </button>
-            <div id="login-error" class="error-msg"></div>
-        </form>
-    </div>
+// ─── helpers ───
+const api=path=>{const t=localStorage.getItem('dx_at');return fetch(path,{headers:t?{Authorization:t}:{}}).then(r=>{if(r.status===401){localStorage.removeItem('dx_at');window.location.reload()}return r.json()})};
+const apiPost=(path,body)=>{const t=localStorage.getItem('dx_at');return fetch(path,{method:'POST',headers:{'Content-Type':'application/json',...(t?{Authorization:t}:{})},body:JSON.stringify(body)}).then(r=>r.json())};
+const fmt=(v)=>{if(v>=1e6)return(v/1e6).toFixed(1)+'M';if(v>=1e3)return(v/1e3).toFixed(0)+'K';return v};
+const esc=s=>{if(!s)return '';return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')};
+const toast=(msg,type='success')=>{const el=document.getElementById('t');el.textContent=msg;el.className=`fixed bottom-6 right-6 px-5 py-3 rounded-xl text-sm font-semibold shadow-2xl z-[200] transition-all duration-300 ${type==='success'?'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30':'bg-rose-500/20 text-rose-300 border border-rose-500/30'}`;el.style.transform='translateY(0)';el.style.opacity='1';setTimeout(()=>{el.style.transform='translateY(20px)';el.style.opacity='0'},3000)};
+const fmtDate=d=>d?new Date(d).toLocaleString('vi-VN'):'--';
+const fmtDur=s=>{if(!s)return'--';if(s<60)return s+'s';const m=Math.floor(s/60);if(m<60)return m+'m '+s%60+'s';return Math.floor(m/60)+'h '+m%60+'m'};
 
-    <!-- Dashboard Area -->
-    <div id="dashboard-container" class="dashboard">
-        <!-- Sidebar / Navigation -->
-        <header class="dashboard-header glass-card">
-            <div class="header-brand">
-                <i class="fa-solid fa-shield-halved logo-icon"></i>
-                <h1>DXMOD Admin Panel</h1>
+// ─── hooks ───
+function useCounter(target,duration=1800){const[v,setV]=useState(0);const raf=useRef();const started=useRef(false);useEffect(()=>{if(started.current)return;started.current=true;const s=performance.now();const fn=n=>{const t=Math.min((n-s)/duration,1);const e=1-Math.pow(1-t,3);setV(Math.round(target*e));if(t<1)raf.current=requestAnimationFrame(fn)};raf.current=requestAnimationFrame(fn);return()=>cancelAnimationFrame(raf.current)},[target,duration]);return v}
+function useOnScreen(t=.1){const ref=useRef();const[v,s]=useState(false);useEffect(()=>{const el=ref.current;if(!el)return;const o=new IntersectionObserver(([e])=>{if(e.isIntersecting){s(true);o.disconnect()}},{threshold:t});o.observe(el);return()=>o.disconnect()},[]);return[ref,v]}
+
+// ─── Skeleton ───
+const Sk=({cn=''})=><div className={`sk ${cn}`}/>;
+
+// ─── StatusBadge ───
+const Badge=({s,small})=>{
+  const m={Active:{bg:'rgba(52,211,153,0.15)',c:'#34d399'},approved:{bg:'rgba(52,211,153,0.15)',c:'#34d399'},Pending:{bg:'rgba(251,191,36,0.15)',c:'#fbbf24'},pending:{bg:'rgba(251,191,36,0.15)',c:'#fbbf24'},Expired:{bg:'rgba(251,113,133,0.15)',c:'#fb7185'},expired:{bg:'rgba(251,113,133,0.15)',c:'#fb7185'},Suspended:{bg:'rgba(251,113,133,0.15)',c:'#fb7185'}};
+  const st=m[s]||m.Pending;
+  return<span className={`inline-flex items-center gap-1.5 rounded-full font-medium ${small?'px-2 py-0.5 text-xs':'px-2.5 py-1 text-xs'}`} style={{background:st.bg,color:st.c}}><span className="w-1.5 h-1.5 rounded-full" style={{background:st.c}}/>{s}</span>
+};
+
+// ─── online badge ───
+const OnlineBadge=({state})=>{
+  const m={in_match:{c:'#22d3ee',t:'Đang trong trận'},online:{c:'#34d399',t:'Online'},offline:{c:'#64748b',t:'Offline'}};
+  const s=m[state]||m.offline;
+  return<span className="inline-flex items-center gap-1.5 text-xs font-medium" style={{color:s.c}}><span className="w-1.5 h-1.5 rounded-full" style={{background:s.c,boxShadow:`0 0 6px ${s.c}`}}/>{s.t}</span>
+};
+
+// ─── components ───
+const Login=({onLogin})=>{
+  const[p,setP]=useState('');const[e,setE]=useState('');
+  const h=async e=>{e.preventDefault();const r=await fetch('/api/admin/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:p})});const d=await r.json();if(r.ok){localStorage.setItem('dx_at',d.token);onLogin()}else setE(d.error||'Sai mật khẩu!')};
+  return(<div className="min-h-screen bg-g flex items-center justify-center p-4">
+    <motion.div initial={{opacity:0,scale:.95}} animate={{opacity:1,scale:1}} transition={{duration:.5}} className="glass rounded-3xl p-8 w-full max-w-sm">
+      <div className="text-center mb-6">
+        <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-sky-400 to-violet-600 flex items-center justify-center text-white text-2xl font-bold mx-auto mb-3">D</div>
+        <h1 className="text-white text-2xl font-bold">DXMOD</h1>
+        <p className="text-gray-400 text-sm mt-1">Admin Panel</p>
+      </div>
+      <form onSubmit={h} className="space-y-4">
+        <div className="relative"><span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">🔒</span>
+          <input type="password" placeholder="Mật khẩu quản trị" value={p} onChange={e=>setP(e.target.value)} required autoFocus
+            className="w-full h-11 pl-9 pr-4 rounded-xl bg-white/5 border border-white/10 text-sm text-gray-200 placeholder-gray-600 outline-none focus:border-sky-500/40 focus:bg-white/8 transition-all"/></div>
+        {e&&<p className="text-rose-400 text-xs text-center">{e}</p>}
+        <button type="submit" className="w-full h-11 rounded-xl bg-gradient-to-r from-sky-500 to-violet-600 text-white font-semibold text-sm hover:shadow-lg hover:shadow-sky-500/20 transition-all">ĐĂNG NHẬP</button>
+      </form>
+    </motion.div>
+  </div>)
+};
+
+// ─── KPI ───
+const Kpi=({icon,label,val})=>{
+  const c=useCounter(val);const[ref,v]=useOnScreen();
+  const d=val>=1e6?(val/1e6).toFixed(1)+'M':val>=1e3?(val/1e3).toFixed(0)+'K':val;
+  return(<motion.div ref={ref} initial={{opacity:0,y:30}} animate={v?{opacity:1,y:0}:{}} transition={{duration:.5,ease:[.16,1,.3,1]}} className="glass rounded-2xl p-5 hover:scale-[1.02] transition-all duration-300 cursor-pointer gh-h">
+    <div className="flex items-start justify-between mb-3"><span className="text-2xl">{icon}</span><span className="text-xs font-semibold text-emerald-400">+{Math.floor(Math.random()*6+5)}%</span></div>
+    <div className="text-2xl font-bold text-white tabular-nums tracking-tight mb-1">{d}</div>
+    <div className="text-sm text-gray-400 font-medium">{label}</div>
+  </motion.div>)
+};
+
+// ─── confirm ───
+let _confirmResolve=null;
+const showConfirm=(title,body)=>{document.getElementById('cm').style.display='flex';document.getElementById('ct').textContent=title;document.getElementById('cb').textContent=body;return new Promise(r=>{_confirmResolve=r})};
+const closeConfirm=(v)=>{document.getElementById('cm').style.display='none';if(_confirmResolve)_confirmResolve(v)};
+
+// ─── Sidebar ───
+const Sidebar=({collapsed,onToggle,mobileOpen,onClose,tab,setTab})=>{
+  const items=[{icon:'📊',label:'Dashboard',key:'devices'},{icon:'🎮',label:'Sessions',key:'sessions'},{icon:'👥',label:'Users',key:'users'}];
+  return(<>
+    <AnimatePresence>{mobileOpen&&<motion.div initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}} onClick={onClose} className="fixed inset-0 z-30 bg-black/60 backdrop-blur-sm md:hidden"/>}</AnimatePresence>
+    <motion.aside animate={{width:collapsed?72:240}} className="fixed left-0 top-0 h-full z-40 glass border-r border-white/5 flex flex-col overflow-hidden sb-m" style={{width:collapsed?72:240}}>
+      <div className="flex items-center gap-3 px-5 h-16 shrink-0 border-b border-white/5">
+        <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-sky-400 to-violet-600 flex items-center justify-center text-white text-sm font-bold">D</div>
+        {!collapsed&&<span className="text-white font-bold text-lg tracking-tight">DXMOD</span>}
+      </div>
+      <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
+        {items.map((item,i)=><div key={i} onClick={()=>{setTab(item.key);onClose()}} className={`flex items-center gap-3 px-4 py-2.5 rounded-xl cursor-pointer transition-all text-sm font-medium ${tab===item.key?'bg-white/8 text-white':'text-gray-400 hover:text-white hover:bg-white/5'}`}>
+          <span className="text-lg shrink-0">{item.icon}</span>{!collapsed&&<span>{item.label}</span>}
+        </div>)}
+      </nav>
+      <div className="p-3 border-t border-white/5 hidden md:block">
+        <button onClick={onToggle} className="w-full text-center py-2 rounded-xl text-gray-500 hover:text-white hover:bg-white/5 transition-all text-sm">{collapsed?'→':'← Thu gọn'}</button>
+      </div>
+    </motion.aside>
+  </>)
+};
+
+// ════════════════════════════════════════
+//  MAIN APP
+// ════════════════════════════════════════
+const App=()=>{
+  const[logged,setLogged]=useState(!!localStorage.getItem('dx_at'));
+  const[loading,setLoading]=useState(true);
+  const[devices,setDevices]=useState([]);
+  const[sessions,setSessions]=useState([]);
+  const[onlineMap,setOnlineMap]=useState({});
+  const[tab,setTab]=useState('devices');
+  const[collapsed,setCollapsed]=useState(false);
+  const[mobileOpen,setMobileOpen]=useState(false);
+  const[search,setSearch]=useState('');const[filter,setFilter]=useState('all');
+  const[sSearch,sSetSearch]=useState('');const[sFilter,sSetFilter]=useState('all');
+  const[editUid,setEditUid]=useState(null);
+  const[addOpen,setAddOpen]=useState(false);const[addUid,setAddUid]=useState('');const[addLabel,setAddLabel]=useState('');const[addExpiry,setAddExpiry]=useState('30days');const[addNote,setAddNote]=useState('');
+
+  const loadDevices=async()=>{const d=await api('/api/admin/devices');if(Array.isArray(d))setDevices(d)};
+  const loadSessions=async()=>{const d=await api('/api/admin/sessions');if(Array.isArray(d))setSessions(d)};
+  const loadOnline=async()=>{const d=await api('/api/admin/online-status');setOnlineMap(d||{})};
+
+  useEffect(()=>{if(!logged)return;Promise.all([loadDevices(),loadSessions(),loadOnline()]).then(()=>setLoading(false));const i=setInterval(loadOnline,15000);return()=>clearInterval(i)},[logged]);
+
+  if(!logged)return<Login onLogin={()=>{setLogged(true);setLoading(true)}}/>;
+
+  // data
+  const filtered=devices.filter(d=>{
+    const q=search.toLowerCase();
+    const m=String(d.game_id||'').toLowerCase().includes(q)||String(d.label||'').toLowerCase().includes(q)||String(d.note||'').toLowerCase().includes(q);
+    const exp=d.expires_at&&new Date(d.expires_at).getTime()<Date.now();
+    let f=true;if(filter==='approved')f=(d.status==='approved'||d.status==='active')&&!exp;else if(filter==='pending')f=d.status==='pending';else if(filter==='expired')f=exp;
+    return m&&f;
+  });
+  const sFiltered=sessions.filter(s=>{
+    const q=sSearch.toLowerCase();
+    return(String(s.uid||'').toLowerCase().includes(q)||String(s.player_name||'').toLowerCase().includes(q))&&(sFilter==='all'||s.status===sFilter);
+  });
+
+  // events
+  const hEdit=uid=>{const d=devices.find(x=>x.game_id===uid);if(!d)return;document.getElementById('eu').value=uid;document.getElementById('el').value=d.label||'';document.getElementById('es').value=d.status==='active'?'approved':d.status;document.getElementById('en').value=d.note||'';if(!d.expires_at||d.expires_at==='null'){document.getElementById('exs').value='lifetime';document.getElementById('exc').style.display='none'}else{document.getElementById('exs').value='custom';document.getElementById('exc').style.display='block';const dt=new Date(d.expires_at);document.getElementById('exd').value=new Date(dt.getTime()-dt.getTimezoneOffset()*6e4).toISOString().slice(0,16)}document.getElementById('em').style.display='flex'};
+  const hSaveEdit=async(e)=>{e.preventDefault();const uid=document.getElementById('eu').value;const label=document.getElementById('el').value;const status=document.getElementById('es').value;const note=document.getElementById('en').value;let expires_at=null;const dur=document.getElementById('exs').value;if(dur==='1day')expires_at=new Date(Date.now()+864e5).toISOString();else if(dur==='7days')expires_at=new Date(Date.now()+6048e5).toISOString();else if(dur==='30days')expires_at=new Date(Date.now()+2592e6).toISOString();else if(dur==='custom')expires_at=new Date(document.getElementById('exd').value).toISOString();const ep=status==='approved'?'/api/admin/approve':'/api/admin/reject';const r=await apiPost(ep,{uid,label,note,expires_at});if(r.success){document.getElementById('em').style.display='none';toast('Đã cập nhật!');loadDevices()}else toast(r.error||'Lỗi!','error')};
+  const hDelete=async uid=>{showConfirm('Xoá thiết bị',`Xoá vĩnh viễn UID: ${uid}?`);const r=await new Promise(res=>setTimeout(()=>{const cb=()=>{const c=document.getElementById('cm');c.style.display='none';res(false)};document.getElementById('co').onclick=()=>{document.getElementById('cm').style.display='none';res(true)};document.getElementById('cc').onclick=cb;document.querySelectorAll('.close-c').forEach(el=>el.onclick=cb)},50));if(!r)return;const d=await apiPost('/api/admin/delete',{uid});if(d.success){toast('Đã xoá!');loadDevices()}else toast('Lỗi!','error')};
+  const hAdd=async e=>{e.preventDefault();if(!addUid.trim()){toast('Nhập UID!','error');return}let expires_at=null;if(addExpiry==='1day')expires_at=new Date(Date.now()+864e5).toISOString();else if(addExpiry==='7days')expires_at=new Date(Date.now()+6048e5).toISOString();else if(addExpiry==='30days')expires_at=new Date(Date.now()+2592e6).toISOString();else if(addExpiry==='custom')expires_at=new Date(document.getElementById('adx').value).toISOString();const r=await apiPost('/api/admin/create',{uid:addUid.trim(),label:addLabel,expires_at,note:addNote});if(r.success){setAddOpen(false);toast('Đã thêm!');loadDevices()}else toast(r.error||'Lỗi!','error')};
+
+  // stats
+  const stats={total:devices.length,active:0,pending:0,expired:0};devices.forEach(d=>{const exp=d.expires_at&&new Date(d.expires_at).getTime()<Date.now();if(exp)stats.expired++;else if(d.status==='approved'||d.status==='active')stats.active++;else stats.pending++});
+  const inMatch=sessions.filter(s=>s.status==='in_match').length;
+
+  return(<div className="min-h-screen bg-g">
+    <Sidebar collapsed={collapsed} onToggle={()=>setCollapsed(p=>!p)} mobileOpen={mobileOpen} onClose={()=>setMobileOpen(false)} tab={tab} setTab={setTab}/>
+    <div className="transition-all min-h-screen" style={{marginLeft:collapsed?72:240}}>
+      <div className="p-4 md:p-6 max-w-7xl mx-auto space-y-5">
+
+        {/* header */}
+        <header className="glass rounded-2xl px-5 h-16 flex items-center justify-between gap-4">
+          <div className="flex items-center gap-4 flex-1 min-w-0">
+            <button onClick={()=>setMobileOpen(p=>!p)} className="md:hidden w-10 h-10 flex items-center justify-center rounded-xl text-gray-400 hover:text-white hover:bg-white/8 transition-all text-xl">☰</button>
+            <div className="relative flex-1 max-w-md hidden sm:block">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm">🔍</span>
+              <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Tìm UID, tên, ghi chú..." className="w-full h-10 pl-9 pr-4 rounded-xl bg-white/5 border border-white/10 text-sm text-gray-300 placeholder-gray-600 outline-none focus:border-sky-500/40 focus:bg-white/8 transition-all"/>
             </div>
-            <div class="header-actions">
-                <span class="badge badge-server"><i class="fa-solid fa-circle-check"></i> Server Online (Port 5002)</span>
-                <button id="logout-btn" class="btn-secondary"><i class="fa-solid fa-power-off"></i> Đăng xuất</button>
-            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <button className="relative w-10 h-10 flex items-center justify-center rounded-xl text-gray-400 hover:text-white hover:bg-white/8 transition-all text-xl">🔔<span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-rose-400 a-pd" style={{boxShadow:'0 0 6px #fb7185'}}/></button>
+            <button onClick={()=>{localStorage.removeItem('dx_at');setLogged(false)}} className="w-10 h-10 flex items-center justify-center rounded-xl text-gray-400 hover:text-rose-400 hover:bg-white/8 transition-all text-lg" title="Đăng xuất">🚪</button>
+            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-sky-400 to-violet-600 flex items-center justify-center text-white text-xs font-bold ring-2 ring-white/10">A</div>
+          </div>
         </header>
 
-        <!-- Stats Section -->
-        <div class="stats-row">
-            <div class="stat-card glass-card">
-                <div class="stat-icon purple"><i class="fa-solid fa-mobile-screen-button"></i></div>
-                <div class="stat-info">
-                    <h3 id="stat-total">0</h3>
-                    <p>Tổng thiết bị</p>
-                </div>
-            </div>
-            <div class="stat-card glass-card">
-                <div class="stat-icon green"><i class="fa-solid fa-circle-check"></i></div>
-                <div class="stat-info">
-                    <h3 id="stat-active">0</h3>
-                    <p>Đã kích hoạt</p>
-                </div>
-            </div>
-            <div class="stat-card glass-card">
-                <div class="stat-icon yellow"><i class="fa-solid fa-hourglass-half"></i></div>
-                <div class="stat-info">
-                    <h3 id="stat-pending">0</h3>
-                    <p>Đang chờ duyệt</p>
-                </div>
-            </div>
-            <div class="stat-card glass-card">
-                <div class="stat-icon red"><i class="fa-solid fa-calendar-times"></i></div>
-                <div class="stat-info">
-                    <h3 id="stat-expired">0</h3>
-                    <p>Đã hết hạn</p>
-                </div>
-            </div>
-            <div class="stat-card glass-card">
-                <div class="stat-icon blue" style="background:rgba(59,130,246,.15);color:#60a5fa"><i class="fa-solid fa-gamepad"></i></div>
-                <div class="stat-info">
-                    <h3 id="stat-sessions">0</h3>
-                    <p>Tổng sessions</p>
-                </div>
-            </div>
-            <div class="stat-card glass-card">
-                <div class="stat-icon cyan" style="background:rgba(34,211,238,.15);color:#22d3ee"><i class="fa-solid fa-person-running"></i></div>
-                <div class="stat-info">
-                    <h3 id="stat-in-match">0</h3>
-                    <p>Đang trong trận</p>
-                </div>
-            </div>
+        {/* KPI */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {loading?Array.from({length:4}).map((_,i)=><div key={i} className="glass rounded-2xl p-5 space-y-3"><Sk cn="w-10 h-10"/><Sk cn="w-28 h-8"/><Sk cn="w-20 h-4"/></div>):
+          [<Kpi key="1" icon="📱" label="Tổng thiết bị" val={stats.total}/>,<Kpi key="2" icon="✅" label="Đã kích hoạt" val={stats.active}/>,<Kpi key="3" icon="🔄" label="Chờ duyệt" val={stats.pending}/>,<Kpi key="4" icon="⏰" label="Đã hết hạn" val={stats.expired}/>]}
         </div>
 
-        <!-- Tab Navigation -->
-        <div class="tab-nav glass-card" style="display:flex;gap:8px;padding:10px 16px;margin-bottom:0">
-            <button id="tab-devices" class="tab-btn active">
-                <i class="fa-solid fa-mobile-screen-button"></i> Thiết bị
-            </button>
-            <button id="tab-sessions" class="tab-btn">
-                <i class="fa-solid fa-gamepad"></i> Lịch sử trận
-            </button>
+        {/* ===== DEVICES TAB ===== */}
+        {tab==='devices'&&<>
+        {/* toolbar */}
+        <div className="glass rounded-2xl p-4 flex flex-wrap items-center gap-3">
+          <select value={filter} onChange={e=>setFilter(e.target.value)} className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm text-gray-300 outline-none focus:border-sky-500/40">
+            <option value="all">Tất cả</option><option value="approved">Đã kích hoạt</option><option value="pending">Chờ duyệt</option><option value="expired">Hết hạn</option>
+          </select>
+          <button onClick={()=>loadDevices()} className="px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-sm text-gray-300 hover:text-white hover:bg-white/10 transition-all">🔄 Tải lại</button>
+          <button onClick={()=>setAddOpen(true)} className="px-4 py-2 rounded-xl bg-gradient-to-r from-sky-500 to-violet-600 text-white text-sm font-semibold hover:shadow-lg hover:shadow-sky-500/20 transition-all">＋ Thêm</button>
+          <button onClick={()=>window.open('/api/admin/export/devices','_blank')} className="px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-sm text-gray-300 hover:text-white hover:bg-white/10 transition-all">📥 CSV</button>
+          <span className="text-xs text-gray-500 ml-auto tabular-nums">{devices.length} thiết bị</span>
         </div>
 
-        <!-- Table / Content Section -->
-        <div id="panel-devices">
-        <div class="toolbar glass-card">
-            <div class="search-box">
-                <i class="fa-solid fa-magnifying-glass search-icon"></i>
-                <input type="text" id="search-input" placeholder="Tìm kiếm UID, tên thiết bị, ghi chú...">
-            </div>
-            <div class="filter-box">
-                <select id="status-filter">
-                    <option value="all">Tất cả trạng thái</option>
-                    <option value="approved">Đã kích hoạt</option>
-                    <option value="pending">Chờ duyệt</option>
-                    <option value="expired">Đã hết hạn</option>
-                </select>
-                <button id="add-device-btn" class="btn-refresh" style="background:var(--accent-purple-gradient);color:#fff;border:none">
-                    <i class="fa-solid fa-plus"></i> Thêm
-                </button>
-                <button id="export-csv-btn" class="btn-refresh"><i class="fa-solid fa-download"></i> CSV</button>
-                <button id="refresh-btn" class="btn-refresh"><i class="fa-solid fa-rotate"></i> Tải lại</button>
-            </div>
-        </div>
-        <div id="bulk-bar" class="bulk-bar glass-card" style="display:none">
-            <span id="bulk-count">Đã chọn 0 thiết bị</span>
-            <div class="bulk-actions">
-                <button id="bulk-approve-btn" class="btn-icon bulk-approve"><i class="fa-solid fa-check"></i> Duyệt</button>
-                <button id="bulk-delete-btn" class="btn-icon bulk-delete"><i class="fa-solid fa-trash-can"></i> Xoá</button>
-                <button id="bulk-clear-btn" class="btn-icon bulk-clear" style="background:#f1f5f9;color:#475569"><i class="fa-solid fa-xmark"></i> Bỏ chọn</button>
-            </div>
-        </div>
-        <div class="content-table-wrapper glass-card">
-            <table class="content-table">
-                <thead>
-                    <tr>
-                        <th style="width:40px"><input type="checkbox" id="select-all"></th>
-                        <th>ID</th>
-                        <th>Tên thiết bị</th>
-                        <th>Game UID (Mã thiết bị)</th>
-                        <th>Trạng thái</th>
-                        <th>Mạng</th>
-                        <th>Ngày đăng ký</th>
-                        <th>Hạn sử dụng</th>
-                        <th>Ghi chú</th>
-                        <th>Thao tác</th>
-                    </tr>
-                </thead>
-                <tbody id="devices-tbody">
-                    <!-- Dynamic rendering -->
-                </tbody>
+        {/* devices table */}
+        <motion.div initial={{opacity:0,y:20}} animate={{opacity:1,y:0}} className="glass rounded-2xl overflow-hidden">
+          {loading?<div className="p-5 space-y-4">{Array.from({length:4}).map((_,i)=><div key={i} className="flex items-center gap-4"><Sk cn="w-8 h-8 rounded-full"/><div className="flex-1 space-y-2"><Sk cn="w-32 h-3"/><Sk cn="w-48 h-3"/></div><Sk cn="w-16 h-6"/></div>)}</div>:
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead><tr className="text-gray-500 text-xs uppercase tracking-wider border-b border-white/5">
+                <th className="text-left px-4 py-3 font-medium">Tên</th><th className="text-left px-4 py-3 font-medium">UID</th>
+                <th className="text-left px-4 py-3 font-medium">Trạng thái</th><th className="text-left px-4 py-3 font-medium">Mạng</th>
+                <th className="text-left px-4 py-3 font-medium">Hạn</th><th className="text-left px-4 py-3 font-medium">Ghi chú</th><th className="text-right px-4 py-3 font-medium">Tác vụ</th>
+              </tr></thead>
+              <tbody>{filtered.map((d,i)=>{const exp=d.expires_at&&new Date(d.expires_at).getTime()<Date.now();return<motion.tr key={d.game_id} initial={{opacity:0,x:-10}} animate={{opacity:1,x:0}} transition={{delay:i*.03}} className="border-b border-white/5 last:border-0 tr-h">
+                <td className="px-4 py-3 text-white font-medium">{esc(d.label||'--')}</td>
+                <td className="px-4 py-3"><code className="text-xs text-sky-400 bg-sky-400/10 px-2 py-1 rounded">{esc(d.game_id)}</code>
+                  <button onClick={()=>{navigator.clipboard.writeText(d.game_id);toast('Đã copy!')}} className="ml-1 text-gray-500 hover:text-sky-400 transition-all">📋</button></td>
+                <td className="px-4 py-3">{exp?<Badge s="expired"/>:<Badge s={d.status}/>}</td>
+                <td className="px-4 py-3"><OnlineBadge state={onlineMap[d.game_id]||'offline'}/></td>
+                <td className={`px-4 py-3 text-sm ${exp?'text-rose-400':'text-gray-300'}`}>{d.expires_at?fmtDate(d.expires_at):'Vĩnh viễn'}</td>
+                <td className="px-4 py-3 text-gray-400 max-w-[150px] truncate">{esc(d.note)||'-'}</td>
+                <td className="px-4 py-3 text-right">
+                  <button onClick={()=>hEdit(d.game_id)} className="px-3 py-1.5 rounded-lg bg-sky-400/10 text-sky-400 text-xs font-semibold hover:bg-sky-400/20 transition-all mr-1">✏️</button>
+                  <button onClick={()=>hDelete(d.game_id)} className="px-3 py-1.5 rounded-lg bg-rose-400/10 text-rose-400 text-xs font-semibold hover:bg-rose-400/20 transition-all">🗑️</button>
+                </td>
+              </motion.tr>})}</tbody>
             </table>
-            <div id="no-data-msg" class="no-data">
-                <i class="fa-solid fa-box-open"></i>
-                <p>Không có dữ liệu thiết bị nào phù hợp!</p>
-            </div>
-        </div>
-        <div class="toolbar glass-card" style="justify-content:flex-end;padding:8px 16px;margin-top:0;border-top-left-radius:0;border-top-right-radius:0;font-size:0.8rem;color:var(--text-muted)">
-            <span id="refresh-timestamp">Cập nhật lúc: --</span>
-        </div>
-        </div>
+            {filtered.length===0&&<div className="py-12 text-center text-gray-500 text-sm">📭 Không có thiết bị nào</div>}
+          </div>}
+        </motion.div>
+        </>}
 
-        <!-- Sessions Panel -->
-        <div id="panel-sessions" style="display:none">
-        <div class="toolbar glass-card">
-            <div class="search-box">
-                <i class="fa-solid fa-magnifying-glass search-icon"></i>
-                <input type="text" id="session-search" placeholder="Tìm theo UID hoặc tên player...">
-            </div>
-            <div class="filter-box">
-                <select id="session-status-filter">
-                    <option value="all">Tất cả</option>
-                    <option value="in_match">Đang trong trận</option>
-                    <option value="ended">Đã kết thúc</option>
-                </select>
-                <button id="refresh-sessions-btn" class="btn-refresh">
-                    <i class="fa-solid fa-rotate"></i> Tải lại
-                </button>
-            </div>
+        {/* ===== SESSIONS TAB ===== */}
+        {tab==='sessions'&&<>
+        <div className="glass rounded-2xl p-4 flex flex-wrap items-center gap-3">
+          <input value={sSearch} onChange={e=>sSetSearch(e.target.value)} placeholder="Tìm UID, tên..." className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm text-gray-300 placeholder-gray-600 outline-none focus:border-sky-500/40 min-w-[200px]"/>
+          <select value={sFilter} onChange={e=>sSetFilter(e.target.value)} className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm text-gray-300 outline-none focus:border-sky-500/40">
+            <option value="all">Tất cả</option><option value="in_match">Trong trận</option><option value="ended">Đã kết thúc</option>
+          </select>
+          <button onClick={()=>loadSessions()} className="px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-sm text-gray-300 hover:text-white hover:bg-white/10 transition-all">🔄 Tải lại</button>
+          <span className="text-xs text-gray-500 ml-auto tabular-nums">{sessions.length} sessions</span>
         </div>
-        <div class="content-table-wrapper glass-card">
-            <table class="content-table">
-                <thead>
-                    <tr>
-                        <th>Tên Player</th>
-                        <th>UID Thiết bị</th>
-                        <th>Match ID</th>
-                        <th>Số Kill</th>
-                        <th>Vào trận lúc</th>
-                        <th>Ra trận lúc</th>
-                        <th>Thời lượng</th>
-                        <th>Trạng thái</th>
-                        <th>Ảnh Top 1</th>
-                    </tr>
-                </thead>
-                <tbody id="sessions-tbody">
-                </tbody>
+        <motion.div initial={{opacity:0,y:20}} animate={{opacity:1,y:0}} className="glass rounded-2xl overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead><tr className="text-gray-500 text-xs uppercase tracking-wider border-b border-white/5">
+                <th className="text-left px-4 py-3 font-medium">Player</th><th className="text-left px-4 py-3 font-medium">UID</th>
+                <th className="text-left px-4 py-3 font-medium">Match ID</th><th className="text-left px-4 py-3 font-medium">Kill</th>
+                <th className="text-left px-4 py-3 font-medium">Vào</th><th className="text-left px-4 py-3 font-medium">Ra</th>
+                <th className="text-left px-4 py-3 font-medium">Thời lượng</th><th className="text-left px-4 py-3 font-medium">TT</th>
+              </tr></thead>
+              <tbody>{sFiltered.map((s,i)=><motion.tr key={s.id||i} initial={{opacity:0,x:-10}} animate={{opacity:1,x:0}} transition={{delay:i*.02}} className="border-b border-white/5 last:border-0 tr-h">
+                <td className="px-4 py-3"><span className="text-white font-medium">{esc(s.player_name||'Unknown')}</span>{s.top1?<span className="ml-2 text-xs bg-amber-400/15 text-amber-400 px-1.5 py-0.5 rounded font-semibold">🏆Top1</span>:''}</td>
+                <td className="px-4 py-3"><code className="text-xs text-sky-400 bg-sky-400/10 px-2 py-1 rounded">{esc(s.uid)}</code></td>
+                <td className="px-4 py-3 text-gray-400">{esc(s.match_id)||'--'}</td>
+                <td className="px-4 py-3"><span className="bg-white/5 px-2 py-0.5 rounded text-xs font-semibold text-gray-300">{s.kill_num||0}</span></td>
+                <td className="px-4 py-3 text-gray-400 text-xs">{fmtDate(s.started_at)}</td>
+                <td className="px-4 py-3 text-gray-400 text-xs">{fmtDate(s.ended_at)}</td>
+                <td className="px-4 py-3 text-gray-300">{fmtDur(s.duration_sec)}</td>
+                <td className="px-4 py-3">{s.status==='in_match'?<span className="text-cyan-400 text-xs font-semibold">🟢 Trong trận</span>:<span className="text-gray-500 text-xs">✅ Xong</span>}</td>
+              </motion.tr>)}</tbody>
             </table>
-            <div id="no-sessions-msg" class="no-data" style="display:none">
-                <i class="fa-solid fa-box-open"></i>
-                <p>Chưa có session nào!</p>
-            </div>
-        </div>
-        </div>
+            {sFiltered.length===0&&<div className="py-12 text-center text-gray-500 text-sm">📭 Chưa có session nào</div>}
+          </div>
+        </motion.div>
+        </>}
+
+        {/* ===== USERS TAB ===== */}
+        {tab==='users'&&<motion.div initial={{opacity:0,y:20}} animate={{opacity:1,y:0}} className="glass rounded-2xl overflow-hidden">
+          <div className="p-5 border-b border-white/5"><h3 className="text-white font-semibold">Thống kê</h3></div>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 p-5">
+            <div className="glass rounded-xl p-4 text-center"><div className="text-3xl font-bold text-white tabular-nums">{stats.total}</div><div className="text-xs text-gray-400 mt-1">Tổng thiết bị</div></div>
+            <div className="glass rounded-xl p-4 text-center"><div className="text-3xl font-bold text-emerald-400 tabular-nums">{stats.active}</div><div className="text-xs text-gray-400 mt-1">Đã kích hoạt</div></div>
+            <div className="glass rounded-xl p-4 text-center"><div className="text-3xl font-bold text-amber-400 tabular-nums">{stats.pending}</div><div className="text-xs text-gray-400 mt-1">Chờ duyệt</div></div>
+            <div className="glass rounded-xl p-4 text-center"><div className="text-3xl font-bold text-rose-400 tabular-nums">{stats.expired}</div><div className="text-xs text-gray-400 mt-1">Hết hạn</div></div>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 px-5 pb-5">
+            <div className="glass rounded-xl p-4 text-center"><div className="text-3xl font-bold text-cyan-400 tabular-nums">{inMatch}</div><div className="text-xs text-gray-400 mt-1">Đang trong trận</div></div>
+            <div className="glass rounded-xl p-4 text-center"><div className="text-3xl font-bold text-white tabular-nums">{sessions.length}</div><div className="text-xs text-gray-400 mt-1">Tổng sessions</div></div>
+            <div className="glass rounded-xl p-4 text-center"><div className="text-3xl font-bold text-purple-400 tabular-nums">{sessions.filter(s=>s.top1).length}</div><div className="text-xs text-gray-400 mt-1">Top 1</div></div>
+          </div>
+        </motion.div>}
+
+      </div>
     </div>
 
-    <!-- Confirm Dialog Modal -->
-    <div id="confirm-modal" class="modal">
-        <div class="modal-content glass-card" style="width:420px">
-            <div class="modal-header">
-                <h2 id="confirm-title">Xác nhận</h2>
-                <button class="close-confirm close-modal"><i class="fa-solid fa-xmark"></i></button>
-            </div>
-            <div id="confirm-body" style="padding:8px 0 16px;color:var(--text-secondary);line-height:1.5">Nội dung xác nhận</div>
-            <div class="modal-footer">
-                <button id="confirm-cancel-btn" class="btn-secondary close-confirm">Huỷ</button>
-                <button id="confirm-ok-btn" class="btn-primary" style="width:auto;padding:10px 24px">Xác nhận</button>
-            </div>
-        </div>
+    {/* ── EDIT MODAL ── */}
+    <div id="em" className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm hidden items-center justify-center p-4" onClick={e=>e.target.id==='em'?document.getElementById('em').style.display='none':null}>
+      <motion.div initial={{opacity:0,scale:.95}} animate={{opacity:1,scale:1}} className="glass rounded-2xl w-full max-w-lg p-6">
+        <div className="flex items-center justify-between mb-5"><h3 className="text-white font-semibold text-lg">Cấu hình bản quyền</h3><button onClick={()=>document.getElementById('em').style.display='none'} className="w-8 h-8 flex items-center justify-center rounded-lg bg-white/5 text-gray-400 hover:text-white transition-all">✕</button></div>
+        <form onSubmit={hSaveEdit} className="space-y-4">
+          <input type="hidden" id="eu"/>
+          <div><label className="text-xs text-gray-400 font-medium block mb-1.5">Tên hiển thị</label><input id="el" className="w-full h-10 px-3 rounded-xl bg-white/5 border border-white/10 text-sm text-gray-200 outline-none focus:border-sky-500/40"/></div>
+          <div><label className="text-xs text-gray-400 font-medium block mb-1.5">Trạng thái</label><select id="es" className="w-full h-10 px-3 rounded-xl bg-white/5 border border-white/10 text-sm text-gray-300 outline-none focus:border-sky-500/40"><option value="approved">✅ Duyệt</option><option value="pending">⏳ Từ chối / Chờ</option></select></div>
+          <div><label className="text-xs text-gray-400 font-medium block mb-1.5">Thời hạn</label><select id="exs" onChange={e=>document.getElementById('exc').style.display=e.target.value==='custom'?'block':'none'} className="w-full h-10 px-3 rounded-xl bg-white/5 border border-white/10 text-sm text-gray-300 outline-none focus:border-sky-500/40"><option value="lifetime">♾️ Trọn đời</option><option value="1day">1 Ngày</option><option value="7days">7 Ngày</option><option value="30days">30 Ngày</option><option value="custom">📅 Tuỳ chọn</option></select></div>
+          <div id="exc" style={{display:'none'}}><input id="exd" type="datetime-local" className="w-full h-10 px-3 rounded-xl bg-white/5 border border-white/10 text-sm text-gray-200 outline-none focus:border-sky-500/40"/></div>
+          <div><label className="text-xs text-gray-400 font-medium block mb-1.5">Ghi chú</label><textarea id="en" rows="2" className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-sm text-gray-200 outline-none focus:border-sky-500/40 resize-none"/></div>
+          <div className="flex justify-end gap-3 pt-2">
+            <button type="button" onClick={()=>document.getElementById('em').style.display='none'} className="px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-sm text-gray-300 hover:text-white transition-all">Huỷ</button>
+            <button type="submit" className="px-5 py-2 rounded-xl bg-gradient-to-r from-sky-500 to-violet-600 text-white text-sm font-semibold hover:shadow-lg hover:shadow-sky-500/20 transition-all">Lưu</button>
+          </div>
+        </form>
+      </motion.div>
     </div>
 
-    <!-- Add Device Modal -->
-    <div id="add-modal" class="modal">
-        <div class="modal-content glass-card">
-            <div class="modal-header">
-                <h2>Thêm thiết bị mới</h2>
-                <button class="close-add close-modal"><i class="fa-solid fa-xmark"></i></button>
-            </div>
-            <form id="add-form">
-                <div class="form-group">
-                    <label for="add-uid">UID Thiết bị <span style="color:var(--accent-red)">*</span></label>
-                    <input type="text" id="add-uid" placeholder="Nhập UID thiết bị..." required>
-                </div>
-                <div class="form-group">
-                    <label for="add-label">Tên hiển thị</label>
-                    <input type="text" id="add-label" placeholder="Tên thiết bị...">
-                </div>
-                <div class="form-group">
-                    <label for="add-expiry-select">Thời hạn bản quyền</label>
-                    <select id="add-expiry-select">
-                        <option value="lifetime">Trọn đời (Vĩnh viễn)</option>
-                        <option value="1day">1 Ngày</option>
-                        <option value="7days">7 Ngày</option>
-                        <option value="30days" selected>30 Ngày</option>
-                        <option value="custom">Tùy chọn...</option>
-                    </select>
-                </div>
-                <div class="form-group" id="add-custom-expiry-container" style="display:none">
-                    <label for="add-expiry-date">Ngày hết hạn cụ thể</label>
-                    <input type="datetime-local" id="add-expiry-date">
-                </div>
-                <div class="form-group">
-                    <label for="add-note">Ghi chú</label>
-                    <textarea id="add-note" rows="3" placeholder="Ghi chú..."></textarea>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn-secondary close-add">Đóng</button>
-                    <button type="submit" class="btn-primary">Thêm thiết bị</button>
-                </div>
-            </form>
-        </div>
+    {/* ── ADD MODAL ── */}
+    <div id="am" className={`fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm ${addOpen?'flex':'hidden'} items-center justify-center p-4`} onClick={e=>e.target.id==='am'?setAddOpen(false):null}>
+      <motion.div initial={{opacity:0,scale:.95}} animate={{opacity:1,scale:1}} className="glass rounded-2xl w-full max-w-lg p-6">
+        <div className="flex items-center justify-between mb-5"><h3 className="text-white font-semibold text-lg">Thêm thiết bị</h3><button onClick={()=>setAddOpen(false)} className="w-8 h-8 flex items-center justify-center rounded-lg bg-white/5 text-gray-400 hover:text-white transition-all">✕</button></div>
+        <form onSubmit={hAdd} className="space-y-4">
+          <div><label className="text-xs text-gray-400 font-medium block mb-1.5">UID Thiết bị <span className="text-rose-400">*</span></label><input value={addUid} onChange={e=>setAddUid(e.target.value)} required className="w-full h-10 px-3 rounded-xl bg-white/5 border border-white/10 text-sm text-gray-200 outline-none focus:border-sky-500/40"/></div>
+          <div><label className="text-xs text-gray-400 font-medium block mb-1.5">Tên hiển thị</label><input value={addLabel} onChange={e=>setAddLabel(e.target.value)} className="w-full h-10 px-3 rounded-xl bg-white/5 border border-white/10 text-sm text-gray-200 outline-none focus:border-sky-500/40"/></div>
+          <div><label className="text-xs text-gray-400 font-medium block mb-1.5">Thời hạn</label><select value={addExpiry} onChange={e=>setAddExpiry(e.target.value)} className="w-full h-10 px-3 rounded-xl bg-white/5 border border-white/10 text-sm text-gray-300 outline-none focus:border-sky-500/40"><option value="lifetime">♾️ Trọn đời</option><option value="1day">1 Ngày</option><option value="7days">7 Ngày</option><option value="30days">30 Ngày</option><option value="custom">📅 Tuỳ chọn</option></select></div>
+          {addExpiry==='custom'&&<div><input id="adx" type="datetime-local" className="w-full h-10 px-3 rounded-xl bg-white/5 border border-white/10 text-sm text-gray-200 outline-none focus:border-sky-500/40"/></div>}
+          <div><label className="text-xs text-gray-400 font-medium block mb-1.5">Ghi chú</label><textarea value={addNote} onChange={e=>setAddNote(e.target.value)} rows="2" className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-sm text-gray-200 outline-none focus:border-sky-500/40 resize-none"/></div>
+          <div className="flex justify-end gap-3 pt-2">
+            <button type="button" onClick={()=>setAddOpen(false)} className="px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-sm text-gray-300 hover:text-white transition-all">Huỷ</button>
+            <button type="submit" className="px-5 py-2 rounded-xl bg-gradient-to-r from-sky-500 to-violet-600 text-white text-sm font-semibold hover:shadow-lg hover:shadow-sky-500/20 transition-all">Thêm</button>
+          </div>
+        </form>
+      </motion.div>
     </div>
 
-    <!-- Edit/Approve Modal -->
-    <div id="edit-modal" class="modal">
-        <div class="modal-content glass-card">
-            <div class="modal-header">
-                <h2>Cấu hình Bản quyền Thiết bị</h2>
-                <button class="close-modal"><i class="fa-solid fa-xmark"></i></button>
-            </div>
-            <form id="edit-form">
-                <input type="hidden" id="edit-uid">
-                <div class="form-group">
-                    <label for="edit-label">Tên thiết bị hiển thị</label>
-                    <input type="text" id="edit-label" required>
-                </div>
-                <div class="form-group">
-                    <label for="edit-game-id">UID Thiết bị (Game UID)</label>
-                    <input type="text" id="edit-game-id" readonly>
-                </div>
-                <div class="form-group">
-                    <label for="edit-status">Trạng thái bản quyền</label>
-                    <select id="edit-status">
-                        <option value="approved">Duyệt (Approved)</option>
-                        <option value="pending">Từ chối / Chờ duyệt (Pending)</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label for="edit-expiry-select">Thời hạn bản quyền</label>
-                    <select id="edit-expiry-select">
-                        <option value="lifetime">Trọn đời (Vĩnh viễn)</option>
-                        <option value="1day">1 Ngày</option>
-                        <option value="7days">7 Ngày</option>
-                        <option value="30days">30 Ngày</option>
-                        <option value="custom">Tùy chọn...</option>
-                    </select>
-                </div>
-                <div class="form-group" id="custom-expiry-container" style="display: none;">
-                    <label for="edit-expiry-date">Ngày hết hạn cụ thể</label>
-                    <input type="datetime-local" id="edit-expiry-date">
-                </div>
-                <div class="form-group">
-                    <label for="edit-note">Ghi chú</label>
-                    <textarea id="edit-note" rows="3" placeholder="Ghi chú về thiết bị này..."></textarea>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn-secondary close-modal">Đóng</button>
-                    <button type="submit" class="btn-primary">Lưu thay đổi</button>
-                </div>
-            </form>
+    {/* ── CONFIRM MODAL ── */}
+    <div id="cm" className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm hidden items-center justify-center p-4">
+      <div className="glass rounded-2xl w-full max-w-sm p-6">
+        <h3 id="ct" className="text-white font-semibold text-lg mb-2">Xác nhận</h3>
+        <p id="cb" className="text-gray-400 text-sm mb-5">Nội dung</p>
+        <div className="flex justify-end gap-3">
+          <button id="cc" className="close-c px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-sm text-gray-300 hover:text-white transition-all">Huỷ</button>
+          <button id="co" className="px-5 py-2 rounded-xl bg-gradient-to-r from-rose-500 to-pink-600 text-white text-sm font-semibold hover:shadow-lg hover:shadow-rose-500/20 transition-all">Xác nhận</button>
         </div>
+      </div>
     </div>
 
-    <!-- Screenshot Preview Modal -->
-    <div id="screenshot-modal" class="modal">
-        <div class="modal-content glass-card screenshot-modal-content">
-            <div class="modal-header">
-                <h2>Ảnh chụp chiến thắng (Top 1)</h2>
-                <button class="close-screenshot-modal close-modal"><i class="fa-solid fa-xmark"></i></button>
-            </div>
-            <div class="screenshot-body">
-                <img id="screenshot-img" src="" alt="Top 1 Screenshot">
-            </div>
-        </div>
-    </div>
+    {/* ── TOAST ── */}
+    <div id="t" style={{transform:'translateY(20px)',opacity:0}}/>
+  </div>)
+};
 
-    <!-- Notification system -->
-    <div id="toast" class="toast"></div>
-    <script src="app.js"></script>
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
 </body>
 </html>
