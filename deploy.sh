@@ -78,21 +78,41 @@ cd "$VPS_DIR"
 # Cài đặt dependencies
 npm install --omit=dev --silent
 
-# 4. Quản lý tiến trình PM2
-echo "[4/4] Starting core-payload-server under PM2..."
+# 4. Tạo ecosystem.config.js (lưu env vĩnh viễn, không bị mất khi restart)
+ECOSYSTEM_FILE="$VPS_DIR/ecosystem.config.js"
+if [ ! -f "$ECOSYSTEM_FILE" ]; then
+    echo "  → Creating $ECOSYSTEM_FILE..."
+    cat > "$ECOSYSTEM_FILE" <<EOF
+module.exports = {
+  apps: [{
+    name: "$SERVICE",
+    script: "server.js",
+    env: {
+      PORT: $PORT_NUMBER,
+      ADMIN_PASSWORD: "$ADMIN_PASSWORD",
+      SERVER_PUBLIC_URL: "$SERVER_PUBLIC_URL"
+    }
+  }]
+}
+EOF
+    echo "  ✓ Ecosystem file created (password stored permanently)"
+else
+    echo "  ✓ Ecosystem file already exists, skipping..."
+fi
+
+# 5. Quản lý tiến trình PM2
+echo "[5/5] Starting core-payload-server under PM2..."
 if pm2 describe "$SERVICE" &>/dev/null 2>&1; then
     echo "  → Restarting existing '$SERVICE'..."
-    PORT=$PORT_NUMBER ADMIN_PASSWORD="$ADMIN_PASSWORD" SERVER_PUBLIC_URL="$SERVER_PUBLIC_URL" \
-        pm2 restart "$SERVICE" --update-env
+    pm2 delete "$SERVICE" 2>/dev/null || true
+    pm2 start "$ECOSYSTEM_FILE"
 else
     echo "  → Starting new '$SERVICE'..."
-    PORT=$PORT_NUMBER ADMIN_PASSWORD="$ADMIN_PASSWORD" SERVER_PUBLIC_URL="$SERVER_PUBLIC_URL" \
-        pm2 start server.js \
-        --name "$SERVICE" \
-        --cwd "$VPS_DIR"
+    pm2 start "$ECOSYSTEM_FILE"
 fi
 
 pm2 save
+pm2 startup systemd -u root 2>/dev/null || true
 
 echo ""
 echo "╔══════════════════════════════════════════════════════╗"
