@@ -797,6 +797,10 @@ local function LoadProtectedPayload(OriginalClass)
                 local status      = data:match('"status"%s*:%s*"([^"]+)"')
                 local error_msg   = data:match('"message"%s*:%s*"([^"]+)"')
                 local enc_code    = data:match('"payload"%s*:%s*"([^"]+)"')
+                local expire_from_payload = data:match('"expires_at"%s*:%s*"([^"]+)"') or data:match('"expiresAt"%s*:%s*"([^"]+)"')
+                if expire_from_payload then
+                    _G.DX_ExpiresAt = expire_from_payload
+                end
 
                 WriteDebugLog("[DXMOD-LOADER] status=" .. tostring(status))
 
