@@ -27,6 +27,18 @@
     .sk{background:linear-gradient(90deg,#1e293b 25%,#334155 50%,#1e293b 75%);background-size:200% 100%;animation:sh 1.5s ease-in-out infinite;border-radius:8px}
     .tr-h:hover{background:rgba(56,189,248,0.04);box-shadow:inset 3px 0 0 var(--nb)}
     .gh-h:hover{box-shadow:0 0 20px rgba(56,189,248,0.15)}
+    /* Button utilities */
+    .btn{border:none;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:4px;transition:all .2s}
+    .btn-icon{width:32px;height:32px;padding:0;border-radius:8px;font-size:15px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.06);color:#94a3b8}
+    .btn-icon:hover{background:rgba(255,255,255,0.08);color:#fff}
+    .btn-primary{height:36px;padding:0 16px;border-radius:10px;font-size:13px;font-weight:600;background:linear-gradient(135deg,#38bdf8,#a78bfa);color:#fff;border:none}
+    .btn-primary:hover{box-shadow:0 4px 20px rgba(56,189,248,0.25)}
+    .btn-ghost{height:36px;padding:0 14px;border-radius:10px;font-size:13px;font-weight:500;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);color:#94a3b8}
+    .btn-ghost:hover{background:rgba(255,255,255,0.08);color:#fff}
+    /* Table cell one-liner */
+    .cell{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    /* KPI card remove random badge */
+    .kpi-badge{display:none}
     @media(max-width:768px){.sb-m{position:fixed!important;z-index:50}}
   </style>
 </head>
@@ -80,7 +92,7 @@ const Login=({onLogin})=>{
           <input type="password" placeholder="Mật khẩu quản trị" value={p} onChange={e=>setP(e.target.value)} required autoFocus
             className="w-full h-11 pl-9 pr-4 rounded-xl bg-white/5 border border-white/10 text-sm text-gray-200 placeholder-gray-600 outline-none focus:border-sky-500/40 focus:bg-white/8 transition-all"/></div>
         {e&&<p className="text-rose-400 text-xs text-center">{e}</p>}
-        <button type="submit" className="w-full h-11 rounded-xl bg-gradient-to-r from-sky-500 to-violet-600 text-white font-semibold text-sm hover:shadow-lg hover:shadow-sky-500/20 transition-all">ĐĂNG NHẬP</button>
+        <button type="submit" className="btn" style={{width:'100%',height:44,borderRadius:12,fontSize:14,fontWeight:700,background:'linear-gradient(135deg,#38bdf8,#a78bfa)',color:'#fff',border:'none'}}>ĐĂNG NHẬP</button>
       </form>
     </div>
   </div>)
@@ -91,7 +103,7 @@ const Kpi=({icon,label,val})=>{
   const c=useCounter(val);const[ref,v]=useOnScreen();
   const d=val>=1e6?(val/1e6).toFixed(1)+'M':val>=1e3?(val/1e3).toFixed(0)+'K':val;
   return(<div ref={ref} className="glass rounded-2xl p-5 hover:scale-[1.02] transition-all duration-300 cursor-pointer gh-h">
-    <div className="flex items-start justify-between mb-3"><span className="text-2xl">{icon}</span><span className="text-xs font-semibold text-emerald-400">+{Math.floor(Math.random()*6+5)}%</span></div>
+    <div className="flex items-start justify-between mb-3"><span className="text-2xl">{icon}</span><span className="kpi-badge"/></div>
     <div className="text-2xl font-bold text-white tabular-nums tracking-tight mb-1">{d}</div>
     <div className="text-sm text-gray-400 font-medium">{label}</div>
   </div>)
@@ -118,7 +130,7 @@ const Sidebar=({collapsed,onToggle,mobileOpen,onClose,tab,setTab})=>{
         </div>)}
       </nav>
       <div className="p-3 border-t border-white/5 hidden md:block">
-        <button onClick={onToggle} className="w-full text-center py-2 rounded-xl text-gray-500 hover:text-white hover:bg-white/5 transition-all text-sm">{collapsed?'→':'← Thu gọn'}</button>
+        <button onClick={onToggle} className="btn" style={{width:'100%',height:36,borderRadius:10,fontSize:13,background:'rgba(255,255,255,0.04)',border:'1px solid rgba(255,255,255,0.06)',color:'#94a3b8'}}>{collapsed?'→':'← Thu gọn'}</button>
       </div>
     </aside>
   </>)
@@ -180,16 +192,16 @@ const App=()=>{
         {/* header */}
         <header className="glass rounded-2xl px-5 h-16 flex items-center justify-between gap-4">
           <div className="flex items-center gap-4 flex-1 min-w-0">
-            <button onClick={()=>setMobileOpen(p=>!p)} className="md:hidden w-10 h-10 flex items-center justify-center rounded-xl text-gray-400 hover:text-white hover:bg-white/8 transition-all text-xl">☰</button>
+            <button onClick={()=>setMobileOpen(p=>!p)} className="md:hidden btn btn-icon text-lg">☰</button>
             <div className="relative flex-1 max-w-md hidden sm:block">
               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm">🔍</span>
               <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Tìm UID, tên, ghi chú..." className="w-full h-10 pl-9 pr-4 rounded-xl bg-white/5 border border-white/10 text-sm text-gray-300 placeholder-gray-600 outline-none focus:border-sky-500/40 focus:bg-white/8 transition-all"/>
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            <button className="relative w-10 h-10 flex items-center justify-center rounded-xl text-gray-400 hover:text-white hover:bg-white/8 transition-all text-xl">🔔<span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-rose-400 a-pd" style={{boxShadow:'0 0 6px #fb7185'}}/></button>
-            <button onClick={()=>{localStorage.removeItem('dx_at');setLogged(false)}} className="w-10 h-10 flex items-center justify-center rounded-xl text-gray-400 hover:text-rose-400 hover:bg-white/8 transition-all text-lg" title="Đăng xuất">🚪</button>
-            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-sky-400 to-violet-600 flex items-center justify-center text-white text-xs font-bold ring-2 ring-white/10">A</div>
+          <div className="flex items-center gap-1.5">
+            <button className="btn btn-icon relative">🔔<span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-rose-400 a-pd" style={{boxShadow:'0 0 6px #fb7185'}}/></button>
+            <button onClick={()=>{localStorage.removeItem('dx_at');setLogged(false)}} className="btn btn-icon" title="Đăng xuất">🚪</button>
+            <div className="w-7 h-7 rounded-full bg-gradient-to-br from-sky-400 to-violet-600 flex items-center justify-center text-white text-[11px] font-bold ring-2 ring-white/10 ml-1">A</div>
           </div>
         </header>
 
@@ -202,13 +214,13 @@ const App=()=>{
         {/* ===== DEVICES TAB ===== */}
         {tab==='devices'&&<>
         {/* toolbar */}
-        <div className="glass rounded-2xl p-4 flex flex-wrap items-center gap-3">
-          <select value={filter} onChange={e=>setFilter(e.target.value)} className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm text-gray-300 outline-none focus:border-sky-500/40">
+        <div className="glass rounded-2xl p-3 flex flex-wrap items-center gap-2">
+          <select value={filter} onChange={e=>setFilter(e.target.value)} className="h-9 px-3 rounded-lg bg-white/5 border border-white/10 text-sm text-gray-300 outline-none focus:border-sky-500/40">
             <option value="all">Tất cả</option><option value="approved">Đã kích hoạt</option><option value="pending">Chờ duyệt</option><option value="expired">Hết hạn</option>
           </select>
-          <button onClick={()=>loadDevices()} className="px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-sm text-gray-300 hover:text-white hover:bg-white/10 transition-all">🔄 Tải lại</button>
-          <button onClick={()=>setAddOpen(true)} className="px-4 py-2 rounded-xl bg-gradient-to-r from-sky-500 to-violet-600 text-white text-sm font-semibold hover:shadow-lg hover:shadow-sky-500/20 transition-all">＋ Thêm</button>
-          <button onClick={()=>window.open('/api/admin/export/devices','_blank')} className="px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-sm text-gray-300 hover:text-white hover:bg-white/10 transition-all">📥 CSV</button>
+          <button onClick={()=>loadDevices()} className="btn btn-ghost">🔄 Tải lại</button>
+          <button onClick={()=>setAddOpen(true)} className="btn btn-primary">＋ Thêm thiết bị</button>
+          <button onClick={()=>window.open('/api/admin/export/devices','_blank')} className="btn btn-ghost">📥 CSV</button>
           <span className="text-xs text-gray-500 ml-auto tabular-nums">{devices.length} thiết bị</span>
         </div>
 
@@ -220,7 +232,7 @@ const App=()=>{
               <thead><tr className="text-gray-500 text-xs uppercase tracking-wider border-b border-white/5">
                 <th className="text-left px-4 py-3 font-medium">Tên</th><th className="text-left px-4 py-3 font-medium">UID</th>
                 <th className="text-left px-4 py-3 font-medium">Trạng thái</th><th className="text-left px-4 py-3 font-medium">Mạng</th>
-                <th className="text-left px-4 py-3 font-medium">Hạn</th><th className="text-left px-4 py-3 font-medium">Ghi chú</th><th className="text-right px-4 py-3 font-medium">Tác vụ</th>
+                <th className="text-left px-4 py-3 font-medium">Hạn</th><th className="text-left px-4 py-3 font-medium">Ghi chú</th><th className="text-center px-4 py-3 font-medium">Tác vụ</th>
               </tr></thead>
               <tbody>{filtered.map((d,i)=>{const exp=d.expires_at&&new Date(d.expires_at).getTime()<Date.now();return            <tr key={d.game_id} className="border-b border-white/5 last:border-0 tr-h">
                 <td className="px-4 py-3 text-white font-medium">{esc(d.label||'--')}</td>
@@ -230,9 +242,9 @@ const App=()=>{
                 <td className="px-4 py-3"><OnlineBadge state={onlineMap[d.game_id]||'offline'}/></td>
                 <td className={`px-4 py-3 text-sm ${exp?'text-rose-400':'text-gray-300'}`}>{d.expires_at?fmtDate(d.expires_at):'Vĩnh viễn'}</td>
                 <td className="px-4 py-3 text-gray-400 max-w-[150px] truncate">{esc(d.note)||'-'}</td>
-                <td className="px-4 py-3 text-right">
-                  <button onClick={()=>hEdit(d.game_id)} className="px-3 py-1.5 rounded-lg bg-sky-400/10 text-sky-400 text-xs font-semibold hover:bg-sky-400/20 transition-all mr-1">✏️</button>
-                  <button onClick={()=>hDelete(d.game_id)} className="px-3 py-1.5 rounded-lg bg-rose-400/10 text-rose-400 text-xs font-semibold hover:bg-rose-400/20 transition-all">🗑️</button>
+                <td className="px-4 py-3 text-right whitespace-nowrap">
+                  <button onClick={()=>hEdit(d.game_id)} className="btn btn-icon" title="Sửa">✏️</button>
+                  <button onClick={()=>hDelete(d.game_id)} className="btn btn-icon" title="Xoá">🗑️</button>
                 </td>
               </tr>})}</tbody>
             </table>
@@ -243,12 +255,12 @@ const App=()=>{
 
         {/* ===== SESSIONS TAB ===== */}
         {tab==='sessions'&&<>
-        <div className="glass rounded-2xl p-4 flex flex-wrap items-center gap-3">
-          <input value={sSearch} onChange={e=>sSetSearch(e.target.value)} placeholder="Tìm UID, tên..." className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm text-gray-300 placeholder-gray-600 outline-none focus:border-sky-500/40 min-w-[200px]"/>
-          <select value={sFilter} onChange={e=>sSetFilter(e.target.value)} className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm text-gray-300 outline-none focus:border-sky-500/40">
+        <div className="glass rounded-2xl p-3 flex flex-wrap items-center gap-2">
+          <input value={sSearch} onChange={e=>sSetSearch(e.target.value)} placeholder="Tìm UID, tên..." className="h-9 px-3 rounded-lg bg-white/5 border border-white/10 text-sm text-gray-300 placeholder-gray-600 outline-none focus:border-sky-500/40 min-w-[180px]"/>
+          <select value={sFilter} onChange={e=>sSetFilter(e.target.value)} className="h-9 px-3 rounded-lg bg-white/5 border border-white/10 text-sm text-gray-300 outline-none focus:border-sky-500/40">
             <option value="all">Tất cả</option><option value="in_match">Trong trận</option><option value="ended">Đã kết thúc</option>
           </select>
-          <button onClick={()=>loadSessions()} className="px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-sm text-gray-300 hover:text-white hover:bg-white/10 transition-all">🔄 Tải lại</button>
+          <button onClick={()=>loadSessions()} className="btn btn-ghost">🔄 Tải lại</button>
           <span className="text-xs text-gray-500 ml-auto tabular-nums">{sessions.length} sessions</span>
         </div>
         <div className="glass rounded-2xl overflow-hidden">
@@ -298,17 +310,17 @@ const App=()=>{
     {/* ── EDIT MODAL ── */}
     <div id="em" className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm hidden items-center justify-center p-4" onClick={e=>e.target.id==='em'?document.getElementById('em').style.display='none':null}>
       <div className="glass rounded-2xl w-full max-w-lg p-6">
-        <div className="flex items-center justify-between mb-5"><h3 className="text-white font-semibold text-lg">Cấu hình bản quyền</h3><button onClick={()=>document.getElementById('em').style.display='none'} className="w-8 h-8 flex items-center justify-center rounded-lg bg-white/5 text-gray-400 hover:text-white transition-all">✕</button></div>
+        <div className="flex items-center justify-between mb-5"><h3 className="text-white font-semibold text-lg">Cấu hình bản quyền</h3><button onClick={()=>document.getElementById('em').style.display='none'} className="btn btn-icon">✕</button></div>
         <form onSubmit={hSaveEdit} className="space-y-4">
           <input type="hidden" id="eu"/>
           <div><label className="text-xs text-gray-400 font-medium block mb-1.5">Tên hiển thị</label><input id="el" className="w-full h-10 px-3 rounded-xl bg-white/5 border border-white/10 text-sm text-gray-200 outline-none focus:border-sky-500/40"/></div>
-          <div><label className="text-xs text-gray-400 font-medium block mb-1.5">Trạng thái</label><select id="es" className="w-full h-10 px-3 rounded-xl bg-white/5 border border-white/10 text-sm text-gray-300 outline-none focus:border-sky-500/40"><option value="approved">✅ Duyệt</option><option value="pending">⏳ Từ chối / Chờ</option></select></div>
+          <div><label className="text-xs text-gray-400 font-medium block mb-1.5">Trạng thái</label><select id="es" className="w-full h-10 px-3 rounded-xl bg-white/5 border border-white/10 text-sm text-gray-300 outline-none focus:border-sky-500/40"><option value="approved">✅ Duyệt</option><option value="pending">⏳ Chờ duyệt</option></select></div>
           <div><label className="text-xs text-gray-400 font-medium block mb-1.5">Thời hạn</label><select id="exs" onChange={e=>document.getElementById('exc').style.display=e.target.value==='custom'?'block':'none'} className="w-full h-10 px-3 rounded-xl bg-white/5 border border-white/10 text-sm text-gray-300 outline-none focus:border-sky-500/40"><option value="lifetime">♾️ Trọn đời</option><option value="1day">1 Ngày</option><option value="7days">7 Ngày</option><option value="30days">30 Ngày</option><option value="custom">📅 Tuỳ chọn</option></select></div>
           <div id="exc" style={{display:'none'}}><input id="exd" type="datetime-local" className="w-full h-10 px-3 rounded-xl bg-white/5 border border-white/10 text-sm text-gray-200 outline-none focus:border-sky-500/40"/></div>
           <div><label className="text-xs text-gray-400 font-medium block mb-1.5">Ghi chú</label><textarea id="en" rows="2" className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-sm text-gray-200 outline-none focus:border-sky-500/40 resize-none"/></div>
-          <div className="flex justify-end gap-3 pt-2">
-            <button type="button" onClick={()=>document.getElementById('em').style.display='none'} className="px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-sm text-gray-300 hover:text-white transition-all">Huỷ</button>
-            <button type="submit" className="px-5 py-2 rounded-xl bg-gradient-to-r from-sky-500 to-violet-600 text-white text-sm font-semibold hover:shadow-lg hover:shadow-sky-500/20 transition-all">Lưu</button>
+          <div className="flex justify-end gap-2 pt-2">
+            <button type="button" onClick={()=>document.getElementById('em').style.display='none'} className="btn btn-ghost">Huỷ</button>
+            <button type="submit" className="btn btn-primary">Lưu thay đổi</button>
           </div>
         </form>
       </div>
@@ -317,16 +329,16 @@ const App=()=>{
     {/* ── ADD MODAL ── */}
     <div id="am" className={`fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm ${addOpen?'flex':'hidden'} items-center justify-center p-4`} onClick={e=>e.target.id==='am'?setAddOpen(false):null}>
       <div className="glass rounded-2xl w-full max-w-lg p-6">
-        <div className="flex items-center justify-between mb-5"><h3 className="text-white font-semibold text-lg">Thêm thiết bị</h3><button onClick={()=>setAddOpen(false)} className="w-8 h-8 flex items-center justify-center rounded-lg bg-white/5 text-gray-400 hover:text-white transition-all">✕</button></div>
+        <div className="flex items-center justify-between mb-5"><h3 className="text-white font-semibold text-lg">Thêm thiết bị</h3><button onClick={()=>setAddOpen(false)} className="btn btn-icon">✕</button></div>
         <form onSubmit={hAdd} className="space-y-4">
           <div><label className="text-xs text-gray-400 font-medium block mb-1.5">UID Thiết bị <span className="text-rose-400">*</span></label><input value={addUid} onChange={e=>setAddUid(e.target.value)} required className="w-full h-10 px-3 rounded-xl bg-white/5 border border-white/10 text-sm text-gray-200 outline-none focus:border-sky-500/40"/></div>
           <div><label className="text-xs text-gray-400 font-medium block mb-1.5">Tên hiển thị</label><input value={addLabel} onChange={e=>setAddLabel(e.target.value)} className="w-full h-10 px-3 rounded-xl bg-white/5 border border-white/10 text-sm text-gray-200 outline-none focus:border-sky-500/40"/></div>
           <div><label className="text-xs text-gray-400 font-medium block mb-1.5">Thời hạn</label><select value={addExpiry} onChange={e=>setAddExpiry(e.target.value)} className="w-full h-10 px-3 rounded-xl bg-white/5 border border-white/10 text-sm text-gray-300 outline-none focus:border-sky-500/40"><option value="lifetime">♾️ Trọn đời</option><option value="1day">1 Ngày</option><option value="7days">7 Ngày</option><option value="30days">30 Ngày</option><option value="custom">📅 Tuỳ chọn</option></select></div>
           {addExpiry==='custom'&&<div><input id="adx" type="datetime-local" className="w-full h-10 px-3 rounded-xl bg-white/5 border border-white/10 text-sm text-gray-200 outline-none focus:border-sky-500/40"/></div>}
           <div><label className="text-xs text-gray-400 font-medium block mb-1.5">Ghi chú</label><textarea value={addNote} onChange={e=>setAddNote(e.target.value)} rows="2" className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-sm text-gray-200 outline-none focus:border-sky-500/40 resize-none"/></div>
-          <div className="flex justify-end gap-3 pt-2">
-            <button type="button" onClick={()=>setAddOpen(false)} className="px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-sm text-gray-300 hover:text-white transition-all">Huỷ</button>
-            <button type="submit" className="px-5 py-2 rounded-xl bg-gradient-to-r from-sky-500 to-violet-600 text-white text-sm font-semibold hover:shadow-lg hover:shadow-sky-500/20 transition-all">Thêm</button>
+          <div className="flex justify-end gap-2 pt-2">
+            <button type="button" onClick={()=>setAddOpen(false)} className="btn btn-ghost">Huỷ</button>
+            <button type="submit" className="btn btn-primary">Thêm thiết bị</button>
           </div>
         </form>
       </div>
@@ -337,9 +349,9 @@ const App=()=>{
       <div className="glass rounded-2xl w-full max-w-sm p-6">
         <h3 id="ct" className="text-white font-semibold text-lg mb-2">Xác nhận</h3>
         <p id="cb" className="text-gray-400 text-sm mb-5">Nội dung</p>
-        <div className="flex justify-end gap-3">
-          <button id="cc" className="close-c px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-sm text-gray-300 hover:text-white transition-all">Huỷ</button>
-          <button id="co" className="px-5 py-2 rounded-xl bg-gradient-to-r from-rose-500 to-pink-600 text-white text-sm font-semibold hover:shadow-lg hover:shadow-rose-500/20 transition-all">Xác nhận</button>
+        <div className="flex justify-end gap-2">
+          <button id="cc" className="close-c btn btn-ghost">Huỷ</button>
+          <button id="co" className="btn" style={{height:36,padding:'0 16px',borderRadius:10,fontSize:13,fontWeight:600,background:'linear-gradient(135deg,#fb7185,#e11d48)',color:'#fff',border:'none'}}>Xác nhận</button>
         </div>
       </div>
     </div>
