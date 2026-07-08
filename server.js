@@ -103,7 +103,7 @@ const server = http.createServer((req, res) => {
             nodeVersion: process.version
         }));
     } else if (req.url === '/api/load-script' && req.method === 'POST') {
-        const filePath = path.join(__dirname, 'protected_script.lua');
+        const filePath = path.join(__dirname, 'protected_payload.lua');
         fs.readFile(filePath, 'utf8', (err, data) => {
             if (err) {
                 res.writeHead(500, { 'Content-Type': 'application/json' });
@@ -113,6 +113,59 @@ const server = http.createServer((req, res) => {
             res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8' });
             res.end(data);
         });
+    } else if (req.url === '/api/load-payload' && req.method === 'GET') {
+        const filePath = path.join(__dirname, 'protected_payload.lua');
+        fs.readFile(filePath, 'utf8', (err, data) => {
+            if (err) {
+                res.writeHead(500, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ error: "Failed to read payload" }));
+                return;
+            }
+            res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8' });
+            res.end(data);
+        });
+    } else if (req.url === '/api/payload/status' && req.method === 'GET') {
+        const filePath = path.join(__dirname, 'protected_payload.lua');
+        fs.access(filePath, fs.constants.F_OK, (err) => {
+            if (err) {
+                res.writeHead(200, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({
+                    available: false,
+                    file: 'protected_payload.lua',
+                    error: 'File not found'
+                }));
+                return;
+            }
+            fs.stat(filePath, (statErr, stats) => {
+                if (statErr) {
+                    res.writeHead(200, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify({ available: false, file: 'protected_payload.lua', error: 'Stat failed' }));
+                    return;
+                }
+                res.writeHead(200, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({
+                    available: true,
+                    file: 'protected_payload.lua',
+                    size: stats.size,
+                    modified: stats.mtime
+                }));
+            });
+        });
+    } else if (req.url === '/api/plannt/features' && req.method === 'GET') {
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({
+            features: [
+                "StrongestSquadFeature",
+                "FlyingThunderGodFeature",
+                "NineTailsFormFeature",
+                "NinjutsuManager",
+                "WaterMoveOnSurfaceFeature",
+                "NTSpaceCheckInFeature",
+                "PVESpawnFeature"
+            ],
+            class: "PlanNTPlayerCharacter",
+            parent: "BRPlayerCharacterBase"
+        }));
     } else {
         res.writeHead(404, { 'Content-Type': 'text/plain' });
         res.end('Not Found');
