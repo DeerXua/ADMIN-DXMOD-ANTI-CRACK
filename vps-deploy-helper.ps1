@@ -10,18 +10,21 @@
 
 $DEPLOY_CMD = @"
 # ---- CORE-PAYLOAD-SERVER One-Line Deploy ----
-curl -fsSL https://raw.githubusercontent.com/DeerXua/ADMIN-DXMOD-ANTI-CRACK/main/deploy.sh -o /tmp/deploy_payload.sh && chmod +x /tmp/deploy_payload.sh && bash /tmp/deploy_payload.sh
+# ⚠️ NHỚ THAY 'matkhau_cua_ban' bằng mật khẩu admin thật!
+ADMIN_PASSWORD='matkhau_cua_ban' bash -c "$(curl -fsSL https://raw.githubusercontent.com/DeerXua/ADMIN-DXMOD-ANTI-CRACK/main/deploy.sh)"
 "@
 
 Write-Host "==================================================" -ForegroundColor Cyan
 Write-Host "  CORE-PAYLOAD-SERVER VPS Deploy Instructions" -ForegroundColor Cyan
 Write-Host "==================================================" -ForegroundColor Cyan
 Write-Host ""
+Write-Host "⚠️  YÊU CẦU: Phải set ADMIN_PASSWORD trước khi chạy!" -ForegroundColor Red
+Write-Host ""
 Write-Host "Bước 1: SSH vào VPS" -ForegroundColor Yellow
 Write-Host "  ssh root@160.250.246.119" -ForegroundColor White
 Write-Host ""
-Write-Host "Bước 2: Sau khi vào VPS, chạy lệnh này:" -ForegroundColor Yellow
-Write-Host $DEPLOY_CMD -ForegroundColor Green
+Write-Host "Bước 2: Sau khi vào VPS, chạy lệnh này (sửa mật khẩu trước):" -ForegroundColor Yellow
+Write-Host "  ADMIN_PASSWORD='matkhau_cua_ban' bash -c '$(curl -fsSL https://raw.githubusercontent.com/DeerXua/ADMIN-DXMOD-ANTI-CRACK/main/deploy.sh)'" -ForegroundColor Green
 Write-Host ""
 Write-Host "Lệnh này sẽ tự động:" -ForegroundColor Yellow
 Write-Host "  ✅ Cài Node.js + PM2 (nếu chưa có)"
@@ -37,4 +40,4 @@ Write-Host ""
 # Tự động copy lệnh vào clipboard
 $DEPLOY_CMD | Set-Clipboard
 Write-Host "✅ Lệnh deploy đã được copy vào clipboard!" -ForegroundColor Green
-Write-Host "   Chỉ cần SSH vào VPS và Ctrl+V để paste." -ForegroundColor Green
+Write-Host "   Nhớ sửa 'matkhau_cua_ban' thành mật khẩu thật trước khi paste!" -ForegroundColor Yellow

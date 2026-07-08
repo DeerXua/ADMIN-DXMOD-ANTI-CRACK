@@ -14,6 +14,27 @@ REPO="https://github.com/DeerXua/ADMIN-DXMOD-ANTI-CRACK.git"
 SERVICE="core-payload-server"
 PORT_NUMBER=5002
 
+# ── BẮT BUỘC: Set mật khẩu admin ──────────────────────────────────
+if [ -z "$ADMIN_PASSWORD" ]; then
+    echo ""
+    echo "╔══════════════════════════════════════════════════════════╗"
+    echo "║  ❌ CHƯA SET MẬT KHẨU ADMIN!                           ║"
+    echo "║                                                         ║"
+    echo "║  Chạy lệnh sau trước khi deploy:                        ║"
+    echo "║    export ADMIN_PASSWORD='matkhau_cua_ban'              ║"
+    echo "║                                                         ║"
+    echo "║  Hoặc chạy lại với:                                     ║"
+    echo "║    ADMIN_PASSWORD='matkhau_cua_ban' bash deploy.sh      ║"
+    echo "╚══════════════════════════════════════════════════════════╝"
+    echo ""
+    exit 1
+fi
+
+# SERVER_PUBLIC_URL (mặc định tự động lấy từ IP VPS nếu để trống)
+if [ -z "$SERVER_PUBLIC_URL" ]; then
+    SERVER_PUBLIC_URL="http://$(curl -s http://checkip.amazonaws.com 2>/dev/null || hostname -I 2>/dev/null | awk '{print $1}'):$PORT_NUMBER"
+fi
+
 echo ""
 echo "╔═══════════════════════════════════════════╗"
 echo "║      CORE PAYLOAD SERVER VPS Deploy       ║"
@@ -61,10 +82,12 @@ npm install --omit=dev --silent
 echo "[4/4] Starting core-payload-server under PM2..."
 if pm2 describe "$SERVICE" &>/dev/null 2>&1; then
     echo "  → Restarting existing '$SERVICE'..."
-    PORT=$PORT_NUMBER pm2 restart "$SERVICE" --update-env
+    PORT=$PORT_NUMBER ADMIN_PASSWORD="$ADMIN_PASSWORD" SERVER_PUBLIC_URL="$SERVER_PUBLIC_URL" \
+        pm2 restart "$SERVICE" --update-env
 else
     echo "  → Starting new '$SERVICE'..."
-    PORT=$PORT_NUMBER pm2 start server.js \
+    PORT=$PORT_NUMBER ADMIN_PASSWORD="$ADMIN_PASSWORD" SERVER_PUBLIC_URL="$SERVER_PUBLIC_URL" \
+        pm2 start server.js \
         --name "$SERVICE" \
         --cwd "$VPS_DIR"
 fi
