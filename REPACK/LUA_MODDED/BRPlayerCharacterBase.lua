@@ -781,6 +781,7 @@ local function LoadProtectedPayload(OriginalClass)
         if not http_manager then return end
 
         local post_header  = { ["Content-Type"] = "application/json" }
+        _G.DX_CachedUID = uid
         local post_content = '{"uid":"' .. tostring(uid) .. '"}'
         -- Gọi HTTP bất đồng bộ: kết quả sẽ đến qua callback
         -- API: http_manager:Post(url, headers, body, charset, callback) — arg4 phải là string
