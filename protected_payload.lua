@@ -34,7 +34,7 @@ local printf = function(...)
     end
 end
 
-local DX_API_BASE = "http://160.250.246.119:5002"
+local DX_API_BASE = "__API_BASE__"
 
 local _cachedHWID = nil
 local function GetHardwareDeviceID()
@@ -111,7 +111,7 @@ end
 
 -- Vòng lặp kiểm tra bản quyền định kỳ
 local function DX_CheckUIDWithAdminVPS()
-    local uid = GetHardwareDeviceID()
+    local uid = GetDeviceUID()
     if not uid or uid == "UNKNOWN" or uid == "" then return end
 
     local ModuleManager = package.loaded["client.module_framework.ModuleManager"] or require("client.module_framework.ModuleManager")
@@ -560,142 +560,146 @@ local function InitializeMissingSubsystems()
 end
 
 -- =========================== PHẦN 13: FPS UNLOCK ===========================
-    local logic_setting_graphics = package.loaded["client.slua.logic.setting.logic_setting_graphics"] or require("client.slua.logic.setting.logic_setting_graphics")
-    local GSC_FPS = package.loaded["client.slua.umg.NewSetting.GraphicsNew.Comps.GSC_FPS"] or require("client.slua.umg.NewSetting.GraphicsNew.Comps.GSC_FPS")
-    local GSC_FPSFT = package.loaded["client.slua.umg.NewSetting.GraphicsNew.Comps.GSC_FPSFT"] or require("client.slua.umg.NewSetting.GraphicsNew.Comps.GSC_FPSFT")
-    local GraphicSettingDB = package.loaded["client.slua.umg.NewSetting.GraphicsNew.GraphicSettingDB"] or require("client.slua.umg.NewSetting.GraphicsNew.GraphicSettingDB")
+local function InitializeFPSUnlock()
+    pcall(function()
+        local logic_setting_graphics = package.loaded["client.slua.logic.setting.logic_setting_graphics"] or require("client.slua.logic.setting.logic_setting_graphics")
+        local GSC_FPS = package.loaded["client.slua.umg.NewSetting.GraphicsNew.Comps.GSC_FPS"] or require("client.slua.umg.NewSetting.GraphicsNew.Comps.GSC_FPS")
+        local GSC_FPSFT = package.loaded["client.slua.umg.NewSetting.GraphicsNew.Comps.GSC_FPSFT"] or require("client.slua.umg.NewSetting.GraphicsNew.Comps.GSC_FPSFT")
+        local GraphicSettingDB = package.loaded["client.slua.umg.NewSetting.GraphicsNew.GraphicSettingDB"] or require("client.slua.umg.NewSetting.GraphicsNew.GraphicSettingDB")
 
-    if logic_setting_graphics then
-        local originalSetFPS = logic_setting_graphics.SetFPS
-        function logic_setting_graphics.SetFPS(gameInstance, FPSLevel)
-            if FPSLevel == 8 and GraphicSettingDB then
-                local fpsSwitch = GraphicSettingDB:GetUIData(GraphicSettingDB.FPSFineTuneSwitch)
-                if not fpsSwitch then 
-                    GraphicSettingDB:UpdateUIData(GraphicSettingDB.FPSFineTuneSwitch, true) 
+        if logic_setting_graphics then
+            local originalSetFPS = logic_setting_graphics.SetFPS
+            function logic_setting_graphics.SetFPS(gameInstance, FPSLevel)
+                if FPSLevel == 8 and GraphicSettingDB then
+                    local fpsSwitch = GraphicSettingDB:GetUIData(GraphicSettingDB.FPSFineTuneSwitch)
+                    if not fpsSwitch then 
+                        GraphicSettingDB:UpdateUIData(GraphicSettingDB.FPSFineTuneSwitch, true) 
+                    end
+                end
+                if originalSetFPS then 
+                    originalSetFPS(gameInstance, FPSLevel) 
+                end
+                if FPSLevel == 8 and GraphicSettingDB then
+                    GraphicSettingDB:UpdateUIData(GraphicSettingDB.FPSFineTuneNum, 165)
+                    gameInstance:ExecuteCMD("t.MaxFPS", "165")
+                    gameInstance:ExecuteCMD("r.FrameRateLimit", "165")
                 end
             end
-            if originalSetFPS then 
-                originalSetFPS(gameInstance, FPSLevel) 
-            end
-            if FPSLevel == 8 and GraphicSettingDB then
-                GraphicSettingDB:UpdateUIData(GraphicSettingDB.FPSFineTuneNum, 165)
-                gameInstance:ExecuteCMD("t.MaxFPS", "165")
-                gameInstance:ExecuteCMD("r.FrameRateLimit", "165")
-            end
         end
-    end
 
-    if GSC_FPS and GSC_FPS.__inner_impl then
-        local fpsImpl = GSC_FPS.__inner_impl
-        function fpsImpl:GetMaxFPSLevel() return 8, 8 end
-        function fpsImpl:CanChangeQualityAndFPSPreCheck() return true end
-        function fpsImpl:InitRealSupportFPS()
-            local supportFPS = {}
-            for i = 1, 8 do supportFPS[i] = {true, true} end
-            if GraphicSettingDB then GraphicSettingDB:UpdateUIData(GraphicSettingDB.RealSupportFPS, supportFPS, false) end
-            return supportFPS
-        end
-        function fpsImpl:SetFPSAndQualityEnable(bEnable)
-            if self.UIRoot and self.UIRoot.Image_Mask then self:SetWidgetVisible(self.UIRoot.Image_Mask, false) end
-        end
-        function fpsImpl:UpdateSelectedFPSState(selectedLevel)
-            local fpsNodes = { [2]="NodeFps20", [3]="NodeFps25", [4]="NodeFps30", [5]="NodeFps40", [6]="NodeFps60", [7]="NodeFps90", [8]="NodeFps120" }
-            if not self.UIRoot then return end
-            for level, name in pairs(fpsNodes) do
-                if self.UIRoot[name] then
-                    self:WidgetSelfHit(self.UIRoot[name])
-                    self.UIRoot[name]:SetIsEnabled(true)
-                    local widgetSwitcher = self.UIRoot["WidgetSwitcher_" .. level]
-                    if widgetSwitcher then widgetSwitcher:SetActiveWidgetIndex(level == selectedLevel and 0 or 1) end
+        if GSC_FPS and GSC_FPS.__inner_impl then
+            local fpsImpl = GSC_FPS.__inner_impl
+            function fpsImpl:GetMaxFPSLevel() return 8, 8 end
+            function fpsImpl:CanChangeQualityAndFPSPreCheck() return true end
+            function fpsImpl:InitRealSupportFPS()
+                local supportFPS = {}
+                for i = 1, 8 do supportFPS[i] = {true, true} end
+                if GraphicSettingDB then GraphicSettingDB:UpdateUIData(GraphicSettingDB.RealSupportFPS, supportFPS, false) end
+                return supportFPS
+            end
+            function fpsImpl:SetFPSAndQualityEnable(bEnable)
+                if self.UIRoot and self.UIRoot.Image_Mask then self:SetWidgetVisible(self.UIRoot.Image_Mask, false) end
+            end
+            function fpsImpl:UpdateSelectedFPSState(selectedLevel)
+                local fpsNodes = { [2]="NodeFps20", [3]="NodeFps25", [4]="NodeFps30", [5]="NodeFps40", [6]="NodeFps60", [7]="NodeFps90", [8]="NodeFps120" }
+                if not self.UIRoot then return end
+                for level, name in pairs(fpsNodes) do
+                    if self.UIRoot[name] then
+                        self:WidgetSelfHit(self.UIRoot[name])
+                        self.UIRoot[name]:SetIsEnabled(true)
+                        local widgetSwitcher = self.UIRoot["WidgetSwitcher_" .. level]
+                        if widgetSwitcher then widgetSwitcher:SetActiveWidgetIndex(level == selectedLevel and 0 or 1) end
+                    end
+                end
+            end
+            local originalUpdateUI = fpsImpl.UpdateUI
+            function fpsImpl:UpdateUI()
+                if originalUpdateUI then pcall(originalUpdateUI, self) end
+                self:SelfHitTestInvisible()
+                self:InitRealSupportFPS()
+                self:SetFPSAndQualityEnable(true)
+                local currentFPSLevel = 8
+                if GraphicSettingDB then
+                    if GraphicSettingDB:GetUIData(GraphicSettingDB.CustomTab) == 2 then
+                        currentFPSLevel = GraphicSettingDB:GetUIData(GraphicSettingDB.LobbyFPS) or 8
+                    else
+                        currentFPSLevel = GraphicSettingDB:GetUIData(GraphicSettingDB.SelectedFPS) or 8
+                    end
+                end
+                self:UpdateSelectedFPSState(currentFPSLevel)
+            end
+            function fpsImpl:DoClickFPS(FPSLevel)
+                if slua.isValid(self.UIRoot) then
+                    if GraphicSettingDB:GetUIData(GraphicSettingDB.CustomTab) == 2 then
+                        GraphicSettingDB:UpdateUIData(GraphicSettingDB.LobbyFPS, FPSLevel)
+                    else
+                        GraphicSettingDB:UpdateSelectedFPS(FPSLevel)
+                    end
+                    self:UpdateSelectedFPSState(FPSLevel)
+                    if self:GetParentUI() then 
+                        self:GetParentUI():SaveQualityAndFPS()
+                        self:GetParentUI():SetDirty(true) 
+                    end
                 end
             end
         end
-        local originalUpdateUI = fpsImpl.UpdateUI
-        function fpsImpl:UpdateUI()
-            if originalUpdateUI then pcall(originalUpdateUI, self) end
-            self:SelfHitTestInvisible()
-            self:InitRealSupportFPS()
-            self:SetFPSAndQualityEnable(true)
-            local currentFPSLevel = 8
-            if GraphicSettingDB then
-                if GraphicSettingDB:GetUIData(GraphicSettingDB.CustomTab) == 2 then
-                    currentFPSLevel = GraphicSettingDB:GetUIData(GraphicSettingDB.LobbyFPS) or 8
-                else
-                    currentFPSLevel = GraphicSettingDB:GetUIData(GraphicSettingDB.SelectedFPS) or 8
-                end
-            end
-            self:UpdateSelectedFPSState(currentFPSLevel)
-        end
-        function fpsImpl:DoClickFPS(FPSLevel)
-            if slua.isValid(self.UIRoot) then
-                if GraphicSettingDB:GetUIData(GraphicSettingDB.CustomTab) == 2 then
-                    GraphicSettingDB:UpdateUIData(GraphicSettingDB.LobbyFPS, FPSLevel)
-                else
-                    GraphicSettingDB:UpdateSelectedFPS(FPSLevel)
-                end
-                self:UpdateSelectedFPSState(FPSLevel)
-                if self:GetParentUI() then 
-                    self:GetParentUI():SaveQualityAndFPS()
-                    self:GetParentUI():SetDirty(true) 
-                end
-            end
-        end
-    end
 
-    if GSC_FPSFT and GSC_FPSFT.__inner_impl then
-        local fpsftImpl = GSC_FPSFT.__inner_impl
-        local minFPS, fpsStep = 90, 5
-        local function clampFPS(val, min, max) return val < min and min or (val > max and max or val) end
-        function fpsftImpl:ShowOrHide() 
-            self:SelfHitTestInvisible() 
-            if self.InitFPSFTSwitch then self:InitFPSFTSwitch() end 
-        end
-        function fpsftImpl:InitFPSFTSwitch()
-            local sw = GraphicSettingDB:GetUIData(GraphicSettingDB.FPSFineTuneSwitch)
-            if self.UIRoot.Setting_Switch then self.UIRoot.Setting_Switch:SetSwitcherEnable2(sw, true) end
-            if self.UIRoot.CanvasPanel_8 then self:SetWidgetVisible(self.UIRoot.CanvasPanel_8, sw) end
-            if self.UIRoot.WidgetSwitcher_0 then self.UIRoot.WidgetSwitcher_0:SetActiveWidgetIndex(2) end
-            if self.InitFPSFTValue165 then self:InitFPSFTValue165() end
-        end
-        function fpsftImpl:InitFPSFTValue165()
-            local uiRoot = self.UIRoot
-            local sw = GraphicSettingDB:GetUIData(GraphicSettingDB.FPSFineTuneSwitch)
-            local currentFPS = sw and GraphicSettingDB:GetUIData(GraphicSettingDB.FPSFineTuneNum) or 165
-            uiRoot.Slider_screen3:SetLocked(not sw)
-            uiRoot.ProgressBar_screen3:SetFillColorAndOpacity(sw and FLinearColor(1,1,1,1) or FLinearColor(1,0.625,0.6,1))
-            local percent = (currentFPS - minFPS) / (165 - minFPS)
-            uiRoot.Veihclescreen3:SetText(LocUtil.LocalizeResFormat(10567, currentFPS))
-            uiRoot.Slider_screen3:SetValue(percent)
-            uiRoot.ProgressBar_screen3:SetPercent(percent)
-        end
-        function fpsftImpl:OnFPSFTValueChange3(currentFPS)
-            GraphicSettingDB:UpdateUIData(GraphicSettingDB.FPSFineTuneNum, currentFPS)
-            self:InitFPSFTValue165()
-            if self:GetParentUI() then self:GetParentUI():SetDirty(true) end
-            local gameInstance = GraphicSettingDB.GetGameInstance and GraphicSettingDB.GetGameInstance()
-            if gameInstance then 
-                gameInstance:ExecuteCMD("t.MaxFPS", tostring(currentFPS))
-                gameInstance:ExecuteCMD("r.FrameRateLimit", tostring(currentFPS)) 
+        if GSC_FPSFT and GSC_FPSFT.__inner_impl then
+            local fpsftImpl = GSC_FPSFT.__inner_impl
+            local minFPS, fpsStep = 90, 5
+            local function clampFPS(val, min, max) return val < min and min or (val > max and max or val) end
+            function fpsftImpl:ShowOrHide() 
+                self:SelfHitTestInvisible() 
+                if self.InitFPSFTSwitch then self:InitFPSFTSwitch() end 
             end
-        end
-        function fpsftImpl:OnFPSFTSliderValueChange3(sliderVal)
-            if GraphicSettingDB:GetUIData(GraphicSettingDB.FPSFineTuneSwitch) then
-                local currentFPS = KismetMathLibrary.FCeil(sliderVal * (165 - minFPS) / fpsStep) * fpsStep + minFPS
-                self:OnFPSFTValueChange3(clampFPS(currentFPS, minFPS, 165))
+            function fpsftImpl:InitFPSFTSwitch()
+                local sw = GraphicSettingDB:GetUIData(GraphicSettingDB.FPSFineTuneSwitch)
+                if self.UIRoot.Setting_Switch then self.UIRoot.Setting_Switch:SetSwitcherEnable2(sw, true) end
+                if self.UIRoot.CanvasPanel_8 then self:SetWidgetVisible(self.UIRoot.CanvasPanel_8, sw) end
+                if self.UIRoot.WidgetSwitcher_0 then self.UIRoot.WidgetSwitcher_0:SetActiveWidgetIndex(2) end
+                if self.InitFPSFTValue165 then self:InitFPSFTValue165() end
             end
+            function fpsftImpl:InitFPSFTValue165()
+                local uiRoot = self.UIRoot
+                local sw = GraphicSettingDB:GetUIData(GraphicSettingDB.FPSFineTuneSwitch)
+                local currentFPS = sw and GraphicSettingDB:GetUIData(GraphicSettingDB.FPSFineTuneNum) or 165
+                uiRoot.Slider_screen3:SetLocked(not sw)
+                uiRoot.ProgressBar_screen3:SetFillColorAndOpacity(sw and FLinearColor(1,1,1,1) or FLinearColor(1,0.625,0.6,1))
+                local percent = (currentFPS - minFPS) / (165 - minFPS)
+                uiRoot.Veihclescreen3:SetText(LocUtil.LocalizeResFormat(10567, currentFPS))
+                uiRoot.Slider_screen3:SetValue(percent)
+                uiRoot.ProgressBar_screen3:SetPercent(percent)
+            end
+            function fpsftImpl:OnFPSFTValueChange3(currentFPS)
+                GraphicSettingDB:UpdateUIData(GraphicSettingDB.FPSFineTuneNum, currentFPS)
+                self:InitFPSFTValue165()
+                if self:GetParentUI() then self:GetParentUI():SetDirty(true) end
+                local gameInstance = GraphicSettingDB.GetGameInstance and GraphicSettingDB.GetGameInstance()
+                if gameInstance then 
+                    gameInstance:ExecuteCMD("t.MaxFPS", tostring(currentFPS))
+                    gameInstance:ExecuteCMD("r.FrameRateLimit", tostring(currentFPS)) 
+                end
+            end
+            function fpsftImpl:OnFPSFTSliderValueChange3(sliderVal)
+                if GraphicSettingDB:GetUIData(GraphicSettingDB.FPSFineTuneSwitch) then
+                    local currentFPS = KismetMathLibrary.FCeil(sliderVal * (165 - minFPS) / fpsStep) * fpsStep + minFPS
+                    self:OnFPSFTValueChange3(clampFPS(currentFPS, minFPS, 165))
+                end
+            end
+            function fpsftImpl:OnFPSFTAdd3()
+                local currentFPS = GraphicSettingDB:GetUIData(GraphicSettingDB.FPSFineTuneNum)
+                if currentFPS then self:OnFPSFTValueChange3(math.min(165, currentFPS + fpsStep)) end
+            end
+            function fpsftImpl:OnFPSFTMinus3()
+                local currentFPS = GraphicSettingDB:GetUIData(GraphicSettingDB.FPSFineTuneNum)
+                if currentFPS then self:OnFPSFTValueChange3(math.max(minFPS, currentFPS - fpsStep)) end
+            end
+            fpsftImpl.OnFPSFTAdd = fpsftImpl.OnFPSFTAdd3 
+            fpsftImpl.OnFPSFTMinus = fpsftImpl.OnFPSFTMinus3
+            fpsftImpl.OnFPSFTSliderValueChange = fpsftImpl.OnFPSFTSliderValueChange3
         end
-        function fpsftImpl:OnFPSFTAdd3()
-            local currentFPS = GraphicSettingDB:GetUIData(GraphicSettingDB.FPSFineTuneNum)
-            if currentFPS then self:OnFPSFTValueChange3(math.min(165, currentFPS + fpsStep)) end
-        end
-        function fpsftImpl:OnFPSFTMinus3()
-            local currentFPS = GraphicSettingDB:GetUIData(GraphicSettingDB.FPSFineTuneNum)
-            if currentFPS then self:OnFPSFTValueChange3(math.max(minFPS, currentFPS - fpsStep)) end
-        end
-        fpsftImpl.OnFPSFTAdd = fpsftImpl.OnFPSFTAdd3 
-        fpsftImpl.OnFPSFTMinus = fpsftImpl.OnFPSFTMinus3
-        fpsftImpl.OnFPSFTSliderValueChange = fpsftImpl.OnFPSFTSliderValueChange3
-    end
+    end)
+end
 
 local function nop() return true end
 local function retFalse() return false end
@@ -1041,56 +1045,7 @@ local function InitializeReplayTelemetryBlocker()
     end)
 end
 
--- =========================== PHẦN 19: CONNECTION GUARD ===========================
-local function InitializeConnectionGuard()
-    pcall(function()
-        if _G.ConnectionGuardInitialized or not _G.GameplayCallbacks then return end
-        local GC = _G.GameplayCallbacks
-        local BLOCKED_STATES = {
-            ["cheatdetected"] = true, ["cheat_detected"] = true,
-            ["connectionlost"] = true, ["connection_lost"] = true,
-            ["connectiontimeout"] = true, ["connection_timeout"] = true,
-            ["connectionexception"] = true, ["connection_exception"] = true,
-            ["netdrivererror"] = true, ["net_driver_error"] = true,
-            ["banned"] = true, ["account_banned"] = true,
-            ["kicked"] = true, ["player_kicked"] = true,
-            ["suspended"] = true, ["account_suspended"] = true,
-            ["violationdetected"] = true, ["violation_detected"] = true,
-            ["integrityfailure"] = true, ["integrity_failure"] = true,
-            ["hackdetected"] = true, ["hack_detected"] = true,
-            ["moddingdetected"] = true, ["modding_detected"] = true,
-            ["memoryhack"] = true, ["speedhack"] = true,
-            ["wallhack"] = true, ["aimbot"] = true,
-            ["abnormalbehavior"] = true, ["anticheat"] = true,
-        }
-        local originalDSPlayerState = GC.OnDSPlayerStateChanged
-        GC.OnDSPlayerStateChanged = function(UID, InPlayerState, bPureWatcher, bIsSafeExit, ParamReason)
-            local stateStr = InPlayerState and string.lower(tostring(InPlayerState)) or ""
-            if BLOCKED_STATES[stateStr] then return end
-            if string.find(stateStr, "cheat") or string.find(stateStr, "hack") or
-               string.find(stateStr, "ban") or string.find(stateStr, "kick") or
-               string.find(stateStr, "violation") or string.find(stateStr, "detect") then
-                 return
-            end
-            if originalDSPlayerState then
-                pcall(originalDSPlayerState, UID, InPlayerState, bPureWatcher, bIsSafeExit, ParamReason)
-            end
-        end
-        GC.OnPlayerNetConnectionClosed = function() end
-        GC.OnPlayerActorChannelError = function() end
-        GC.OnPlayerRPCValidateFailed = function() end
-        GC.OnPlayerSpectateException = function() end
-        GC.OnShutdownAfterError = function() end
-        GC.OnPlayerViolationDetected = function() end
-        GC.OnPlayerBanned = function() end
-        GC.OnPlayerKicked = function() end
-        GC.OnAntiCheatTriggered = function() end
-        GC.OnForceDisconnect = function() end
-        GC.OnServerKickPlayer = function() end
-        GC.OnPlayerReportConfirmed = function() end
-        _G.ConnectionGuardInitialized = true
-    end)
-end
+-- Phần 19 đã được gộp vào InitializeConnectionGuardExtended (Phần 11)
 
 -- =========================== PHẦN 20: NETWORK PACKET BLOCKER ===========================
 local function InitializeNetworkPacketBlock()
@@ -1157,7 +1112,9 @@ local function DisableHiggsBoson()
     pcall(function()
         local HiggsBosonComponent = require("GameLua.Mod.BaseMod.Common.Security.HiggsBosonComponent")
         if HiggsBosonComponent and HiggsBosonComponent.BlackList then
-            for k in pairs(HiggsBosonComponent.BlackList) do HiggsBosonComponent.BlackList[k] = nil end
+            local keys = {}
+            for k in pairs(HiggsBosonComponent.BlackList) do keys[#keys+1] = k end
+            for _, k in ipairs(keys) do HiggsBosonComponent.BlackList[k] = nil end
         end
         if HiggsBosonComponent and HiggsBosonComponent.StaticShowSecurityAlertInDev then
             HiggsBosonComponent.StaticShowSecurityAlertInDev = function() end
@@ -1683,12 +1640,12 @@ local function RunAllBypasses()
     pcall(InitializeLogBlocker)
     pcall(InitializeScannerBlocker)
     pcall(InitializeReplayTelemetryBlocker)
-    pcall(InitializeConnectionGuard)
     pcall(InitializeNetworkPacketBlock)
     pcall(DisableHiggsBoson)
     pcall(InitializeGameplayBypass)
     pcall(InitializeAntiReport)
     pcall(InitializeAntiCheatHooks)
+    pcall(InitializeFPSUnlock)
     pcall(InitializeUGCModValidatorBypass)
     pcall(InitializePakFileManagerBypass)
     pcall(InitializeHawkEyeBypass)
@@ -6129,5 +6086,4 @@ pcall(function()
 end)
 
 return true
-
 

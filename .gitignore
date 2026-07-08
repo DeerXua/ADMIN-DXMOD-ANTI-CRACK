@@ -1,5 +1,7 @@
 node_modules/
 data.json
 data.json.tmp
+sessions.json
+sessions.json.tmp
 .env
 .DS_Store

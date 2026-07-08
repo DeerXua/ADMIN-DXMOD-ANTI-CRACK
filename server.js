@@ -12,15 +12,15 @@ const DB_PATH = path.join(__dirname, "data.json");
 const SESSIONS_PATH = path.join(__dirname, "sessions.json");
 const PAYLOAD_PATH = path.join(__dirname, "protected_payload.lua");
 
-// Simple authentication token
-const DEFAULT_ADMIN_PASSWORD = "LeThienNhan2006@#";
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || DEFAULT_ADMIN_PASSWORD;
-const CORS_ORIGIN = process.env.CORS_ORIGIN || "*";
-const MAX_SCREENSHOT_HEX_LENGTH = Number(process.env.MAX_SCREENSHOT_HEX_LENGTH || 2 * 1024 * 1024);
-
-if (ADMIN_PASSWORD === DEFAULT_ADMIN_PASSWORD) {
-  console.warn("[PAYLOAD-SERVER] WARNING: using default ADMIN_PASSWORD. Set ADMIN_PASSWORD in production.");
+// Authentication — MUST be set via environment variable
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
+if (!ADMIN_PASSWORD) {
+  console.error("[PAYLOAD-SERVER] FATAL: ADMIN_PASSWORD environment variable is required. Set ADMIN_PASSWORD before starting.");
+  process.exit(1);
 }
+const CORS_ORIGIN = process.env.CORS_ORIGIN || "*";
+const SERVER_PUBLIC_URL = (process.env.SERVER_PUBLIC_URL || `http://localhost:${PORT}`).replace(/\/+$/, "");
+const MAX_SCREENSHOT_HEX_LENGTH = Number(process.env.MAX_SCREENSHOT_HEX_LENGTH || 2 * 1024 * 1024);
 
 let cachedPlaintext = "";
 let lastPayloadMtime = 0;
@@ -70,7 +70,9 @@ function getPlaintextPayload() {
     const stats = fs.statSync(PAYLOAD_PATH);
     const mtime = stats.mtimeMs;
     if (!cachedPlaintext || mtime !== lastPayloadMtime) {
-      cachedPlaintext = fs.readFileSync(PAYLOAD_PATH, "utf8");
+      let content = fs.readFileSync(PAYLOAD_PATH, "utf8");
+      content = content.replace(/__API_BASE__/g, SERVER_PUBLIC_URL);
+      cachedPlaintext = content;
       lastPayloadMtime = mtime;
       console.log(`[PAYLOAD-SERVER] Loaded plaintext payload: ${(cachedPlaintext.length / 1024).toFixed(2)} KB`);
     }
@@ -156,7 +158,7 @@ app.post("/api/payload", (req, res) => {
   const nowIso = new Date().toISOString();
 
   if (!device) {
-    const nextId = db.nextId || (devices.length > 0 ? Math.max(...devices.map(d => d.id || 0)) + 1 : 1);
+    const nextId = db.nextId ?? (devices.length > 0 ? Math.max(...devices.map(d => d.id || 0)) + 1 : 1);
     device = {
       id: nextId,
       game_id: targetUid,
