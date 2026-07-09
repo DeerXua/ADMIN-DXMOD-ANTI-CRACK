@@ -2587,14 +2587,20 @@ table.insert(StackESP, {
         AddToggle(StackEnv, "CIRCLE_PREDICTION", "🎯 DỰ ĐOÁN VÒNG BO (Zone)")
         
         SettingPageDefine.ModMenu = {
-            Key = "ModMenu", loc = "VIP MENU", UIKey = "Setting_Page_Privacy", 
+            Key = "ModMenu", 
+            loc = "VIP MENU", 
+            text = "VIP MENU",
+            Text = "VIP MENU",
+            title = "VIP MENU",
+            Title = "VIP MENU",
+            UIKey = "Setting_Page_Privacy", 
             Category = {
-                { Key = "ModMenu_Cat1", loc = "ESP", Stack = StackESP },
-                { Key = "ModMenu_Cat6", loc = "ESP VẬT PHẨM", Stack = StackItemESP },
-                { Key = "ModMenu_Cat2", loc = "AIMBOT & VŨ KHÍ", Stack = StackAimbot },
-                { Key = "ModMenu_Cat5", loc = "AIMBOT ROYAL & CUSTOM", Stack = StackAimbotV2 },
-                { Key = "ModMenu_Cat3", loc = "MAGIC BULLET", Stack = StackMagic },
-                { Key = "ModMenu_Cat4", loc = "GÓC NHÌN & MÔI TRƯỜNG", Stack = StackEnv },
+                { Key = "ModMenu_Cat1", loc = "ESP", text = "ESP", Text = "ESP", title = "ESP", Title = "ESP", Stack = StackESP },
+                { Key = "ModMenu_Cat6", loc = "ESP VẬT PHẨM", text = "ESP VẬT PHẨM", Text = "ESP VẬT PHẨM", title = "ESP VẬT PHẨM", Title = "ESP VẬT PHẨM", Stack = StackItemESP },
+                { Key = "ModMenu_Cat2", loc = "AIMBOT & VŨ KHÍ", text = "AIMBOT & VŨ KHÍ", Text = "AIMBOT & VŨ KHÍ", title = "AIMBOT & VŨ KHÍ", Title = "AIMBOT & VŨ KHÍ", Stack = StackAimbot },
+                { Key = "ModMenu_Cat5", loc = "AIMBOT ROYAL & CUSTOM", text = "AIMBOT ROYAL & CUSTOM", Text = "AIMBOT ROYAL & CUSTOM", title = "AIMBOT ROYAL & CUSTOM", Title = "AIMBOT ROYAL & CUSTOM", Stack = StackAimbotV2 },
+                { Key = "ModMenu_Cat3", loc = "MAGIC BULLET", text = "MAGIC BULLET", Text = "MAGIC BULLET", title = "MAGIC BULLET", Title = "MAGIC BULLET", Stack = StackMagic },
+                { Key = "ModMenu_Cat4", loc = "GÓC NHÌN & MÔI TRƯỜNG", text = "GÓC NHÌN & MÔI TRƯỜNG", Text = "GÓC NHÌN & MÔI TRƯỜNG", title = "GÓC NHÌN & MÔI TRƯỜNG", Title = "GÓC NHÌN & MÔI TRƯỜNG", Stack = StackEnv },
             }
         }
         table.insert(SettingCatalog, 1, SettingPageDefine.ModMenu)
