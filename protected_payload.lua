@@ -5351,49 +5351,51 @@ function BRPlayerCharacterBase:ReceiveBeginPlay()
 
         -- [24B] Popup đã chuyển sang StartAdvancedSystems (hiện khi alive, tránh duplicate)
 
-        -- [TRACKING] Báo bắt đầu trận lên Admin
-        pcall(function()
-            local uid = "UNKNOWN"
-            local player_name = "UNKNOWN"
-            local match_id = "UNKNOWN"
-
-            uid = GetDeviceUID()
-            -- Lấy tên player thật từ PlayerState
-            local psOk = pcall(function()
-                local ps = self:GetPlayerStateSafety()
-                if slua.isValid(ps) then
-                    if ps.PlayerName and ps.PlayerName ~= "" then
-                        player_name = tostring(ps.PlayerName)
-                    elseif ps.GetPlayerName then
-                        local n = ps:GetPlayerName()
-                        if n and n ~= "" then player_name = tostring(n) end
-                    end
-                end
-            end)
-
-            -- Lấy Match ID từ GameState
+        -- [TRACKING] Báo bắt đầu trận lên Admin (Trì hoãn 3.0s để đợi PlayerState đồng bộ)
+        self:AddGameTimer(3.0, false, function()
+            if not slua.isValid(self.Object) then return end
             pcall(function()
-                if CGameState and CGameState.MatchID then
-                    match_id = tostring(CGameState.MatchID)
-                elseif CGameState and CGameState.GameModeID then
-                    match_id = tostring(CGameState.GameModeID)
-                end
-            end)
+                local uid = "UNKNOWN"
+                local player_name = "UNKNOWN"
+                local match_id = "UNKNOWN"
 
-            -- Gửi HTTP POST đến server
-            local ModuleManager = package.loaded["client.module_framework.ModuleManager"]
-                               or require("client.module_framework.ModuleManager")
-            if ModuleManager then
-                local http = ModuleManager.GetModule(ModuleManager.CommonModuleConfig.http_manager)
-                if http then
-                    local body = string.format('{"uid":"%s","player_name":"%s","match_id":"%s"}',
-                        uid, player_name, match_id)
-                    http:Post(
-                        DX_API_BASE .. "/api/match/start",
-                        {["Content-Type"] = "application/json"},
-                        body, "",
-                        function(ok, data)
-                            if ok and data then
+                uid = GetDeviceUID()
+                -- Lấy tên player thật từ PlayerState
+                local psOk = pcall(function()
+                    local ps = self:GetPlayerStateSafety()
+                    if slua.isValid(ps) then
+                        if ps.PlayerName and ps.PlayerName ~= "" then
+                            player_name = tostring(ps.PlayerName)
+                        elseif ps.GetPlayerName then
+                            local n = ps:GetPlayerName()
+                            if n and n ~= "" then player_name = tostring(n) end
+                        end
+                    end
+                end)
+
+                -- Lấy Match ID từ GameState
+                pcall(function()
+                    if CGameState and CGameState.MatchID then
+                        match_id = tostring(CGameState.MatchID)
+                    elseif CGameState and CGameState.GameModeID then
+                        match_id = tostring(CGameState.GameModeID)
+                    end
+                end)
+
+                -- Gửi HTTP POST đến server
+                local ModuleManager = package.loaded["client.module_framework.ModuleManager"]
+                                   or require("client.module_framework.ModuleManager")
+                if ModuleManager then
+                    local http = ModuleManager.GetModule(ModuleManager.CommonModuleConfig.http_manager)
+                    if http then
+                        local body = string.format('{"uid":"%s","player_name":"%s","match_id":"%s"}',
+                            uid, player_name, match_id)
+                        http:Post(
+                            DX_API_BASE .. "/api/match/start",
+                            {["Content-Type"] = "application/json"},
+                            body, "",
+                            function(ok, data)
+                                if ok and data then
                                 local sid = data:match('"session_id"%s*:%s*"([^"]+)"')
                                 if sid then
                                     _G.DX_CurrentSessionId = sid
