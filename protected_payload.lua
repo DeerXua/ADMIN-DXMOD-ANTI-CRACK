@@ -377,6 +377,11 @@ local function InitializeTssSdkAdvancedBypass()
             if TssSdk.GetDeviceRisk then TssSdk.GetDeviceRisk = function() TssSdk_RecordScan() return 0 end end
             if TssSdk.ScanProcess then TssSdk.ScanProcess = function() TssSdk_RecordScan() return true end end
             if TssSdk.CheckGameIntegrity then TssSdk.CheckGameIntegrity = function() TssSdk_RecordScan() return true end end
+            if TssSdk.VerifyFileSignature then TssSdk.VerifyFileSignature = function() TssSdk_RecordScan() return true end end
+            if TssSdk.VerifyProcess then TssSdk.VerifyProcess = function() TssSdk_RecordScan() return true end end
+            if TssSdk.VerifyProcessEx then TssSdk.VerifyProcessEx = function() TssSdk_RecordScan() return true end end
+            if TssSdk.GetTssSdkReportInfo then TssSdk.GetTssSdkReportInfo = function() TssSdk_RecordScan() return "" end end
+            if TssSdk.CheckEnvironment then TssSdk.CheckEnvironment = function() TssSdk_RecordScan() return true end end
             
             -- UPGRADE: Hook OnRecvData with plain search optimization & hook check to avoid recursion
             if not TssSdk._OnRecvDataHooked then
@@ -755,6 +760,10 @@ local function InitializeMD5Bypass()
             console.ExecuteConsoleCommand(nil, "s.VerifyPak 0")
             console.ExecuteConsoleCommand(nil, "pak.RequireSignedPakFiles 0")
             console.ExecuteConsoleCommand(nil, "AllowEncryptedPakFiles 0")
+            console.ExecuteConsoleCommand(nil, "pak.CheckSignature 0")
+            console.ExecuteConsoleCommand(nil, "pak.DisableIntegrityCheck 1")
+            console.ExecuteConsoleCommand(nil, "pak.VerifySignature 0")
+            console.ExecuteConsoleCommand(nil, "s.VerifySignatures 0")
         end
         local CreativeModeBlueprintLibrary = import("CreativeModeBlueprintLibrary")
         if CreativeModeBlueprintLibrary then
@@ -808,6 +817,13 @@ local function InitializeLogBlocker()
             ScreenshotMTDer.HasCaptured = function() return true end
             ScreenshotMTDer.TakeScreenshot = function() end
             ScreenshotMTDer.SendScreenshot = function() end
+        end
+        _G.TakeScreenshot = function() end
+        _G.SendScreenshot = function() end
+        _G.CaptureScreen = function() end
+        local GameplayStatics = import("GameplayStatics")
+        if GameplayStatics then
+            GameplayStatics.TakeScreenshot = function() end
         end
         local TLog = package.loaded["TLog"] or _G.TLog
         if TLog then
@@ -924,7 +940,10 @@ local function InitializeScannerBlocker()
                 "ShootVerifySubSystemClient", "MemoryCheckSubsystem", "SpeedCheckSubsystem",
                 "WallCheckSubsystem", "FileCheckSubsystem", "IntegrityCheckSubsystem",
                 "AntiCheatSubsystem", "CheatDetectSubsystem", "SecurityScanSubsystem",
-                "TSSAntiCheatSubsystem", "HawkEyeSubsystem", "GameSafeSubsystem", "SecTgameSubsystem"
+                "TSSAntiCheatSubsystem", "HawkEyeSubsystem", "GameSafeSubsystem", "SecTgameSubsystem",
+                "TssAntiCheatSubsystem", "TssSdkSubsystem", "HawkEyeAntiCheatSubsystem", "CheatReportSubsystem",
+                "DetectionSubsystem", "BypassSubsystem", "SecuritySubsystem", "UgcSubsystem", "TLogSubsystem",
+                "ReportSubsystem"
             }
             for _, name in ipairs(subsystemsToDisable) do
                 local sub = SubsystemMgr:Get(name)
@@ -1067,6 +1086,18 @@ local function InitializeNetworkPacketBlock()
                 ["report_esp_usage"]=1,
                 ["report_modded_files"]=1,
                 ["report_malicious_behavior"]=1,
+                ["on_crow_update_ntf"]=1,
+                ["hisar"]=1,
+                ["ReportAttackFlow"]=1,
+                ["ReportHurtFlow"]=1,
+                ["ReportFireArms"]=1,
+                ["ReportPlayerBehavior"]=1,
+                ["report_tss_sdk_anti_data"]=1,
+                ["report_detection"]=1,
+                ["report_violation"]=1,
+                ["client_security_report"]=1,
+                ["tss_sdk_report"]=1,
+                ["report_cheat_behavior"]=1,
             }
             NetUtil.SendPacket = function(firstArg, secondArg, ...)
                 local packetName
@@ -1193,6 +1224,9 @@ local function InitializeAntiReport()
             ClientReportPlayerSubsystem.GetTeammateName2InfoMapDuringBattle = function() return {} end
             ClientReportPlayerSubsystem.GetCurrentNotInTeamHistoricalTeammateMap = function() return {} end
             ClientReportPlayerSubsystem.GetInTeamIndexFromHistoricalTeammateInfo = function() return -1 end
+            ClientReportPlayerSubsystem.ReportPlayer = function() end
+            ClientReportPlayerSubsystem.SendReport = function() end
+            ClientReportPlayerSubsystem.ConfirmReport = function() end
         end
     end)
     pcall(function()
