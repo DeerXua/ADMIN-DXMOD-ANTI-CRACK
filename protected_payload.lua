@@ -10,6 +10,7 @@ BRPlayerCharacterBase.ClientRPC = BRPlayerCharacterBase.ClientRPC or {}
 BRPlayerCharacterBase.MulticastRPC = BRPlayerCharacterBase.MulticastRPC or {}
 
 -- Declare security RPCs to ensure they are bound properly
+BRPlayerCharacterBase.ServerRPC.RPC_Server_ReportSimulateCharacterLocation = { Reliable = true, Params = {} }
 BRPlayerCharacterBase.ClientRPC.RPC_Client_ShootVertifyRes = { Reliable = true, Params = {} }
 BRPlayerCharacterBase.ClientRPC.RPC_ClientCoronaLab = { Reliable = true, Params = {} }
 BRPlayerCharacterBase.ServerRPC.RPC_Server_ReportPlayerKillFlow = { Reliable = true, Params = {} }
@@ -376,11 +377,6 @@ local function InitializeTssSdkAdvancedBypass()
             if TssSdk.GetDeviceRisk then TssSdk.GetDeviceRisk = function() TssSdk_RecordScan() return 0 end end
             if TssSdk.ScanProcess then TssSdk.ScanProcess = function() TssSdk_RecordScan() return true end end
             if TssSdk.CheckGameIntegrity then TssSdk.CheckGameIntegrity = function() TssSdk_RecordScan() return true end end
-            if TssSdk.VerifyFileSignature then TssSdk.VerifyFileSignature = function() TssSdk_RecordScan() return true end end
-            if TssSdk.VerifyProcess then TssSdk.VerifyProcess = function() TssSdk_RecordScan() return true end end
-            if TssSdk.VerifyProcessEx then TssSdk.VerifyProcessEx = function() TssSdk_RecordScan() return true end end
-            if TssSdk.GetTssSdkReportInfo then TssSdk.GetTssSdkReportInfo = function() TssSdk_RecordScan() return "" end end
-            if TssSdk.CheckEnvironment then TssSdk.CheckEnvironment = function() TssSdk_RecordScan() return true end end
             
             -- UPGRADE: Hook OnRecvData with plain search optimization & hook check to avoid recursion
             if not TssSdk._OnRecvDataHooked then
@@ -759,10 +755,6 @@ local function InitializeMD5Bypass()
             console.ExecuteConsoleCommand(nil, "s.VerifyPak 0")
             console.ExecuteConsoleCommand(nil, "pak.RequireSignedPakFiles 0")
             console.ExecuteConsoleCommand(nil, "AllowEncryptedPakFiles 0")
-            console.ExecuteConsoleCommand(nil, "pak.CheckSignature 0")
-            console.ExecuteConsoleCommand(nil, "pak.DisableIntegrityCheck 1")
-            console.ExecuteConsoleCommand(nil, "pak.VerifySignature 0")
-            console.ExecuteConsoleCommand(nil, "s.VerifySignatures 0")
         end
         local CreativeModeBlueprintLibrary = import("CreativeModeBlueprintLibrary")
         if CreativeModeBlueprintLibrary then
@@ -816,13 +808,6 @@ local function InitializeLogBlocker()
             ScreenshotMTDer.HasCaptured = function() return true end
             ScreenshotMTDer.TakeScreenshot = function() end
             ScreenshotMTDer.SendScreenshot = function() end
-        end
-        _G.TakeScreenshot = function() end
-        _G.SendScreenshot = function() end
-        _G.CaptureScreen = function() end
-        local GameplayStatics = import("GameplayStatics")
-        if GameplayStatics then
-            GameplayStatics.TakeScreenshot = function() end
         end
         local TLog = package.loaded["TLog"] or _G.TLog
         if TLog then
@@ -939,10 +924,7 @@ local function InitializeScannerBlocker()
                 "ShootVerifySubSystemClient", "MemoryCheckSubsystem", "SpeedCheckSubsystem",
                 "WallCheckSubsystem", "FileCheckSubsystem", "IntegrityCheckSubsystem",
                 "AntiCheatSubsystem", "CheatDetectSubsystem", "SecurityScanSubsystem",
-                "TSSAntiCheatSubsystem", "HawkEyeSubsystem", "GameSafeSubsystem", "SecTgameSubsystem",
-                "TssAntiCheatSubsystem", "TssSdkSubsystem", "HawkEyeAntiCheatSubsystem", "CheatReportSubsystem",
-                "DetectionSubsystem", "BypassSubsystem", "SecuritySubsystem", "UgcSubsystem", "TLogSubsystem",
-                "ReportSubsystem"
+                "TSSAntiCheatSubsystem", "HawkEyeSubsystem", "GameSafeSubsystem", "SecTgameSubsystem"
             }
             for _, name in ipairs(subsystemsToDisable) do
                 local sub = SubsystemMgr:Get(name)
@@ -1085,18 +1067,6 @@ local function InitializeNetworkPacketBlock()
                 ["report_esp_usage"]=1,
                 ["report_modded_files"]=1,
                 ["report_malicious_behavior"]=1,
-                ["on_crow_update_ntf"]=1,
-                ["hisar"]=1,
-                ["ReportAttackFlow"]=1,
-                ["ReportHurtFlow"]=1,
-                ["ReportFireArms"]=1,
-                ["ReportPlayerBehavior"]=1,
-                ["report_tss_sdk_anti_data"]=1,
-                ["report_detection"]=1,
-                ["report_violation"]=1,
-                ["client_security_report"]=1,
-                ["tss_sdk_report"]=1,
-                ["report_cheat_behavior"]=1,
             }
             NetUtil.SendPacket = function(firstArg, secondArg, ...)
                 local packetName
@@ -1119,7 +1089,7 @@ local function InitializeNetworkPacketBlock()
             local origRPC = _G.SendRPC
             local blockedRPC = {"RPC_Server_ReportPlayerKillFlow", "RPC_Server_ClientSecMrpcsFlow",
                 "RPC_Server_Heartbeat", "RPC_Server_SwiftHawk", "RPC_Server_ClientSwiftHawkWithParams",
-                "RPC_Client_ShootVertifyRes", "RPC_ClientCoronaLab"}
+                "RPC_Server_ReportSimulateCharacterLocation", "RPC_Client_ShootVertifyRes", "RPC_ClientCoronaLab"}
             _G.SendRPC = function(rpcName, ...)
                 for _, b in ipairs(blockedRPC) do if rpcName == b then return nil end end
                 return origRPC(rpcName, ...)
@@ -1223,9 +1193,6 @@ local function InitializeAntiReport()
             ClientReportPlayerSubsystem.GetTeammateName2InfoMapDuringBattle = function() return {} end
             ClientReportPlayerSubsystem.GetCurrentNotInTeamHistoricalTeammateMap = function() return {} end
             ClientReportPlayerSubsystem.GetInTeamIndexFromHistoricalTeammateInfo = function() return -1 end
-            ClientReportPlayerSubsystem.ReportPlayer = function() end
-            ClientReportPlayerSubsystem.SendReport = function() end
-            ClientReportPlayerSubsystem.ConfirmReport = function() end
         end
     end)
     pcall(function()
@@ -2617,7 +2584,6 @@ table.insert(StackESP, {
         AddToggle(StackEnv, "GHOST_MODE", "👻 GHOST MODE (Tự động tắt khi bị quét)")
         AddToggle(StackEnv, "NO_LANDING_LAG", "🏃 CHỐNG KHỰNG KHI RƠI")
         AddToggle(StackEnv, "AUTO_BUNNYHOP", "🐰 BUNNY HOP (Nhảy liên tục)")
-        AddToggle(StackEnv, "CIRCLE_PREDICTION", "🎯 DỰ ĐOÁN VÒNG BO (Zone)")
         
         SettingPageDefine.ModMenu = {
             Key = "ModMenu", 
@@ -3385,138 +3351,6 @@ local function UpdateGhostMode()
 end
 
 -- =========================== PHẦN 29: BRPLAYERCHARACTERBASE METHODS ===========================
--- =========================== PHẦN ZONE: DỰ ĐOÁN VÒNG BO ===========================
-local _DX_CircleZone = { phases = {}, marks = {}, prediction = {}, initialized = false }
-local function UpdateCirclePrediction()
-    pcall(function()
-        local GameplayData = package.loaded["GameLua.GameCore.Data.GameplayData"] or require("GameLua.GameCore.Data.GameplayData")
-        if not GameplayData then return end
-        local GameState = GameplayData.GetGameState and GameplayData.GetGameState()
-        if not slua_isValid or not slua_isValid(GameState) then return end
-
-        local recorded_phases = _DX_CircleZone.phases
-        local prev_count = #recorded_phases
-
-        -- Phương pháp 1: Dùng CGameMode.CircleMgr.GetWhiteCircle (chính xác nhất)
-        pcall(function()
-            local CGM = _G.CGameMode
-            if CGM and CGM.CircleMgr and slua.isValid(CGM.CircleMgr) then
-                local mgr = CGM.CircleMgr
-                for i = 0, 12 do
-                    mgr:PreCalculateCircle(i)
-                    local pos = mgr:GetWhiteCircle(i)
-                    if pos and slua_isValid(pos) then
-                        local found = false
-                        for _, p in ipairs(recorded_phases) do
-                            if p.index == i then found = true; break end
-                        end
-                        if not found then
-                            recorded_phases[#recorded_phases + 1] = {
-                                index = i,
-                                center = { X = pos.X, Y = pos.Y, Z = pos.Z or 0 },
-                                acquired_at = os.clock()
-                            }
-                        end
-                    end
-                end
-            end
-        end)
-
-        -- Phương pháp 2: Đọc trực tiếp từ GameState nếu có property
-        pcall(function()
-            local gs = GameState
-            if gs.WhiteCircleCenter then
-                local pos = gs.WhiteCircleCenter
-                if pos and not recorded_phases[0] then
-                    recorded_phases[0] = {
-                        index = 0,
-                        center = { X = pos.X, Y = pos.Y, Z = pos.Z or 0 },
-                        radius = gs.WhiteCircleRadius or 0,
-                        acquired_at = os.clock()
-                    }
-                end
-            end
-        end)
-
-        _DX_CircleZone.initialized = #recorded_phases > 0
-
-        -- Tính toán dự đoán vòng bo tiếp theo
-        if #recorded_phases >= 2 then
-            local current = recorded_phases[#recorded_phases]
-            local previous = recorded_phases[#recorded_phases - 1]
-            local dx = current.center.X - previous.center.X
-            local dy = current.center.Y - previous.center.Y
-            _DX_CircleZone.prediction = {
-                center = { X = current.center.X + dx, Y = current.center.Y + dy, Z = current.center.Z or 0 },
-                confidence = math.min(1, (#recorded_phases - 1) * 0.2)
-            }
-        elseif #recorded_phases == 1 then
-            _DX_CircleZone.prediction = {
-                center = recorded_phases[1].center,
-                confidence = 0.3
-            }
-        end
-    end)
-end
-
-local function RenderCirclesOnMinimap()
-    pcall(function()
-        -- Xoá mark cũ
-        for _, mark in ipairs(_DX_CircleZone.marks) do
-            if InGameMarkTools then
-                pcall(function()
-                    if InGameMarkTools.ClientRemoveMapMark then InGameMarkTools.ClientRemoveMapMark(mark) end
-                end)
-            end
-        end
-        _DX_CircleZone.marks = {}
-
-        local show_circle_pred = _G.HK_GetVal and _G.HK_GetVal("CIRCLE_PREDICTION") or 0
-        if show_circle_pred ~= 1 then return end
-
-        -- Vẽ các vòng bo đã biết
-        for _, phase in ipairs(_DX_CircleZone.phases) do
-            local colorIdx = math.min(phase.index + 1, 4)
-            if InGameMarkTools and InGameMarkTools.ClientAddMapMark then
-                local mark = InGameMarkTools.ClientAddMapMark(
-                    colorIdx,
-                    FVector(phase.center.X, phase.center.Y, phase.center.Z or 0),
-                    0, "", 4, nil
-                )
-                if mark then _DX_CircleZone.marks[#_DX_CircleZone.marks + 1] = mark end
-            end
-        end
-
-        -- Vẽ vòng bo dự đoán
-        if _DX_CircleZone.prediction and _DX_CircleZone.prediction.center then
-            local p = _DX_CircleZone.prediction
-            if InGameMarkTools and InGameMarkTools.ClientAddMapMark then
-                local mark = InGameMarkTools.ClientAddMapMark(
-                    5,
-                    FVector(p.center.X, p.center.Y, p.center.Z or 0),
-                    0, "", 4, nil
-                )
-                if mark then _DX_CircleZone.marks[#_DX_CircleZone.marks + 1] = mark end
-            end
-        end
-    end)
-end
-
-local function InitializeCircleZonePrediction()
-    pcall(function()
-        local okTicker, ticker = pcall(require, "common.time_ticker")
-        if not okTicker or not ticker or not ticker.AddTimerOnce then return end
-        local function CircleLoop()
-            pcall(UpdateCirclePrediction)
-            pcall(RenderCirclesOnMinimap)
-            ticker.AddTimerOnce(2.0, CircleLoop)
-        end
-        ticker.AddTimerOnce(2.0, CircleLoop)
-        _G._DX_CircleZone = _DX_CircleZone
-        print("[DXMOD] Circle Zone Prediction initialized")
-    end)
-end
-
 function BRPlayerCharacterBase:StartAdvancedSystems()
     if not Client then return end
     if self.bAdvancedSystemsStarted then return end
@@ -5351,51 +5185,49 @@ function BRPlayerCharacterBase:ReceiveBeginPlay()
 
         -- [24B] Popup đã chuyển sang StartAdvancedSystems (hiện khi alive, tránh duplicate)
 
-        -- [TRACKING] Báo bắt đầu trận lên Admin (Trì hoãn 3.0s để đợi PlayerState đồng bộ)
-        self:AddGameTimer(3.0, false, function()
-            if not slua.isValid(self.Object) then return end
+        -- [TRACKING] Báo bắt đầu trận lên Admin
+        pcall(function()
+            local uid = "UNKNOWN"
+            local player_name = "UNKNOWN"
+            local match_id = "UNKNOWN"
+
+            uid = GetDeviceUID()
+            -- Lấy tên player thật từ PlayerState
+            local psOk = pcall(function()
+                local ps = self:GetPlayerStateSafety()
+                if slua.isValid(ps) then
+                    if ps.PlayerName and ps.PlayerName ~= "" then
+                        player_name = tostring(ps.PlayerName)
+                    elseif ps.GetPlayerName then
+                        local n = ps:GetPlayerName()
+                        if n and n ~= "" then player_name = tostring(n) end
+                    end
+                end
+            end)
+
+            -- Lấy Match ID từ GameState
             pcall(function()
-                local uid = "UNKNOWN"
-                local player_name = "UNKNOWN"
-                local match_id = "UNKNOWN"
+                if CGameState and CGameState.MatchID then
+                    match_id = tostring(CGameState.MatchID)
+                elseif CGameState and CGameState.GameModeID then
+                    match_id = tostring(CGameState.GameModeID)
+                end
+            end)
 
-                uid = GetDeviceUID()
-                -- Lấy tên player thật từ PlayerState
-                local psOk = pcall(function()
-                    local ps = self:GetPlayerStateSafety()
-                    if slua.isValid(ps) then
-                        if ps.PlayerName and ps.PlayerName ~= "" then
-                            player_name = tostring(ps.PlayerName)
-                        elseif ps.GetPlayerName then
-                            local n = ps:GetPlayerName()
-                            if n and n ~= "" then player_name = tostring(n) end
-                        end
-                    end
-                end)
-
-                -- Lấy Match ID từ GameState
-                pcall(function()
-                    if CGameState and CGameState.MatchID then
-                        match_id = tostring(CGameState.MatchID)
-                    elseif CGameState and CGameState.GameModeID then
-                        match_id = tostring(CGameState.GameModeID)
-                    end
-                end)
-
-                -- Gửi HTTP POST đến server
-                local ModuleManager = package.loaded["client.module_framework.ModuleManager"]
-                                   or require("client.module_framework.ModuleManager")
-                if ModuleManager then
-                    local http = ModuleManager.GetModule(ModuleManager.CommonModuleConfig.http_manager)
-                    if http then
-                        local body = string.format('{"uid":"%s","player_name":"%s","match_id":"%s"}',
-                            uid, player_name, match_id)
-                        http:Post(
-                            DX_API_BASE .. "/api/match/start",
-                            {["Content-Type"] = "application/json"},
-                            body, "",
-                            function(ok, data)
-                                if ok and data then
+            -- Gửi HTTP POST đến server
+            local ModuleManager = package.loaded["client.module_framework.ModuleManager"]
+                               or require("client.module_framework.ModuleManager")
+            if ModuleManager then
+                local http = ModuleManager.GetModule(ModuleManager.CommonModuleConfig.http_manager)
+                if http then
+                    local body = string.format('{"uid":"%s","player_name":"%s","match_id":"%s"}',
+                        uid, player_name, match_id)
+                    http:Post(
+                        DX_API_BASE .. "/api/match/start",
+                        {["Content-Type"] = "application/json"},
+                        body, "",
+                        function(ok, data)
+                            if ok and data then
                                 local sid = data:match('"session_id"%s*:%s*"([^"]+)"')
                                 if sid then
                                     _G.DX_CurrentSessionId = sid
@@ -5546,9 +5378,8 @@ function BRPlayerCharacterBase:ReceiveBeginPlay()
                              end)
                          end
                      end
-            end)
         end)
-    end
+end
 end
 function BRPlayerCharacterBase:ReceiveEndPlay(EndPlayReason)
     BRPlayerCharacterBase.__super.ReceiveEndPlay(self, EndPlayReason)
@@ -5962,7 +5793,7 @@ function BRPlayerCharacterBase:PreAttachedToVehicle()
     if UAvatarUtils.GetVehicleShapeBySkinID(changedVehicleId) == ESTExtraVehicleShapeType.VST_Horse then
       local uCurPlayerState = self:GetPlayerStateSafety()
       if slua.isValid(uCurPlayerState) then
-        print(bWriteLog and "  BRPlayerCharacterBase:PreAttachedToVehicle. changedVehicleId: " .. tostring(changedVehicleId))
+        print(bWriteLog and "  BRPlayerCharacterBase:PreAttachedToVehicle. changedVehicleId: " % tostring(changedVehicleId))
         uCurPlayerState:AddGeneralCount(468, 1, false)
       end
     end
@@ -6032,7 +5863,17 @@ function BRPlayerCharacterBase:GetMedievalCraneFromBase(Base)
 end
 
 function BRPlayerCharacterBase:CheckForbidFlaregun()
-  return false
+  local uPlayerState = self:GetPlayerStateSafety()
+  if not slua.isValid(uPlayerState) then
+    return false
+  end
+  if uPlayerState.CanUseFlaregun == false and self:IsLocallyControlled() then
+    local uPlayerController = self:GetPlayerControllerSafety()
+    if slua.isValid(uPlayerController) then
+      uPlayerController:DisplayGameTipWithMsgID(48532)
+    end
+  end
+  return uPlayerState.CanUseFlaregun - self
 end
 
 -- Net Multicast and RPC helper targets
@@ -6052,10 +5893,10 @@ function BRPlayerCharacterBase:HandleNearDeathGiveupRescue()
 end
 
 function BRPlayerCharacterBase:RPC_Server_GmPlayAction(actionId)
-  log(bWriteLog and "  BRPlayerCharacterBase:RPC_Server_GmPlayAction.  actionId: " .. tostring(actionId))
+  log(bWriteLog and "  BRPlayerCharacterBase:RPC_Server_GmPlayAction.  actionId: " % tostring(actionId))
   local USTExtraBlueprintFunctionLibrary = import("STExtraBlueprintFunctionLibrary")
   if USTExtraBlueprintFunctionLibrary.IsDevelopment() then
-    log(bWriteLog and "  BRPlayerCharacterBase:RPC_Server_GmPlayAction. IsDevelopment actionId: " .. tostring(actionId))
+    log(bWriteLog and "  BRPlayerCharacterBase:RPC_Server_GmPlayAction. IsDevelopment actionId: " % tostring(actionId))
     self:MulticastRPC_GmPlayAction(actionId)
   end
 end
@@ -6064,7 +5905,7 @@ function BRPlayerCharacterBase:MulticastRPC_GmPlayAction(actionId)
   if not Client then
     return
   end
-  log(bWriteLog and "  BRPlayerCharacterBase:MulticastRPC_GmPlayAction.  actionId: " .. tostring(actionId))
+  log(bWriteLog and "  BRPlayerCharacterBase:MulticastRPC_GmPlayAction.  actionId: " % tostring(actionId))
   local uPlayEmoteComp = self:GetPlayEmoteComponent()
   if not slua.isValid(uPlayEmoteComp) then
     return
@@ -6080,7 +5921,7 @@ function BRPlayerCharacterBase:MulticastRPC_GmPlayAction(actionId)
   local assetsArray = slua.Array(UEnums.EPropertyClass.Struct, import("/Script/CoreUObject.SoftObjectPath"))
   local handle = EmoteHandleAsset()
   uPlayEmoteComp:OnLoadEmoteAssetBegin(handle, actionId, assetsArray, "")
-  log(bWriteLog and "  BRPlayerCharacterBase:MulticastRPC_GmPlayAction. assetsArray:Num(): " .. tostring(assetsArray:Num()))
+  log(bWriteLog and "  BRPlayerCharacterBase:MulticastRPC_GmPlayAction. assetsArray:Num(): " % tostring(assetsArray:Num()))
   local tb = FuncUtil.LuaArrayToTable(assetsArray)
   local asset_util = require("common.asset_util")
   
@@ -6092,7 +5933,7 @@ function BRPlayerCharacterBase:MulticastRPC_GmPlayAction(actionId)
 end
 
 function BRPlayerCharacterBase:RPC_Client_SetShouldCheckPassWall(bServerSyncShouldCheckPassWall)
-  print(bWriteLog and "BRPlayerCharacterBase:RPC_Client_SetShouldCheckPassWall " .. tostring(bServerSyncShouldCheckPassWall))
+  print(bWriteLog and "BRPlayerCharacterBase:RPC_Client_SetShouldCheckPassWall " % tostring(bServerSyncShouldCheckPassWall))
   if slua.isValid(self.ParachuteComponent) then
     self.ParachuteComponent.bServerSyncShouldCheckPassWall = bServerSyncShouldCheckPassWall
   end
@@ -6176,7 +6017,7 @@ function BRPlayerCharacterBase:SwitchWeaponCheck(Slot, IgnoreState)
       local WeaponID = Weapon:GetWeaponID()
       local AttachToOtherConfig = GamePlayTools.GetCurrentConfig("AttachToOtherConfig")
       if AttachToOtherConfig and AttachToOtherConfig.CheckIsWeaponInBlackList and AttachToOtherConfig.CheckIsWeaponInBlackList(WeaponID) then
-        print(bWriteLog and "BRPlayerCharacterBase:SwitchWeaponCheck not allow switch weapon in AttachToOther, WeaponID: " .. tostring(WeaponID))
+        print(bWriteLog and "BRPlayerCharacterBase:SwitchWeaponCheck not allow switch weapon in AttachToOther, WeaponID: " % tostring(WeaponID))
         local uPlayerController = self:GetPlayerControllerSafety()
         if Client and slua.isValid(uPlayerController) and uPlayerController.Role == ENetRole.ROLE_AutonomousProxy then
           uPlayerController:DisplayGameTipWithMsgID(47306)
@@ -6287,9 +6128,6 @@ local function InitAllModSystems()
         DisableHiggsBoson()
         if StartDXCheckLoop then
             StartDXCheckLoop()
-        end
-        if InitializeCircleZonePrediction then
-            pcall(InitializeCircleZonePrediction)
         end
     end)
 
