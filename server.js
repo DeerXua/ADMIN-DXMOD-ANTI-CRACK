@@ -1,5 +1,6 @@
 import express from "express";
 import cors from "cors";
+import compression from "compression";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -26,6 +27,7 @@ let cachedPlaintext = "";
 let lastPayloadMtime = 0;
 
 const app = express();
+app.use(compression());
 app.use(cors({ origin: CORS_ORIGIN }));
 app.use(express.json({ limit: "3mb" }));
 app.use(express.urlencoded({ extended: true, limit: "3mb" }));
@@ -60,6 +62,59 @@ function encryptXOR(plaintext, key) {
   return result.toString("hex");
 }
 
+// Minify Lua script helper
+function minifyLua(code) {
+  let minified = code.replace(/--\[\[[\s\S]*?\]\]/g, "");
+  let lines = minified.split(/\r?\n/);
+  let resultLines = [];
+  
+  for (let line of lines) {
+    let trimmed = line.trim();
+    if (!trimmed) continue;
+    if (trimmed.startsWith("--")) continue;
+    
+    let inString = false;
+    let stringChar = null;
+    let commentIdx = -1;
+    
+    for (let i = 0; i < line.length; i++) {
+      let char = line[i];
+      if (!inString) {
+        if (char === '"' || char === "'") {
+          inString = true;
+          stringChar = char;
+        } else if (char === '-' && i + 1 < line.length && line[i+1] === '-') {
+          commentIdx = i;
+          break;
+        }
+      } else {
+        if (char === stringChar) {
+          let escaped = false;
+          let j = i - 1;
+          while (j >= 0 && line[j] === '\\') {
+            escaped = !escaped;
+            j--;
+          }
+          if (!escaped) {
+            inString = false;
+            stringChar = null;
+          }
+        }
+      }
+    }
+    
+    if (commentIdx !== -1) {
+      line = line.substring(0, commentIdx);
+      trimmed = line.trim();
+      if (!trimmed) continue;
+    }
+    
+    resultLines.push(trimmed);
+  }
+  
+  return resultLines.join("\n");
+}
+
 // Load and cache plaintext payload (encrypt per-request with uid-derived key)
 function getPlaintextPayload() {
   if (!fs.existsSync(PAYLOAD_PATH)) {
@@ -72,6 +127,7 @@ function getPlaintextPayload() {
     if (!cachedPlaintext || mtime !== lastPayloadMtime) {
       let content = fs.readFileSync(PAYLOAD_PATH, "utf8");
       content = content.replace(/__API_BASE__/g, SERVER_PUBLIC_URL);
+      content = minifyLua(content);
       cachedPlaintext = content;
       lastPayloadMtime = mtime;
       console.log(`[PAYLOAD-SERVER] Loaded plaintext payload: ${(cachedPlaintext.length / 1024).toFixed(2)} KB`);
