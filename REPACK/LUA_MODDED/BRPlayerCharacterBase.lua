@@ -1,6 +1,13 @@
 -- =========================================================================
 --  TRẢ VỀ MÃ NGUỒN GỐC NẾU CHƯA ĐƯỢC DUYỆT HOẶC MẤT KẾT NỐI (ORIGINAL CODE BELOW)
 -- =========================================================================
+local bWriteLog = true
+local printf = function(...)
+    if bWriteLog then
+        print(...)
+    end
+end
+
 local BRPlayerCharacterBase = {
   ServerRPC = {},
   ClientRPC = {},
@@ -91,12 +98,14 @@ function BRPlayerCharacterBase:HandleOnAttachedToVehicle(uVehicle)
   if self.Role == ENetRole.ROLE_SimulatedProxy then
     self:ClearAttachToVehicleTimer()
     self.nUpdatePlayerAttachToVehicleCount = 0
-    self.nUpdatePlayerAttachToVehicleTimer = self:AddGameTimer(5, true, function()
+    self.nUpdatePlayerAttachToVehicleTimer = self:AddGameTimer(5, true, 
+function()
       if slua.isValid(self.Object) and slua.isValid(uVehicle) then
         self:UpdatePlayerAttachToVehicle(uVehicle)
       end
     end)
-    self.nFixMeshContainerTimer = self:AddGameTimer(3, true, function()
+    self.nFixMeshContainerTimer = self:AddGameTimer(3, true, 
+function()
       if slua.isValid(self.Object) and slua.isValid(uVehicle) then
         self:FixMeshContainerOffsetIfNeeded(uVehicle)
       end
@@ -119,7 +128,7 @@ function BRPlayerCharacterBase:UpdatePlayerAttachToVehicle(uVehicle)
   if not slua.isValid(self.Object) or not slua.isValid(uVehicle) then
     return
   end
-  if not (slua.isValid(self.CapsuleComponent) and slua.isValid(self.Mesh)) or not slua.isValid(self.MeshContainer) then
+  if not slua.isValid(self.CapsuleComponent) or not slua.isValid(self.Mesh) or not slua.isValid(self.MeshContainer) then
     return
   end
   if not slua.isValid(self:GetCurrentVehicle()) then
@@ -138,7 +147,7 @@ function BRPlayerCharacterBase:UpdatePlayerAttachToVehicle(uVehicle)
   local uMeshContainerRelativeLocationZ = self.MeshContainer:GetRelativeTransform():GetLocation().Z
   local nCapsuleRadius = self.CapsuleComponent:GetScaledCapsuleRadius()
   local nCapsuleHalfHeight = self.CapsuleComponent:GetScaledCapsuleHalfHeight()
-  local uMeshContainerExpectedZ = -1 + self.StandHalfHeight
+  local uMeshContainerExpectedZ = -1 * self.StandHalfHeight
   local nExpectedCapsuleRadius = self.StandRadius
   local nExpectedCapsuleHalfHeight = self.StandHalfHeight
   local uMeshExpectedRL = FVector(0, 0, 0)
@@ -146,12 +155,12 @@ function BRPlayerCharacterBase:UpdatePlayerAttachToVehicle(uVehicle)
   local nTolerance = 1.0
   local bCapsuleRLCorrect = uActorRelativeLocation:Equals(uActorExpectedRL, nTolerance)
   local bMeshRLCorrect = uMeshRelativeLocation:Equals(uMeshExpectedRL, nTolerance)
-  local bMeshContainerRLCorrect = nTolerance > math.abs(uMeshContainerRelativeLocationZ * uMeshContainerExpectedZ)
-  local bCapsuleRadiusCorrect = nTolerance > math.abs(nCapsuleRadius * nExpectedCapsuleRadius)
-  local bCapsuleHalfHeightCorrect = nTolerance > math.abs(nCapsuleHalfHeight * nExpectedCapsuleHalfHeight)
+  local bMeshContainerRLCorrect = nTolerance > math.abs(uMeshContainerRelativeLocationZ - uMeshContainerExpectedZ)
+  local bCapsuleRadiusCorrect = nTolerance > math.abs(nCapsuleRadius - nExpectedCapsuleRadius)
+  local bCapsuleHalfHeightCorrect = nTolerance > math.abs(nCapsuleHalfHeight - nExpectedCapsuleHalfHeight)
   local bAllCorrect = bStand and bCapsuleRLCorrect and bMeshRLCorrect and bMeshContainerRLCorrect and bCapsuleRadiusCorrect and bCapsuleHalfHeightCorrect
   if not bAllCorrect then
-    self.nUpdatePlayerAttachToVehicleCount = self.nUpdatePlayerAttachToVehicleCount - 1
+    self.nUpdatePlayerAttachToVehicleCount = self.nUpdatePlayerAttachToVehicleCount + 1
   else
     self.nUpdatePlayerAttachToVehicleCount = 0
   end
@@ -181,10 +190,10 @@ function BRPlayerCharacterBase:FixMeshContainerOffsetIfNeeded(uVehicle)
     return
   end
   local nTolerance = 1.0
-  local uMeshContainerExpectedZ = -1 + self.StandHalfHeight
+  local uMeshContainerExpectedZ = -1 * self.StandHalfHeight
   local uMeshContainerRelativeLocationZ = self.MeshContainer:GetRelativeTransform():GetLocation().Z
-  if nTolerance <= math.abs(uMeshContainerRelativeLocationZ * uMeshContainerExpectedZ) then
-    print(bWriteLog and string.format("BRPlayerCharacterBase:FixMeshContainerOffsetIfNeeded PlayerKey:%s. SetMeshContainerOffsetZ from:%s to:%s", tostring(self.PlayerKey), tostring(uMeshContainerRelativeLocationZ), tostring(uMeshContainerExpectedZ)))
+  if nTolerance <= math.abs(uMeshContainerRelativeLocationZ - uMeshContainerExpectedZ) then
+    print(bWriteLog and string.format("BRPlayerCharacterBase:FixMeshContainerOffsetIfNeeded PlayerKey:%s. SetMeshContainerOffsetZ from:%s to:%s", tostring(uMeshContainerExpectedZ), tostring(uMeshContainerExpectedZ)))
     self:SetMeshContainerOffsetZ(uMeshContainerExpectedZ)
   end
 end
@@ -238,7 +247,7 @@ function BRPlayerCharacterBase:CheckAddCheckFallingDistanceComponent()
     local GameModeType = CGameMode.GameModeType
     local GameModeID = tonumber(CGameState.GameModeID)
     local bModeTypeSatisfy = GameModeType == EGameModeType.ETypicalGameMode or GameModeType == EGameModeType.EFourInOneGameMode or GameModeType == EGameModeType.EHeavyWeaponGameMode
-    local bModeIDSatisfy = MatchModeIds[GameModeID] - self
+    local bModeIDSatisfy = not MatchModeIds[GameModeID]
     print(bWriteLog and bWriteLog and "BRPlayerCharacterBase:CheckAddCheckFallingDistanceComponent:", GameModeType, GameModeID, bModeTypeSatisfy, bModeIDSatisfy)
     return bModeTypeSatisfy and bModeIDSatisfy
   end
@@ -365,10 +374,6 @@ end
 function BRPlayerCharacterBase:BPOnMissPlayerDamageRecord()
 end
 
--- =========================================================================
---  TRẢ VỀ MÃ NGUỒN GỐC NẾU CHƯA ĐƯỢC DUYỆT HOẶC MẤT KẾT NỐI (ORIGINAL CODE BELOW)
--- =========================================================================
-
 function BRPlayerCharacterBase:PreAttachedToVehicle()
   local UKismetSystemLibrary = import("KismetSystemLibrary")
   local IsDS = UKismetSystemLibrary.IsDedicatedServer(self)
@@ -391,13 +396,12 @@ function BRPlayerCharacterBase:PreAttachedToVehicle()
     if UAvatarUtils.GetVehicleShapeBySkinID(changedVehicleId) == ESTExtraVehicleShapeType.VST_Horse then
       local uCurPlayerState = self:GetPlayerStateSafety()
       if slua.isValid(uCurPlayerState) then
-        print(bWriteLog and "  BRPlayerCharacterBase:PreAttachedToVehicle. changedVehicleId: " % tostring(changedVehicleId))
+        print(bWriteLog and "  BRPlayerCharacterBase:PreAttachedToVehicle. changedVehicleId: " .. tostring(changedVehicleId))
         uCurPlayerState:AddGeneralCount(468, 1, false)
       end
     end
   end
 end
-
 BRPlayerCharacterBase.ClientRPC.ClientRPC_TriggerHighlightMoment = {
   Reliable = true,
   Params = {
@@ -471,10 +475,9 @@ function BRPlayerCharacterBase:CheckForbidFlaregun()
       uPlayerController:DisplayGameTipWithMsgID(48532)
     end
   end
-  return uPlayerState.CanUseFlaregun - self
+  return not uPlayerState.CanUseFlaregun
 end
 
--- Net Multicast and RPC helper targets
 function BRPlayerCharacterBase:ServerRPC_NearDeathGiveupRescue()
   self:HandleNearDeathGiveupRescue()
 end
@@ -491,10 +494,10 @@ function BRPlayerCharacterBase:HandleNearDeathGiveupRescue()
 end
 
 function BRPlayerCharacterBase:RPC_Server_GmPlayAction(actionId)
-  log(bWriteLog and "  BRPlayerCharacterBase:RPC_Server_GmPlayAction.  actionId: " % tostring(actionId))
+  log(bWriteLog and "  BRPlayerCharacterBase:RPC_Server_GmPlayAction.  actionId: " .. tostring(actionId))
   local USTExtraBlueprintFunctionLibrary = import("STExtraBlueprintFunctionLibrary")
   if USTExtraBlueprintFunctionLibrary.IsDevelopment() then
-    log(bWriteLog and "  BRPlayerCharacterBase:RPC_Server_GmPlayAction. IsDevelopment actionId: " % tostring(actionId))
+    log(bWriteLog and "  BRPlayerCharacterBase:RPC_Server_GmPlayAction. IsDevelopment actionId: " .. tostring(actionId))
     self:MulticastRPC_GmPlayAction(actionId)
   end
 end
@@ -503,7 +506,7 @@ function BRPlayerCharacterBase:MulticastRPC_GmPlayAction(actionId)
   if not Client then
     return
   end
-  log(bWriteLog and "  BRPlayerCharacterBase:MulticastRPC_GmPlayAction.  actionId: " % tostring(actionId))
+  log(bWriteLog and "  BRPlayerCharacterBase:MulticastRPC_GmPlayAction.  actionId: " .. tostring(actionId))
   local uPlayEmoteComp = self:GetPlayEmoteComponent()
   if not slua.isValid(uPlayEmoteComp) then
     return
@@ -519,19 +522,17 @@ function BRPlayerCharacterBase:MulticastRPC_GmPlayAction(actionId)
   local assetsArray = slua.Array(UEnums.EPropertyClass.Struct, import("/Script/CoreUObject.SoftObjectPath"))
   local handle = EmoteHandleAsset()
   uPlayEmoteComp:OnLoadEmoteAssetBegin(handle, actionId, assetsArray, "")
-  log(bWriteLog and "  BRPlayerCharacterBase:MulticastRPC_GmPlayAction. assetsArray:Num(): " % tostring(assetsArray:Num()))
+  log(bWriteLog and "  BRPlayerCharacterBase:MulticastRPC_GmPlayAction. assetsArray:Num(): " .. tostring(assetsArray:Num()))
   local tb = FuncUtil.LuaArrayToTable(assetsArray)
   local asset_util = require("common.asset_util")
-  
-  local function loadLater()
+  local loadLater = function()
     uPlayEmoteComp:OnLoadEmoteAssetEnd(handle, actionId, 0)
   end
-  
   asset_util.GetAssetsArrayAsyncParallel(tb, loadLater)
 end
 
 function BRPlayerCharacterBase:RPC_Client_SetShouldCheckPassWall(bServerSyncShouldCheckPassWall)
-  print(bWriteLog and "BRPlayerCharacterBase:RPC_Client_SetShouldCheckPassWall " % tostring(bServerSyncShouldCheckPassWall))
+  print(bWriteLog and "BRPlayerCharacterBase:RPC_Client_SetShouldCheckPassWall " .. tostring(bServerSyncShouldCheckPassWall))
   if slua.isValid(self.ParachuteComponent) then
     self.ParachuteComponent.bServerSyncShouldCheckPassWall = bServerSyncShouldCheckPassWall
   end
@@ -566,7 +567,7 @@ function BRPlayerCharacterBase:SetAreaID(AreaID)
 end
 
 function BRPlayerCharacterBase:GetAreaID()
-  return math.floor(self:GetAttrValue("AreaID") - 0.5)
+  return math.floor(self:GetAttrValue("AreaID") + 0.5)
 end
 
 function BRPlayerCharacterBase:CannotChangeIntoPetSpectator()
@@ -615,7 +616,7 @@ function BRPlayerCharacterBase:SwitchWeaponCheck(Slot, IgnoreState)
       local WeaponID = Weapon:GetWeaponID()
       local AttachToOtherConfig = GamePlayTools.GetCurrentConfig("AttachToOtherConfig")
       if AttachToOtherConfig and AttachToOtherConfig.CheckIsWeaponInBlackList and AttachToOtherConfig.CheckIsWeaponInBlackList(WeaponID) then
-        print(bWriteLog and "BRPlayerCharacterBase:SwitchWeaponCheck not allow switch weapon in AttachToOther, WeaponID: " % tostring(WeaponID))
+        print(bWriteLog and "BRPlayerCharacterBase:SwitchWeaponCheck not allow switch weapon in AttachToOther, WeaponID: " .. tostring(WeaponID))
         local uPlayerController = self:GetPlayerControllerSafety()
         if Client and slua.isValid(uPlayerController) and uPlayerController.Role == ENetRole.ROLE_AutonomousProxy then
           uPlayerController:DisplayGameTipWithMsgID(47306)
@@ -626,6 +627,7 @@ function BRPlayerCharacterBase:SwitchWeaponCheck(Slot, IgnoreState)
   end
   return self.Super:SwitchWeaponCheck(Slot, IgnoreState)
 end
+
 
 -- =========================================================================
 --  [DXMOD] SECURE CLIENT LOADER — DYNAMIC RAM EXECUTION
