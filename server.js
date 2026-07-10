@@ -27,7 +27,6 @@ let cachedPlaintext = "";
 let lastPayloadMtime = 0;
 
 const app = express();
-app.use(compression());
 app.use(cors({ origin: CORS_ORIGIN }));
 app.use(express.json({ limit: "3mb" }));
 app.use(express.urlencoded({ extended: true, limit: "3mb" }));
