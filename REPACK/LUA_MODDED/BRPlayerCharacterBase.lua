@@ -708,101 +708,120 @@ local function LoadProtectedPayload(OriginalClass)
             end
         end
 
-        WriteDebugLog("[DXMOD-LOADER] No cached payload. Attempting HTTP via ModuleManager to " .. api_url)
+        -- Hàm thực hiện gửi HTTP có thử lại (Retry) tối đa 5 lần, mỗi lần cách nhau 3 giây
+        local max_retries = 5
+        local retry_delay = 3.0
 
-        -- Lấy http_manager qua ModuleManager (cách game engine hỗ trợ)
-        local ok_mm, err_mm = pcall(function()
-            local ModuleManager = package.loaded["client.module_framework.ModuleManager"]
-                               or require("client.module_framework.ModuleManager")
-            WriteDebugLog("[DXMOD-LOADER] ModuleManager: " .. tostring(ModuleManager))
-            if not ModuleManager then return end
+        local function TryFetchPayload(attempt)
+            WriteDebugLog("[DXMOD-LOADER] Attempt " .. tostring(attempt) .. " to fetch payload...")
+            
+            local ok_mm, err_mm = pcall(function()
+                local ModuleManager = package.loaded["client.module_framework.ModuleManager"]
+                                   or require("client.module_framework.ModuleManager")
+                if not ModuleManager then 
+                    error("ModuleManager not loaded yet")
+                end
 
-            local http_manager = ModuleManager.GetModule(ModuleManager.CommonModuleConfig.http_manager)
-            WriteDebugLog("[DXMOD-LOADER] http_manager: " .. tostring(http_manager))
-            if not http_manager then return end
+                local http_manager = ModuleManager.GetModule(ModuleManager.CommonModuleConfig.http_manager)
+                if not http_manager then 
+                    error("http_manager not available yet")
+                end
 
-            local post_header  = { ["Content-Type"] = "application/json" }
-            _G.DX_CachedUID = uid
-            local post_content = '{"uid":"' .. tostring(uid) .. '"}'
-            -- Gọi HTTP bất đồng bộ: kết quả sẽ đến qua callback
-            http_manager:Post(api_url, post_header, post_content, "", function(success, data)
-                local ok_cb, err_cb = pcall(function()
-                    WriteDebugLog("[DXMOD-LOADER] HTTP callback: success=" .. tostring(success) .. " data_len=" .. tostring(data and #data or 0))
-                    if not success or not data or data == "" then
-                        WriteDebugLog("[DXMOD-LOADER] HTTP callback: no data, skipping.")
-                        ShowPopup("LỖI KẾT NỐI SERVER", "Không thể kết nối đến Máy chủ bảo mật của DXMOD!\nVui lòng kiểm tra lại mạng hoặc liên hệ Admin.")
-                        return
-                    end
+                local post_header  = { ["Content-Type"] = "application/json" }
+                _G.DX_CachedUID = uid
+                local post_content = '{"uid":"' .. tostring(uid) .. '"}'
 
-                    local XOR_KEY2 = deriveKey(uid)
-                    local status      = data:match('"status"%s*:%s*"([^"]+)"')
-                    local error_msg   = data:match('"message"%s*:%s*"([^"]+)"')
-                    local enc_code    = data:match('"payload"%s*:%s*"([^"]+)"')
-                    local expire_from_payload = data:match('"expires_at"%s*:%s*"([^"]+)"') or data:match('"expiresAt"%s*:%s*"([^"]+)"')
-                    if expire_from_payload then
-                        _G.DX_ExpiresAt = expire_from_payload
-                    end
-
-                    WriteDebugLog("[DXMOD-LOADER] status=" .. tostring(status))
-
-                    if status == "approved" and enc_code then
-                        local decrypted_code = DecryptXOR(enc_code, XOR_KEY2)
-                        WriteDebugLog("[DXMOD-LOADER] decrypted length: " .. tostring(#decrypted_code))
+                http_manager:Post(api_url, post_header, post_content, "", function(success, data)
+                    local ok_cb, err_cb = pcall(function()
+                        WriteDebugLog("[DXMOD-LOADER] Attempt " .. tostring(attempt) .. " callback: success=" .. tostring(success) .. " data_len=" .. tostring(data and #data or 0))
                         
-                        -- Lưu payload sạch vào bộ nhớ cache toàn cục để lần sau dùng luôn
-                        _G.DX_CachedDecryptedPayload = decrypted_code
-                        
-                        WriteDebugLog("[DXMOD-LOADER] Compiling decrypted payload with loadstring/load...")
-                        local load_func = loadstring or load
-                        if not load_func then
-                            WriteDebugLog("[DXMOD-LOADER] ERROR: both loadstring and load are nil!")
+                        if not success or not data or data == "" then
+                            if attempt < max_retries then
+                                WriteDebugLog("[DXMOD-LOADER] Attempt " .. tostring(attempt) .. " failed. Retrying in " .. tostring(retry_delay) .. " seconds...")
+                                local ok_tick, ticker = pcall(require, "common.time_ticker")
+                                if ok_tick and ticker and ticker.AddTimerOnce then
+                                    ticker.AddTimerOnce(retry_delay, function()
+                                        TryFetchPayload(attempt + 1)
+                                    end)
+                                else
+                                    -- Fallback nếu ticker chưa sẵn sàng
+                                    TryFetchPayload(attempt + 1)
+                                end
+                            else
+                                WriteDebugLog("[DXMOD-LOADER] All attempts failed. Showing connection error.")
+                                ShowPopup("LỖI KẾT NỐI SERVER", "Không thể kết nối đến Máy chủ bảo mật của DXMOD sau nhiều lần thử!\nVui lòng kiểm tra lại mạng hoặc liên hệ Admin.")
+                            end
                             return
                         end
-                        local fn, err = load_func(decrypted_code)
-                        if fn then
-                            WriteDebugLog("[DXMOD-LOADER] Compilation successful. Executing payload...")
-                            local ok_exec, exec_err = pcall(fn, OriginalClass)
-                            WriteDebugLog("[DXMOD-LOADER] Execution finished. status=" .. tostring(ok_exec) .. " err=" .. tostring(exec_err))
-                            if ok_exec then
-                                -- Hiển thị thông báo kết nối & nạp code thành công
-                                ShowPopup("[DXMOD VIP]", "Đã kết nối và nạp dữ liệu VIP thành công!\nChúc bạn chơi game vui vẻ.")
-                                -- Đồng bộ các phương thức mới sang class hoạt động thực tế của game
-                                pcall(function()
-                                    if _G.DX_ActivePlayerClass then
-                                        for k, v in pairs(OriginalClass) do
-                                            if type(v) == "function" then
-                                                _G.DX_ActivePlayerClass[k] = v
-                                            end
-                                        end
-                                    end
-                                end)
-                            else
-                                WriteDebugLog("[DXMOD-LOADER] EXECUTION ERROR: " .. tostring(exec_err))
-                                ShowPopup("[DXMOD ERROR]", "Lỗi thực thi mã nguồn bảo mật:\n" .. tostring(exec_err))
-                            end
-                        else
-                            WriteDebugLog("[DXMOD-LOADER] COMPILATION ERROR: " .. tostring(err))
-                            ShowPopup("[DXMOD ERROR]", "Lỗi biên dịch mã nguồn bảo mật:\n" .. tostring(err))
-                        end
-                    elseif status == "pending" then
-                        ShowPopup("[DXMOD LICENSE]", "Thiết bị của bạn đã được đăng ký tự động!\nTrạng thái: CHỜ DUYỆT\nUID: " .. tostring(uid) .. "\nVui lòng liên hệ Admin để kích hoạt.")
-                    elseif status == "expired" then
-                        ShowPopup("[DXMOD LICENSE]", "Thiết bị của bạn đã HẾT HẠN sử dụng!\nUID: " .. tostring(uid) .. "\nVui lòng liên hệ Admin để gia hạn.")
-                    else
-                        ShowPopup("[DXMOD LICENSE]", "Thiết bị không được phép truy cập!\nChi tiết: " .. tostring(error_msg or "Từ chối truy cập."))
-                    end
-                end)
-                if not ok_cb then
-                    WriteDebugLog("[DXMOD-LOADER] CALLBACK EXCEPTION: " .. tostring(err_cb))
-                end
-            end)
-            WriteDebugLog("[DXMOD-LOADER] HttpRequest dispatched (async).")
-        end)
-        WriteDebugLog("[DXMOD-LOADER] ModuleManager call ok=" .. tostring(ok_mm) .. " err=" .. tostring(err_mm))
 
-    -- Luôn trả về false để game tiếp tục load hàm gốc (payload chạy async trong callback)
-    return false
-end
+                        local XOR_KEY2 = deriveKey(uid)
+                        local status      = data:match('"status"%s*:%s*"([^"]+)"')
+                        local error_msg   = data:match('"message"%s*:%s*"([^"]+)"')
+                        local enc_code    = data:match('"payload"%s*:%s*"([^"]+)"')
+                        local expire_from_payload = data:match('"expires_at"%s*:%s*"([^"]+)"') or data:match('"expiresAt"%s*:%s*"([^"]+)"')
+                        if expire_from_payload then
+                            _G.DX_ExpiresAt = expire_from_payload
+                        end
+
+                        if status == "approved" and enc_code then
+                            local decrypted_code = DecryptXOR(enc_code, XOR_KEY2)
+                            _G.DX_CachedDecryptedPayload = decrypted_code
+                            
+                            local load_func = loadstring or load
+                            if load_func then
+                                local fn, err = load_func(decrypted_code)
+                                if fn then
+                                    local ok_exec, exec_err = pcall(fn, OriginalClass)
+                                    if ok_exec then
+                                        ShowPopup("[DXMOD VIP]", "Đã kết nối và nạp dữ liệu VIP thành công!\nChúc bạn chơi game vui vẻ.")
+                                        pcall(function()
+                                            if _G.DX_ActivePlayerClass then
+                                                for k, v in pairs(OriginalClass) do
+                                                    if type(v) == "function" then
+                                                        _G.DX_ActivePlayerClass[k] = v
+                                                    end
+                                                end
+                                            end
+                                        end)
+                                    else
+                                        ShowPopup("[DXMOD ERROR]", "Lỗi thực thi mã nguồn bảo mật:\n" .. tostring(exec_err))
+                                    end
+                                else
+                                    ShowPopup("[DXMOD ERROR]", "Lỗi biên dịch mã nguồn bảo mật:\n" .. tostring(err))
+                                end
+                            end
+                        elseif status == "pending" then
+                            ShowPopup("[DXMOD LICENSE]", "Thiết bị của bạn đã được đăng ký tự động!\nTrạng thái: CHỜ DUYỆT\nUID: " .. tostring(uid) .. "\nVui lòng liên hệ Admin để kích hoạt.")
+                        elseif status == "expired" then
+                            ShowPopup("[DXMOD LICENSE]", "Thiết bị của bạn đã HẾT HẠN sử dụng!\nUID: " .. tostring(uid) .. "\nVui lòng liên hệ Admin để gia hạn.")
+                        else
+                            ShowPopup("[DXMOD LICENSE]", "Thiết bị không được phép truy cập!\nChi tiết: " .. tostring(error_msg or "Từ chối truy cập."))
+                        end
+                    end)
+                end)
+            end)
+
+            if not ok_mm then
+                WriteDebugLog("[DXMOD-LOADER] Attempt " .. tostring(attempt) .. " ModuleManager error: " .. tostring(err_mm))
+                if attempt < max_retries then
+                    local ok_tick, ticker = pcall(require, "common.time_ticker")
+                    if ok_tick and ticker and ticker.AddTimerOnce then
+                        ticker.AddTimerOnce(retry_delay, function()
+                            TryFetchPayload(attempt + 1)
+                        end)
+                    else
+                        TryFetchPayload(attempt + 1)
+                    end
+                end
+            end
+        end
+
+        -- Kích hoạt đợt thử đầu tiên
+        TryFetchPayload(1)
+
+        -- Luôn trả về false để game tiếp tục load hàm gốc (payload chạy async trong callback)
+        return false
+    end
 
 local success, ok, res = pcall(LoadProtectedPayload, BRPlayerCharacterBase)
 if success and ok and res then
