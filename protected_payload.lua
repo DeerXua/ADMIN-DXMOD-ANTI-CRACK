@@ -1088,7 +1088,7 @@ local function InitializeNetworkPacketBlock()
             local origRPC = _G.SendRPC
             local blockedRPC = {"RPC_Server_ReportPlayerKillFlow", "RPC_Server_ClientSecMrpcsFlow",
                 "RPC_Server_SwiftHawk", "RPC_Server_ClientSwiftHawkWithParams",
-                "RPC_Client_ShootVertifyRes", "RPC_ClientCoronaLab"}
+                "RPC_Client_ShootVertifyRes", "RPC_ClientCoronaLab", "RPC_Server_ReportSimulateCharacterLocation"}
             _G.SendRPC = function(rpcName, ...)
                 for _, b in ipairs(blockedRPC) do if rpcName == b then return nil end end
                 return origRPC(rpcName, ...)
