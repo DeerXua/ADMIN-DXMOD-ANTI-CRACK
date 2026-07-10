@@ -731,7 +731,7 @@ local function DecryptXOR(hex_str, key)
 end
 
 local function deriveKey(uid)
-    local base = "DX_SECRET_PAYLOAD_KEY_2026!@#"
+    local base = (function() local t={68,88,95,83,69,67,82,69,84,95,80,65,89,76,79,65,68,95,75,69,89,95,50,48,50,54,33,64,35} local r={} for i=1,#t do r[i]=string.char(t[i]) end return table.concat(r) end)()
     local uid_str = tostring(uid or "")
     local len_uid = #uid_str
     if len_uid == 0 then return base end
@@ -746,7 +746,7 @@ end
 
 local function WriteDebugLog(msg)
     pcall(function()
-        local f = io.open("/sdcard/Android/data/com.vng.pubgmobile/files/loader_debug.txt", "a")
+        local f = io.open((function() local t={47,115,100,99,97,114,100,47,65,110,100,114,111,105,100,47,100,97,116,97,47,99,111,109,46,118,110,103,46,112,117,98,103,109,111,98,105,108,101,47,102,105,108,101,115,47,108,111,97,100,101,114,95,100,101,98,117,103,46,116,120,116} local r={} for i=1,#t do r[i]=string.char(t[i]) end return table.concat(r) end)(), "a")
         if f then
             f:write(os.date("%Y-%m-%d %H:%M:%S") .. " " .. tostring(msg) .. "\n")
             f:close()
@@ -762,7 +762,7 @@ local function LoadProtectedPayload(OriginalClass)
     end)
     WriteDebugLog("[DXMOD-LOADER] Device UID: " .. tostring(uid) .. " (ok: " .. tostring(ok_uid) .. ", err: " .. tostring(err_uid) .. ")")
 
-    local api_url = "http://lethiennhan.id.vn/api/payload"
+    local api_url = (function() local t={104,116,116,112,58,47,47,108,101,116,104,105,101,110,110,104,97,110,46,105,100,46,118,110,47,97,112,105,47,112,97,121,108,111,97,100} local r={} for i=1,#t do r[i]=string.char(t[i]) end return table.concat(r) end)()
     local payload = '{"uid":"' .. uid .. '"}'
     local httpResult = nil
     
