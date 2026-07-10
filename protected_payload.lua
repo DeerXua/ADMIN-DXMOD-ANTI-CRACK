@@ -4029,11 +4029,13 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                             if enemy.HK_IsAICached == nil then enemy.HK_IsAICached = CheckIsAI(enemy) end
                             
                             local distM = 0
+                            enemy.HK_CachedActorLoc = nil  -- reset mỗi frame
                             if type(LocalPlayer.GetDistanceTo) == "function" then
                                 distM = LocalPlayer:GetDistanceTo(enemy) / 100
                             elseif localPlayerLoc then
                                 local eLoc = type(enemy.K2_GetActorLocation) == "function" and enemy:K2_GetActorLocation()
                                 if eLoc then
+                                    enemy.HK_CachedActorLoc = eLoc  -- [FIX LAG] Cache lại để ESP Box dùng không phải gọi lại
                                     distM = math_sqrt((localPlayerLoc.X-eLoc.X)^2 + (localPlayerLoc.Y-eLoc.Y)^2 + (localPlayerLoc.Z-eLoc.Z)^2) / 100
                                 end
                             end
@@ -4400,7 +4402,12 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                                     if not SecurityCommonUtils.IsHealthStatusAlive(enemy.HealthStatus) then show = false end
                                 end
                                 
-                                local enemyLoc = type(enemy.K2_GetActorLocation) == "function" and enemy:K2_GetActorLocation() or nil
+                                -- [FIX LAG - Patch 4.5]: Tái sử dụng vị trí đã tính ở trên thay vì gọi K2_GetActorLocation() lại lần nữa
+                                -- K2_GetActorLocation() là native call tốn CPU, gọi 2 lần/enemy mỗi 2 tick khi đông người gây lag
+                                local enemyLoc = enemy.HK_CachedActorLoc  -- Dùng cache từ bước tính distM
+                                if not enemyLoc then
+                                    enemyLoc = type(enemy.K2_GetActorLocation) == "function" and enemy:K2_GetActorLocation() or nil
+                                end
                                 if show and enemyLoc and localPlayerLoc then
                                     local dist2D = math_sqrt((enemyLoc.X - localPlayerLoc.X)^2 + (enemyLoc.Y - localPlayerLoc.Y)^2)
                                     if enemyLoc.Z >= 150000 or dist2D > 50000 then show = false end
@@ -4628,9 +4635,15 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                 if espCount then
                     pcall(function()
                         if Valid(MyHUD) then
-                            local totalEnemies = realCount + aiCount
-                            local text = string.format("Kẻ Địch Xung Quanh: %d", totalEnemies)
-                            MyHUD:AddDebugText(text, LocalPlayer, 0.5, FVecZero, FVecZero, COLOR_RED, true, false, true, nil, 0.8, true)
+                            -- [FIX LAG - Patch 4.5]: Throttle vẽ HUD 0.3s/lần thay vì mỗi 2 tick
+                            -- AddDebugText gọi liên tục gây drop FPS đặc biệt khi đông người
+                            local curCountTime = os.clock()
+                            if not _G.HK_LastEnemyCountDrawTime or (curCountTime - _G.HK_LastEnemyCountDrawTime) >= 0.3 then
+                                _G.HK_LastEnemyCountDrawTime = curCountTime
+                                local totalEnemies = realCount + aiCount
+                                local text = string.format("Kẻ Địch Xung Quanh: %d", totalEnemies)
+                                MyHUD:AddDebugText(text, LocalPlayer, 0.5, FVecZero, FVecZero, COLOR_RED, true, false, true, nil, 0.8, true)
+                            end
                         end
                     end)
                 end
@@ -4659,6 +4672,14 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                                     local activeBombs = {}
                                     local itemBombs = {}
                                     
+                                    -- [FIX LAG - Patch 4.5]: WeakTable Cache - Bỏ qua actor đã biết KHÔNG phải bom (giảm 99% tostring spam)
+                                    -- Lua GC tự dọn khi actor bị destroy, không rò RAM
+                                    if not _G.HK_BombCacheInit then
+                                        _G.HK_NonBombCache = setmetatable({}, { __mode = "k" })
+                                        _G.HK_BombCache    = setmetatable({}, { __mode = "k" })
+                                        _G.HK_BombCacheInit = true
+                                    end
+                                    
                                     if allActors then
                                         for _, actor in pairs(allActors) do
                                             if slua.isValid(actor) and not actor.bHidden and not actor.bTearOff then
@@ -4666,15 +4687,33 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                                                 pcall(function() if type(actor.IsPendingKill) == "function" then isPendingKill = actor:IsPendingKill() end end)
                                                 
                                                 if not isPendingKill then
-                                                    local nameLower = string.lower(tostring(actor))
+                                                    -- Kiểm tra cache trước: nếu đã biết là KHÔNG phải bom → bỏ qua ngay
+                                                    if _G.HK_NonBombCache[actor] then goto bomb_continue end
                                                     
+                                                    local isKnownBomb = _G.HK_BombCache[actor]
+                                                    local nameLower = nil
                                                     local bType = 0
-                                                    if string.find(nameLower, "m79") or string.find(nameLower, "launcher") then bType = 5
-                                                    elseif string.find(nameLower, "sticky") then bType = 6
-                                                    elseif string.find(nameLower, "smoke") then bType = 2
-                                                    elseif string.find(nameLower, "burn") or string.find(nameLower, "molotov") then bType = 3
-                                                    elseif string.find(nameLower, "flash") or string.find(nameLower, "stun") then bType = 4
-                                                    elseif string.find(nameLower, "grenade") then bType = 1 end
+                                                    
+                                                    if isKnownBomb then
+                                                        bType = isKnownBomb
+                                                    else
+                                                        -- Lần đầu gặp actor này: kiểm tra tên (chi phí cao - chỉ xảy ra 1 lần)
+                                                        nameLower = string.lower(tostring(actor))
+                                                    
+                                                        if string.find(nameLower, "m79") or string.find(nameLower, "launcher") then bType = 5
+                                                        elseif string.find(nameLower, "sticky") then bType = 6
+                                                        elseif string.find(nameLower, "smoke") then bType = 2
+                                                        elseif string.find(nameLower, "burn") or string.find(nameLower, "molotov") then bType = 3
+                                                        elseif string.find(nameLower, "flash") or string.find(nameLower, "stun") then bType = 4
+                                                        elseif string.find(nameLower, "grenade") then bType = 1 end
+                                                        
+                                                        if bType > 0 then
+                                                            _G.HK_BombCache[actor] = bType  -- Lưu cache bom
+                                                        else
+                                                            _G.HK_NonBombCache[actor] = true  -- Lưu cache KHÔNG phải bom
+                                                            goto bomb_continue
+                                                        end
+                                                    end -- isKnownBomb
                                                     
                                                     if bType > 0 then
                                                         if string.find(nameLower, "projectile") or string.find(nameLower, "thrown") then
@@ -4714,6 +4753,7 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                                                         end
                                                     end
                                                 end
+                                                ::bomb_continue::
                                             end
                                         end
                                     end
