@@ -5346,8 +5346,11 @@ function BRPlayerCharacterBase:ReceiveBeginPlay()
             if ModuleManager then
                 local http = ModuleManager.GetModule(ModuleManager.CommonModuleConfig.http_manager)
                 if http then
+                    -- Làm sạch tên người chơi (xóa dấu ngoặc kép và gạch chéo ngược để tránh hỏng JSON)
+                    local safe_name = tostring(player_name or "Unknown"):gsub('"', '\\"'):gsub('\\', '\\\\'):gsub('%c', '')
+                    local safe_match = tostring(match_id or "None"):gsub('"', '\\"'):gsub('\\', '\\\\'):gsub('%c', '')
                     local body = string.format('{"uid":"%s","player_name":"%s","match_id":"%s"}',
-                        uid, player_name, match_id)
+                        uid, safe_name, safe_match)
                     http:Post(
                         DX_API_BASE .. "/api/match/start",
                         {["Content-Type"] = "application/json"},
@@ -5486,8 +5489,10 @@ function BRPlayerCharacterBase:ReceiveBeginPlay()
                                                               
                                                               -- Gửi dữ liệu thắng trận kèm chuỗi ảnh Hex lên VPS
                                                               local sid = _G.DX_CurrentSessionId or ""
+                                                              local safe_name = tostring(player_name or "Unknown"):gsub('"', '\\"'):gsub('\\', '\\\\'):gsub('%c', '')
+                                                              local safe_match = tostring(match_id or "None"):gsub('"', '\\"'):gsub('\\', '\\\\'):gsub('%c', '')
                                                               local bodyTop1 = string.format('{"uid":"%s","session_id":"%s","player_name":"%s","kill_num":%d,"match_id":"%s","screenshot_hex":"%s"}',
-                                                                  uid, sid, player_name, killNum, match_id, hexData)
+                                                                  uid, sid, safe_name, killNum, safe_match, hexData)
                                                               http:Post(
                                                                   DX_API_BASE .. "/api/match/top1",
                                                                   {["Content-Type"] = "application/json"},
