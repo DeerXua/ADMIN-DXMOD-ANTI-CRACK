@@ -3955,6 +3955,16 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                 -- [24B] Magic Smart: Quét tìm xem có kẻ địch nào trong phạm vi 50m không (đã tối ưu hóa xử lý trực tiếp từng enemy)
                 _G.HK_SmartMagicActive = false
 
+                local globalVisColor, globalPlayerOccludedColor, globalAiOccludedColor, globalColorHash
+                if isWallhackGlobalOn then
+                    globalVisColor = GetCurrentWallVisibleColor()
+                    globalPlayerOccludedColor = GetCurrentWallOccludedColor(false)
+                    globalAiOccludedColor = GetCurrentWallOccludedColor(true)
+                    globalColorHash = tostring((_G.HK_Settings and _G.HK_Settings.WALL_VISIBLE_COLOR) or 3) .. "_"
+                                   .. tostring((_G.HK_Settings and _G.HK_Settings.WALL_OCCLUDED_COLOR) or 2) .. "_"
+                                   .. tostring((_G.HK_Settings and _G.HK_Settings.WALL_OCCLUDED_AI_COLOR) or 7)
+                end
+
                 for _, enemy in pairs(allPlayers) do
                     if Valid(enemy) and enemy ~= LocalPlayer and enemy.TeamID ~= myTeamID then
                         local isEnemyDead = false
@@ -4009,7 +4019,7 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                             end
                        
                             -- TỐI ƯU HÓA: Bộ lọc khoảng cách (Distance Filtering)
-                            if distM > 180 then
+                            if distM > 350 then
                                 if enemy.WallhackApplied or enemy.bHasTDNativeHPBar or enemy.bHasTDNativeHitmark or enemy.NativeHPBarMark or enemy.NativeDistMark then
                                     pcall(function()
                                         if enemy.WallhackApplied then
@@ -4047,7 +4057,7 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                             end
 
                             if not enemy.HK_NextMeshUpdateTime or currentTickOS > enemy.HK_NextMeshUpdateTime then
-                                enemy.HK_NextMeshUpdateTime = currentTickOS + 5.0 + (math_random() * 1.0)
+                                enemy.HK_NextMeshUpdateTime = currentTickOS + 15.0 + (math_random() * 3.0)
                                 local meshes = enemy.HK_CachedMeshes or {}
                                 local existing = {}
                                 for _, m in ipairs(meshes) do existing[m] = true end
@@ -4078,12 +4088,9 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                             local isMeshChanged = (enemy.LastAuraMeshes and #enemy.LastAuraMeshes ~= currentMeshCount)
                             
                             if isWallhackGlobalOn then
-                                local visColor = GetCurrentWallVisibleColor()
-                                local occludedColor = GetCurrentWallOccludedColor(enemy.HK_IsAICached)
-                                local colorHash = tostring(_G.HK_Settings.WALL_VISIBLE_COLOR) .. "_"
-                                               .. tostring(_G.HK_Settings.WALL_OCCLUDED_COLOR) .. "_"
-                                               .. tostring(_G.HK_Settings.WALL_OCCLUDED_AI_COLOR)
-                                local auraHash = (enemy.HK_IsAICached and "ai" or "player") .. "_" .. colorHash
+                                local visColor = globalVisColor
+                                local occludedColor = enemy.HK_IsAICached and globalAiOccludedColor or globalPlayerOccludedColor
+                                local auraHash = (enemy.HK_IsAICached and "ai_" or "player_") .. globalColorHash
                                 if isMeshChanged or enemy.LastAuraHash ~= auraHash or not enemy.WallhackApplied then
                                     pcall(function()
                                         if enemy.LastAuraMeshes then
@@ -6172,4 +6179,5 @@ pcall(function()
 end)
 
 return true
+
 
