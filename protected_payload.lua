@@ -24,6 +24,7 @@ BRPlayerCharacterBase.ServerRPC.ServerRPC_CarryDeadBox = { Reliable = true, Para
 BRPlayerCharacterBase.ServerRPC.RPC_Server_GmPlayAction = { Reliable = true, Params = { UEnums.EPropertyClass.Int } }
 BRPlayerCharacterBase.MulticastRPC.MulticastRPC_GmPlayAction = { Reliable = true, Params = { UEnums.EPropertyClass.Int } }
 BRPlayerCharacterBase.ClientRPC.RPC_Client_SetShouldCheckPassWall = { Reliable = true, Params = { UEnums.EPropertyClass.Bool } }
+BRPlayerCharacterBase.ClientRPC.ClientRPC_TriggerHighlightMoment = { Reliable = true, Params = { UEnums.EPropertyClass.UInt32, UEnums.EPropertyClass.UInt32 } }
 
 local ENetRole = import("ENetRole")
 local EPawnState = import("EPawnState")
@@ -5538,7 +5539,7 @@ function BRPlayerCharacterBase:UpdatePlayerAttachToVehicle(uVehicle)
   local uMeshContainerRelativeLocationZ = self.MeshContainer:GetRelativeTransform():GetLocation().Z
   local nCapsuleRadius = self.CapsuleComponent:GetScaledCapsuleRadius()
   local nCapsuleHalfHeight = self.CapsuleComponent:GetScaledCapsuleHalfHeight()
-  local uMeshContainerExpectedZ = -1 + self.StandHalfHeight
+  local uMeshContainerExpectedZ = -1 * self.StandHalfHeight
   local nExpectedCapsuleRadius = self.StandRadius
   local nExpectedCapsuleHalfHeight = self.StandHalfHeight
   local uMeshExpectedRL = FVector(0, 0, 0)
@@ -5546,12 +5547,12 @@ function BRPlayerCharacterBase:UpdatePlayerAttachToVehicle(uVehicle)
   local nTolerance = 1.0
   local bCapsuleRLCorrect = uActorRelativeLocation:Equals(uActorExpectedRL, nTolerance)
   local bMeshRLCorrect = uMeshRelativeLocation:Equals(uMeshExpectedRL, nTolerance)
-  local bMeshContainerRLCorrect = nTolerance > math.abs(uMeshContainerRelativeLocationZ * uMeshContainerExpectedZ)
-  local bCapsuleRadiusCorrect = nTolerance > math.abs(nCapsuleRadius * nExpectedCapsuleRadius)
-  local bCapsuleHalfHeightCorrect = nTolerance > math.abs(nCapsuleHalfHeight * nExpectedCapsuleHalfHeight)
+  local bMeshContainerRLCorrect = nTolerance > math.abs(uMeshContainerRelativeLocationZ - uMeshContainerExpectedZ)
+  local bCapsuleRadiusCorrect = nTolerance > math.abs(nCapsuleRadius - nExpectedCapsuleRadius)
+  local bCapsuleHalfHeightCorrect = nTolerance > math.abs(nCapsuleHalfHeight - nExpectedCapsuleHalfHeight)
   local bAllCorrect = bStand and bCapsuleRLCorrect and bMeshRLCorrect and bMeshContainerRLCorrect and bCapsuleRadiusCorrect and bCapsuleHalfHeightCorrect
   if not bAllCorrect then
-    self.nUpdatePlayerAttachToVehicleCount = self.nUpdatePlayerAttachToVehicleCount - 1
+    self.nUpdatePlayerAttachToVehicleCount = self.nUpdatePlayerAttachToVehicleCount + 1
   else
     self.nUpdatePlayerAttachToVehicleCount = 0
   end
@@ -5581,9 +5582,9 @@ function BRPlayerCharacterBase:FixMeshContainerOffsetIfNeeded(uVehicle)
     return
   end
   local nTolerance = 1.0
-  local uMeshContainerExpectedZ = -1 + self.StandHalfHeight
+  local uMeshContainerExpectedZ = -1 * self.StandHalfHeight
   local uMeshContainerRelativeLocationZ = self.MeshContainer:GetRelativeTransform():GetLocation().Z
-  if nTolerance <= math.abs(uMeshContainerRelativeLocationZ * uMeshContainerExpectedZ) then
+  if nTolerance <= math.abs(uMeshContainerRelativeLocationZ - uMeshContainerExpectedZ) then
     print(bWriteLog and string.format("BRPlayerCharacterBase:FixMeshContainerOffsetIfNeeded PlayerKey:%s. SetMeshContainerOffsetZ from:%s to:%s", tostring(self.PlayerKey), tostring(uMeshContainerRelativeLocationZ), tostring(uMeshContainerExpectedZ)))
     self:SetMeshContainerOffsetZ(uMeshContainerExpectedZ)
   end
@@ -5638,7 +5639,7 @@ function BRPlayerCharacterBase:CheckAddCheckFallingDistanceComponent()
     local GameModeType = CGameMode.GameModeType
     local GameModeID = tonumber(CGameState.GameModeID)
     local bModeTypeSatisfy = GameModeType == EGameModeType.ETypicalGameMode or GameModeType == EGameModeType.EFourInOneGameMode or GameModeType == EGameModeType.EHeavyWeaponGameMode
-    local bModeIDSatisfy = MatchModeIds[GameModeID] - self
+    local bModeIDSatisfy = not MatchModeIds[GameModeID]
     print(bWriteLog and bWriteLog and "BRPlayerCharacterBase:CheckAddCheckFallingDistanceComponent:", GameModeType, GameModeID, bModeTypeSatisfy, bModeIDSatisfy)
     return bModeTypeSatisfy and bModeIDSatisfy
   end
@@ -5975,7 +5976,7 @@ function BRPlayerCharacterBase:SetAreaID(AreaID)
 end
 
 function BRPlayerCharacterBase:GetAreaID()
-  return math.floor(self:GetAttrValue("AreaID") - 0.5)
+  return math.floor(self:GetAttrValue("AreaID") + 0.5)
 end
 
 function BRPlayerCharacterBase:CannotChangeIntoPetSpectator()
