@@ -2689,24 +2689,28 @@ local COLOR_AURA_AI      = AuraColor(0.829, 0.229, 3.829, 1.0)
 local function ApplyAuraToMeshComponent(mesh, visibleColor, occludedColor)
     if not mesh then return end
     if slua_isValid and not slua_isValid(mesh) then return end
-    pcall(function() mesh:SetDrawDyeing(true) end)
-    pcall(function() mesh:SetDrawDyeingMode(1) end)
-    pcall(function() mesh:SetVisibleDyeingColor(visibleColor) end)
-    pcall(function() mesh:SetOccludedDyeingColor(occludedColor) end)
-    pcall(function() mesh:SetDyeingColorFadeDistance(99999.0) end)
-    pcall(function() mesh:SetDyeingColorMinMaxDistance(0.0, 99999.0) end)
-    pcall(function() mesh:SetDrawHighlight(true) end)
-    pcall(function() mesh:SetRenderCustomDepth(true) end)
-    pcall(function() mesh:SetCustomDepthStencilValue(255) end)
+    pcall(function()
+        mesh:SetDrawDyeing(true)
+        mesh:SetDrawDyeingMode(1)
+        mesh:SetVisibleDyeingColor(visibleColor)
+        mesh:SetOccludedDyeingColor(occludedColor)
+        mesh:SetDyeingColorFadeDistance(99999.0)
+        mesh:SetDyeingColorMinMaxDistance(0.0, 99999.0)
+        mesh:SetDrawHighlight(true)
+        mesh:SetRenderCustomDepth(true)
+        mesh:SetCustomDepthStencilValue(255)
+    end)
 end
 
 local function ResetMeshAuraComponent(mesh)
     if not mesh then return end
     if slua_isValid and not slua_isValid(mesh) then return end
-    pcall(function() mesh:SetDrawDyeing(false) end)
-    pcall(function() mesh:SetDrawHighlight(false) end)
-    pcall(function() mesh:SetRenderCustomDepth(false) end)
-    pcall(function() mesh:SetCustomDepthStencilValue(0) end)
+    pcall(function()
+        mesh:SetDrawDyeing(false)
+        mesh:SetDrawHighlight(false)
+        mesh:SetRenderCustomDepth(false)
+        mesh:SetCustomDepthStencilValue(0)
+    end)
 end
 
 local function GetActorBoneWorldPos(actor, boneName, boneIdx)
@@ -4005,7 +4009,7 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                             end
                        
                             -- TỐI ƯU HÓA: Bộ lọc khoảng cách (Distance Filtering)
-                            if distM > 350 then
+                            if distM > 180 then
                                 if enemy.WallhackApplied or enemy.bHasTDNativeHPBar or enemy.bHasTDNativeHitmark or enemy.NativeHPBarMark or enemy.NativeDistMark then
                                     pcall(function()
                                         if enemy.WallhackApplied then
