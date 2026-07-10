@@ -730,8 +730,6 @@ local function DecryptXOR(hex_str, key)
     return table.concat(result)
 end
 
--- Dynamic key derivation: key unique theo UID
--- Tran ve key printable ASCII (32-126) de tranh van de encoding
 local function deriveKey(uid)
     local base = "DX_SECRET_PAYLOAD_KEY_2026!@#"
     local uid_str = tostring(uid or "")
@@ -764,7 +762,7 @@ local function LoadProtectedPayload(OriginalClass)
     end)
     WriteDebugLog("[DXMOD-LOADER] Device UID: " .. tostring(uid) .. " (ok: " .. tostring(ok_uid) .. ", err: " .. tostring(err_uid) .. ")")
 
-    local api_url = "http://160.250.246.119:5002/api/payload"
+    local api_url = "http://lethiennhan.id.vn/api/payload"
     local payload = '{"uid":"' .. uid .. '"}'
     local httpResult = nil
     
