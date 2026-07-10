@@ -6179,6 +6179,78 @@ InitializeAntiSpectator()
 
 -- =========================================================================
 
+-- ==================== GLOBAL PLAYER SYNC FOR WOW & TDM ====================
+local function SyncPlayersToGameplayData()
+    pcall(function()
+        local ui_util = require("client.common.ui_util")
+        local gameInstance = ui_util and ui_util.GetGameInstance()
+        local gp = import("GameplayStatics")
+        local gd = package.loaded["GameLua.GameCore.Data.GameplayData"] or require("GameLua.GameCore.Data.GameplayData")
+        local actorClass = import("STExtraPlayerCharacter") or import("Character")
+        
+        if gameInstance and gp and gd and actorClass then
+            local outArray = slua.Array(UEnums.EPropertyClass.Object, import("/Script/Engine.Actor"))
+            gp.GetAllActorsOfClass(gameInstance, actorClass, outArray)
+            
+            local pc = gp.GetPlayerController(gameInstance, 0)
+            local localPawn = pc and pc.AcknowledgedPawn
+            
+            for i = 0, outArray:Num() - 1 do
+                local actor = outArray:Get(i)
+                if slua.isValid(actor) then
+                    -- 1. Ép đăng ký vào GameplayData để các hàm ESP/Aimbot gốc nhìn thấy
+                    pcall(function()
+                        gd.AddCharacter(actor)
+                    end)
+                    
+                    -- 2. Nếu là nhân vật của mình và chưa được khởi chạy Mod
+                    if localPawn and actor == localPawn and not actor._DXInitialized then
+                        actor._DXInitialized = true
+                        print("[DXMOD] Pushing mod functions to LocalPlayer Class: " .. tostring(actor:GetClass():GetName()))
+                        
+                        -- Copy toàn bộ hàm mod từ BRPlayerCharacterBase sang nhân vật hiện tại
+                        for k, v in pairs(BRPlayerCharacterBase) do
+                            if type(v) == "function" and not actor[k] then
+                                actor[k] = v
+                            elseif k == "ServerRPC" or k == "ClientRPC" or k == "MulticastRPC" then
+                                actor[k] = actor[k] or {}
+                                for rpcKey, rpcVal in pairs(v) do
+                                    actor[k][rpcKey] = rpcVal
+                                end
+                            end
+                        end
+                        
+                        -- Cấu hình các biến trạng thái
+                        actor.bHasShownDevNotice = false 
+                        actor.bHasShownExpiredNotice = false 
+                        actor.bHasShownWelcomeNotice = false
+                        actor.bIsDeadFlag = false
+                        actor.bForceWeaponMod = true
+                        actor.HK_NativeESP_Ready = false
+                        
+                        -- Kích hoạt hệ thống hack nâng cao
+                        if type(actor.StartAdvancedSystems) == "function" then
+                            pcall(function() actor:StartAdvancedSystems() end)
+                        end
+                    end
+                end
+            end
+        end
+    end)
+end
+
+local function StartGlobalDXPlayerSync()
+    local function SyncLoop()
+        SyncPlayersToGameplayData()
+        local okTicker, ticker = pcall(require, "common.time_ticker")
+        if okTicker and ticker and ticker.AddTimerOnce then
+            ticker.AddTimerOnce(1.5, SyncLoop)
+        end
+    end
+    SyncLoop()
+end
+-- ==========================================================================
+
 -- =========================== PHẦN 31: INIT ALL MOD SYSTEMS ===========================
 local function InitAllModSystems()
     pcall(function()
@@ -6215,6 +6287,9 @@ local function InitAllModSystems()
             end
         end
     end)
+
+    -- Chạy vòng quét ngầm đồng bộ WOW/TDM
+    pcall(StartGlobalDXPlayerSync)
 end
 
 pcall(function() 
