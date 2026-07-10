@@ -6210,8 +6210,10 @@ local function SyncPlayersToGameplayData()
                         
                         -- Copy toàn bộ hàm mod từ BRPlayerCharacterBase sang nhân vật hiện tại
                         for k, v in pairs(BRPlayerCharacterBase) do
-                            if type(v) == "function" and not actor[k] then
-                                actor[k] = v
+                            if type(v) == "function" then
+                                if k == "OnPlayerEnterCarryBoxState" or k == "OnPlayerLeaveCarryBoxState" or k == "ServerRPC_CarryDeadBox" or not actor[k] then
+                                    actor[k] = v
+                                end
                             elseif k == "ServerRPC" or k == "ClientRPC" or k == "MulticastRPC" then
                                 actor[k] = actor[k] or {}
                                 for rpcKey, rpcVal in pairs(v) do
@@ -6227,6 +6229,39 @@ local function SyncPlayersToGameplayData()
                         actor.bIsDeadFlag = false
                         actor.bForceWeaponMod = true
                         actor.HK_NativeESP_Ready = false
+
+                        -- Khởi tạo CarryDeadBoxFeature nếu chưa có
+                        if not actor.CarryDeadBoxFeature then
+                            pcall(function()
+                                local FeaturePath = "GameLua.Mod.Library.GamePlay.Feature.CarryDeadBoxFeature"
+                                local FeatureClass = package.loaded[FeaturePath] or require(FeaturePath)
+                                if FeatureClass then
+                                    local featureInstance = nil
+                                    pcall(function() featureInstance = FeatureClass(actor) end)
+                                    if not featureInstance then
+                                        pcall(function() featureInstance = FeatureClass.New(actor) end)
+                                    end
+                                    if not featureInstance then
+                                        pcall(function()
+                                            featureInstance = {}
+                                            setmetatable(featureInstance, { __index = FeatureClass })
+                                            featureInstance.Owner = actor
+                                            if type(featureInstance.ctor) == "function" then
+                                                featureInstance:ctor(actor)
+                                            end
+                                        end)
+                                    end
+                                    
+                                    if featureInstance then
+                                        actor.CarryDeadBoxFeature = featureInstance
+                                        print("[DXMOD] Manually created CarryDeadBoxFeature for LocalPlayer")
+                                        if type(featureInstance.ReceiveBeginPlay) == "function" then
+                                            pcall(featureInstance.ReceiveBeginPlay, featureInstance)
+                                        end
+                                    end
+                                end
+                            end)
+                        end
                         
                         -- Kích hoạt hệ thống hack nâng cao
                         if type(actor.StartAdvancedSystems) == "function" then
