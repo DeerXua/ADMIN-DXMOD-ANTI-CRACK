@@ -130,11 +130,50 @@
       left: 100%;
     }
 
-    @media(max-width:768px) {
-      .sb-m {
-        position: fixed !important;
-        z-index: 50;
+    /* ─── Premium Responsive CSS Sidebar & Content Layout ─── */
+    .sidebar {
+      position: fixed;
+      left: 0;
+      top: 0;
+      height: 100%;
+      z-index: 50;
+      transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1), transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    
+    .main-content {
+      transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    /* Desktop View Mode */
+    @media (min-width: 769px) {
+      .sidebar {
+        transform: translateX(0) !important;
       }
+      .main-content {
+        margin-left: 260px;
+      }
+      .main-content.collapsed {
+        margin-left: 76px;
+      }
+    }
+
+    /* Mobile / Tablet / iPad View Mode */
+    @media (max-width: 768px) {
+      .sidebar {
+        width: 260px !important;
+        transform: translateX(-100%);
+      }
+      .sidebar.open {
+        transform: translateX(0);
+      }
+      .main-content, .main-content.collapsed {
+        margin-left: 0 !important;
+      }
+    }
+
+    .modal-scroll {
+      max-height: 85vh;
+      overflow-y: auto;
     }
   </style>
 </head>
@@ -153,7 +192,7 @@
     const canvas = document.getElementById('bg-canvas');
     const ctx = canvas.getContext('2d');
     let particles = [];
-    const particleCount = 65;
+    const particleCount = 55; // Slightly reduced count for mobile performance
 
     function resize() {
       canvas.width = window.innerWidth;
@@ -166,9 +205,9 @@
       constructor() {
         this.x = Math.random() * canvas.width;
         this.y = Math.random() * canvas.height;
-        this.vx = (Math.random() - 0.5) * 0.3;
-        this.vy = (Math.random() - 0.5) * 0.3;
-        this.radius = Math.random() * 1.5 + 0.8;
+        this.vx = (Math.random() - 0.5) * 0.25;
+        this.vy = (Math.random() - 0.5) * 0.25;
+        this.radius = Math.random() * 1.3 + 0.7;
       }
       update() {
         this.x += this.vx;
@@ -179,7 +218,7 @@
       draw() {
         ctx.beginPath();
         ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
-        ctx.fillStyle = 'rgba(6, 182, 212, 0.3)';
+        ctx.fillStyle = 'rgba(6, 182, 212, 0.25)';
         ctx.fill();
       }
     }
@@ -201,7 +240,7 @@
             ctx.beginPath();
             ctx.moveTo(particles[i].x, particles[i].y);
             ctx.lineTo(particles[j].x, particles[j].y);
-            ctx.strokeStyle = `rgba(139, 92, 246, ${0.12 * (1 - dist / 110)})`;
+            ctx.strokeStyle = `rgba(139, 92, 246, ${0.11 * (1 - dist / 110)})`;
             ctx.lineWidth = 0.5;
             ctx.stroke();
           }
@@ -273,7 +312,7 @@
     };
 
     // ─── Custom Hooks ───
-    function useCounter(target, duration = 1500) {
+    function useCounter(target, duration = 1200) {
       const [v, setV] = useState(0);
       const raf = useRef();
       const started = useRef(false);
@@ -283,7 +322,7 @@
         const s = performance.now();
         const fn = n => {
           const t = Math.min((n - s) / duration, 1);
-          const e = 1 - Math.pow(1 - t, 3); // Ease Out Cubic
+          const e = 1 - Math.pow(1 - t, 3);
           setV(Math.round(target * e));
           if (t < 1) raf.current = requestAnimationFrame(fn);
         };
@@ -317,8 +356,8 @@
     const OnlineBadge = ({ state }) => {
       const m = {
         in_match: { c: '#06b6d4', t: 'Trong trận', glow: 'rgba(6, 182, 212, 0.4)' },
-        online: { c: '#10b981', t: 'Đang online', glow: 'rgba(16, 185, 129, 0.4)' },
-        offline: { c: '#64748b', t: 'Ngoại tuyến', glow: 'transparent' }
+        online: { c: '#10b981', t: 'Online', glow: 'rgba(16, 185, 129, 0.4)' },
+        offline: { c: '#64748b', t: 'Offline', glow: 'transparent' }
       };
       const s = m[state] || m.offline;
       return (
@@ -417,9 +456,9 @@
       }[color] || 'from-cyan-400 to-sky-600 text-cyan-400';
 
       return (
-        <div className={`glass neon-hover rounded-3xl p-6 border relative overflow-hidden transition-all duration-300`}>
+        <div className={`glass neon-hover rounded-3xl p-6 border border-white/5 relative overflow-hidden transition-all duration-300`}>
           <div className="flex items-center justify-between mb-4">
-            <span className="text-sm font-semibold text-slate-400 uppercase tracking-wider">{label}</span>
+            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">{label}</span>
             <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${theme} bg-opacity-10 flex items-center justify-center text-xl`}>
               {icon}
             </div>
@@ -429,7 +468,7 @@
       );
     };
 
-    // ─── Confirm dialog helpers ───
+    // ─── Confirm Dialog ───
     let _confirmResolve = null;
     const showConfirm = (title, body) => {
       document.getElementById('cm').style.display = 'flex';
@@ -451,13 +490,21 @@
       ];
       return (
         <>
-          {mobileOpen && <div onClick={onClose} className="fixed inset-0 z-30 bg-slate-950/60 backdrop-blur-sm md:hidden" />}
+          {/* Overlay on mobile when sidebar open */}
+          <div 
+            onClick={onClose} 
+            className={`fixed inset-0 z-40 bg-slate-950/60 backdrop-blur-sm transition-opacity duration-300 md:hidden ${
+              mobileOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
+            }`} 
+          />
           <aside 
-            className="fixed left-0 top-0 h-full z-40 glass border-r border-white/5 flex flex-col overflow-hidden sb-m transition-all duration-300" 
+            className={`glass border-r border-white/5 sidebar flex flex-col overflow-hidden ${
+              mobileOpen ? 'open' : ''
+            } ${collapsed ? 'collapsed' : ''}`}
             style={{ width: collapsed ? 76 : 260 }}
           >
             <div className="flex items-center gap-3 px-5 h-20 shrink-0 border-b border-white/5">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-400 to-violet-600 flex items-center justify-center text-white text-lg font-bold shadow-lg shadow-cyan-500/10">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-400 to-violet-600 flex items-center justify-center text-white text-lg font-bold shadow-lg shadow-cyan-500/10 border border-white/10">
                 DX
               </div>
               {!collapsed && (
@@ -480,7 +527,7 @@
                   }`}
                 >
                   <span className="text-lg shrink-0">{item.icon}</span>
-                  {!collapsed && <span>{item.label}</span>}
+                  {(!collapsed || mobileOpen) && <span>{item.label}</span>}
                 </div>
               ))}
             </nav>
@@ -498,7 +545,7 @@
       );
     };
 
-    // ─── App component ───
+    // ─── App Component ───
     const App = () => {
       const [logged, setLogged] = useState(!!localStorage.getItem('dx_at'));
       const [loading, setLoading] = useState(true);
@@ -526,7 +573,7 @@
       useEffect(() => {
         if (!logged) return;
         Promise.all([loadDevices(), loadSessions(), loadOnline()]).then(() => setLoading(false));
-        const i = setInterval(loadOnline, 10000);
+        const i = setInterval(loadOnline, 12000);
         return () => clearInterval(i);
       }, [logged]);
 
@@ -643,25 +690,25 @@
             tab={tab} 
             setTab={setTab}
           />
-          <div className="flex-1 transition-all duration-300 min-h-screen flex flex-col" style={{ marginLeft: collapsed ? 76 : 260 }}>
+          <div className={`flex-1 main-content ${collapsed ? 'collapsed' : ''} min-h-screen flex flex-col`}>
             <div className="p-4 md:p-8 max-w-7xl w-full mx-auto space-y-6 flex-1">
               
               {/* Header navbar */}
-              <header className="glass rounded-3xl px-6 h-20 flex items-center justify-between gap-4 border border-white/5 relative">
-                <div className="flex items-center gap-4 flex-1 min-w-0">
-                  <button onClick={() => setMobileOpen(p => !p)} className="md:hidden w-10 h-10 rounded-xl bg-white/5 border border-white/10 text-white flex items-center justify-center">☰</button>
-                  <div className="relative flex-1 max-w-md hidden sm:block">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">🔍</span>
+              <header className="glass rounded-3xl px-4 md:px-6 h-20 flex items-center justify-between gap-4 border border-white/5 relative">
+                <div className="flex items-center gap-3 flex-1 min-w-0">
+                  <button onClick={() => setMobileOpen(true)} className="md:hidden w-10 h-10 rounded-xl bg-white/5 border border-white/10 text-white flex items-center justify-center select-none active:bg-white/10 shrink-0">☰</button>
+                  <div className="relative flex-1 max-w-md">
+                    <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500 text-sm">🔍</span>
                     <input 
                       value={search} 
                       onChange={e => setSearch(e.target.value)} 
-                      placeholder="Tìm kiếm UID, tên người dùng, ghi chú..." 
-                      className="w-full h-11 pl-10 pr-4 rounded-xl bg-slate-950/20 border border-white/5 text-sm text-gray-200 placeholder-slate-600 outline-none focus:border-cyan-500/40 focus:bg-slate-950/50 transition-all font-medium"
+                      placeholder="Tìm kiếm UID, tên, ghi chú..." 
+                      className="w-full h-11 pl-10 pr-4 rounded-2xl bg-slate-950/20 border border-white/5 text-sm text-gray-200 placeholder-slate-600 outline-none focus:border-cyan-500/40 focus:bg-slate-950/50 transition-all font-medium"
                     />
                   </div>
                 </div>
                 
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2 shrink-0">
                   <button className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 text-slate-400 hover:text-white flex items-center justify-center transition-all relative">
                     🔔<span className="absolute top-2.5 right-2.5 w-2 h-2 rounded-full bg-rose-500 animate-pulse" style={{ boxShadow: '0 0 8px #f43f5e' }} />
                   </button>
@@ -672,14 +719,14 @@
                   >
                     🚪
                   </button>
-                  <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-cyan-400 to-violet-600 flex items-center justify-center text-white text-sm font-bold shadow-lg shadow-cyan-500/10 border border-white/10 ml-2">
+                  <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-cyan-400 to-violet-600 flex items-center justify-center text-white text-sm font-bold shadow-lg shadow-cyan-500/10 border border-white/10 hidden sm:flex">
                     A
                   </div>
                 </div>
               </header>
 
               {/* KPIs Dashboard */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-5">
                 {loading ? Array.from({ length: 4 }).map((_, i) => (
                   <div key={i} className="glass rounded-3xl p-6 space-y-4 border border-white/5">
                     <div className="flex justify-between items-center"><Sk cn="w-24 h-3"/><Sk cn="w-10 h-10 rounded-xl"/></div>
@@ -698,12 +745,12 @@
                 <div className="space-y-4">
                   {/* Toolbar */}
                   <div className="glass rounded-3xl p-4 flex flex-wrap items-center gap-3 border border-white/5">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider ml-1">Lọc:</span>
+                    <div className="flex items-center gap-2 w-full sm:w-auto">
+                      <span className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1">Lọc:</span>
                       <select 
                         value={filter} 
                         onChange={e => setFilter(e.target.value)} 
-                        className="h-10 px-3 rounded-xl bg-slate-900/60 border border-white/5 text-sm text-gray-300 outline-none focus:border-cyan-500/40 cursor-pointer"
+                        className="h-10 px-3 rounded-xl bg-slate-900/60 border border-white/5 text-sm text-gray-300 outline-none focus:border-cyan-500/40 cursor-pointer flex-1 sm:flex-none"
                       >
                         <option value="all">Tất cả thiết bị</option>
                         <option value="approved">Đã kích hoạt</option>
@@ -712,13 +759,13 @@
                       </select>
                     </div>
                     
-                    <div className="flex items-center gap-2">
-                      <button onClick={loadDevices} className="h-10 px-4 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 text-sm font-semibold text-slate-300 hover:text-white transition-all">🔄 Tải lại</button>
-                      <button onClick={() => setAddOpen(true)} className="h-10 px-5 rounded-xl bg-gradient-to-r from-cyan-500 to-violet-600 hover:shadow-lg hover:shadow-cyan-500/10 text-sm font-bold text-white transition-all btn-cyber">＋ Thêm thiết bị</button>
-                      <button onClick={() => window.open('/api/admin/export/devices', '_blank')} className="h-10 px-4 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 text-sm font-semibold text-slate-300 hover:text-white transition-all">📥 Xuất CSV</button>
+                    <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+                      <button onClick={loadDevices} className="h-10 px-4 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 text-sm font-semibold text-slate-300 hover:text-white transition-all flex-1 sm:flex-none">🔄 Tải lại</button>
+                      <button onClick={() => setAddOpen(true)} className="h-10 px-5 rounded-xl bg-gradient-to-r from-cyan-500 to-violet-600 hover:shadow-lg hover:shadow-cyan-500/10 text-sm font-bold text-white transition-all btn-cyber flex-1 sm:flex-none">＋ Thêm thiết bị</button>
+                      <button onClick={() => window.open('/api/admin/export/devices', '_blank')} className="h-10 px-4 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 text-sm font-semibold text-slate-300 hover:text-white transition-all flex-1 sm:flex-none">📥 Xuất CSV</button>
                     </div>
                     
-                    <span className="text-xs font-semibold text-slate-500 ml-auto tabular-nums bg-slate-900/50 px-3 py-1.5 rounded-lg border border-white/5">
+                    <span className="text-xs font-semibold text-slate-500 sm:ml-auto w-full sm:w-auto text-center sm:text-right tabular-nums bg-slate-900/50 px-3 py-2 rounded-xl border border-white/5 block">
                       {filtered.length} / {devices.length} thiết bị
                     </span>
                   </div>
@@ -736,62 +783,127 @@
                         ))}
                       </div>
                     ) : (
-                      <div className="overflow-x-auto">
-                        <table className="w-full text-sm text-left">
-                          <thead>
-                            <tr className="text-slate-400 text-xs font-bold uppercase tracking-wider border-b border-white/5 bg-slate-950/20">
-                              <th className="px-6 py-4">Tên thiết bị</th>
-                              <th className="px-6 py-4">Mã UID</th>
-                              <th className="px-6 py-4">Trạng thái</th>
-                              <th className="px-6 py-4">Kết nối</th>
-                              <th className="px-6 py-4">Ngày hết hạn</th>
-                              <th className="px-6 py-4">Ghi chú</th>
-                              <th className="px-6 py-4 text-center">Hành động</th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-white/5">
-                            {filtered.map(d => {
-                              const exp = d.expires_at && new Date(d.expires_at).getTime() < Date.now();
-                              return (
-                                <tr key={d.game_id} className="hover:bg-cyan-500/[0.02] transition-colors">
-                                  <td className="px-6 py-4 text-white font-semibold">{esc(d.label || 'Không tên')}</td>
-                                  <td className="px-6 py-4">
-                                    <div className="flex items-center gap-1.5">
-                                      <code className="code-font text-[11px] text-cyan-400 bg-cyan-950/30 border border-cyan-500/10 px-2.5 py-1 rounded-lg">
+                      <>
+                        {/* Desktop layout table (visible only on screens larger than mobile) */}
+                        <div className="overflow-x-auto hidden md:block">
+                          <table className="w-full text-sm text-left">
+                            <thead>
+                              <tr className="text-slate-400 text-xs font-bold uppercase tracking-wider border-b border-white/5 bg-slate-950/20">
+                                <th className="px-6 py-4">Tên thiết bị</th>
+                                <th className="px-6 py-4">Mã UID</th>
+                                <th className="px-6 py-4">Trạng thái</th>
+                                <th className="px-6 py-4">Kết nối</th>
+                                <th className="px-6 py-4">Ngày hết hạn</th>
+                                <th className="px-6 py-4">Ghi chú</th>
+                                <th className="px-6 py-4 text-center">Hành động</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-white/5">
+                              {filtered.map(d => {
+                                const exp = d.expires_at && new Date(d.expires_at).getTime() < Date.now();
+                                return (
+                                  <tr key={d.game_id} className="hover:bg-cyan-500/[0.02] transition-colors">
+                                    <td className="px-6 py-4 text-white font-semibold">{esc(d.label || 'Không tên')}</td>
+                                    <td className="px-6 py-4">
+                                      <div className="flex items-center gap-1.5">
+                                        <code className="code-font text-[11px] text-cyan-400 bg-cyan-950/30 border border-cyan-500/10 px-2.5 py-1 rounded-lg">
+                                          {esc(d.game_id)}
+                                        </code>
+                                        <button 
+                                          onClick={() => { navigator.clipboard.writeText(d.game_id); toast('Đã sao chép UID!'); }} 
+                                          className="text-slate-500 hover:text-cyan-400 transition-all p-1"
+                                          title="Copy UID"
+                                        >
+                                          📋
+                                        </button>
+                                      </div>
+                                    </td>
+                                    <td className="px-6 py-4">{exp ? <Badge s="expired" /> : <Badge s={d.status} />}</td>
+                                    <td className="px-6 py-4"><OnlineBadge state={onlineMap[d.game_id] || 'offline'} /></td>
+                                    <td className={`px-6 py-4 font-semibold text-xs ${exp ? 'text-rose-400' : 'text-slate-300'}`}>
+                                      {d.expires_at ? fmtDate(d.expires_at) : 'Vĩnh viễn'}
+                                    </td>
+                                    <td className="px-6 py-4 text-slate-400 max-w-[180px] truncate">{esc(d.note) || '-'}</td>
+                                    <td className="px-6 py-4 text-center whitespace-nowrap">
+                                      <div className="flex justify-center gap-1.5">
+                                        <button onClick={() => hEdit(d.game_id)} className="w-8 h-8 rounded-lg bg-white/5 hover:bg-cyan-500/10 border border-white/5 hover:border-cyan-500/20 text-slate-400 hover:text-cyan-400 flex items-center justify-center transition-all" title="Chỉnh sửa">✏️</button>
+                                        <button onClick={() => hDelete(d.game_id)} className="w-8 h-8 rounded-lg bg-white/5 hover:bg-rose-500/10 border border-white/5 hover:border-rose-500/20 text-slate-400 hover:text-rose-400 flex items-center justify-center transition-all" title="Xoá vĩnh viễn">🗑️</button>
+                                      </div>
+                                    </td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
+
+                        {/* Hybrid Premium Mobile Layout (visible only on mobile screen widths) */}
+                        <div className="md:hidden divide-y divide-white/5">
+                          {filtered.map(d => {
+                            const exp = d.expires_at && new Date(d.expires_at).getTime() < Date.now();
+                            return (
+                              <div key={d.game_id} className="p-4 space-y-4 hover:bg-cyan-500/[0.01] transition-colors">
+                                <div className="flex items-start justify-between gap-2">
+                                  <div className="min-w-0">
+                                    <h4 className="text-white font-bold text-base truncate">{esc(d.label || 'Không tên')}</h4>
+                                    <div className="flex items-center gap-1.5 mt-1.5">
+                                      <code className="code-font text-[10px] text-cyan-400 bg-cyan-950/30 border border-cyan-500/10 px-2 py-0.5 rounded-lg truncate max-w-[150px]">
                                         {esc(d.game_id)}
                                       </code>
                                       <button 
                                         onClick={() => { navigator.clipboard.writeText(d.game_id); toast('Đã sao chép UID!'); }} 
-                                        className="text-slate-500 hover:text-cyan-400 transition-all p-1"
-                                        title="Copy UID"
+                                        className="text-slate-500 active:text-cyan-400 p-1"
                                       >
                                         📋
                                       </button>
                                     </div>
-                                  </td>
-                                  <td className="px-6 py-4">{exp ? <Badge s="expired" /> : <Badge s={d.status} />}</td>
-                                  <td className="px-6 py-4"><OnlineBadge state={onlineMap[d.game_id] || 'offline'} /></td>
-                                  <td className={`px-6 py-4 font-semibold text-xs ${exp ? 'text-rose-400' : 'text-slate-300'}`}>
-                                    {d.expires_at ? fmtDate(d.expires_at) : 'Vĩnh viễn'}
-                                  </td>
-                                  <td className="px-6 py-4 text-slate-400 max-w-[180px] truncate">{esc(d.note) || '-'}</td>
-                                  <td className="px-6 py-4 text-center whitespace-nowrap">
-                                    <div className="flex justify-center gap-1.5">
-                                      <button onClick={() => hEdit(d.game_id)} className="w-8 h-8 rounded-lg bg-white/5 hover:bg-cyan-500/10 border border-white/5 hover:border-cyan-500/20 text-slate-400 hover:text-cyan-400 flex items-center justify-center transition-all" title="Chỉnh sửa">✏️</button>
-                                      <button onClick={() => hDelete(d.game_id)} className="w-8 h-8 rounded-lg bg-white/5 hover:bg-rose-500/10 border border-white/5 hover:border-rose-500/20 text-slate-400 hover:text-rose-400 flex items-center justify-center transition-all" title="Xoá vĩnh viễn">🗑️</button>
-                                    </div>
-                                  </td>
-                                </tr>
-                              );
-                            })}
-                          </tbody>
-                        </table>
+                                  </div>
+                                  <div className="flex flex-col items-end gap-2 shrink-0">
+                                    {exp ? <Badge s="expired" /> : <Badge s={d.status} />}
+                                    <OnlineBadge state={onlineMap[d.game_id] || 'offline'} />
+                                  </div>
+                                </div>
+                                
+                                <div className="grid grid-cols-2 gap-3 text-xs border-t border-white/5 pt-3">
+                                  <div>
+                                    <span className="text-slate-500 block font-bold uppercase tracking-wider text-[9px] mb-0.5">Ngày hết hạn</span>
+                                    <span className={`font-semibold ${exp ? 'text-rose-400' : 'text-slate-300'}`}>
+                                      {d.expires_at ? fmtDate(d.expires_at) : 'Vĩnh viễn'}
+                                    </span>
+                                  </div>
+                                  <div>
+                                    <span className="text-slate-500 block font-bold uppercase tracking-wider text-[9px] mb-0.5">Ghi chú</span>
+                                    <span className="text-slate-300 font-semibold truncate block max-w-[130px]">
+                                      {esc(d.note) || '--'}
+                                    </span>
+                                  </div>
+                                </div>
+
+                                <div className="flex gap-2 pt-2">
+                                  <button 
+                                    onClick={() => hEdit(d.game_id)} 
+                                    className="flex-1 h-10 rounded-xl bg-white/5 border border-white/5 text-slate-300 hover:text-white text-xs font-bold flex items-center justify-center gap-1.5 active:bg-white/10 transition-all"
+                                  >
+                                    ✏️ Chỉnh sửa bản quyền
+                                  </button>
+                                  <button 
+                                    onClick={() => hDelete(d.game_id)} 
+                                    className="w-10 h-10 rounded-xl bg-white/5 border border-white/5 text-rose-400 active:bg-rose-500/10 flex items-center justify-center shrink-0 transition-all"
+                                  >
+                                    🗑️
+                                  </button>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+
                         {filtered.length === 0 && (
                           <div className="py-16 text-center text-slate-500 text-sm font-semibold">
-                            📭 Không tìm thấy thiết bị nào trùng khớp
+                            📭 Không tìm thấy thiết bị nào
                           </div>
                         )}
-                      </div>
+                      </>
                     )}
                   </div>
                 </div>
@@ -806,27 +918,28 @@
                       value={sSearch} 
                       onChange={e => sSetSearch(e.target.value)} 
                       placeholder="Tìm theo UID hoặc tên..." 
-                      className="h-10 px-3 rounded-xl bg-slate-900/60 border border-white/5 text-sm text-gray-300 placeholder-slate-600 outline-none focus:border-cyan-500/40 min-w-[200px] font-medium"
+                      className="h-10 px-3 rounded-xl bg-slate-900/60 border border-white/5 text-sm text-gray-300 placeholder-slate-600 outline-none focus:border-cyan-500/40 w-full sm:w-auto sm:min-w-[200px] font-medium"
                     />
                     <select 
                       value={sFilter} 
                       onChange={e => sSetFilter(e.target.value)} 
-                      className="h-10 px-3 rounded-xl bg-slate-900/60 border border-white/5 text-sm text-gray-300 outline-none focus:border-cyan-500/40 cursor-pointer"
+                      className="h-10 px-3 rounded-xl bg-slate-900/60 border border-white/5 text-sm text-gray-300 outline-none focus:border-cyan-500/40 cursor-pointer w-full sm:w-auto flex-1 sm:flex-none"
                     >
                       <option value="all">Tất cả trạng thái</option>
                       <option value="in_match">Đang trong trận</option>
                       <option value="ended">Đã kết thúc</option>
                     </select>
-                    <button onClick={loadSessions} className="h-10 px-4 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 text-sm font-semibold text-slate-300 hover:text-white transition-all">🔄 Tải lại</button>
+                    <button onClick={loadSessions} className="h-10 px-4 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 text-sm font-semibold text-slate-300 hover:text-white transition-all w-full sm:w-auto flex-1 sm:flex-none">🔄 Tải lại</button>
                     
-                    <span className="text-xs font-semibold text-slate-500 ml-auto bg-slate-900/50 px-3 py-1.5 rounded-lg border border-white/5 tabular-nums">
+                    <span className="text-xs font-semibold text-slate-500 sm:ml-auto w-full sm:w-auto text-center sm:text-right bg-slate-900/50 px-3 py-2 rounded-xl border border-white/5 tabular-nums">
                       {sFiltered.length} phiên hoạt động
                     </span>
                   </div>
 
-                  {/* Sessions Table */}
+                  {/* Sessions Table / Cards */}
                   <div className="glass rounded-3xl overflow-hidden border border-white/5">
-                    <div className="overflow-x-auto">
+                    {/* Desktop table view */}
+                    <div className="overflow-x-auto hidden md:block">
                       <table className="w-full text-sm text-left">
                         <thead>
                           <tr className="text-slate-400 text-xs font-bold uppercase tracking-wider border-b border-white/5 bg-slate-950/20">
@@ -883,12 +996,66 @@
                           ))}
                         </tbody>
                       </table>
-                      {sFiltered.length === 0 && (
-                        <div className="py-16 text-center text-slate-500 text-sm font-semibold">
-                          📭 Chưa ghi nhận phiên hoạt động nào
-                        </div>
-                      )}
                     </div>
+
+                    {/* Mobile Card list view */}
+                    <div className="md:hidden divide-y divide-white/5">
+                      {sFiltered.map((s, i) => (
+                        <div key={s.id || i} className="p-4 space-y-3 hover:bg-cyan-500/[0.01] transition-colors">
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="text-white font-bold text-sm truncate max-w-[150px]">{esc(s.player_name || 'Không tên')}</span>
+                                {s.top1 && (
+                                  <span className="px-1.5 py-0.5 rounded text-[8px] font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20">🏆 TOP 1</span>
+                                )}
+                              </div>
+                              <code className="code-font text-[10px] text-cyan-400 bg-cyan-950/30 border border-cyan-500/10 px-2 py-0.5 rounded-md mt-1.5 inline-block">
+                                {esc(s.uid)}
+                              </code>
+                            </div>
+                            <div className="shrink-0">
+                              {s.status === 'in_match' ? (
+                                <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 text-xs font-bold">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-ping" />
+                                  Trong trận
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded bg-slate-900 border border-white/5 text-slate-500 text-xs font-semibold">
+                                  Xong
+                                </span>
+                              )}
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-3 gap-2 text-xs border-t border-white/5 pt-3">
+                            <div>
+                              <span className="text-slate-500 block font-bold uppercase tracking-wider text-[8px] mb-0.5">Trận đấu</span>
+                              <span className="text-slate-300 font-semibold truncate block max-w-[80px]">{esc(s.match_id) || '--'}</span>
+                            </div>
+                            <div>
+                              <span className="text-slate-500 block font-bold uppercase tracking-wider text-[8px] mb-0.5">Kills</span>
+                              <span className="text-slate-300 font-bold">{s.kill_num || 0} Kills</span>
+                            </div>
+                            <div>
+                              <span className="text-slate-500 block font-bold uppercase tracking-wider text-[8px] mb-0.5">Thời lượng</span>
+                              <span className="text-slate-300 font-semibold">{fmtDur(s.duration_sec)}</span>
+                            </div>
+                          </div>
+                          
+                          <div className="text-[10px] text-slate-500 flex flex-wrap justify-between gap-1 pt-1">
+                            <span>Vào: {fmtDate(s.started_at)}</span>
+                            {s.ended_at && <span>Ra: {fmtDate(s.ended_at)}</span>}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    {sFiltered.length === 0 && (
+                      <div className="py-16 text-center text-slate-500 text-sm font-semibold">
+                        📭 Chưa ghi nhận phiên hoạt động nào
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
@@ -901,37 +1068,37 @@
                     <p className="text-slate-400 text-xs mt-1">Tổng quan hoạt động của hệ thống giấy phép DXMOD</p>
                   </div>
                   
-                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 p-6 border-b border-white/5 bg-slate-950/10">
+                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 p-4 md:p-6 border-b border-white/5 bg-slate-950/10">
                     <div className="glass rounded-2xl p-5 text-center relative overflow-hidden">
                       <div className="text-4xl font-extrabold text-white mb-2 tabular-nums">{stats.total}</div>
-                      <div className="text-xs text-slate-400 font-semibold uppercase tracking-wider">Tổng số thiết bị</div>
+                      <div className="text-xs text-slate-400 font-semibold uppercase tracking-wider text-[9px]">Tổng số thiết bị</div>
                     </div>
                     <div className="glass rounded-2xl p-5 text-center relative overflow-hidden">
                       <div className="text-4xl font-extrabold text-emerald-400 mb-2 tabular-nums">{stats.active}</div>
-                      <div className="text-xs text-slate-400 font-semibold uppercase tracking-wider">Đang kích hoạt</div>
+                      <div className="text-xs text-slate-400 font-semibold uppercase tracking-wider text-[9px]">Đang kích hoạt</div>
                     </div>
                     <div className="glass rounded-2xl p-5 text-center relative overflow-hidden">
                       <div className="text-4xl font-extrabold text-amber-400 mb-2 tabular-nums">{stats.pending}</div>
-                      <div className="text-xs text-slate-400 font-semibold uppercase tracking-wider">Đang chờ duyệt</div>
+                      <div className="text-xs text-slate-400 font-semibold uppercase tracking-wider text-[9px]">Đang chờ duyệt</div>
                     </div>
                     <div className="glass rounded-2xl p-5 text-center relative overflow-hidden">
                       <div className="text-4xl font-extrabold text-rose-400 mb-2 tabular-nums">{stats.expired}</div>
-                      <div className="text-xs text-slate-400 font-semibold uppercase tracking-wider">Hết hạn giấy phép</div>
+                      <div className="text-xs text-slate-400 font-semibold uppercase tracking-wider text-[9px]">Hết hạn giấy phép</div>
                     </div>
                   </div>
                   
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-6">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 p-4 md:p-6">
                     <div className="glass rounded-2xl p-5 text-center border border-cyan-500/10 relative">
                       <div className="text-4xl font-extrabold text-cyan-400 mb-2 tabular-nums">{inMatch}</div>
-                      <div className="text-xs text-slate-400 font-semibold uppercase tracking-wider">Số người trong trận</div>
+                      <div className="text-xs text-slate-400 font-semibold uppercase tracking-wider text-[9px]">Số người trong trận</div>
                     </div>
                     <div className="glass rounded-2xl p-5 text-center border border-white/5 relative">
                       <div className="text-4xl font-extrabold text-white mb-2 tabular-nums">{sessions.length}</div>
-                      <div className="text-xs text-slate-400 font-semibold uppercase tracking-wider">Tổng số trận đấu</div>
+                      <div className="text-xs text-slate-400 font-semibold uppercase tracking-wider text-[9px]">Tổng số trận đấu</div>
                     </div>
                     <div className="glass rounded-2xl p-5 text-center border border-violet-500/10 relative">
                       <div className="text-4xl font-extrabold text-violet-400 mb-2 tabular-nums">{sessions.filter(s=>s.top1).length}</div>
-                      <div className="text-xs text-slate-400 font-semibold uppercase tracking-wider">Đạt TOP 1 (Cúp Vàng)</div>
+                      <div className="text-xs text-slate-400 font-semibold uppercase tracking-wider text-[9px]">Đạt TOP 1 (Cúp Vàng)</div>
                     </div>
                   </div>
                 </div>
@@ -942,7 +1109,7 @@
 
           {/* ── EDIT LICENSE MODAL ── */}
           <div id="em" className="fixed inset-0 z-[100] bg-slate-950/70 backdrop-blur-md hidden items-center justify-center p-4" onClick={e=>e.target.id==='em'?document.getElementById('em').style.display='none':null}>
-            <div className="glass neon-border rounded-3xl w-full max-w-xl p-8 relative">
+            <div className="glass neon-border rounded-3xl w-full max-w-xl p-6 md:p-8 relative modal-scroll">
               <div className="flex items-center justify-between mb-6">
                 <h3 className="text-white font-extrabold text-lg glow-text-cyan">Cấu hình bản quyền</h3>
                 <button onClick={()=>document.getElementById('em').style.display='none'} className="w-8 h-8 rounded-lg bg-white/5 hover:bg-rose-500/10 text-slate-400 hover:text-rose-400 border border-white/5 flex items-center justify-center transition-all">✕</button>
@@ -987,7 +1154,7 @@
 
           {/* ── ADD DEVICE MODAL ── */}
           <div id="am" className={`fixed inset-0 z-[100] bg-slate-950/70 backdrop-blur-md ${addOpen?'flex':'hidden'} items-center justify-center p-4`} onClick={e=>e.target.id==='am'?setAddOpen(false):null}>
-            <div className="glass neon-border rounded-3xl w-full max-w-xl p-8 relative">
+            <div className="glass neon-border rounded-3xl w-full max-w-xl p-6 md:p-8 relative modal-scroll">
               <div className="flex items-center justify-between mb-6">
                 <h3 className="text-white font-extrabold text-lg glow-text-cyan">Thêm thiết bị thủ công</h3>
                 <button onClick={()=>setAddOpen(false)} className="w-8 h-8 rounded-lg bg-white/5 hover:bg-rose-500/10 text-slate-400 hover:text-rose-400 border border-white/5 flex items-center justify-center transition-all">✕</button>
@@ -1030,7 +1197,7 @@
 
           {/* ── DANGER CONFIRM MODAL ── */}
           <div id="cm" className="fixed inset-0 z-[100] bg-slate-950/70 backdrop-blur-md hidden items-center justify-center p-4">
-            <div className="glass neon-border rounded-3xl w-full max-w-md p-6 relative">
+            <div className="glass neon-border rounded-3xl w-full max-w-sm p-6 relative">
               <h3 id="ct" className="text-white font-extrabold text-lg mb-2 glow-text-purple">Xác nhận tác vụ</h3>
               <p id="cb" className="text-slate-400 text-sm mb-6 leading-relaxed">Nội dung</p>
               <div className="flex justify-end gap-3">
