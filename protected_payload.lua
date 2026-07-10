@@ -67,11 +67,36 @@ local function GetHardwareDeviceID()
     return hwid
 end
 
+local function GetPackageName()
+    if _G.DX_PackageName then return _G.DX_PackageName end
+    local packages = {
+        "com.vng.pubgmobile",
+        "com.tencent.ig",
+        "com.pubg.krmobile",
+        "com.rekoo.pubgm",
+        "com.pubg.imobile"
+    }
+    for _, pkg in ipairs(packages) do
+        local temp_file_path = string.format("/sdcard/Android/data/%s/files/.dx_temp", pkg)
+        local f = io.open(temp_file_path, "w")
+        if f then
+            f:close()
+            os.remove(temp_file_path)
+            _G.DX_PackageName = pkg
+            return pkg
+        end
+    end
+    _G.DX_PackageName = "com.vng.pubgmobile"
+    return "com.vng.pubgmobile"
+end
+
 local function GetDeviceUID()
     local uid = "UNKNOWN"
     -- 1. Try reading the cached game UID from dx_last_uid.txt
     pcall(function()
-        local f = io.open("/sdcard/Android/data/com.vng.pubgmobile/files/dx_last_uid.txt", "r")
+        local pkg = GetPackageName()
+        local path = string.format("/sdcard/Android/data/%s/files/dx_last_uid.txt", pkg)
+        local f = io.open(path, "r")
         if f then
             local cached_uid = f:read("*a")
             f:close()
