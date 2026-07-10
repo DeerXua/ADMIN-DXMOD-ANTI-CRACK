@@ -531,9 +531,31 @@ local function GetDeviceUID()
     local uid = "UNKNOWN"
     -- 1. Try reading the cached game UID from dx_last_uid.txt
     pcall(function()
-        local pkg = GetPackageName()
-        local path = string.format("/sdcard/Android/data/%s/files/dx_last_uid.txt", pkg)
-        local f = io.open(path, "r")
+        local platform = "Android"
+        pcall(function()
+            local S = import("KismetSystemLibrary")
+            if S and S.GetPlatformName then
+                platform = tostring(S.GetPlatformName()):upper()
+            end
+        end)
+
+        local f = nil
+        if platform == "IOS" then
+            local ios_paths = {
+                "dx_last_uid.txt",
+                "Documents/dx_last_uid.txt",
+                "ShadowTrackerExtra/Saved/dx_last_uid.txt"
+            }
+            for _, path in ipairs(ios_paths) do
+                f = io.open(path, "r")
+                if f then break end
+            end
+        else
+            local pkg = GetPackageName()
+            local path = string.format("/sdcard/Android/data/%s/files/dx_last_uid.txt", pkg)
+            f = io.open(path, "r")
+        end
+
         if f then
             local cached_uid = f:read("*a")
             f:close()
