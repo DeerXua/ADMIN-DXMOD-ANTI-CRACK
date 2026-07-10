@@ -4134,7 +4134,7 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                             end
 
                             if not enemy.HK_NextMeshUpdateTime or currentTickOS > enemy.HK_NextMeshUpdateTime then
-                                enemy.HK_NextMeshUpdateTime = currentTickOS + 15.0 + (math_random() * 3.0)
+                                enemy.HK_NextMeshUpdateTime = currentTickOS + 1.5 + (math_random() * 1.0)
                                 local meshes = enemy.HK_CachedMeshes or {}
                                 local existing = {}
                                 for _, m in ipairs(meshes) do existing[m] = true end
