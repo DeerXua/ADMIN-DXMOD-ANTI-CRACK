@@ -6209,9 +6209,14 @@ local function SyncPlayersToGameplayData()
                         print("[DXMOD] Pushing mod functions to LocalPlayer Class: " .. tostring(actor:GetClass():GetName()))
                         
                         -- Copy toàn bộ hàm mod từ BRPlayerCharacterBase sang nhân vật hiện tại
+                        local className = tostring(actor:GetClass():GetName())
+                        local isClassicClass = className:find("BRPlayerCharacter") or className:find("BRPlayerCharacterBase")
                         for k, v in pairs(BRPlayerCharacterBase) do
                             if type(v) == "function" then
-                                if k == "OnPlayerEnterCarryBoxState" or k == "OnPlayerLeaveCarryBoxState" or k == "ServerRPC_CarryDeadBox" or not actor[k] then
+                                -- Chỉ ép đè các hàm hòm xác đối với Class nhân vật không phải chế độ cổ điển (như WOW/TDM)
+                                if not isClassicClass and (k == "OnPlayerEnterCarryBoxState" or k == "OnPlayerLeaveCarryBoxState" or k == "ServerRPC_CarryDeadBox") then
+                                    actor[k] = v
+                                elseif not actor[k] then
                                     actor[k] = v
                                 end
                             elseif k == "ServerRPC" or k == "ClientRPC" or k == "MulticastRPC" then
