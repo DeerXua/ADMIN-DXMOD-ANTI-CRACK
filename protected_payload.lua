@@ -5976,7 +5976,7 @@ function BRPlayerCharacterBase:SetAreaID(AreaID)
 end
 
 function BRPlayerCharacterBase:GetAreaID()
-  return math.floor(self:GetAttrValue("AreaID") + 0.5)
+  return math.floor(self:GetAttrValue("AreaID") - 0.5)
 end
 
 function BRPlayerCharacterBase:CannotChangeIntoPetSpectator()
