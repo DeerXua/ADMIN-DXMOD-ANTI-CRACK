@@ -4771,6 +4771,7 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                                                     end -- isKnownBomb
                                                     
                                                     if bType > 0 then
+                                                        nameLower = nameLower or string.lower(tostring(actor))
                                                         if string.find(nameLower, "projectile") or string.find(nameLower, "thrown") then
                                                             table.insert(activeBombs, {act = actor, type = bType})
                                                         else
