@@ -3511,7 +3511,7 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
         local pc = GameplayData.GetPlayerController()
         local isSpectating = false
         pcall(function()
-            if pc and (pc.IsSpectator and pc:IsSpectator() or pc.IsDemoPlaySpectator and pc:IsDemoPlaySpectator()) then
+            if pc and (pc.IsSpectator and pc:IsSpectator() or pc.IsDemoPlaySpectator and pc:IsDemoPlaySpectator() or (type(pc.IsInPetSpectator) == "function" and pc:IsInPetSpectator())) then
                 isSpectating = true
             end
         end)
@@ -4036,6 +4036,14 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                         _G.HK_Active_Marks_Cache[cacheKey] = nil
                     end
                 end
+
+                local isSpectating = false
+                pcall(function()
+                    local pc = GameplayData.GetPlayerController()
+                    if pc and (pc.IsSpectator and pc:IsSpectator() or pc.IsDemoPlaySpectator and pc:IsDemoPlaySpectator() or (type(pc.IsInPetSpectator) == "function" and pc:IsInPetSpectator())) then
+                        isSpectating = true
+                    end
+                end)
 
                 local myTeamID = LocalPlayer.TeamID
                 local realCount = 0
@@ -5999,7 +6007,7 @@ function BRPlayerCharacterBase:SetActorHiddenInGame(bNewHidden)
     local pc = GameplayData.GetPlayerController()
     local isSpectating = false
     pcall(function()
-        if pc and (pc.IsSpectator and pc:IsSpectator() or pc.IsDemoPlaySpectator and pc:IsDemoPlaySpectator()) then
+        if pc and (pc.IsSpectator and pc:IsSpectator() or pc.IsDemoPlaySpectator and pc:IsDemoPlaySpectator() or (type(pc.IsInPetSpectator) == "function" and pc:IsInPetSpectator())) then
             isSpectating = true
         end
     end)
@@ -6027,7 +6035,7 @@ function BRPlayerCharacterBase:SetActorHiddenInGameMask(bHide, MaskType)
     local pc = GameplayData.GetPlayerController()
     local isSpectating = false
     pcall(function()
-        if pc and (pc.IsSpectator and pc:IsSpectator() or pc.IsDemoPlaySpectator and pc:IsDemoPlaySpectator()) then
+        if pc and (pc.IsSpectator and pc:IsSpectator() or pc.IsDemoPlaySpectator and pc:IsDemoPlaySpectator() or (type(pc.IsInPetSpectator) == "function" and pc:IsInPetSpectator())) then
             isSpectating = true
         end
     end)
