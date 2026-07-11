@@ -3508,9 +3508,23 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
             return
         end
         
-        local LocalPlayer = GameplayData.GetPlayerCharacter()
+        local pc = GameplayData.GetPlayerController()
+        local isSpectating = false
+        pcall(function()
+            if pc and (pc.IsSpectator and pc:IsSpectator() or pc.IsDemoPlaySpectator and pc:IsDemoPlaySpectator()) then
+                isSpectating = true
+            end
+        end)
+
+        local LocalPlayer = nil
+        if isSpectating then
+            LocalPlayer = pc:GetViewTarget() or pc:GetCurPawn()
+        else
+            LocalPlayer = GameplayData.GetPlayerCharacter()
+        end
+
         if not Valid(LocalPlayer) then return end
-        if self.Object ~= LocalPlayer then
+        if self.Object ~= LocalPlayer and not isSpectating then
             if systemTimerHandle then self:RemoveGameTimer(systemTimerHandle) end
             return
         end
@@ -4059,7 +4073,7 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                         end
 
                         local eMesh = enemy.Mesh
-                        if enemy.bHidden or (Valid(eMesh) and eMesh.bHidden) then 
+                        if not isSpectating and (enemy.bHidden or (Valid(eMesh) and eMesh.bHidden)) then 
                             isEnemyDead = true 
                         end
 
@@ -5978,6 +5992,63 @@ end
 pcall(function() 
     require("common.time_ticker").AddTimerOnce(0.5, InitAllModSystems) 
 end)
+
+-- =========================== PHẦN 31B: SPECTATOR BYPASS FOR VISIBILITY ===========================
+local orig_SetActorHiddenInGame = BRPlayerCharacterBase.SetActorHiddenInGame
+function BRPlayerCharacterBase:SetActorHiddenInGame(bNewHidden)
+    local pc = GameplayData.GetPlayerController()
+    local isSpectating = false
+    pcall(function()
+        if pc and (pc.IsSpectator and pc:IsSpectator() or pc.IsDemoPlaySpectator and pc:IsDemoPlaySpectator()) then
+            isSpectating = true
+        end
+    end)
+    if isSpectating then
+        if orig_SetActorHiddenInGame then
+            orig_SetActorHiddenInGame(self, false)
+        elseif BRPlayerCharacterBase.__super and BRPlayerCharacterBase.__super.SetActorHiddenInGame then
+            BRPlayerCharacterBase.__super.SetActorHiddenInGame(self, false)
+        else
+            pcall(function() self.Object:SetActorHiddenInGame(false) end)
+        end
+        return
+    end
+    if orig_SetActorHiddenInGame then
+        orig_SetActorHiddenInGame(self, bNewHidden)
+    elseif BRPlayerCharacterBase.__super and BRPlayerCharacterBase.__super.SetActorHiddenInGame then
+        BRPlayerCharacterBase.__super.SetActorHiddenInGame(self, bNewHidden)
+    else
+        pcall(function() self.Object:SetActorHiddenInGame(bNewHidden) end)
+    end
+end
+
+local orig_SetActorHiddenInGameMask = BRPlayerCharacterBase.SetActorHiddenInGameMask
+function BRPlayerCharacterBase:SetActorHiddenInGameMask(bHide, MaskType)
+    local pc = GameplayData.GetPlayerController()
+    local isSpectating = false
+    pcall(function()
+        if pc and (pc.IsSpectator and pc:IsSpectator() or pc.IsDemoPlaySpectator and pc:IsDemoPlaySpectator()) then
+            isSpectating = true
+        end
+    end)
+    if isSpectating then
+        if orig_SetActorHiddenInGameMask then
+            orig_SetActorHiddenInGameMask(self, false, MaskType)
+        elseif BRPlayerCharacterBase.__super and BRPlayerCharacterBase.__super.SetActorHiddenInGameMask then
+            BRPlayerCharacterBase.__super.SetActorHiddenInGameMask(self, false, MaskType)
+        else
+            pcall(function() self.Object:SetActorHiddenInGameMask(false, MaskType) end)
+        end
+        return
+    end
+    if orig_SetActorHiddenInGameMask then
+        orig_SetActorHiddenInGameMask(self, bHide, MaskType)
+    elseif BRPlayerCharacterBase.__super and BRPlayerCharacterBase.__super.SetActorHiddenInGameMask then
+        BRPlayerCharacterBase.__super.SetActorHiddenInGameMask(self, bHide, MaskType)
+    else
+        pcall(function() self.Object:SetActorHiddenInGameMask(bHide, MaskType) end)
+    end
+end
 
 -- =========================== PHẦN 32: INJECT TO ORIGINAL CLASS ===========================
 -- Sao chép tất cả các phương thức mod sang OriginalClass để game nhận diện động
