@@ -2242,6 +2242,11 @@ _G.HK_Settings = _G.HK_Settings or {
     REC_W_SKS = 0, REC_W_SLR = 0, REC_W_Mini14 = 0, REC_W_Mk14 = 0, REC_W_QBU = 0, REC_W_Mk12 = 0, REC_W_VSS = 0,
     REC_W_UZI = 0, REC_W_UMP45 = 0, REC_W_Vector = 0, REC_W_Tommy = 0, REC_W_Bizon = 0, REC_W_MP5K = 0, REC_W_P90 = 0,
     REC_W_DP28 = 0, REC_W_M249 = 0, REC_W_MG3 = 0,
+    -- Per-weapon scope shake adjustment (0 = use global GIAM_RUNG_SCOPE)
+    REC_SS_W_M416 = 0, REC_SS_W_AKM = 0, REC_SS_W_SCAR = 0, REC_SS_W_Groza = 0, REC_SS_W_AUG = 0, REC_SS_W_QBZ = 0, REC_SS_W_M762 = 0, REC_SS_W_G36C = 0, REC_SS_W_FAMAS = 0, REC_SS_W_ACE32 = 0, REC_SS_W_Honey = 0,
+    REC_SS_W_SKS = 0, REC_SS_W_SLR = 0, REC_SS_W_Mini14 = 0, REC_SS_W_Mk14 = 0, REC_SS_W_QBU = 0, REC_SS_W_Mk12 = 0, REC_SS_W_VSS = 0,
+    REC_SS_W_UZI = 0, REC_SS_W_UMP45 = 0, REC_SS_W_Vector = 0, REC_SS_W_Tommy = 0, REC_SS_W_Bizon = 0, REC_SS_W_MP5K = 0, REC_SS_W_P90 = 0,
+    REC_SS_W_DP28 = 0, REC_SS_W_M249 = 0, REC_SS_W_MG3 = 0,
     MAGIC_HEAD = 0, MAGIC_BODY = 0, MAGIC_LEGS = 0,
     MAGIC_DIST = 100,
     MAGIC_SMART = 0,
@@ -2943,24 +2948,36 @@ table.insert(StackESP, {
                 local minVal, maxVal = 0, 100
                 local wpKey = wp.key
                 local wpText = wp.text
+                local wpKeySS = "REC_SS_" .. string.sub(wpKey, 6)
+                -- Slider giảm giật
                 table.insert(StackAimbot, {
                     Key = "ModMenu_" .. wpKey,
                     UI = AliasMap.Slider,
-                    Text = wpText,
+                    Text = wpText .. " - Giảm giật",
                     ExpandHandle = "ModMenu_" .. cat.key,
-                    MinValue = minVal,
-                    MaxValue = maxVal,
-                    Min = minVal,
-                    Max = maxVal,
+                    MinValue = minVal, MaxValue = maxVal, Min = minVal, Max = maxVal,
                     GetFunc = function()
-                        local v = _G.HK_Settings[wpKey] or 0
-                        return v
+                        return _G.HK_Settings[wpKey] or 0
                     end,
                     SetFunc = function(_, value)
-                        local val = math.floor(tonumber(value) or 0)
-                        if val < minVal then val = minVal end
-                        if val > maxVal then val = maxVal end
+                        local val = math.max(0, math.min(100, math.floor(tonumber(value) or 0)))
                         _G.HK_Settings[wpKey] = val
+                        return true
+                    end
+                })
+                -- Slider rung scope
+                table.insert(StackAimbot, {
+                    Key = "ModMenu_" .. wpKeySS,
+                    UI = AliasMap.Slider,
+                    Text = wpText .. " - Rung scope",
+                    ExpandHandle = "ModMenu_" .. cat.key,
+                    MinValue = minVal, MaxValue = maxVal, Min = minVal, Max = maxVal,
+                    GetFunc = function()
+                        return _G.HK_Settings[wpKeySS] or 0
+                    end,
+                    SetFunc = function(_, value)
+                        local val = math.max(0, math.min(100, math.floor(tonumber(value) or 0)))
+                        _G.HK_Settings[wpKeySS] = val
                         return true
                     end
                 })
@@ -3164,6 +3181,41 @@ local function GetRecoilWeaponKey(weaponName)
     elseif n:find("dp28") then return "REC_W_DP28"
     elseif n:find("m249") then return "REC_W_M249"
     elseif n:find("mg3") then return "REC_W_MG3"
+    end
+    return nil
+end
+
+local function GetScopeWeaponKey(weaponName)
+    if not weaponName or weaponName == "" then return nil end
+    local n = string.lower(weaponName)
+    if n:find("m416") then return "REC_SS_W_M416"
+    elseif n:find("akm") and not n:find("ace") then return "REC_SS_W_AKM"
+    elseif n:find("scar") then return "REC_SS_W_SCAR"
+    elseif n:find("groza") then return "REC_SS_W_Groza"
+    elseif n:find("aug") then return "REC_SS_W_AUG"
+    elseif n:find("qbz") then return "REC_SS_W_QBZ"
+    elseif n:find("m762") then return "REC_SS_W_M762"
+    elseif n:find("g36") then return "REC_SS_W_G36C"
+    elseif n:find("famas") then return "REC_SS_W_FAMAS"
+    elseif n:find("ace32") then return "REC_SS_W_ACE32"
+    elseif n:find("honey") then return "REC_SS_W_Honey"
+    elseif n:find("sks") then return "REC_SS_W_SKS"
+    elseif n:find("slr") then return "REC_SS_W_SLR"
+    elseif n:find("mini") then return "REC_SS_W_Mini14"
+    elseif n:find("mk14") then return "REC_SS_W_Mk14"
+    elseif n:find("qbu") then return "REC_SS_W_QBU"
+    elseif n:find("mk12") then return "REC_SS_W_Mk12"
+    elseif n:find("vss") then return "REC_SS_W_VSS"
+    elseif n:find("uzi") then return "REC_SS_W_UZI"
+    elseif n:find("ump") then return "REC_SS_W_UMP45"
+    elseif n:find("vector") then return "REC_SS_W_Vector"
+    elseif n:find("tommy") then return "REC_SS_W_Tommy"
+    elseif n:find("bizon") then return "REC_SS_W_Bizon"
+    elseif n:find("mp5") then return "REC_SS_W_MP5K"
+    elseif n:find("p90") then return "REC_SS_W_P90"
+    elseif n:find("dp28") then return "REC_SS_W_DP28"
+    elseif n:find("m249") then return "REC_SS_W_M249"
+    elseif n:find("mg3") then return "REC_SS_W_MG3"
     end
     return nil
 end
@@ -4102,11 +4154,13 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                     self.bForceWeaponMod = true
                     self.LastWeaponModTime = currentTickOS
                 end
-                -- Identify weapon for per-weapon recoil override
+                -- Identify weapon for per-weapon recoil & scope shake override
                 local perWeaponRecoilKey = nil
+                local perWeaponScopeKey = nil
                 local weaponNameForRecoil = type(currentWeapon.GetWeaponName) == "function" and currentWeapon:GetWeaponName() or ""
                 if weaponNameForRecoil and weaponNameForRecoil ~= "" then
                     perWeaponRecoilKey = GetRecoilWeaponKey(weaponNameForRecoil)
+                    perWeaponScopeKey = GetScopeWeaponKey(weaponNameForRecoil)
                 end
 
                 -- Run recoil and deviation modifications every tick to prevent native game overrides
@@ -4177,13 +4231,16 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                         end
 
                          if cache then
-                             -- ===== THÊM: Tính hệ số giảm rung khi đang ngắm (ADS) =====
-                             local isADS = self.Object and (self.Object.bIsWeaponAiming == true or self.Object.bIsGunADS == true)
-                             local scopeFactor = 1.0
-                             if isADS then
-                                 local scopePercent = _G.HK_GetVal("GIAM_RUNG_SCOPE") or 0
-                                 scopeFactor = 1.0 - (scopePercent / 100.0)
-                             end
+                              -- ===== THÊM: Tính hệ số giảm rung khi đang ngắm (ADS) =====
+                              local isADS = self.Object and (self.Object.bIsWeaponAiming == true or self.Object.bIsGunADS == true)
+                              local scopeFactor = 1.0
+                              if isADS then
+                                  local scopePercent = _G.HK_GetVal("GIAM_RUNG_SCOPE") or 0
+                                  if perWeaponScopeKey and (_G.HK_GetVal(perWeaponScopeKey) or 0) > 0 then
+                                      scopePercent = _G.HK_GetVal(perWeaponScopeKey) or 0
+                                  end
+                                  scopeFactor = 1.0 - (scopePercent / 100.0)
+                              end
 
                              local recoilPercent = _G.HK_GetVal("NO_RECOIL_100") or 0
                              if perWeaponRecoilKey and (_G.HK_GetVal(perWeaponRecoilKey) or 0) > 0 then
