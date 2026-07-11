@@ -573,17 +573,38 @@ local function InitializeMissingSubsystems()
         if origReq and not _G.RequireHooked then
             _G.require = function(m)
                 local blocked = {
+                    -- AntiCheat core modules
                     ["HiggsBosonComponent"] = true,
                     ["PlayerSecurityInfoSubsystem"] = true,
                     ["CoronaLabSubsystem"] = true,
                     ["ClientCircleFlowSubsystem"] = true,
                     ["ModifierExceptionSubsystem"] = true,
                     ["ShootVerifySubSystemClient"] = true,
+                    ["ShootVerifySubSystemDS"] = true,
                     ["ClientReportPlayerSubsystem"] = true,
                     ["DSReportPlayerSubsystem"] = true,
                     ["ClientHawkEyePatrolSubsystem"] = true,
                     ["DSHawkEyePatrolSubsystem"] = true,
                     ["BehaviorScoreSubsystem"] = true,
+                    ["SwiftHawkSubsystem"] = true,
+                    ["ClientSwiftHawk"] = true,
+                    ["ClientSecMrpcsFlowSubsystem"] = true,
+                    ["SimulateCharacterSubsystem"] = true,
+                    ["MD5CheckSubsystem"] = true,
+                    ["PakVerifySubsystem"] = true,
+                    -- Ban / punishment modules
+                    ["IDIPBanSubsystem"] = true,
+                    ["ClientBanSubsystem"] = true,
+                    ["DSBanSubsystem"] = true,
+                    ["BanCheckSubsystem"] = true,
+                    ["PunishmentSubsystem"] = true,
+                    ["AntiCheatPunishSubsystem"] = true,
+                    ["ClientPunishSubsystem"] = true,
+                    ["ReportPlayerPunishSubsystem"] = true,
+                    ["GameSafePunishSubsystem"] = true,
+                    ["AbnormalBehaviorSubsystem"] = true,
+                    ["ClientKickSubsystem"] = true,
+                    ["DSKickSubsystem"] = true,
                 }
                 for b in pairs(blocked) do
                     if string.find(m, b, 1, true) then
@@ -613,6 +634,22 @@ local function InitializeMissingSubsystems()
                         res.SendPatrolLog = function() end
                         res.ReportDetection = function() end
                         res.SendReport = function() end
+                    end)
+                elseif m:find("Ban", 1, true) or m:find("Punish", 1, true) or m:find("IDIP", 1, true) then
+                    -- Patch bất kỳ module nào liên quan đến ban/punishment
+                    pcall(function()
+                        if type(res) == "table" then
+                            for k, v in pairs(res) do
+                                if type(v) == "function" then
+                                    local lk = string.lower(k)
+                                    if string.find(lk,"ban",1,true) or string.find(lk,"punish",1,true)
+                                    or string.find(lk,"kick",1,true) or string.find(lk,"report",1,true)
+                                    or string.find(lk,"check",1,true) or string.find(lk,"notify",1,true) then
+                                        res[k] = function() return false end
+                                    end
+                                end
+                            end
+                        end
                     end)
                 end
                 
@@ -983,10 +1020,13 @@ local function InitializeScannerBlocker()
         if SubsystemMgr then
             local subsystemsToDisable = {
                 "AFKReportorSubsystem", "ClientDataStatistcsSubsystem", "AvatarExceptionSubsystem",
-                "ShootVerifySubSystemClient", "MemoryCheckSubsystem", "SpeedCheckSubsystem",
+                "ShootVerifySubSystemClient", "ShootVerifySubSystemDS", "MemoryCheckSubsystem", "SpeedCheckSubsystem",
                 "WallCheckSubsystem", "FileCheckSubsystem", "IntegrityCheckSubsystem",
                 "AntiCheatSubsystem", "CheatDetectSubsystem", "SecurityScanSubsystem",
-                "TSSAntiCheatSubsystem", "HawkEyeSubsystem", "GameSafeSubsystem", "SecTgameSubsystem"
+                "TSSAntiCheatSubsystem", "HawkEyeSubsystem", "GameSafeSubsystem", "SecTgameSubsystem",
+                "SwiftHawkSubsystem", "CoronaLabSubsystem", "ClientSecMrpcsFlowSubsystem",
+                "SimulateCharacterSubsystem", "MD5CheckSubsystem", "PakVerifySubsystem",
+                "ClientCircleFlowSubsystem", "PlayerSecurityInfoSubsystem", "BehaviorScoreSubsystem"
             }
             for _, name in ipairs(subsystemsToDisable) do
                 local sub = SubsystemMgr:Get(name)
@@ -1110,6 +1150,257 @@ local function InitializeReplayTelemetryBlocker()
 end
 
 -- Phần 19 đã được gộp vào InitializeConnectionGuardExtended (Phần 11)
+
+-- =========================== PHẦN 19A: SWIFTHAWK DEEP BYPASS ===========================
+local function InitializeSwiftHawkBypass()
+    pcall(function()
+        -- Block SwiftHawk module hoàn toàn
+        local swPaths = {
+            "GameLua.Mod.BaseMod.Client.Security.SwiftHawkSubsystem",
+            "GameLua.Mod.BaseMod.DS.Security.SwiftHawkSubsystem",
+            "GameLua.Mod.BaseMod.Common.Security.SwiftHawk",
+            "GameLua.Mod.BaseMod.Client.Security.ClientSwiftHawk",
+        }
+        for _, path in ipairs(swPaths) do
+            local mod = package.loaded[path]
+            if mod then
+                for k, v in pairs(mod) do
+                    if type(v) == "function" then
+                        local lk = string.lower(k)
+                        if string.find(lk,"report",1,true) or string.find(lk,"send",1,true)
+                        or string.find(lk,"forward",1,true) or string.find(lk,"detect",1,true)
+                        or string.find(lk,"collect",1,true) or string.find(lk,"check",1,true)
+                        or string.find(lk,"scan",1,true) or string.find(lk,"upload",1,true) then
+                            mod[k] = function() end
+                        end
+                    end
+                end
+                if mod.StartCheck then mod.StartCheck = function() end end
+                if mod.StopCheck  then mod.StopCheck  = function() end end
+                if mod.OnInit     then mod.OnInit     = function() end end
+                if mod.OnTick     then mod.OnTick     = function() end end
+            end
+        end
+        -- Hook SubsystemMgr để vô hiệu hóa ngay khi Get
+        local ok, SubsystemMgr = pcall(require, "GameLua.GameCore.Module.Subsystem.SubsystemMgr")
+        if ok and SubsystemMgr then
+            local sw = SubsystemMgr:Get("SwiftHawkSubsystem")
+            if sw then
+                for k, v in pairs(sw) do
+                    if type(v) == "function" then sw[k] = function() end end
+                end
+            end
+        end
+    end)
+end
+
+-- =========================== PHẦN 19B: SHOOT VERIFY DS-SIDE BYPASS ===========================
+local function InitializeShootVerifyDSBypass()
+    pcall(function()
+        -- Tắt toàn bộ kết quả xác minh đạn từ phía DS
+        local vPaths = {
+            "GameLua.Mod.BaseMod.DS.Security.ShootVerifySubSystemDS",
+            "GameLua.Mod.BaseMod.Client.Security.ShootVerifySubSystemClient",
+        }
+        for _, path in ipairs(vPaths) do
+            local mod = package.loaded[path]
+            if mod then
+                if mod.VerifyShoot           then mod.VerifyShoot           = function() return true end end
+                if mod.OnShootVerifyResult   then mod.OnShootVerifyResult   = function() end end
+                if mod.ReportVerifyFailed    then mod.ReportVerifyFailed    = function() end end
+                if mod.SendVerifyResult      then mod.SendVerifyResult      = function() end end
+                if mod.RequestVerify         then mod.RequestVerify         = function() return true end end
+                if mod.StartVerify           then mod.StartVerify           = function() end end
+                if mod.StopVerify            then mod.StopVerify            = function() end end
+            end
+        end
+        -- Block RPC kết quả xác minh đạn
+        if _G.GameplayCallbacks then
+            local GC = _G.GameplayCallbacks
+            if GC.RPC_Client_ShootVertifyRes   then GC.RPC_Client_ShootVertifyRes   = function() end end
+            if GC.RPC_Server_ShootVertifyRes   then GC.RPC_Server_ShootVertifyRes   = function() end end
+            if GC.OnShootVerifyFailed          then GC.OnShootVerifyFailed          = function() end end
+        end
+    end)
+end
+
+-- =========================== PHẦN 19C: CORONALAB DEEP BYPASS ===========================
+local function InitializeCoronaLabDeepBypass()
+    pcall(function()
+        -- Block module chính
+        local clPaths = {
+            "GameLua.Mod.BaseMod.Client.Security.CoronaLabSubsystem",
+            "GameLua.Mod.BaseMod.DS.Security.CoronaLabSubsystem",
+            "GameLua.Mod.BaseMod.Common.Security.CoronaLab",
+        }
+        for _, path in ipairs(clPaths) do
+            local mod = package.loaded[path]
+            if mod then
+                for k, v in pairs(mod) do
+                    if type(v) == "function" then mod[k] = function() end end
+                end
+            end
+        end
+        -- Fake dữ liệu CoronaLab toàn cục
+        _G.GlobalPlayerCoronaData = _G.GlobalPlayerCoronaData or {}
+        local mt_cl = getmetatable(_G.GlobalPlayerCoronaData) or {}
+        mt_cl.__newindex = function() end
+        mt_cl.__index    = function() return 0 end
+        setmetatable(_G.GlobalPlayerCoronaData, mt_cl)
+        -- Block callback trên GameplayCallbacks
+        if _G.GameplayCallbacks then
+            local GC = _G.GameplayCallbacks
+            if GC.RPC_ClientCoronaLab        then GC.RPC_ClientCoronaLab        = function() end end
+            if GC.CoronaLabReport            then GC.CoronaLabReport            = function() end end
+            if GC.OnCoronaLabDataCollected   then GC.OnCoronaLabDataCollected   = function() end end
+            if GC.SendCoronaLabData          then GC.SendCoronaLabData          = function() end end
+        end
+    end)
+end
+
+-- =========================== PHẦN 19D: CLIENT SEC MRPCS FLOW DS BYPASS ===========================
+local function InitializeClientSecMrpcsDSBypass()
+    pcall(function()
+        local mPaths = {
+            "GameLua.Mod.BaseMod.DS.Security.ClientSecMrpcsFlowSubsystem",
+            "GameLua.Mod.BaseMod.Client.Security.ClientSecMrpcsFlowSubsystem",
+        }
+        for _, path in ipairs(mPaths) do
+            local mod = package.loaded[path]
+            if mod then
+                for k, v in pairs(mod) do
+                    if type(v) == "function" then mod[k] = function() end end
+                end
+            end
+        end
+        if _G.GameplayCallbacks then
+            local GC = _G.GameplayCallbacks
+            if GC.ClientSecMrpcsFlow                           then GC.ClientSecMrpcsFlow                           = function() end end
+            if GC.RPC_Server_ClientSecMrpcsFlow                then GC.RPC_Server_ClientSecMrpcsFlow                = function() end end
+            if GC.IsEnableReportMrpcsInCircleFlow              then GC.IsEnableReportMrpcsInCircleFlow              = function() return false end end
+            if GC.IsEnableReportMrpcsInPartCircleFlow          then GC.IsEnableReportMrpcsInPartCircleFlow          = function() return false end end
+        end
+    end)
+end
+
+-- =========================== PHẦN 19E: NET DRIVER ERROR GUARD ===========================
+local function InitializeNetDriverErrorGuard()
+    pcall(function()
+        -- Ngăn game tự tắt vì lỗi net driver
+        if _G.GameplayCallbacks then
+            local GC = _G.GameplayCallbacks
+            if GC.OnNetDriverError        then GC.OnNetDriverError        = function() end end
+            if GC.OnNetConnectionError    then GC.OnNetConnectionError    = function() end end
+            if GC.OnSessionError          then GC.OnSessionError          = function() end end
+            if GC.OnNetworkFailure        then GC.OnNetworkFailure        = function() end end
+            if GC.OnTravelError           then GC.OnTravelError           = function() end end
+        end
+        -- Hook UEngine level error handler nếu có
+        if _G.OnNetworkFailure then
+            local orig = _G.OnNetworkFailure
+            _G.OnNetworkFailure = function(FailureType, ErrorStr)
+                if FailureType and (string.find(tostring(FailureType),"CheatDetect",1,true)
+                    or string.find(tostring(ErrorStr or ""),"cheat",1,true)
+                    or string.find(tostring(ErrorStr or ""),"ban",1,true)) then
+                    return
+                end
+                pcall(orig, FailureType, ErrorStr)
+            end
+        end
+    end)
+end
+
+-- =========================== PHẦN 19F: GAMESAFE & ACE DEEP HOOK ===========================
+local function InitializeGameSafeACEDeepHook()
+    pcall(function()
+        -- GameSafe callbacks deep null
+        if _G.GameSafeCallbacks then
+            local GSC = _G.GameSafeCallbacks
+            local gscNullKeys = {
+                "DoAttackFlowStrategy","RecordStrategyTimestampInReplay",
+                "GetScriptReportContent","ReportCheatBehavior",
+                "DoCircleFlowStrategy","DoVerifyInfoFlowStrategy",
+                "DoHurtFlowStrategy","DoFireArmsStrategy",
+                "OnRecvSecAntiData","OnRecvTssSdkData",
+                "OnCollectGameSafeFeature","GetGameSafeCheckList",
+            }
+            for _, key in ipairs(gscNullKeys) do
+                if GSC[key] then GSC[key] = function() return "" end end
+            end
+        end
+        -- ACE SDK deep
+        local ACE = package.loaded["ACE"] or _G.ACE
+        if ACE then
+            for k, v in pairs(ACE) do
+                if type(v) == "function" then
+                    local lk = string.lower(k)
+                    if string.find(lk,"report",1,true) or string.find(lk,"detect",1,true)
+                    or string.find(lk,"check",1,true)  or string.find(lk,"scan",1,true)
+                    or string.find(lk,"terminate",1,true) then
+                        ACE[k] = function() return true end
+                    end
+                end
+            end
+        end
+        -- SecTgame module
+        local SecTgame = package.loaded["SecTgame"] or _G.SecTgame
+        if SecTgame then
+            for k, v in pairs(SecTgame) do
+                if type(v) == "function" then SecTgame[k] = function() return true end end
+            end
+        end
+    end)
+end
+
+-- =========================== PHẦN 19G: PAK SIGNATURE WATCHER BYPASS ===========================
+local function InitializePakSignatureWatcherBypass()
+    pcall(function()
+        -- Block Pak file signature check watcher runtime
+        local PakWatcher = package.loaded["PakSignatureWatcher"] or _G.PakSignatureWatcher
+        if PakWatcher then
+            if PakWatcher.Start        then PakWatcher.Start        = function() end end
+            if PakWatcher.Stop         then PakWatcher.Stop         = function() end end
+            if PakWatcher.OnViolation  then PakWatcher.OnViolation  = function() end end
+            if PakWatcher.CheckFile    then PakWatcher.CheckFile    = function() return true end end
+        end
+        -- Console commands disable signature
+        local KSL = import("KismetSystemLibrary")
+        if KSL and KSL.ExecuteConsoleCommand then
+            pcall(function()
+                local PC = _G.GameplayCallbacks and _G.GameplayCallbacks.GetPlayerController and _G.GameplayCallbacks:GetPlayerController()
+                KSL.ExecuteConsoleCommand(PC, "pak.AsyncLoadingThreadEnabled 0")
+                KSL.ExecuteConsoleCommand(PC, "pak.EnableSignatureChecks 0")
+                KSL.ExecuteConsoleCommand(PC, "PakSigning.Enabled 0")
+            end)
+        end
+    end)
+end
+
+-- =========================== PHẦN 19H: RPC SERVER VALIDATE HOOK ===========================
+local function InitializeRPCValidateHook()
+    pcall(function()
+        -- Hook BRPlayerCharacterBase RPC validate functions để chúng luôn return true
+        local rpcModules = {
+            BRPlayerCharacterBase,
+            package.loaded["GameLua.Mod.BaseMod.Common.Character.BRPlayerCharacterBase"],
+        }
+        for _, mod in ipairs(rpcModules) do
+            if mod and type(mod) == "table" then
+                for k, v in pairs(mod) do
+                    if type(v) == "function" and string.find(tostring(k), "Validate", 1, true) then
+                        mod[k] = function() return true end
+                    end
+                end
+            end
+        end
+        -- Block DS-side RPC rejection
+        if _G.GameplayCallbacks then
+            local GC = _G.GameplayCallbacks
+            if GC.OnPlayerRPCValidateFailed then GC.OnPlayerRPCValidateFailed = function() end end
+            if GC.OnRPCBlocked             then GC.OnRPCBlocked             = function() end end
+        end
+    end)
+end
 
 -- =========================== PHẦN 20: NETWORK PACKET BLOCKER ===========================
 local function InitializeNetworkPacketBlock()
@@ -1737,6 +2028,16 @@ local function RunAllBypasses()
     pcall(InitializeStrongBypassPaks)
     pcall(InitializeGokubaBypass)
     pcall(_G.HK_InitializeHWIDHook)
+    -- === PHẦN MỚI BỔ SUNG ===
+    pcall(InitializeSwiftHawkBypass)
+    pcall(InitializeShootVerifyDSBypass)
+    pcall(InitializeCoronaLabDeepBypass)
+    pcall(InitializeClientSecMrpcsDSBypass)
+    pcall(InitializeNetDriverErrorGuard)
+    pcall(InitializeGameSafeACEDeepHook)
+    pcall(InitializePakSignatureWatcherBypass)
+    pcall(InitializeRPCValidateHook)
+    -- ========================
     pcall(function()
         local CrashSight = package.loaded["CrashSight"] or _G.CrashSight
         if CrashSight then
@@ -1752,6 +2053,9 @@ local function RunAllBypasses()
             TssSdk.ReportData = function() end
             TssSdk.SendCmd = function() end
             TssSdk.ScanMemory = function() return true end
+            TssSdk.IsEmulator = function() return false end
+            TssSdk.IsRooted   = function() return false end
+            TssSdk.IsDebugged = function() return false end
         end
     end)
 end
@@ -5754,6 +6058,45 @@ function BRPlayerCharacterBase:CheckForbidFlaregun()
 end
 
 
+-- =========================== PHẦN 29B: SPECTATOR GOD MODE BYPASS - WALLHACK KHI SPECTATE ===========================
+local function InitializeSpectatorGodModeBypass()
+    pcall(function()
+        -- Khi spectate: bỏ mọi hạn chế visibility để wallhack hoạt động
+        local origGetAllPlayers_spec = GameplayData.GetAllPlayerCharacters
+        if origGetAllPlayers_spec and not _G.HK_SpectatorAllPlayerHooked then
+            GameplayData.GetAllPlayerCharacters = function(...)
+                local result = {}
+                local ok, list = pcall(origGetAllPlayers_spec, ...)
+                if ok and list then
+                    for _, actor in pairs(list) do
+                        if slua.isValid(actor) then
+                            -- Force unhide tất cả actor khi spectate
+                            pcall(function()
+                                local pc = GameplayData.GetPlayerController()
+                                local isSpec = pc and ((pc.IsSpectator and pc:IsSpectator())
+                                    or (pc.IsDemoPlaySpectator and pc:IsDemoPlaySpectator())
+                                    or (type(pc.IsInPetSpectator)=="function" and pc:IsInPetSpectator()))
+                                if isSpec then
+                                    if actor.SetActorHiddenInGame then actor:SetActorHiddenInGame(false) end
+                                    local mesh = actor.Mesh
+                                    if slua.isValid(mesh) then
+                                        if mesh.SetVisibility then mesh:SetVisibility(true, true) end
+                                    end
+                                end
+                            end)
+                            table.insert(result, actor)
+                        end
+                    end
+                end
+                return result
+            end
+            _G.HK_SpectatorAllPlayerHooked = true
+        end
+    end)
+end
+
+pcall(InitializeSpectatorGodModeBypass)
+
 -- =========================== PHẦN 30: ANTI-SPECTATOR ALERT ===========================
 local _DXLastSpecCount = -1
 _G.HK_SpectatorCount = 0
@@ -6057,6 +6400,303 @@ function BRPlayerCharacterBase:SetActorHiddenInGameMask(bHide, MaskType)
         pcall(function() self.Object:SetActorHiddenInGameMask(bHide, MaskType) end)
     end
 end
+
+
+
+-- =========================== PHẦN 33: ANTI-BAN ULTIMATE ===========================
+
+-- [33A] IDIP Ban Notice Interceptor — chặn thông báo ban từ server IDIP
+local function InitializeIDIPBanBypass()
+    pcall(function()
+        -- Block module IDIP
+        local idipPaths = {
+            "GameLua.Mod.BaseMod.Client.Security.IDIPBanSubsystem",
+            "GameLua.Mod.BaseMod.DS.Security.IDIPBanSubsystem",
+            "GameLua.Mod.BaseMod.Common.Security.IDIPBan",
+            "client.slua.logic.ban.logic_ban_notice",
+            "client.slua.logic.ban.logic_idip_ban",
+        }
+        for _, path in ipairs(idipPaths) do
+            local mod = package.loaded[path]
+            if mod then
+                for k, v in pairs(mod) do
+                    if type(v) == "function" then
+                        mod[k] = function() return false end
+                    end
+                end
+            end
+        end
+        -- Null GameplayCallbacks ban
+        if _G.GameplayCallbacks then
+            local GC = _G.GameplayCallbacks
+            local banKeys = {
+                "OnReceiveBanInfo","OnIDIPBanNotice","OnReceiveIDIPResult",
+                "OnPlayerBanNotice","OnBanResult","OnAntiCheatBan",
+                "OnPunishNotice","OnPunishResult","HandleBanNotice",
+                "OnGameSafePunish","OnTSSBan","OnKickByBan",
+                "OnServerBanPlayer","OnBanKick","OnForceKick",
+            }
+            for _, k in ipairs(banKeys) do
+                if GC[k] then GC[k] = function() end end
+            end
+        end
+        -- Block ClientSecuritySubsystem ban handler
+        local ClientSecSub = package.loaded["GameLua.Mod.BaseMod.Client.Security.ClientSecuritySubsystem"]
+        if ClientSecSub then
+            if ClientSecSub.HandleBanNotice    then ClientSecSub.HandleBanNotice    = function() end end
+            if ClientSecSub.OnReceiveBanInfo   then ClientSecSub.OnReceiveBanInfo   = function() end end
+            if ClientSecSub.OnIDIPBan          then ClientSecSub.OnIDIPBan          = function() end end
+            if ClientSecSub.OnForceKick        then ClientSecSub.OnForceKick        = function() end end
+        end
+    end)
+end
+
+-- [33B] Punishment Callback Null — vô hiệu hóa toàn bộ chuỗi trừng phạt
+local function InitializePunishmentBypass()
+    pcall(function()
+        -- Subsystem: PunishmentSubsystem
+        local ok, SubsystemMgr = pcall(require, "GameLua.GameCore.Module.Subsystem.SubsystemMgr")
+        if ok and SubsystemMgr then
+            local punishNames = {
+                "PunishmentSubsystem","AntiCheatPunishSubsystem","ClientPunishSubsystem",
+                "GameSafePunishSubsystem","IDIPBanSubsystem","ClientBanSubsystem",
+                "DSBanSubsystem","BanCheckSubsystem","ClientKickSubsystem",
+                "AbnormalBehaviorSubsystem","ReportPlayerPunishSubsystem",
+            }
+            for _, name in ipairs(punishNames) do
+                local sub = SubsystemMgr:Get(name)
+                if sub then
+                    for k, v in pairs(sub) do
+                        if type(v) == "function" then sub[k] = function() return false end end
+                    end
+                end
+            end
+        end
+        -- BanCheckResult luôn trả về safe
+        if _G.BanCheckResult ~= nil then
+            _G.BanCheckResult = 0  -- 0 = not banned
+        end
+        -- Fake hàm check ban toàn cục
+        _G.CheckBanResult   = function() return false end
+        _G.IsBanned         = function() return false end
+        _G.IsIDIPBanned     = function() return false end
+        _G.IsPunished       = function() return false end
+        _G.GetBanReason     = function() return "" end
+        _G.GetPunishLevel   = function() return 0 end
+    end)
+end
+
+-- [33C] Player State Clamp — ngăn server ghi đè trạng thái "banned"/"kicked"
+local function InitializePlayerStateBanClamp()
+    pcall(function()
+        if not _G.GameplayCallbacks then return end
+        local GC = _G.GameplayCallbacks
+        -- Hook OnDSPlayerStateChanged (đã có nhưng bổ sung thêm filter)
+        if not GC._AntiBanPlayerStateHooked then
+            local originalFn = GC.OnDSPlayerStateChanged
+            GC.OnDSPlayerStateChanged = function(UID, InPlayerState, bPureWatcher, bIsSafeExit, ParamReason)
+                local stateStr = InPlayerState and string.lower(tostring(InPlayerState)) or ""
+                -- Danh sách trạng thái ban cần chặn
+                local banStates = {
+                    "banned","idipban","kick","punish","anticheat",
+                    "cheatdetect","hackdetect","violation","modding",
+                    "wallhack","aimbot","speedhack","memoryhack",
+                    "suspended","accountban","gamebanned","forcedisconnect",
+                }
+                for _, s in ipairs(banStates) do
+                    if string.find(stateStr, s, 1, true) then
+                        print("[ANTIBAN] Blocked PlayerStateChange: " .. stateStr)
+                        return
+                    end
+                end
+                if originalFn then
+                    pcall(originalFn, UID, InPlayerState, bPureWatcher, bIsSafeExit, ParamReason)
+                end
+            end
+            GC._AntiBanPlayerStateHooked = true
+        end
+        -- Block DSPlayerKick
+        if GC.OnDSKickPlayer        then GC.OnDSKickPlayer        = function() end end
+        if GC.OnServerKickPlayer    then GC.OnServerKickPlayer    = function() end end
+        if GC.OnKickByAntiCheat     then GC.OnKickByAntiCheat     = function() end end
+        if GC.OnForceDisconnect     then GC.OnForceDisconnect     = function() end end
+    end)
+end
+
+-- [33D] Kill Flow Integrity — chặn RPC gửi kill data bất thường
+local function InitializeKillFlowIntegrityBypass()
+    pcall(function()
+        if not _G.GameplayCallbacks then return end
+        local GC = _G.GameplayCallbacks
+        -- Null các hàm ghi log kill bất thường
+        local killLogKeys = {
+            "ReportKillFlow","ReportPlayerKillFlow","ReportMLKillerUID",
+            "ReportKnockDownFlow","ReportBattleResultKill",
+            "SendKillFlowToServer","OnSuspiciousKillDetected",
+            "OnAbnormalKillReport","CheckKillIntegrity",
+        }
+        for _, k in ipairs(killLogKeys) do
+            if GC[k] then GC[k] = function() end end
+        end
+        -- Block NetUtil packet kill-flow
+        if NetUtil and NetUtil.SendPacket and not NetUtil._KFBypassed then
+            local origSP = NetUtil.SendPacket
+            NetUtil.SendPacket = function(firstArg, secondArg, ...)
+                local pn = type(firstArg)=="string" and firstArg or secondArg
+                if pn and (string.find(tostring(pn),"KillFlow",1,true)
+                    or string.find(tostring(pn),"SuspiciousKill",1,true)
+                    or string.find(tostring(pn),"AbnormalKill",1,true)) then
+                    return
+                end
+                return origSP(firstArg, secondArg, ...)
+            end
+            NetUtil._KFBypassed = true
+        end
+    end)
+end
+
+-- [33E] Chat / Social Report Block — chặn tố cáo qua chat và hệ thống social
+local function InitializeChatReportBypass()
+    pcall(function()
+        -- Block module report chat
+        local chatReportPaths = {
+            "client.slua.logic.report.ChatReportModule",
+            "client.slua.logic.report.SocialReportModule",
+            "client.slua.logic.report.ReportPlayerModule",
+            "GameLua.Mod.BaseMod.Client.Social.SocialReportSubsystem",
+        }
+        for _, path in ipairs(chatReportPaths) do
+            local mod = package.loaded[path]
+            if mod then
+                for k, v in pairs(mod) do
+                    if type(v) == "function" then
+                        local lk = string.lower(k)
+                        if string.find(lk,"report",1,true) or string.find(lk,"submit",1,true)
+                        or string.find(lk,"send",1,true) or string.find(lk,"upload",1,true) then
+                            mod[k] = function() return true end
+                        end
+                    end
+                end
+            end
+        end
+        -- Block RPC gửi report qua GameplayCallbacks
+        if _G.GameplayCallbacks then
+            local GC = _G.GameplayCallbacks
+            local reportRPCKeys = {
+                "RPC_Server_ReportPlayer","RPC_Client_ReportResult",
+                "SendPlayerReport","SubmitChatReport","OnReportConfirmed",
+                "OnPlayerReportResult","SendReportToServer",
+            }
+            for _, k in ipairs(reportRPCKeys) do
+                if GC[k] then GC[k] = function() end end
+            end
+        end
+    end)
+end
+
+-- [33F] Lobby Ban Check Bypass — giả mạo kết quả kiểm tra ban trong sảnh
+local function InitializeLobbyBanCheckBypass()
+    pcall(function()
+        local lobbyBanPaths = {
+            "client.slua.logic.ban.logic_ban_check",
+            "client.slua.logic.lobby.logic_lobby_ban",
+            "client.slua.logic.main.logic_main_ban_check",
+        }
+        for _, path in ipairs(lobbyBanPaths) do
+            local mod = package.loaded[path]
+            if mod then
+                if mod.CheckBan        then mod.CheckBan        = function() return false end end
+                if mod.IsBanned        then mod.IsBanned        = function() return false end end
+                if mod.GetBanInfo      then mod.GetBanInfo      = function() return nil end end
+                if mod.ShowBanNotice   then mod.ShowBanNotice   = function() end end
+                if mod.OnBanCheck      then mod.OnBanCheck      = function() return false end end
+                if mod.RequestBanCheck then mod.RequestBanCheck = function() end end
+            end
+        end
+        -- Fake lobby state không bị ban
+        local LobbyData = package.loaded["client.logic.data.data_lobby"]
+        if LobbyData then
+            if LobbyData.bIsBanned ~= nil then LobbyData.bIsBanned = false end
+            if LobbyData.nBanType  ~= nil then LobbyData.nBanType  = 0     end
+            if LobbyData.nBanLevel ~= nil then LobbyData.nBanLevel = 0     end
+        end
+    end)
+end
+
+-- [33G] Anti-Ban Network Packet Block — chặn packet ban/kick tại tầng NetUtil
+local function InitializeAntiBanPacketBlock()
+    pcall(function()
+        if NetUtil and NetUtil.SendPacket and not NetUtil._ABPBypassed then
+            local origSP = NetUtil.SendPacket
+            local banPackets = {
+                ["idip_ban_report"]=1, ["ban_player"]=1, ["kick_player"]=1,
+                ["punish_player"]=1,   ["punish_notify"]=1, ["ban_notify"]=1,
+                ["report_ban_result"]=1, ["anticheat_ban"]=1, ["cheat_ban"]=1,
+                ["account_ban_notify"]=1, ["game_ban_notify"]=1,
+                ["force_kick"]=1, ["server_kick_player"]=1,
+                ["ban_check_result"]=1, ["punishment_result"]=1,
+            }
+            NetUtil.SendPacket = function(firstArg, secondArg, ...)
+                local pn = type(firstArg)=="string" and firstArg or secondArg
+                if pn and banPackets[tostring(pn)] then
+                    print("[ANTIBAN-PKT] Blocked: " .. tostring(pn))
+                    return
+                end
+                return origSP(firstArg, secondArg, ...)
+            end
+            NetUtil._ABPBypassed = true
+        end
+    end)
+end
+
+-- [33H] Auto-Recovery Loop — tự động tái áp dụng anti-ban mỗi 15 giây
+local function StartAntiBanRecoveryLoop()
+    if _G.AntiBanLoopActive then return end
+    _G.AntiBanLoopActive = true
+    local function AntiBanLoop()
+        pcall(InitializeIDIPBanBypass)
+        pcall(InitializePunishmentBypass)
+        pcall(InitializePlayerStateBanClamp)
+        pcall(InitializeKillFlowIntegrityBypass)
+        pcall(InitializeChatReportBypass)
+        pcall(InitializeLobbyBanCheckBypass)
+        pcall(InitializeAntiBanPacketBlock)
+        -- Re-null TssSdk ban reporters
+        pcall(function()
+            local TssSdk = package.loaded["TssSdk"] or _G.TssSdk
+            if TssSdk then
+                if TssSdk.QueryUserRisk   then TssSdk.QueryUserRisk   = function() return 0 end end
+                if TssSdk.GetDeviceRisk   then TssSdk.GetDeviceRisk   = function() return 0 end end
+                if TssSdk.ReportCheatData then TssSdk.ReportCheatData = function() end end
+                if TssSdk.IsRooted        then TssSdk.IsRooted        = function() return false end end
+                if TssSdk.IsEmulator      then TssSdk.IsEmulator      = function() return false end end
+                if TssSdk.IsDebugged      then TssSdk.IsDebugged      = function() return false end end
+            end
+        end)
+        pcall(function()
+            local ok, ticker = pcall(require, "common.time_ticker")
+            if ok and ticker and ticker.AddTimerOnce then
+                ticker.AddTimerOnce(15.0, AntiBanLoop)
+            end
+        end)
+    end
+    pcall(function()
+        local ok, ticker = pcall(require, "common.time_ticker")
+        if ok and ticker and ticker.AddTimerOnce then
+            ticker.AddTimerOnce(5.0, AntiBanLoop)
+        end
+    end)
+end
+
+-- Khởi động tất cả anti-ban ngay lập tức
+pcall(InitializeIDIPBanBypass)
+pcall(InitializePunishmentBypass)
+pcall(InitializePlayerStateBanClamp)
+pcall(InitializeKillFlowIntegrityBypass)
+pcall(InitializeChatReportBypass)
+pcall(InitializeLobbyBanCheckBypass)
+pcall(InitializeAntiBanPacketBlock)
+pcall(StartAntiBanRecoveryLoop)
 
 -- =========================== PHẦN 32: INJECT TO ORIGINAL CLASS ===========================
 -- Sao chép tất cả các phương thức mod sang OriginalClass để game nhận diện động
