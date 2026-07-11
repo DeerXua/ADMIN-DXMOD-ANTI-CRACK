@@ -2236,6 +2236,12 @@ _G.HK_Settings = _G.HK_Settings or {
     ESP_WEAPON = 0, ESP_COUNT = 0, ESP_BOX = 0, EspLoai5 = 0,
     AIMBOT = 0, SPEED_AIMBOT = 0, FOV_AIMBOT = 0, THU_TAM = 0,
     NO_RECOIL_100 = 0, GIAM_RUNG_SCOPE = 0,
+
+    -- Per-weapon recoil adjustment (0 = use global NO_RECOIL_100)
+    REC_WEAPON_MASTER = 0, REC_W_M416 = 0, REC_W_AKM = 0, REC_W_SCAR = 0, REC_W_Groza = 0, REC_W_AUG = 0, REC_W_QBZ = 0, REC_W_M762 = 0, REC_W_G36C = 0, REC_W_FAMAS = 0, REC_W_ACE32 = 0, REC_W_Honey = 0,
+    REC_W_SKS = 0, REC_W_SLR = 0, REC_W_Mini14 = 0, REC_W_Mk14 = 0, REC_W_QBU = 0, REC_W_Mk12 = 0, REC_W_VSS = 0,
+    REC_W_UZI = 0, REC_W_UMP45 = 0, REC_W_Vector = 0, REC_W_Tommy = 0, REC_W_Bizon = 0, REC_W_MP5K = 0, REC_W_P90 = 0,
+    REC_W_DP28 = 0, REC_W_M249 = 0, REC_W_MG3 = 0,
     MAGIC_HEAD = 0, MAGIC_BODY = 0, MAGIC_LEGS = 0,
     MAGIC_DIST = 100,
     MAGIC_SMART = 0,
@@ -2856,6 +2862,111 @@ table.insert(StackESP, {
         AddSlider(StackAimbot, "NO_RECOIL_100", "GIẢM GIẬT (0-100%)", 0, 100)
         AddSlider(StackAimbot, "GIAM_RUNG_SCOPE", "GIẢM RUNG SCOPE", 0, 100)
 
+        -- Per-weapon recoil section (expandable)
+        local recoilWeaponCategories = {
+            {
+                key = "REC_W_AR", text = "   ▶ Súng trường (AR)",
+                weapons = {
+                    { key = "REC_W_M416", text = "      M416" },
+                    { key = "REC_W_AKM", text = "      AKM" },
+                    { key = "REC_W_SCAR", text = "      SCAR-L" },
+                    { key = "REC_W_Groza", text = "      Groza" },
+                    { key = "REC_W_AUG", text = "      AUG" },
+                    { key = "REC_W_QBZ", text = "      QBZ" },
+                    { key = "REC_W_M762", text = "      M762" },
+                    { key = "REC_W_G36C", text = "      G36C" },
+                    { key = "REC_W_FAMAS", text = "      FAMAS" },
+                    { key = "REC_W_ACE32", text = "      ACE32" },
+                    { key = "REC_W_Honey", text = "      Honey Badger" }
+                }
+            },
+            {
+                key = "REC_W_DMR", text = "   ▶ Súng tỉa bán tự động (DMR)",
+                weapons = {
+                    { key = "REC_W_SKS", text = "      SKS" },
+                    { key = "REC_W_SLR", text = "      SLR" },
+                    { key = "REC_W_Mini14", text = "      Mini14" },
+                    { key = "REC_W_Mk14", text = "      Mk14" },
+                    { key = "REC_W_QBU", text = "      QBU" },
+                    { key = "REC_W_Mk12", text = "      Mk12" },
+                    { key = "REC_W_VSS", text = "      VSS" }
+                }
+            },
+            {
+                key = "REC_W_SMG", text = "   ▶ Súng tiểu liên (SMG)",
+                weapons = {
+                    { key = "REC_W_UZI", text = "      UZI" },
+                    { key = "REC_W_UMP45", text = "      UMP45" },
+                    { key = "REC_W_Vector", text = "      Vector" },
+                    { key = "REC_W_Tommy", text = "      Tommy Gun" },
+                    { key = "REC_W_Bizon", text = "      Bizon" },
+                    { key = "REC_W_MP5K", text = "      MP5K" },
+                    { key = "REC_W_P90", text = "      P90" }
+                }
+            },
+            {
+                key = "REC_W_LMG", text = "   ▶ Súng máy hạng nhẹ (LMG)",
+                weapons = {
+                    { key = "REC_W_DP28", text = "      DP-28" },
+                    { key = "REC_W_M249", text = "      M249" },
+                    { key = "REC_W_MG3", text = "      MG3" }
+                }
+            }
+        }
+
+        table.insert(StackAimbot, {
+            Key = "ModMenu_REC_WEAPON_MASTER",
+            UI = AliasMap.TitleSwitcher,
+            Text = "▶ CUSTOM GIẢM GIẬT THEO TỪNG SÚNG",
+            ExpandIndex = 0,
+            GetFunc = function() return _G.HK_Settings.REC_WEAPON_MASTER == 1 end,
+            SetFunc = function(_, value)
+                _G.HK_Settings.REC_WEAPON_MASTER = value and 1 or 0
+                return true
+            end
+        })
+
+        for _, cat in ipairs(recoilWeaponCategories) do
+            table.insert(StackAimbot, {
+                Key = "ModMenu_" .. cat.key,
+                UI = AliasMap.TitleSwitcher,
+                Text = cat.text,
+                ExpandHandle = "ModMenu_REC_WEAPON_MASTER",
+                ExpandIndex = 0,
+                GetFunc = function() return _G.HK_Settings[cat.key] == 1 end,
+                SetFunc = function(_, value)
+                    _G.HK_Settings[cat.key] = value and 1 or 0
+                    return true
+                end
+            })
+            for _, wp in ipairs(cat.weapons) do
+                local minVal, maxVal = 0, 100
+                local wpKey = wp.key
+                local wpText = wp.text
+                table.insert(StackAimbot, {
+                    Key = "ModMenu_" .. wpKey,
+                    UI = AliasMap.Slider,
+                    Text = wpText,
+                    ExpandHandle = "ModMenu_" .. cat.key,
+                    MinValue = minVal,
+                    MaxValue = maxVal,
+                    Min = minVal,
+                    Max = maxVal,
+                    GetFunc = function()
+                        local v = _G.HK_Settings[wpKey] or 0
+                        return v
+                    end,
+                    SetFunc = function(_, value)
+                        local val = math.floor(tonumber(value) or 0)
+                        if val < minVal then val = minVal end
+                        if val > maxVal then val = maxVal end
+                        _G.HK_Settings[wpKey] = val
+                        return true
+                    end
+                })
+            end
+        end
+
         -- =========================================================================================
         -- [MỚI] TÍCH HỢP TOÀN BỘ GIAO DIỆN VÀ LOGIC TAB 3 CỦA CODE 2 SANG CODE 1 (AIMBOT ROYAL & CUSTOM)
         -- =========================================================================================
@@ -3021,6 +3132,41 @@ local math_random = math.random
 local math_sqrt = math.sqrt
 local math_floor = math.floor
 local math_max = math.max
+
+local function GetRecoilWeaponKey(weaponName)
+    if not weaponName or weaponName == "" then return nil end
+    local n = string.lower(weaponName)
+    if n:find("m416") then return "REC_W_M416"
+    elseif n:find("akm") and not n:find("ace") then return "REC_W_AKM"
+    elseif n:find("scar") then return "REC_W_SCAR"
+    elseif n:find("groza") then return "REC_W_Groza"
+    elseif n:find("aug") then return "REC_W_AUG"
+    elseif n:find("qbz") then return "REC_W_QBZ"
+    elseif n:find("m762") then return "REC_W_M762"
+    elseif n:find("g36") then return "REC_W_G36C"
+    elseif n:find("famas") then return "REC_W_FAMAS"
+    elseif n:find("ace32") then return "REC_W_ACE32"
+    elseif n:find("honey") then return "REC_W_Honey"
+    elseif n:find("sks") then return "REC_W_SKS"
+    elseif n:find("slr") then return "REC_W_SLR"
+    elseif n:find("mini") then return "REC_W_Mini14"
+    elseif n:find("mk14") then return "REC_W_Mk14"
+    elseif n:find("qbu") then return "REC_W_QBU"
+    elseif n:find("mk12") then return "REC_W_Mk12"
+    elseif n:find("vss") then return "REC_W_VSS"
+    elseif n:find("uzi") then return "REC_W_UZI"
+    elseif n:find("ump") then return "REC_W_UMP45"
+    elseif n:find("vector") then return "REC_W_Vector"
+    elseif n:find("tommy") then return "REC_W_Tommy"
+    elseif n:find("bizon") then return "REC_W_Bizon"
+    elseif n:find("mp5") then return "REC_W_MP5K"
+    elseif n:find("p90") then return "REC_W_P90"
+    elseif n:find("dp28") then return "REC_W_DP28"
+    elseif n:find("m249") then return "REC_W_M249"
+    elseif n:find("mg3") then return "REC_W_MG3"
+    end
+    return nil
+end
 
 local FVecZero = FVector(0,0,0)
 local COLOR_CYAN    = {R=0, G=255, B=255, A=255}
@@ -3956,6 +4102,13 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                     self.bForceWeaponMod = true
                     self.LastWeaponModTime = currentTickOS
                 end
+                -- Identify weapon for per-weapon recoil override
+                local perWeaponRecoilKey = nil
+                local weaponNameForRecoil = type(currentWeapon.GetWeaponName) == "function" and currentWeapon:GetWeaponName() or ""
+                if weaponNameForRecoil and weaponNameForRecoil ~= "" then
+                    perWeaponRecoilKey = GetRecoilWeaponKey(weaponNameForRecoil)
+                end
+
                 -- Run recoil and deviation modifications every tick to prevent native game overrides
                 pcall(function()
                     local entities = {}
@@ -4033,6 +4186,9 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                              end
 
                              local recoilPercent = _G.HK_GetVal("NO_RECOIL_100") or 0
+                             if perWeaponRecoilKey and (_G.HK_GetVal(perWeaponRecoilKey) or 0) > 0 then
+                                 recoilPercent = _G.HK_GetVal(perWeaponRecoilKey) or 0
+                             end
                              if recoilPercent > 0 then
                                  -- SỬA: Gộp scopeFactor vào factor để áp dụng cho TẤT CẢ thông số khi ADS
                                  -- Hạn chế tối thiểu là 0.01 để tránh chia cho 0 trong engine vật lý phía dưới
