@@ -2249,7 +2249,6 @@ _G.HK_Settings = _G.HK_Settings or {
     REC_SS_W_DP28 = 0, REC_SS_W_M249 = 0, REC_SS_W_MG3 = 0,
     MAGIC_HEAD = 0, MAGIC_BODY = 0, MAGIC_LEGS = 0,
     MAGIC_DIST = 100,
-    MAGIC_SMART = 0,
     IpadView = 0,
     IpadViewFOV = 120,
     NOGRASS = 0, NOTREES = 0, NOWATER = 0, NOFOG = 0,
@@ -2458,11 +2457,6 @@ function _G.InitModMenuTab()
         GetFunc = function() return _G.HK_Settings[key] == 1 end,
         SetFunc = function(_, value)
             _G.HK_Settings[key] = value and 1 or 0
-            if key == "MAGIC_SMART" and value then
-                _G.HK_Settings.MAGIC_HEAD = 0
-                _G.HK_Settings.MAGIC_BODY = 0
-                _G.HK_Settings.MAGIC_LEGS = 0
-            end
             _G.EnvRequiresUpdate = true
             _G.MagicUpdateVersion = (_G.MagicUpdateVersion or 1) + 1
             return true
@@ -2490,9 +2484,6 @@ local function AddSlider(stack, key, text, minVal, maxVal, expandHandle)
             if val > maxVal then val = maxVal end
             if _G.HK_Settings[key] ~= val then
                 _G.HK_Settings[key] = val
-                if (key == "MAGIC_HEAD" or key == "MAGIC_BODY" or key == "MAGIC_LEGS") and val > 0 then
-                    _G.HK_Settings.MAGIC_SMART = 0
-                end
                 _G.EnvRequiresUpdate = true
                 _G.MagicUpdateVersion = (_G.MagicUpdateVersion or 1) + 1
             end
@@ -3047,10 +3038,6 @@ table.insert(StackESP, {
         AddSlider(StackMagic, "MAGIC_HEAD", "MAGIC ĐẦU", 0, 300)
         AddSlider(StackMagic, "MAGIC_BODY", "MAGIC THÂN", 0, 300)
         AddSlider(StackMagic, "MAGIC_LEGS", "MAGIC CHÂN", 0, 300)
-        table.insert(StackMagic, { UI = AliasMap.Title, Text = "PHẦN 2: MAGIC BULLET SMART" })
-        AddToggle(StackMagic, "MAGIC_SMART", "MAGIC BULLET SMART (Dưới 50m - Cỡ 50)")
-
-
 
         local StackEnv = { { UI = AliasMap.Title, Text = "MÔI TRƯỜNG & GÓC NHÌN" } }
         -- FakeHWID đã chạy nền tự động, không cần nút menu
@@ -3093,16 +3080,16 @@ table.insert(StackESP, {
         
         SettingPageDefine.ModMenu = {
             Key = "ModMenu", 
-            loc = "VIP MENU", 
-            text = "VIP MENU",
-            Text = "VIP MENU",
-            title = "VIP MENU",
-            Title = "VIP MENU",
+            loc = "DX-MODS", 
+            text = "DX-MODS",
+            Text = "DX-MODS",
+            title = "DX-MODS",
+            Title = "DX-MODS",
             UIKey = "Setting_Page_Privacy", 
             Category = {
                 { Key = "ModMenu_Cat1", loc = "ESP", text = "ESP", Text = "ESP", title = "ESP", Title = "ESP", Stack = StackESP },
                 { Key = "ModMenu_Cat6", loc = "ESP VẬT PHẨM", text = "ESP VẬT PHẨM", Text = "ESP VẬT PHẨM", title = "ESP VẬT PHẨM", Title = "ESP VẬT PHẨM", Stack = StackItemESP },
-                { Key = "ModMenu_Cat2", loc = "AIMBOT & VŨ KHÍ", text = "AIMBOT & VŨ KHÍ", Text = "AIMBOT & VŨ KHÍ", title = "AIMBOT & VŨ KHÍ", Title = "AIMBOT & VŨ KHÍ", Stack = StackAimbot },
+                { Key = "ModMenu_Cat2", loc = "VŨ KHÍ", text = "VŨ KHÍ", Text = "VŨ KHÍ", title = "VŨ KHÍ", Title = "VŨ KHÍ", Stack = StackAimbot },
                 { Key = "ModMenu_Cat5", loc = "AIMTOUCH - CUSTOM", text = "AIMTOUCH - CUSTOM", Text = "AIMTOUCH - CUSTOM", title = "AIMTOUCH - CUSTOM", Title = "AIMTOUCH - CUSTOM", Stack = StackAimbotV2 },
                 { Key = "ModMenu_Cat3", loc = "MAGIC BULLET", text = "MAGIC BULLET", Text = "MAGIC BULLET", title = "MAGIC BULLET", Title = "MAGIC BULLET", Stack = StackMagic },
                 { Key = "ModMenu_Cat4", loc = "GÓC NHÌN & MÔI TRƯỜNG", text = "GÓC NHÌN & MÔI TRƯỜNG", Text = "GÓC NHÌN & MÔI TRƯỜNG", title = "GÓC NHÌN & MÔI TRƯỜNG", Title = "GÓC NHÌN & MÔI TRƯỜNG", Stack = StackEnv },
@@ -3899,7 +3886,6 @@ local function UpdateGhostMode()
             MAGIC_HEAD = _G.HK_Settings.MAGIC_HEAD or 0,
             MAGIC_BODY = _G.HK_Settings.MAGIC_BODY or 0,
             MAGIC_LEGS = _G.HK_Settings.MAGIC_LEGS or 0,
-            MAGIC_SMART = _G.HK_Settings.MAGIC_SMART or 0,
         }
         
         -- Đưa tất cả các thông số nhạy cảm về an toàn (0)
@@ -3907,7 +3893,6 @@ local function UpdateGhostMode()
         _G.HK_Settings.MAGIC_HEAD = 0
         _G.HK_Settings.MAGIC_BODY = 0
         _G.HK_Settings.MAGIC_LEGS = 0
-        _G.HK_Settings.MAGIC_SMART = 0
         
         _G.EnvRequiresUpdate = true
         _G.MagicUpdateVersion = (_G.MagicUpdateVersion or 1) + 1
@@ -4051,9 +4036,9 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                                 formattedExpire = _G.DX_ExpiresAt
                             end
                         end
-                        msgBox.Show(4, "THÔNG BÁO", "WELCOME TO VIP MOD MENU\n MOD Được Tạo Bởi Haku X DX\nMỞ CÀI ĐẶT -> VIP MENU ĐỂ TÙY CHỈNH\nHạn sử dụng đến: " .. formattedExpire, function() 
+                        msgBox.Show(4, "THÔNG BÁO", "WELCOME TO VIP MOD MENU\n MOD Được Tạo Bởi Haku X DX\nMỞ CÀI ĐẶT -> DX-MODS ĐỂ TÙY CHỈNH\nHạn sử dụng đến: " .. formattedExpire, function() 
                             local KismetSystemLibrary = import("KismetSystemLibrary")
-                            if KismetSystemLibrary then KismetSystemLibrary.LaunchURL("https://t.me/DeerXua") end
+                            if KismetSystemLibrary then KismetSystemLibrary.LaunchURL("https://t.me/+DktgM0DiX1JmZjk1") end
                         end, function() end, "THAM GIA", "HỦY")
                     end
                 end)
@@ -4566,9 +4551,6 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                 local realCount = 0
                 local aiCount = 0
 
-                -- [24B] Magic Smart: Quét tìm xem có kẻ địch nào trong phạm vi 50m không (đã tối ưu hóa xử lý trực tiếp từng enemy)
-                _G.HK_SmartMagicActive = false
-
                 local globalVisColor, globalPlayerOccludedColor, globalAiOccludedColor, globalColorHash
                 if isWallhackGlobalOn then
                     globalVisColor = GetCurrentWallVisibleColor()
@@ -5048,11 +5030,7 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                             -- TỐI ƯU HÓA: Giới hạn hitbox mod dưới 200m và áp dụng phân bổ tải (tối đa 1 mod/tick)
                             local enemyMesh = eMesh or (enemy.getAvatarComponent2 and enemy:getAvatarComponent2())
                             if Valid(enemyMesh) and distM <= 200 then
-                                local isSmartOn = (_G.HK_GetVal("MAGIC_SMART") == 1)
                                 local desiredScaleActive = true
-                                if isSmartOn then
-                                    desiredScaleActive = (distM <= 50.0)
-                                end
 
                                 if not enemyMesh.LastHitboxUpdateVersion 
                                    or enemyMesh.LastHitboxUpdateVersion ~= _G.MagicUpdateVersion 
@@ -5101,11 +5079,7 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                                                     if MatchedBoneKey then
                                                         local TargetScale = 1.0
                                                         if desiredScaleActive then
-                                                            if isSmartOn then
-                                                                TargetScale = 1.5
-                                                            else
-                                                                TargetScale = BoneScaleMap[MatchedBoneKey] or 1.0
-                                                            end
+                                                            TargetScale = BoneScaleMap[MatchedBoneKey] or 1.0
                                                         else
                                                             TargetScale = 1.0
                                                         end
