@@ -4427,6 +4427,18 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                         enemyHpWidget = UI_Manager.ShowUI(UI_Manager.UI_Config_InGame.EnemyHpWidgetsMain)
                     end
                     if Valid(enemyHpWidget) then
+                        -- Retrieve isSpectating and myTeamID dynamically for scope safety
+                        local isSpectating = false
+                        local myTeamID = LocalPlayer and LocalPlayer.TeamID or 0
+                        local PlayerController = GameplayData.GetPlayerController()
+                        if PlayerController then
+                            if (PlayerController.IsSpectator and PlayerController:IsSpectator()) or 
+                               (PlayerController.IsDemoPlaySpectator and PlayerController:IsDemoPlaySpectator()) or 
+                               (type(PlayerController.IsInPetSpectator) == "function" and PlayerController:IsInPetSpectator()) then
+                                isSpectating = true
+                            end
+                        end
+
                         if espSpecHPBar then
                             enemyHpWidget.bShowHPBar = true
                             enemyHpWidget.bShowTeamFlag = true
@@ -4446,8 +4458,15 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                                 local child = enemyHpWidget.UIRoot.CanvasPanel_HPBarWidgets:GetChildAt(i)
                                 if child then
                                     local ep = child.SavedPawn
-                                    -- Check if this is one of our tracked enemies
-                                    if espSpecHPBar and Valid(ep) and ep.bHasTDSpectatorHPBar then
+                                    -- Check if this is one of our tracked enemies, or if we are natively spectating
+                                    local shouldCustomize = false
+                                    if espSpecHPBar and Valid(ep) then
+                                        if ep.bHasTDSpectatorHPBar or (isSpectating and ep.TeamID ~= myTeamID) then
+                                            shouldCustomize = true
+                                        end
+                                    end
+
+                                    if shouldCustomize then
                                         -- Ensure CustomInfoUI is initialized and shown
                                         if not child.CustomInfoUI and child.CreateCustomInfoUI then
                                             child:CreateCustomInfoUI()
@@ -4470,21 +4489,75 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
                                         local teamID = ep.TeamID or 0
                                         local playerName = ep.PlayerName or "Player"
-                                        local weaponName = ep.HK_CachedWeaponName or "Tay Không"
                                         
-                                        -- 1. Customize text: "[Team] Name | Weapon"
-                                        local customText = string.format("[%d] %s | %s", teamID, playerName, weaponName)
-                                        if child.SetCustomText then
-                                            child:SetCustomText(customText)
-                                        end
-                                        
-                                        -- Helper for custom text on standard text blocks
-                                        if child.UIRoot then
-                                            for _, name in ipairs({"TextBlock_Name", "Text_Name", "NameText", "TextBlock_PlayerName", "PlayerName"}) do
-                                                if child.UIRoot[name] and child.UIRoot[name].SetText then
-                                                    child.UIRoot[name]:SetText(customText)
+                                        -- 1. Customize name text block (outside TeamFlag)
+                                        local function setNameTextOnly(widget, nameText)
+                                            if not widget then return end
+                                            if child.UIRoot and widget == child.UIRoot.CanvasPanel_TeamFlag then return end -- Skip TeamFlag panel
+                                            local className = type(widget.GetClass) == "function" and widget:GetClass():GetName() or ""
+                                            if className == "TextBlock" then
+                                                pcall(function() widget:SetText(nameText) end)
+                                            end
+                                            if type(widget.GetChildrenCount) == "function" then
+                                                local count = widget:GetChildrenCount()
+                                                for i = 0, count - 1 do
+                                                    setNameTextOnly(widget:GetChildAt(i), nameText)
                                                 end
                                             end
+                                        end
+                                        setNameTextOnly(child.UIRoot, playerName)
+                                        setNameTextOnly(child, playerName)
+
+                                        -- 2. Customize team text block inside TeamFlag panel only
+                                        local function setTeamTextOnly(widget, teamText)
+                                            if not widget then return end
+                                            local className = type(widget.GetClass) == "function" and widget:GetClass():GetName() or ""
+                                            if className == "TextBlock" then
+                                                pcall(function() widget:SetText(teamText) end)
+                                            end
+                                            if type(widget.GetChildrenCount) == "function" then
+                                                local count = widget:GetChildrenCount()
+                                                for i = 0, count - 1 do
+                                                    setTeamTextOnly(widget:GetChildAt(i), teamText)
+                                                end
+                                            end
+                                        end
+                                        if child.UIRoot and child.UIRoot.CanvasPanel_TeamFlag then
+                                            setTeamTextOnly(child.UIRoot.CanvasPanel_TeamFlag, tostring(teamID))
+                                        end
+
+                                        -- 3. Hide custom info text block and only show weapon icon in custom image slot
+                                        if child.SetCustomText then
+                                            pcall(function() child:SetCustomText("") end)
+                                        end
+                                        
+                                        local eWeapon = ep.CurrentWeapon
+                                        if not Valid(eWeapon) and type(ep.GetCurrentWeapon) == "function" then
+                                            eWeapon = ep:GetCurrentWeapon()
+                                        end
+                                        if not Valid(eWeapon) and ep.WeaponManagerComponent then
+                                            eWeapon = ep.WeaponManagerComponent.CurrentWeaponReplicated
+                                        end
+                                        
+                                        if Valid(eWeapon) then
+                                            local UIUtil = require("client.common.ui_util")
+                                            if UIUtil and UIUtil.GetItemSmallIcon then
+                                                local wID = type(eWeapon.GetWeaponID) == "function" and eWeapon:GetWeaponID() or 0
+                                                if wID > 0 then
+                                                    local iconPath = UIUtil.GetItemSmallIcon(wID)
+                                                    if iconPath then
+                                                        pcall(function() child:SetCustomImage(iconPath) end)
+                                                    else
+                                                        pcall(function() child:SetCustomImage("") end)
+                                                    end
+                                                else
+                                                    pcall(function() child:SetCustomImage("") end)
+                                                end
+                                            else
+                                                pcall(function() child:SetCustomImage("") end)
+                                            end
+                                        else
+                                            pcall(function() child:SetCustomImage("") end)
                                         end
                                         
                                         -- 2. Customize Team flag color based on TeamID
@@ -4949,7 +5022,7 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                                 end
                             end
 
-                            if espSpecHPBar and not isEnemyKnocked then
+                            if espSpecHPBar and not isSpectating and not isEnemyKnocked then
                                 if not enemy.bHasTDSpectatorHPBar then
                                     pcall(function()
                                         if InGameMarkTools and InGameMarkTools.ClientAddMapMark then
