@@ -4423,11 +4423,11 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                 local UI_Manager = require("client.slua_ui_framework.manager")
                 if UI_Manager then
                     local enemyHpWidget = UI_Manager.GetUI(UI_Manager.UI_Config_InGame.EnemyHpWidgetsMain)
-                    if espSpecHPBar then
-                        if not Valid(enemyHpWidget) and UI_Manager.ShowUI then
-                            enemyHpWidget = UI_Manager.ShowUI(UI_Manager.UI_Config_InGame.EnemyHpWidgetsMain)
-                        end
-                        if Valid(enemyHpWidget) then
+                    if espSpecHPBar and not Valid(enemyHpWidget) and UI_Manager.ShowUI then
+                        enemyHpWidget = UI_Manager.ShowUI(UI_Manager.UI_Config_InGame.EnemyHpWidgetsMain)
+                    end
+                    if Valid(enemyHpWidget) then
+                        if espSpecHPBar then
                             enemyHpWidget.bShowHPBar = true
                             enemyHpWidget.bShowTeamFlag = true
                             enemyHpWidget.bShowTeamFlagColor = true
@@ -4436,61 +4436,95 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                                 if enemyHpWidget.UIRoot.CanvasPanel_HPBarWidgets.SetRenderScale then
                                     enemyHpWidget.UIRoot.CanvasPanel_HPBarWidgets:SetRenderScale(FVector2D(1.0, 1.0))
                                 end
-                                
-                                -- Iterate through all HPBarUI child widgets
-                                local count = enemyHpWidget.UIRoot.CanvasPanel_HPBarWidgets:GetChildrenCount()
-                                for i = 0, count - 1 do
-                                    local child = enemyHpWidget.UIRoot.CanvasPanel_HPBarWidgets:GetChildAt(i)
-                                    if child and Valid(child.SavedPawn) then
-                                        local ep = child.SavedPawn
-                                        -- Check if this is one of our tracked enemies
-                                        if ep.bHasTDSpectatorHPBar then
-                                            local teamID = ep.TeamID or 0
-                                            local playerName = ep.PlayerName or "Player"
-                                            local weaponName = ep.HK_CachedWeaponName or "Tay Không"
-                                            
-                                            -- 1. Customize text: "[Team] Name | Weapon"
-                                            local customText = string.format("[%d] %s | %s", teamID, playerName, weaponName)
-                                            if child.SetCustomText then
-                                                child:SetCustomText(customText)
-                                            end
-                                            
-                                            -- Helper for custom text on standard text blocks
-                                            if child.UIRoot then
-                                                for _, name in ipairs({"TextBlock_Name", "Text_Name", "NameText", "TextBlock_PlayerName", "PlayerName"}) do
-                                                    if child.UIRoot[name] and child.UIRoot[name].SetText then
-                                                        child.UIRoot[name]:SetText(customText)
-                                                    end
+                            end
+                        end
+                        
+                        if enemyHpWidget.UIRoot and enemyHpWidget.UIRoot.CanvasPanel_HPBarWidgets then
+                            -- Iterate through all HPBarUI child widgets
+                            local count = enemyHpWidget.UIRoot.CanvasPanel_HPBarWidgets:GetChildrenCount()
+                            for i = 0, count - 1 do
+                                local child = enemyHpWidget.UIRoot.CanvasPanel_HPBarWidgets:GetChildAt(i)
+                                if child then
+                                    local ep = child.SavedPawn
+                                    -- Check if this is one of our tracked enemies
+                                    if espSpecHPBar and Valid(ep) and ep.bHasTDSpectatorHPBar then
+                                        -- Ensure CustomInfoUI is initialized and shown
+                                        if not child.CustomInfoUI and child.CreateCustomInfoUI then
+                                            child:CreateCustomInfoUI()
+                                        end
+                                        if child.CustomInfoUI and child.CustomInfoUI.Show then
+                                            child.CustomInfoUI:Show()
+                                        end
+
+                                        -- Save original functions first if not saved
+                                        if not child.HK_Original_ApplyCachedCustomInfo then
+                                            child.HK_Original_ApplyCachedCustomInfo = child.ApplyCachedCustomInfo
+                                        end
+                                        if not child.HK_Original_SetTeamFlagColorByTeam then
+                                            child.HK_Original_SetTeamFlagColorByTeam = child.SetTeamFlagColorByTeam
+                                        end
+                                        
+                                        -- Override functions to prevent resetting by the game
+                                        child.ApplyCachedCustomInfo = function(self) end
+                                        child.SetTeamFlagColorByTeam = function(self) end
+
+                                        local teamID = ep.TeamID or 0
+                                        local playerName = ep.PlayerName or "Player"
+                                        local weaponName = ep.HK_CachedWeaponName or "Tay Không"
+                                        
+                                        -- 1. Customize text: "[Team] Name | Weapon"
+                                        local customText = string.format("[%d] %s | %s", teamID, playerName, weaponName)
+                                        if child.SetCustomText then
+                                            child:SetCustomText(customText)
+                                        end
+                                        
+                                        -- Helper for custom text on standard text blocks
+                                        if child.UIRoot then
+                                            for _, name in ipairs({"TextBlock_Name", "Text_Name", "NameText", "TextBlock_PlayerName", "PlayerName"}) do
+                                                if child.UIRoot[name] and child.UIRoot[name].SetText then
+                                                    child.UIRoot[name]:SetText(customText)
                                                 end
                                             end
-                                            
-                                            -- 2. Customize Team flag color based on TeamID
-                                            local FLinearColor = FLinearColor or import("FLinearColor")
-                                            local colorID = (teamID % 8) + 1
-                                            local colors = {
-                                                FLinearColor(1, 0, 0, 1),       -- Red
-                                                FLinearColor(0, 0.47, 1, 1),    -- Blue
-                                                FLinearColor(0, 1, 0, 1),       -- Green
-                                                FLinearColor(1, 0.9, 0, 1),     -- Yellow
-                                                FLinearColor(0, 1, 0.9, 1),     -- Teal
-                                                FLinearColor(0.7, 0, 1, 1),     -- Purple
-                                                FLinearColor(1, 0.5, 0, 1),     -- Orange
-                                                FLinearColor(1, 0.08, 0.58, 1)  -- Pink
-                                            }
-                                            local teamColor = colors[colorID] or FLinearColor(1, 0, 0, 1)
-                                            
-                                            if child.UIRoot then
-                                                if child.UIRoot.Image_TeamFlag then
-                                                    child.UIRoot.Image_TeamFlag:SetColorAndOpacity(teamColor)
-                                                    child.UIRoot.Image_TeamFlag:SetWidgetVisibility(0)
-                                                end
-                                                if child.UIRoot.CanvasPanel_TeamFlag then
-                                                    child.UIRoot.CanvasPanel_TeamFlag:SetWidgetVisibility(0)
-                                                end
-                                                if child.UIRoot.CanvasPanel_HPUI then
-                                                    child.UIRoot.CanvasPanel_HPUI:SetWidgetVisibility(0)
-                                                end
+                                        end
+                                        
+                                        -- 2. Customize Team flag color based on TeamID
+                                        local FLinearColor = FLinearColor or import("FLinearColor")
+                                        local colorID = (teamID % 8) + 1
+                                        local colors = {
+                                            FLinearColor(1, 0, 0, 1),       -- Red
+                                            FLinearColor(0, 0.47, 1, 1),    -- Blue
+                                            FLinearColor(0, 1, 0, 1),       -- Green
+                                            FLinearColor(1, 0.9, 0, 1),     -- Yellow
+                                            FLinearColor(0, 1, 0.9, 1),     -- Teal
+                                            FLinearColor(0.7, 0, 1, 1),     -- Purple
+                                            FLinearColor(1, 0.5, 0, 1),     -- Orange
+                                            FLinearColor(1, 0.08, 0.58, 1)  -- Pink
+                                        }
+                                        local teamColor = colors[colorID] or FLinearColor(1, 0, 0, 1)
+                                        
+                                        if child.UIRoot then
+                                            if child.UIRoot.Image_TeamFlag then
+                                                child.UIRoot.Image_TeamFlag:SetColorAndOpacity(teamColor)
+                                                child.UIRoot.Image_TeamFlag:SetWidgetVisibility(0)
                                             end
+                                            if child.UIRoot.CanvasPanel_TeamFlag then
+                                                child.UIRoot.CanvasPanel_TeamFlag:SetWidgetVisibility(0)
+                                            end
+                                            if child.UIRoot.CanvasPanel_HPUI then
+                                                child.UIRoot.CanvasPanel_HPUI:SetWidgetVisibility(0)
+                                            end
+                                        end
+                                    else
+                                        -- Restore original functions if they were overridden
+                                        if child.HK_Original_ApplyCachedCustomInfo then
+                                            child.ApplyCachedCustomInfo = child.HK_Original_ApplyCachedCustomInfo
+                                            child.HK_Original_ApplyCachedCustomInfo = nil
+                                            pcall(function() child:ApplyCachedCustomInfo() end)
+                                        end
+                                        if child.HK_Original_SetTeamFlagColorByTeam then
+                                            child.SetTeamFlagColorByTeam = child.HK_Original_SetTeamFlagColorByTeam
+                                            child.HK_Original_SetTeamFlagColorByTeam = nil
+                                            pcall(function() child:SetTeamFlagColorByTeam() end)
                                         end
                                     end
                                 end
