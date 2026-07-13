@@ -4090,7 +4090,8 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
         local isWallhackGlobalOn = (_G.HK_GetVal("WALLHACK") == 1)
         local isWhiteBodyOn = (_G.HK_GetVal("WHITE_BODY") == 1)            
         local espHit1 = (_G.HK_GetVal("ESP_HITMARK_1") == 1)
-        local espHit2 = (_G.HK_GetVal("ESP_HITMARK_2") == 1) or (_G.HK_GetVal("SPECTATOR_HP_BAR") == 1)
+        local espHit2 = (_G.HK_GetVal("ESP_HITMARK_2") == 1)
+        local espSpecHPBar = (_G.HK_GetVal("SPECTATOR_HP_BAR") == 1)
         local espWeaponStance = (_G.HK_GetVal("ESP_WEAPON") == 1)
         local espCount = (_G.HK_GetVal("ESP_COUNT") == 1)
 
@@ -4498,9 +4499,10 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                 for cacheKey, cacheData in pairs(_G.HK_Active_Marks_Cache) do
                     local shouldRemoveHit1 = false
                     local shouldRemoveHit2 = false
+                    local shouldRemoveSpecHp = false
                     
                     if not Valid(cacheData.actor) then 
-                        shouldRemoveHit1 = true; shouldRemoveHit2 = true
+                        shouldRemoveHit1 = true; shouldRemoveHit2 = true; shouldRemoveSpecHp = true
                     else
                         pcall(function()
                             local enemyActor = cacheData.actor
@@ -4514,13 +4516,14 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                             elseif enemyActor.bIsDead == true or enemyActor.bIsDeadFlag == true then isDead = true end
                             
                             if enemyActor.bHidden or (enemyActor.Mesh and enemyActor.Mesh.bHidden) or isDead or isKnock then 
-                                shouldRemoveHit1 = true; shouldRemoveHit2 = true
+                                shouldRemoveHit1 = true; shouldRemoveHit2 = true; shouldRemoveSpecHp = true
                             end
                         end)
                     end
 
                     if not espHit1 then shouldRemoveHit1 = true end
                     if not espHit2 then shouldRemoveHit2 = true end
+                    if not espSpecHPBar then shouldRemoveSpecHp = true end
                     pcall(function()
                         if InGameMarkTools then
                             if shouldRemoveHit1 and cacheData.distMark then 
@@ -4533,10 +4536,15 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                                 elseif InGameMarkTools.HideMapMark then InGameMarkTools.HideMapMark(cacheData.hpMark) end
                                 cacheData.hpMark = nil
                             end
+                            if shouldRemoveSpecHp and cacheData.specHpMark then 
+                                if InGameMarkTools.ClientRemoveMapMark then InGameMarkTools.ClientRemoveMapMark(cacheData.specHpMark)
+                                elseif InGameMarkTools.HideMapMark then InGameMarkTools.HideMapMark(cacheData.specHpMark) end
+                                cacheData.specHpMark = nil
+                            end
                         end
                     end)
                     
-                    if not cacheData.hpMark and not cacheData.distMark then
+                    if not cacheData.hpMark and not cacheData.distMark and not cacheData.specHpMark then
                         _G.HK_Active_Marks_Cache[cacheKey] = nil
                     end
                 end
@@ -4620,7 +4628,7 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                        
                             -- TỐI ƯU HÓA: Bộ lọc khoảng cách (Distance Filtering)
                             if distM > 350 then
-                                if enemy.WallhackApplied or enemy.bHasTDNativeHPBar or enemy.bHasTDNativeHitmark or enemy.NativeHPBarMark or enemy.NativeDistMark then
+                                if enemy.WallhackApplied or enemy.bHasTDNativeHPBar or enemy.bHasTDNativeHitmark or enemy.NativeHPBarMark or enemy.NativeDistMark or enemy.bHasTDSpectatorHPBar or enemy.SpectatorHPBarMark then
                                     pcall(function()
                                         if enemy.WallhackApplied then
                                             for _, comp in ipairs(enemy.LastAuraMeshes or {}) do
@@ -4635,6 +4643,10 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                                                 if InGameMarkTools.ClientRemoveMapMark then InGameMarkTools.ClientRemoveMapMark(enemy.NativeHPBarMark)
                                                 elseif InGameMarkTools.HideMapMark then InGameMarkTools.HideMapMark(enemy.NativeHPBarMark) end
                                             end
+                                            if enemy.SpectatorHPBarMark then 
+                                                if InGameMarkTools.ClientRemoveMapMark then InGameMarkTools.ClientRemoveMapMark(enemy.SpectatorHPBarMark)
+                                                elseif InGameMarkTools.HideMapMark then InGameMarkTools.HideMapMark(enemy.SpectatorHPBarMark) end
+                                            end
                                             if enemy.NativeDistMark then 
                                                 if InGameMarkTools.ClientRemoveMapMark then InGameMarkTools.ClientRemoveMapMark(enemy.NativeDistMark)
                                                 elseif InGameMarkTools.HideMapMark then InGameMarkTools.HideMapMark(enemy.NativeDistMark) end
@@ -4644,8 +4656,8 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                                                 InGameMarkTools.ScreenMarkManager:RemoveMarkByActor(1006, enemy)
                                             end
                                         end
-                                        enemy.NativeHPBarMark = nil; enemy.NativeDistMark = nil
-                                        enemy.bHasTDNativeHPBar = false; enemy.bHasTDNativeHitmark = false
+                                        enemy.NativeHPBarMark = nil; enemy.NativeDistMark = nil; enemy.SpectatorHPBarMark = nil
+                                        enemy.bHasTDNativeHPBar = false; enemy.bHasTDNativeHitmark = false; enemy.bHasTDSpectatorHPBar = false
                                         if enemy.Replay_SetVisiableOfFrameUI then enemy:Replay_SetVisiableOfFrameUI(false) end
                                     end)
                                 end
@@ -4730,6 +4742,10 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                                             if InGameMarkTools.ClientRemoveMapMark then InGameMarkTools.ClientRemoveMapMark(enemy.NativeHPBarMark)
                                             elseif InGameMarkTools.HideMapMark then InGameMarkTools.HideMapMark(enemy.NativeHPBarMark) end
                                         end
+                                        if enemy.SpectatorHPBarMark then 
+                                            if InGameMarkTools.ClientRemoveMapMark then InGameMarkTools.ClientRemoveMapMark(enemy.SpectatorHPBarMark)
+                                            elseif InGameMarkTools.HideMapMark then InGameMarkTools.HideMapMark(enemy.SpectatorHPBarMark) end
+                                        end
                                         if enemy.NativeDistMark then 
                                             if InGameMarkTools.ClientRemoveMapMark then InGameMarkTools.ClientRemoveMapMark(enemy.NativeDistMark)
                                             elseif InGameMarkTools.HideMapMark then InGameMarkTools.HideMapMark(enemy.NativeDistMark) end
@@ -4740,11 +4756,12 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                                         end
                                     end
                                 end)
-                                enemy.bHasTDNativeHPBar = false; enemy.bHasTDNativeHitmark = false
+                                enemy.bHasTDNativeHPBar = false; enemy.bHasTDNativeHitmark = false; enemy.bHasTDSpectatorHPBar = false
                                 local eStr = tostring(enemy)
                                 if _G.HK_Active_Marks_Cache[eStr] then
                                     _G.HK_Active_Marks_Cache[eStr].hpMark = nil
                                     _G.HK_Active_Marks_Cache[eStr].distMark = nil
+                                    _G.HK_Active_Marks_Cache[eStr].specHpMark = nil
                                 end
                             end
                             enemy.HK_LastKnockState = isEnemyKnocked
@@ -4812,6 +4829,34 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                                     enemy.NativeHPBarMark = nil; enemy.bHasTDNativeHPBar = false
                                     local eStr = tostring(enemy)
                                     if _G.HK_Active_Marks_Cache[eStr] then _G.HK_Active_Marks_Cache[eStr].hpMark = nil end
+                                end
+                            end
+
+                            if espSpecHPBar and not isEnemyKnocked then
+                                if not enemy.bHasTDSpectatorHPBar then
+                                    pcall(function()
+                                        if InGameMarkTools and InGameMarkTools.ClientAddMapMark then
+                                            enemy.SpectatorHPBarMark = InGameMarkTools.ClientAddMapMark(1006, FVecZero, 0, "", 4, enemy)
+                                            enemy.bHasTDSpectatorHPBar = true
+                                            local eStr = tostring(enemy)
+                                            if not _G.HK_Active_Marks_Cache[eStr] then _G.HK_Active_Marks_Cache[eStr] = { actor = enemy } end
+                                            _G.HK_Active_Marks_Cache[eStr].specHpMark = enemy.SpectatorHPBarMark
+                                        end
+                                    end)
+                                end
+                            else
+                                if enemy.bHasTDSpectatorHPBar then
+                                    pcall(function()
+                                        if InGameMarkTools then
+                                            if enemy.SpectatorHPBarMark then
+                                                if InGameMarkTools.ClientRemoveMapMark then InGameMarkTools.ClientRemoveMapMark(enemy.SpectatorHPBarMark)
+                                                elseif InGameMarkTools.HideMapMark then InGameMarkTools.HideMapMark(enemy.SpectatorHPBarMark) end
+                                            end
+                                        end
+                                    end)
+                                    enemy.SpectatorHPBarMark = nil; enemy.bHasTDSpectatorHPBar = false
+                                    local eStr = tostring(enemy)
+                                    if _G.HK_Active_Marks_Cache[eStr] then _G.HK_Active_Marks_Cache[eStr].specHpMark = nil end
                                 end
                             end
 
