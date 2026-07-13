@@ -4416,6 +4416,89 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                 end)
                 self.HK_NativeESP_Ready = true
             end
+
+            -- SPECTATOR HP BAR CUSTOMIZATION
+            local espSpecHPBar = (_G.HK_GetVal("SPECTATOR_HP_BAR") == 1)
+            pcall(function()
+                local UI_Manager = require("client.slua_ui_framework.manager")
+                if UI_Manager then
+                    local enemyHpWidget = UI_Manager.GetUI(UI_Manager.UI_Config_InGame.EnemyHpWidgetsMain)
+                    if espSpecHPBar then
+                        if not Valid(enemyHpWidget) and UI_Manager.ShowUI then
+                            enemyHpWidget = UI_Manager.ShowUI(UI_Manager.UI_Config_InGame.EnemyHpWidgetsMain)
+                        end
+                        if Valid(enemyHpWidget) then
+                            enemyHpWidget.bShowHPBar = true
+                            enemyHpWidget.bShowTeamFlag = true
+                            enemyHpWidget.bShowTeamFlagColor = true
+                            if enemyHpWidget.SetCheckBlock then enemyHpWidget:SetCheckBlock(false) end
+                            if enemyHpWidget.UIRoot and enemyHpWidget.UIRoot.CanvasPanel_HPBarWidgets then
+                                if enemyHpWidget.UIRoot.CanvasPanel_HPBarWidgets.SetRenderScale then
+                                    enemyHpWidget.UIRoot.CanvasPanel_HPBarWidgets:SetRenderScale(FVector2D(1.0, 1.0))
+                                end
+                                
+                                -- Iterate through all HPBarUI child widgets
+                                local count = enemyHpWidget.UIRoot.CanvasPanel_HPBarWidgets:GetChildrenCount()
+                                for i = 0, count - 1 do
+                                    local child = enemyHpWidget.UIRoot.CanvasPanel_HPBarWidgets:GetChildAt(i)
+                                    if child and Valid(child.SavedPawn) then
+                                        local ep = child.SavedPawn
+                                        -- Check if this is one of our tracked enemies
+                                        if ep.bHasTDSpectatorHPBar then
+                                            local teamID = ep.TeamID or 0
+                                            local playerName = ep.PlayerName or "Player"
+                                            local weaponName = ep.HK_CachedWeaponName or "Tay Không"
+                                            
+                                            -- 1. Customize text: "[Team] Name | Weapon"
+                                            local customText = string.format("[%d] %s | %s", teamID, playerName, weaponName)
+                                            if child.SetCustomText then
+                                                child:SetCustomText(customText)
+                                            end
+                                            
+                                            -- Helper for custom text on standard text blocks
+                                            if child.UIRoot then
+                                                for _, name in ipairs({"TextBlock_Name", "Text_Name", "NameText", "TextBlock_PlayerName", "PlayerName"}) do
+                                                    if child.UIRoot[name] and child.UIRoot[name].SetText then
+                                                        child.UIRoot[name]:SetText(customText)
+                                                    end
+                                                end
+                                            end
+                                            
+                                            -- 2. Customize Team flag color based on TeamID
+                                            local FLinearColor = FLinearColor or import("FLinearColor")
+                                            local colorID = (teamID % 8) + 1
+                                            local colors = {
+                                                FLinearColor(1, 0, 0, 1),       -- Red
+                                                FLinearColor(0, 0.47, 1, 1),    -- Blue
+                                                FLinearColor(0, 1, 0, 1),       -- Green
+                                                FLinearColor(1, 0.9, 0, 1),     -- Yellow
+                                                FLinearColor(0, 1, 0.9, 1),     -- Teal
+                                                FLinearColor(0.7, 0, 1, 1),     -- Purple
+                                                FLinearColor(1, 0.5, 0, 1),     -- Orange
+                                                FLinearColor(1, 0.08, 0.58, 1)  -- Pink
+                                            }
+                                            local teamColor = colors[colorID] or FLinearColor(1, 0, 0, 1)
+                                            
+                                            if child.UIRoot then
+                                                if child.UIRoot.Image_TeamFlag then
+                                                    child.UIRoot.Image_TeamFlag:SetColorAndOpacity(teamColor)
+                                                    child.UIRoot.Image_TeamFlag:SetWidgetVisibility(0)
+                                                end
+                                                if child.UIRoot.CanvasPanel_TeamFlag then
+                                                    child.UIRoot.CanvasPanel_TeamFlag:SetWidgetVisibility(0)
+                                                end
+                                                if child.UIRoot.CanvasPanel_HPUI then
+                                                    child.UIRoot.CanvasPanel_HPUI:SetWidgetVisibility(0)
+                                                end
+                                            end
+                                        end
+                                    end
+                                end
+                            end
+                        end
+                    end
+                end
+            end)
             
             if _G.EnvRequiresUpdate then
                 _G.EnvRequiresUpdate = false 
