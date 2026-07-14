@@ -4140,7 +4140,6 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
         local isWhiteBodyOn = (_G.HK_GetVal("WHITE_BODY") == 1)            
         local espHit1 = (_G.HK_GetVal("ESP_HITMARK_1") == 1)
         local espHit2 = (_G.HK_GetVal("ESP_HITMARK_2") == 1)
-        local espSpecHPBar = false
         local espWeaponStance = (_G.HK_GetVal("ESP_WEAPON") == 1)
         local espCount = (_G.HK_GetVal("ESP_COUNT") == 1)
 
@@ -4454,195 +4453,7 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                 self.HK_NativeESP_Ready = true
             end
 
-            -- SPECTATOR HP BAR CUSTOMIZATION
-            local espSpecHPBar = false
-            pcall(function()
-                local UI_Manager = require("client.slua_ui_framework.manager")
-                if UI_Manager then
-                    local enemyHpWidget = UI_Manager.GetUI(UI_Manager.UI_Config_InGame.EnemyHpWidgetsMain)
-                    if espSpecHPBar and not Valid(enemyHpWidget) and UI_Manager.ShowUI then
-                        enemyHpWidget = UI_Manager.ShowUI(UI_Manager.UI_Config_InGame.EnemyHpWidgetsMain)
-                    end
-                    if Valid(enemyHpWidget) then
-                        -- Retrieve isSpectating and myTeamID dynamically for scope safety
-                        local isSpectating = false
-                        local myTeamID = LocalPlayer and LocalPlayer.TeamID or 0
-                        local PlayerController = GameplayData.GetPlayerController()
-                        if PlayerController then
-                            if (PlayerController.IsSpectator and PlayerController:IsSpectator()) or 
-                               (PlayerController.IsDemoPlaySpectator and PlayerController:IsDemoPlaySpectator()) or 
-                               (type(PlayerController.IsInPetSpectator) == "function" and PlayerController:IsInPetSpectator()) then
-                                isSpectating = true
-                            end
-                        end
-
-                        if espSpecHPBar then
-                            enemyHpWidget.bShowHPBar = true
-                            enemyHpWidget.bShowTeamFlag = true
-                            enemyHpWidget.bShowTeamFlagColor = true
-                            if enemyHpWidget.SetCheckBlock then enemyHpWidget:SetCheckBlock(false) end
-                            if enemyHpWidget.UIRoot and enemyHpWidget.UIRoot.CanvasPanel_HPBarWidgets then
-                                if enemyHpWidget.UIRoot.CanvasPanel_HPBarWidgets.SetRenderScale then
-                                    enemyHpWidget.UIRoot.CanvasPanel_HPBarWidgets:SetRenderScale(FVector2D(1.0, 1.0))
-                                end
-                            end
-                        end
-                        
-                        if enemyHpWidget.UIRoot and enemyHpWidget.UIRoot.CanvasPanel_HPBarWidgets then
-                            -- Iterate through all HPBarUI child widgets
-                            local count = enemyHpWidget.UIRoot.CanvasPanel_HPBarWidgets:GetChildrenCount()
-                            for i = 0, count - 1 do
-                                local child = enemyHpWidget.UIRoot.CanvasPanel_HPBarWidgets:GetChildAt(i)
-                                if child then
-                                    local ep = child.SavedPawn
-                                    -- Check if this is one of our tracked enemies, or if we are natively spectating
-                                    local shouldCustomize = false
-                                    if espSpecHPBar and Valid(ep) then
-                                        if ep.bHasTDSpectatorHPBar or (isSpectating and ep.TeamID ~= myTeamID) then
-                                            shouldCustomize = true
-                                        end
-                                    end
-
-                                    if shouldCustomize then
-                                        -- Ensure CustomInfoUI is initialized and shown
-                                        if not child.CustomInfoUI and child.CreateCustomInfoUI then
-                                            child:CreateCustomInfoUI()
-                                        end
-                                        if child.CustomInfoUI and child.CustomInfoUI.Show then
-                                            child.CustomInfoUI:Show()
-                                        end
-
-                                        -- Save original functions first if not saved
-                                        if not child.HK_Original_ApplyCachedCustomInfo then
-                                            child.HK_Original_ApplyCachedCustomInfo = child.ApplyCachedCustomInfo
-                                        end
-                                        if not child.HK_Original_SetTeamFlagColorByTeam then
-                                            child.HK_Original_SetTeamFlagColorByTeam = child.SetTeamFlagColorByTeam
-                                        end
-                                        
-                                        -- Override functions to prevent resetting by the game
-                                        child.ApplyCachedCustomInfo = function(self) end
-                                        child.SetTeamFlagColorByTeam = function(self) end
-
-                                        local teamID = ep.TeamID or 0
-                                        local playerName = ep.PlayerName or "Player"
-                                        
-                                        -- 1. Customize name text block (outside TeamFlag)
-                                        local function setNameTextOnly(widget, nameText)
-                                            if not widget then return end
-                                            if child.UIRoot and widget == child.UIRoot.CanvasPanel_TeamFlag then return end -- Skip TeamFlag panel
-                                            local className = type(widget.GetClass) == "function" and widget:GetClass():GetName() or ""
-                                            if className == "TextBlock" then
-                                                pcall(function() widget:SetText(nameText) end)
-                                            end
-                                            if type(widget.GetChildrenCount) == "function" then
-                                                local count = widget:GetChildrenCount()
-                                                for i = 0, count - 1 do
-                                                    setNameTextOnly(widget:GetChildAt(i), nameText)
-                                                end
-                                            end
-                                        end
-                                        setNameTextOnly(child.UIRoot, playerName)
-                                        setNameTextOnly(child, playerName)
-
-                                        -- 2. Customize team text block inside TeamFlag panel only
-                                        local function setTeamTextOnly(widget, teamText)
-                                            if not widget then return end
-                                            local className = type(widget.GetClass) == "function" and widget:GetClass():GetName() or ""
-                                            if className == "TextBlock" then
-                                                pcall(function() widget:SetText(teamText) end)
-                                            end
-                                            if type(widget.GetChildrenCount) == "function" then
-                                                local count = widget:GetChildrenCount()
-                                                for i = 0, count - 1 do
-                                                    setTeamTextOnly(widget:GetChildAt(i), teamText)
-                                                end
-                                            end
-                                        end
-                                        if child.UIRoot and child.UIRoot.CanvasPanel_TeamFlag then
-                                            setTeamTextOnly(child.UIRoot.CanvasPanel_TeamFlag, tostring(teamID))
-                                        end
-
-                                        -- 3. Hide custom info text block and only show weapon icon in custom image slot
-                                        if child.SetCustomText then
-                                            pcall(function() child:SetCustomText("") end)
-                                        end
-                                        
-                                        local eWeapon = ep.CurrentWeapon
-                                        if not Valid(eWeapon) and type(ep.GetCurrentWeapon) == "function" then
-                                            eWeapon = ep:GetCurrentWeapon()
-                                        end
-                                        if not Valid(eWeapon) and ep.WeaponManagerComponent then
-                                            eWeapon = ep.WeaponManagerComponent.CurrentWeaponReplicated
-                                        end
-                                        
-                                        if Valid(eWeapon) then
-                                            local UIUtil = require("client.common.ui_util")
-                                            if UIUtil and UIUtil.GetItemSmallIcon then
-                                                local wID = type(eWeapon.GetWeaponID) == "function" and eWeapon:GetWeaponID() or 0
-                                                if wID > 0 then
-                                                    local iconPath = UIUtil.GetItemSmallIcon(wID)
-                                                    if iconPath then
-                                                        pcall(function() child:SetCustomImage(iconPath) end)
-                                                    else
-                                                        pcall(function() child:SetCustomImage("") end)
-                                                    end
-                                                else
-                                                    pcall(function() child:SetCustomImage("") end)
-                                                end
-                                            else
-                                                pcall(function() child:SetCustomImage("") end)
-                                            end
-                                        else
-                                            pcall(function() child:SetCustomImage("") end)
-                                        end
-                                        
-                                        -- 2. Customize Team flag color based on TeamID
-                                        local FLinearColor = FLinearColor or import("FLinearColor")
-                                        local colorID = (teamID % 8) + 1
-                                        local colors = {
-                                            FLinearColor(1, 0, 0, 1),       -- Red
-                                            FLinearColor(0, 0.47, 1, 1),    -- Blue
-                                            FLinearColor(0, 1, 0, 1),       -- Green
-                                            FLinearColor(1, 0.9, 0, 1),     -- Yellow
-                                            FLinearColor(0, 1, 0.9, 1),     -- Teal
-                                            FLinearColor(0.7, 0, 1, 1),     -- Purple
-                                            FLinearColor(1, 0.5, 0, 1),     -- Orange
-                                            FLinearColor(1, 0.08, 0.58, 1)  -- Pink
-                                        }
-                                        local teamColor = colors[colorID] or FLinearColor(1, 0, 0, 1)
-                                        
-                                        if child.UIRoot then
-                                            if child.UIRoot.Image_TeamFlag then
-                                                child.UIRoot.Image_TeamFlag:SetColorAndOpacity(teamColor)
-                                                child.UIRoot.Image_TeamFlag:SetWidgetVisibility(0)
-                                            end
-                                            if child.UIRoot.CanvasPanel_TeamFlag then
-                                                child.UIRoot.CanvasPanel_TeamFlag:SetWidgetVisibility(0)
-                                            end
-                                            if child.UIRoot.CanvasPanel_HPUI then
-                                                child.UIRoot.CanvasPanel_HPUI:SetWidgetVisibility(0)
-                                            end
-                                        end
-                                    else
-                                        -- Restore original functions if they were overridden
-                                        if child.HK_Original_ApplyCachedCustomInfo then
-                                            child.ApplyCachedCustomInfo = child.HK_Original_ApplyCachedCustomInfo
-                                            child.HK_Original_ApplyCachedCustomInfo = nil
-                                            pcall(function() child:ApplyCachedCustomInfo() end)
-                                        end
-                                        if child.HK_Original_SetTeamFlagColorByTeam then
-                                            child.SetTeamFlagColorByTeam = child.HK_Original_SetTeamFlagColorByTeam
-                                            child.HK_Original_SetTeamFlagColorByTeam = nil
-                                            pcall(function() child:SetTeamFlagColorByTeam() end)
-                                        end
-                                    end
-                                end
-                            end
-                        end
-                    end
-                end
-            end)
+            -- (Spectator HP Bar Customization Removed)
             
             if _G.EnvRequiresUpdate then
                 _G.EnvRequiresUpdate = false 
@@ -4750,7 +4561,6 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
                     if not espHit1 then shouldRemoveHit1 = true end
                     if not espHit2 then shouldRemoveHit2 = true end
-                    if not espSpecHPBar then shouldRemoveSpecHp = true end
                     pcall(function()
                         if InGameMarkTools then
                             if shouldRemoveHit1 and cacheData.distMark then 
@@ -4763,15 +4573,10 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                                 elseif InGameMarkTools.HideMapMark then InGameMarkTools.HideMapMark(cacheData.hpMark) end
                                 cacheData.hpMark = nil
                             end
-                            if shouldRemoveSpecHp and cacheData.specHpMark then 
-                                if InGameMarkTools.ClientRemoveMapMark then InGameMarkTools.ClientRemoveMapMark(cacheData.specHpMark)
-                                elseif InGameMarkTools.HideMapMark then InGameMarkTools.HideMapMark(cacheData.specHpMark) end
-                                cacheData.specHpMark = nil
-                            end
                         end
                     end)
                     
-                    if not cacheData.hpMark and not cacheData.distMark and not cacheData.specHpMark then
+                    if not cacheData.hpMark and not cacheData.distMark then
                         _G.HK_Active_Marks_Cache[cacheKey] = nil
                     end
                 end
@@ -5059,33 +4864,7 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                                 end
                             end
 
-                            if espSpecHPBar and not isSpectating and not isEnemyKnocked then
-                                if not enemy.bHasTDSpectatorHPBar then
-                                    pcall(function()
-                                        if InGameMarkTools and InGameMarkTools.ClientAddMapMark then
-                                            enemy.SpectatorHPBarMark = InGameMarkTools.ClientAddMapMark(1006, FVecZero, 0, "", 4, enemy)
-                                            enemy.bHasTDSpectatorHPBar = true
-                                            local eStr = tostring(enemy)
-                                            if not _G.HK_Active_Marks_Cache[eStr] then _G.HK_Active_Marks_Cache[eStr] = { actor = enemy } end
-                                            _G.HK_Active_Marks_Cache[eStr].specHpMark = enemy.SpectatorHPBarMark
-                                        end
-                                    end)
-                                end
-                            else
-                                if enemy.bHasTDSpectatorHPBar then
-                                    pcall(function()
-                                        if InGameMarkTools then
-                                            if enemy.SpectatorHPBarMark then
-                                                if InGameMarkTools.ClientRemoveMapMark then InGameMarkTools.ClientRemoveMapMark(enemy.SpectatorHPBarMark)
-                                                elseif InGameMarkTools.HideMapMark then InGameMarkTools.HideMapMark(enemy.SpectatorHPBarMark) end
-                                            end
-                                        end
-                                    end)
-                                    enemy.SpectatorHPBarMark = nil; enemy.bHasTDSpectatorHPBar = false
-                                    local eStr = tostring(enemy)
-                                    if _G.HK_Active_Marks_Cache[eStr] then _G.HK_Active_Marks_Cache[eStr].specHpMark = nil end
-                                end
-                            end
+                            -- (Spectator HP Bar Draw Logic Removed)
 
                             -- TỐI ƯU HÓA: Chỉ kiểm tra Vũ khí/Tư thế và LineOfSight mỗi 0.4 giây
                             local enemyId = type(enemy.GetUniqueID) == "function" and enemy:GetUniqueID() or tostring(enemy)
