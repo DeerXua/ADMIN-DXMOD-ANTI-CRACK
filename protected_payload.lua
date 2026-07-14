@@ -3279,6 +3279,70 @@ local function ResetMeshAuraComponent(mesh)
     end)
 end
 
+local function Valid(obj)
+    if not obj then return false end
+    if slua and type(slua.isValid) == "function" then
+        return slua.isValid(obj)
+    end
+    if type(slua_isValid) == "function" then
+        return slua_isValid(obj)
+    end
+    return true
+end
+
+local function CheckIsAI(pawn)
+    if not Valid(pawn) then return false end
+    if pawn.HK_IsAICached ~= nil then return pawn.HK_IsAICached end
+    
+    local isAI = false
+    local hasChecked = false
+    
+    pcall(function()
+        if pawn.bIsAI == true or pawn.IsAI == true then 
+            isAI = true 
+            hasChecked = true
+        elseif type(pawn.IsBot) == "function" and pawn:IsBot() then
+            isAI = true
+            hasChecked = true
+        elseif pawn.IsBot == true then
+            isAI = true
+            hasChecked = true
+        end
+        
+        if not isAI and Game and type(Game.IsAI) == "function" and Game:IsAI(pawn) then
+            isAI = true
+            hasChecked = true
+        end
+        
+        local pState = pawn.PlayerState or (type(pawn.GetPlayerState) == "function" and pawn:GetPlayerState())
+        if Valid(pState) then
+            hasChecked = true
+            if pState.bIsABot == true or pState.bIsBot == true then
+                isAI = true
+            elseif type(pState.IsBot) == "function" and pState:IsBot() then
+                isAI = true
+            end
+        end
+        
+        if not isAI then
+            local name = pawn.PlayerName or (type(pawn.GetPlayerName) == "function" and pawn:GetPlayerName()) or ""
+            if name ~= "" then
+                if name:find("Cobra") or name:find("Target") or name:find("bot_") or name:find("b_") or name:find("训练机器人") or name:find("PlayerBot") then
+                    isAI = true
+                end
+                hasChecked = true
+            end
+        end
+    end)
+    
+    if hasChecked then
+        pawn.HK_IsAICached = isAI
+    end
+    
+    return isAI
+end
+
+
 local function GetActorBoneWorldPos(actor, boneName, boneIdx)
     if not slua_isValid(actor) then return nil end
     local mesh = actor.Mesh
@@ -3602,11 +3666,7 @@ if isShotgun and _G.HK_GetVal("AimTouchSG") == 1 then
             if igKnock and target.HealthStatus == 1 then goto continue end
             
             if igBot then
-                local tIsBot = false
-                if target.bIsAI == true or target.IsAI == true then tIsBot = true end
-                local pState = target.PlayerState
-                if slua.isValid(pState) and (pState.bIsABot or pState.bIsBot) then tIsBot = true end
-                if tIsBot then goto continue end
+                if CheckIsAI(target) then goto continue end
             end
             
             -- Check tường có cache
@@ -3929,30 +3989,7 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
     
     local function Valid(obj) return slua_isValid(obj) end
 
-    local function CheckIsAI(pawn)
-        if pawn.HK_IsAICached ~= nil then return pawn.HK_IsAICached end
-        local isAI = false
-        pcall(function()
-            if pawn.bIsAI ~= nil then isAI = (pawn.bIsAI == true) end
-            if not isAI and pawn.IsAI ~= nil then isAI = (pawn.IsAI == true) end
-            if not isAI and pawn.IsBot ~= nil then isAI = (pawn.IsBot == true) end
-            if not isAI and pawn.PlayerState then
-                if pawn.PlayerState.bIsABot ~= nil then 
-                    isAI = (pawn.PlayerState.bIsABot == true) 
-                end
-            end
-            if not isAI then
-                local name = ""
-                if pawn.PlayerName then name = pawn.PlayerName
-                elseif type(pawn.GetPlayerName) == "function" then name = pawn:GetPlayerName() end
-                if name and (name:find("Cobra") or name:find("训练机器人") or name:find("Target")) then
-                    isAI = true
-                end
-            end
-        end)
-        pawn.HK_IsAICached = isAI
-        return isAI
-    end
+    -- CheckIsAI function is now defined at the file scope for use by all features
 
 
 
