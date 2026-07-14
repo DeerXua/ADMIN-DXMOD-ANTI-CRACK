@@ -809,6 +809,12 @@ app.get("/api/admin/sessions/:uid", checkAdminAuth, (req, res) => {
   res.json(filtered);
 });
 
+// Xóa tất cả sessions (admin)
+app.post("/api/admin/sessions/clear", checkAdminAuth, (req, res) => {
+  writeSessions({ sessions: [] });
+  res.json({ success: true, message: "Đã xóa toàn bộ lịch sử phiên đấu." });
+});
+
 // ── ONLINE STATUS ────────────────────────────────────────────────────────────
 // Trả về map {uid -> "in_match" | "online" | "offline"} cho admin panel
 app.get("/api/admin/online-status", checkAdminAuth, (req, res) => {
