@@ -2478,7 +2478,11 @@ function _G.InitModMenuTab()
             table.insert(stack, item)
         end
         
-        local StackESP = { { UI = AliasMap.Title, Text = "AURA" } }
+        local currentUID = _G.DX_CachedUID or (type(GetHardwareDeviceID) == "function" and GetHardwareDeviceID()) or (type(GetDeviceUID) == "function" and GetDeviceUID()) or "UNKNOWN"
+        local StackESP = { 
+            { UI = AliasMap.Title, Text = "AURA" },
+            { UI = AliasMap.Title, Text = "UID: " .. currentUID }
+        }
         table.insert(StackESP, {
             Key = "ModMenu_Wall_Ex",
             UI = AliasMap.TitleSwitcher,
