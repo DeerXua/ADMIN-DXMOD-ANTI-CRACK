@@ -582,6 +582,7 @@
       const [addPayloadType, setAddPayloadType] = useState('free');
       const [addExpiry, setAddExpiry] = useState('30days');
       const [addNote, setAddNote] = useState('');
+      const [lastUpdated, setLastUpdated] = useState(new Date());
 
       const loadDevices = async () => { const d = await api('/api/admin/devices'); if (Array.isArray(d)) setDevices(d); };
       const loadSessions = async () => { const d = await api('/api/admin/sessions'); if (Array.isArray(d)) setSessions(d); };
@@ -597,10 +598,48 @@
       };
       const loadOnline = async () => { const d = await api('/api/admin/online-status'); setOnlineMap(d || {}); };
 
+      // --- Auto-refresh refs để theo dõi thay đổi ---
+      const prevDeviceCount = React.useRef(null);
+      const prevSessionCount = React.useRef(null);
+
+      const autoRefresh = async () => {
+        // Refresh devices - phát hiện thiết bị mới
+        const dData = await api('/api/admin/devices');
+        if (Array.isArray(dData)) {
+          if (prevDeviceCount.current !== null && dData.length > prevDeviceCount.current) {
+            const newCount = dData.length - prevDeviceCount.current;
+            toast(`🔔 Có ${newCount} thiết bị mới vừa đăng ký!`, 'success');
+          }
+          prevDeviceCount.current = dData.length;
+          setDevices(dData);
+        }
+        // Refresh sessions - phát hiện phiên mới
+        const sData = await api('/api/admin/sessions');
+        if (Array.isArray(sData)) {
+          if (prevSessionCount.current !== null && sData.length > prevSessionCount.current) {
+            const newCount = sData.length - prevSessionCount.current;
+            toast(`🎮 ${newCount} phiên đấu mới bắt đầu`, 'success');
+          }
+          prevSessionCount.current = sData.length;
+          setSessions(sData);
+        }
+        // Refresh online status
+        const oData = await api('/api/admin/online-status');
+        setOnlineMap(oData || {});
+        setLastUpdated(new Date());
+      };
+
       useEffect(() => {
         if (!logged) return;
-        Promise.all([loadDevices(), loadSessions(), loadOnline()]).then(() => setLoading(false));
-        const i = setInterval(loadOnline, 12000);
+        // Load lần đầu
+        Promise.all([loadDevices(), loadSessions(), loadOnline()]).then(() => {
+          setLoading(false);
+          // Khởi tạo ref đếm sau lần load đầu
+          api('/api/admin/devices').then(d => { if (Array.isArray(d)) prevDeviceCount.current = d.length; });
+          api('/api/admin/sessions').then(s => { if (Array.isArray(s)) prevSessionCount.current = s.length; });
+        });
+        // Auto-refresh mọi 8 giây
+        const i = setInterval(autoRefresh, 8000);
         return () => clearInterval(i);
       }, [logged]);
 
@@ -743,6 +782,10 @@
                 </div>
                 
                 <div className="flex items-center gap-2 shrink-0">
+                  <div className="text-[11px] font-semibold text-slate-500 bg-white/5 border border-white/5 rounded-xl px-3 py-2 flex items-center gap-2 tabular-nums">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                    <span>Tự động làm mới: {lastUpdated.toLocaleTimeString()}</span>
+                  </div>
                   <button className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 text-slate-400 hover:text-white flex items-center justify-center transition-all relative">
                     🔔<span className="absolute top-2.5 right-2.5 w-2 h-2 rounded-full bg-rose-500 animate-pulse" style={{ boxShadow: '0 0 8px #f43f5e' }} />
                   </button>
