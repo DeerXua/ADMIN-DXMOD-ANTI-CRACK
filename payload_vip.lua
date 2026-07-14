@@ -4270,13 +4270,13 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                             end
                         end
 
-                         if cache then
+                         if cache and cache.HK_Initialized then
                               -- 1. Tính hệ số giảm rung khi đang ngắm (ADS)
                               local isADS = self.Object and (self.Object.bIsWeaponAiming == true or self.Object.bIsGunADS == true)
                               local scopeFactor = 1.0
                               if isADS then
                                   local scopePercent = _G.HK_GetVal("GIAM_RUNG_SCOPE") or 0
-                                  if perWeaponScopeKey and (_G.HK_GetVal(perWeaponScopeKey) or 0) > 0 then
+                                  if _G.HK_GetVal("REC_WEAPON_MASTER") == 1 and perWeaponScopeKey and (_G.HK_GetVal(perWeaponScopeKey) or 0) > 0 then
                                       scopePercent = _G.HK_GetVal(perWeaponScopeKey) or 0
                                   end
                                   scopeFactor = math.max(0.0, 1.0 - (scopePercent / 100.0))
@@ -4290,7 +4290,7 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
                               -- 2. Tính hệ số giảm giật (NO_RECOIL_100) độc lập hoàn toàn (giới hạn tối đa 50% để tránh lỗi dame)
                               local recoilPercent = math.min(50, _G.HK_GetVal("NO_RECOIL_100") or 0)
-                              if perWeaponRecoilKey and (_G.HK_GetVal(perWeaponRecoilKey) or 0) > 0 then
+                              if _G.HK_GetVal("REC_WEAPON_MASTER") == 1 and perWeaponRecoilKey and (_G.HK_GetVal(perWeaponRecoilKey) or 0) > 0 then
                                   recoilPercent = math.min(50, _G.HK_GetVal(perWeaponRecoilKey) or 0)
                               end
                               local recoilFactor = math.max(0.01, 1.0 - (recoilPercent / 100.0))

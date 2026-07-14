@@ -4262,20 +4262,20 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                             end
                         end
 
-                         if cache then
+                         if cache and cache.HK_Initialized then
                               -- ===== THÊM: Tính hệ số giảm rung khi đang ngắm (ADS) =====
                               local isADS = self.Object and (self.Object.bIsWeaponAiming == true or self.Object.bIsGunADS == true)
                               local scopeFactor = 1.0
                               if isADS then
                                   local scopePercent = _G.HK_GetVal("GIAM_RUNG_SCOPE") or 0
-                                  if perWeaponScopeKey and (_G.HK_GetVal(perWeaponScopeKey) or 0) > 0 then
+                                  if _G.HK_GetVal("REC_WEAPON_MASTER") == 1 and perWeaponScopeKey and (_G.HK_GetVal(perWeaponScopeKey) or 0) > 0 then
                                       scopePercent = _G.HK_GetVal(perWeaponScopeKey) or 0
                                   end
                                   scopeFactor = 1.0 - (scopePercent / 100.0)
                               end
 
                              local recoilPercent = _G.HK_GetVal("NO_RECOIL_100") or 0
-                             if perWeaponRecoilKey and (_G.HK_GetVal(perWeaponRecoilKey) or 0) > 0 then
+                             if _G.HK_GetVal("REC_WEAPON_MASTER") == 1 and perWeaponRecoilKey and (_G.HK_GetVal(perWeaponRecoilKey) or 0) > 0 then
                                  recoilPercent = _G.HK_GetVal(perWeaponRecoilKey) or 0
                              end
                              if recoilPercent > 0 then
