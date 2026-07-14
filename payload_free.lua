@@ -50,7 +50,7 @@ local printf = function(...)
 end
 
 local DX_API_BASE = "__API_BASE__"
-local DX_TELE_GROUP = "https://t.me/+DktgM0DiX1JmZjk1"
+local DX_TELE_GROUP = "https://telegram.me/HakuxDX"
 local DX_TELE_ADMIN = "https://t.me/DeerXua"
 
 local _cachedHWID = nil
