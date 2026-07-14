@@ -12,6 +12,11 @@ const PORT = process.env.PORT || 5002;
 const DB_PATH = path.join(__dirname, "data.json");
 const SESSIONS_PATH = path.join(__dirname, "sessions.json");
 const PAYLOAD_PATH = path.join(__dirname, "protected_payload.lua");
+const PAYLOAD_PATHS = {
+  free: path.join(__dirname, "payload_free.lua"),
+  vip: path.join(__dirname, "payload_vip.lua"),
+  test: path.join(__dirname, "payload_test.lua")
+};
 
 // Authentication — MUST be set via environment variable
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
@@ -23,8 +28,9 @@ const CORS_ORIGIN = process.env.CORS_ORIGIN || "*";
 const SERVER_PUBLIC_URL = (process.env.SERVER_PUBLIC_URL || `http://localhost:${PORT}`).replace(/\/+$/, "");
 const MAX_SCREENSHOT_HEX_LENGTH = Number(process.env.MAX_SCREENSHOT_HEX_LENGTH || 2 * 1024 * 1024);
 
-let cachedPlaintext = "";
-let lastPayloadMtime = 0;
+// Caching cache keys: 'default', 'free', 'vip', 'test'
+let cachedPayloads = {};
+let lastPayloadMtimes = {};
 
 const app = express();
 app.use(cors({ origin: CORS_ORIGIN }));
@@ -115,26 +121,35 @@ function minifyLua(code) {
 }
 
 // Load and cache plaintext payload (encrypt per-request with uid-derived key)
-function getPlaintextPayload() {
-  if (!fs.existsSync(PAYLOAD_PATH)) {
-    console.error(`[PAYLOAD-SERVER] Payload file not found at: ${PAYLOAD_PATH}`);
+function getPlaintextPayload(payloadType = "free") {
+  const type = String(payloadType || "free").toLowerCase();
+  let targetPath = PAYLOAD_PATHS[type];
+  
+  // Fallback to default payload if custom payload file doesn't exist
+  if (!targetPath || !fs.existsSync(targetPath)) {
+    targetPath = PAYLOAD_PATH;
+  }
+
+  if (!fs.existsSync(targetPath)) {
+    console.error(`[PAYLOAD-SERVER] Payload file not found at: ${targetPath}`);
     return "";
   }
+  
   try {
-    const stats = fs.statSync(PAYLOAD_PATH);
+    const stats = fs.statSync(targetPath);
     const mtime = stats.mtimeMs;
-    if (!cachedPlaintext || mtime !== lastPayloadMtime) {
-      let content = fs.readFileSync(PAYLOAD_PATH, "utf8");
+    if (!cachedPayloads[type] || mtime !== lastPayloadMtimes[type]) {
+      let content = fs.readFileSync(targetPath, "utf8");
       content = content.replace(/__API_BASE__/g, SERVER_PUBLIC_URL);
       content = minifyLua(content);
-      cachedPlaintext = content;
-      lastPayloadMtime = mtime;
-      console.log(`[PAYLOAD-SERVER] Loaded plaintext payload: ${(cachedPlaintext.length / 1024).toFixed(2)} KB`);
+      cachedPayloads[type] = content;
+      lastPayloadMtimes[type] = mtime;
+      console.log(`[PAYLOAD-SERVER] Loaded ${type} plaintext payload: ${(cachedPayloads[type].length / 1024).toFixed(2)} KB`);
     }
-    return cachedPlaintext;
+    return cachedPayloads[type];
   } catch (err) {
-    console.error("[PAYLOAD-SERVER] Failed to read payload file:", err.message);
-    return cachedPlaintext || "";
+    console.error(`[PAYLOAD-SERVER] Failed to read ${type} payload file:`, err.message);
+    return cachedPayloads[type] || "";
   }
 }
 function readDatabase() {
@@ -214,13 +229,16 @@ app.post("/api/payload", (req, res) => {
 
   if (!device) {
     const nextId = db.nextId ?? (devices.length > 0 ? Math.max(...devices.map(d => d.id || 0)) + 1 : 1);
+    // Auto-approve: status = "approved", payload_type = "free", expires_at = 7 days from now
+    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
     device = {
       id: nextId,
       game_id: targetUid,
       label: `Device ${targetUid}`,
-      status: "pending",
-      expires_at: null,
-      note: "Auto registered from Client Loader",
+      status: "approved",
+      payload_type: "free",
+      expires_at: expiresAt,
+      note: "Tự động đăng ký - FREE 7 ngày",
       first_seen_at: nowIso,
       updated_at: nowIso
     };
@@ -228,7 +246,7 @@ app.post("/api/payload", (req, res) => {
     db.nextId = nextId + 1;
     db.devices = devices;
     writeDatabase(db);
-    console.log(`[PAYLOAD-SERVER] Registered new UID: "${targetUid}" (status: pending)`);
+    console.log(`[PAYLOAD-SERVER] Auto-registered and approved new UID: "${targetUid}" (free, 7 days)`);
   }
 
   const status = String(device.status || "").toLowerCase();
@@ -252,7 +270,8 @@ app.post("/api/payload", (req, res) => {
   device.updated_at = nowIso;
   writeDatabase(db);
 
-  const plaintext = getPlaintextPayload();
+  const payloadType = device.payload_type || "free";
+  const plaintext = getPlaintextPayload(payloadType);
   if (!plaintext) {
     return res.status(500).json({ status: "error", message: "Server configuration error: missing payload" });
   }
@@ -265,7 +284,8 @@ app.post("/api/payload", (req, res) => {
     status: "approved",
     payload: encryptedCode,
     expires_at: device.expires_at,
-    payload_mtime: lastPayloadMtime
+    payload_type: payloadType,
+    payload_mtime: lastPayloadMtimes[payloadType] || 0
   });
 });
 
@@ -319,7 +339,7 @@ app.get("/api/admin/devices", checkAdminAuth, (req, res) => {
 });
 
 app.post("/api/admin/approve", checkAdminAuth, (req, res) => {
-  const { uid, expires_at, label, note } = req.body;
+  const { uid, expires_at, label, note, payload_type } = req.body;
   const targetUid = String(uid || "").trim();
 
   if (!targetUid) {
@@ -338,10 +358,11 @@ app.post("/api/admin/approve", checkAdminAuth, (req, res) => {
   device.expires_at = expires_at || null;
   if (label !== undefined) device.label = label;
   if (note !== undefined) device.note = note;
+  if (payload_type !== undefined) device.payload_type = payload_type || "free";
   device.updated_at = new Date().toISOString();
   writeDatabase(db);
 
-  console.log(`[PAYLOAD-SERVER] Device approved: "${targetUid}" until: ${expires_at || "lifetime"}`);
+  console.log(`[PAYLOAD-SERVER] Device approved: "${targetUid}" (${device.payload_type}) until: ${expires_at || "lifetime"}`);
   res.json({ success: true, device });
 });
 
@@ -397,7 +418,7 @@ app.post("/api/admin/delete", checkAdminAuth, (req, res) => {
 
 // Manually create a device (admin)
 app.post("/api/admin/create", checkAdminAuth, (req, res) => {
-  const { uid, label, expires_at, note } = req.body;
+  const { uid, label, expires_at, note, payload_type } = req.body;
   const targetUid = String(uid || "").trim();
   if (!targetUid) {
     return res.status(400).json({ error: "Missing UID" });
@@ -415,6 +436,7 @@ app.post("/api/admin/create", checkAdminAuth, (req, res) => {
     game_id: targetUid,
     label: label || `Device ${targetUid}`,
     status: "approved",
+    payload_type: payload_type || "free",
     expires_at: expires_at || null,
     note: note || "Created by admin",
     first_seen_at: nowIso,
@@ -424,7 +446,7 @@ app.post("/api/admin/create", checkAdminAuth, (req, res) => {
   db.nextId = nextId + 1;
   writeDatabase(db);
 
-  console.log(`[PAYLOAD-SERVER] Admin created device: "${targetUid}"`);
+  console.log(`[PAYLOAD-SERVER] Admin created device: "${targetUid}" (${device.payload_type})`);
   res.json({ success: true, device });
 });
 
