@@ -2264,7 +2264,7 @@ _G.HK_Settings = _G.HK_Settings or {
     NO_LANDING_LAG = 0,
     AUTO_BUNNYHOP = 0,
     THREAT_ESP = 0,
-    SPECTATOR_HP_BAR = 0,
+
     THREAT_ESP_WARN_LINE = 1,
     THREAT_ESP_FLASH = 1,
 
@@ -2543,7 +2543,6 @@ table.insert(StackESP, {
 
 -- ESP HIỂM HỌA (Nút bình thường)
            AddToggle(StackESP, "THREAT_ESP", "ESP HIỂM HỌA (Cảnh báo địch ngắm)")
-           AddToggle(StackESP, "SPECTATOR_HP_BAR", "Spectator Player HP Bar")
 
         -- Bomb Warning & Vehicle ESP Controls
         table.insert(StackESP, {
@@ -4066,7 +4065,7 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
         local isWhiteBodyOn = (_G.HK_GetVal("WHITE_BODY") == 1)            
         local espHit1 = (_G.HK_GetVal("ESP_HITMARK_1") == 1)
         local espHit2 = (_G.HK_GetVal("ESP_HITMARK_2") == 1)
-        local espSpecHPBar = (_G.HK_GetVal("SPECTATOR_HP_BAR") == 1)
+        local espSpecHPBar = false
         local espWeaponStance = (_G.HK_GetVal("ESP_WEAPON") == 1)
         local espCount = (_G.HK_GetVal("ESP_COUNT") == 1)
 
@@ -4381,7 +4380,7 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
             end
 
             -- SPECTATOR HP BAR CUSTOMIZATION
-            local espSpecHPBar = (_G.HK_GetVal("SPECTATOR_HP_BAR") == 1)
+            local espSpecHPBar = false
             pcall(function()
                 local UI_Manager = require("client.slua_ui_framework.manager")
                 if UI_Manager then
