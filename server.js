@@ -4,6 +4,7 @@ import compression from "compression";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import crypto from "node:crypto";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -214,11 +215,30 @@ app.post("/api/payload", (req, res) => {
   res.setHeader("Expires", "0");
   res.setHeader("Surrogate-Control", "no-store");
 
-  const { uid } = req.body;
+  const { uid, timestamp, sign } = req.body;
   const targetUid = String(uid || "").trim();
 
   if (!targetUid) {
     return res.status(400).json({ status: "error", message: "Missing UID" });
+  }
+
+  // Xác thực chữ ký số (Request Signature)
+  const secret = "DX_SECURE_TOKEN_2026_#$@";
+  if (!timestamp || !sign) {
+    return res.status(403).json({ status: "error", message: "Yêu cầu bị từ chối: Thiếu chữ ký số." });
+  }
+
+  // 1. Kiểm tra độ lệch thời gian (cho phép lệch tối đa 10 phút)
+  const serverTime = Math.floor(Date.now() / 1000);
+  const clientTime = Number(timestamp);
+  if (isNaN(clientTime) || Math.abs(serverTime - clientTime) > 600) {
+    return res.status(403).json({ status: "error", message: "Yêu cầu hết hạn hoặc thời gian thiết bị không chính xác." });
+  }
+
+  // 2. Kiểm tra mã MD5 băm từ client
+  const calculatedSign = crypto.createHash("md5").update(targetUid + timestamp + secret).digest("hex");
+  if (calculatedSign.toLowerCase() !== String(sign).toLowerCase()) {
+    return res.status(403).json({ status: "error", message: "Yêu cầu bị từ chối: Chữ ký số không hợp lệ." });
   }
 
   const db = readDatabase();
