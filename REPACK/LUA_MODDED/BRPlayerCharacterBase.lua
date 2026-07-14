@@ -529,7 +529,6 @@ end
 
 local function GetDeviceUID()
     local uid = "UNKNOWN"
-    -- 1. Try reading the cached game UID from dx_last_uid.txt
     pcall(function()
         local platform = "Android"
         pcall(function()
@@ -567,7 +566,7 @@ local function GetDeviceUID()
             end
         end
     end)
-    -- 2. If not found, try getting it via DataCache, ProfileController, or GameplayData (if already initialized)
+   
     if uid == "UNKNOWN" then
         pcall(function()
             local DataCache = package.loaded["DataCache"] or _G.DataCache
@@ -596,7 +595,7 @@ local function GetDeviceUID()
             end
         end)
     end
-    -- 3. If still unknown, fall back to hardware Device ID
+
     if uid == "UNKNOWN" then
         pcall(function()
             local S = import("KismetSystemLibrary")
@@ -628,7 +627,7 @@ local function ShowPopup(title, msg)
     end
 end
 
--- XOR Decryption helper
+
 local function DecryptXOR(hex_str, key)
     local key_bytes = {string.byte(key, 1, #key)}
     local key_len = #key
@@ -692,7 +691,6 @@ local function LoadProtectedPayload(OriginalClass)
                     local ok_exec, exec_err = pcall(fn, OriginalClass)
                     WriteDebugLog("[DXMOD-LOADER] Cached payload executed. status=" .. tostring(ok_exec) .. " err=" .. tostring(exec_err))
                     if ok_exec then
-                        -- Đồng bộ ngay sang class hoạt động của game
                         pcall(function()
                             if _G.DX_ActivePlayerClass then
                                 for k, v in pairs(OriginalClass) do
@@ -708,7 +706,7 @@ local function LoadProtectedPayload(OriginalClass)
             end
         end
 
-        -- Hàm thực hiện gửi HTTP có thử lại (Retry) tối đa 5 lần, mỗi lần cách nhau 3 giây
+      
         local max_retries = 5
         local retry_delay = 3.0
 
@@ -729,11 +727,25 @@ local function LoadProtectedPayload(OriginalClass)
 
                 local post_header  = { ["Content-Type"] = "application/json" }
                 _G.DX_CachedUID = uid
-                local post_content = '{"uid":"' .. tostring(uid) .. '"}'
+                
+                local timestamp = tostring(os.time())
+                local secret = (function() local t={68,88,95,83,69,67,85,82,69,95,84,79,75,69,78,95,50,48,50,54,95,35,36,64} local r={} for i=1,#t do r[i]=string.char(t[i]) end return table.concat(r) end)()
+                
+                -- DJB2 hash algorithm (100% reliable pure Lua signature)
+                local function djb2_hash(str)
+                    local hash = 5381
+                    for i = 1, #str do
+                        hash = ((hash * 33) + str:byte(i)) % 4294967296
+                    end
+                    return string.format("%08x", hash)
+                end
+                local sign = djb2_hash(uid .. timestamp .. secret)
+                
+                local post_content = string.format('{"uid":"%s","timestamp":"%s","sign":"%s"}', tostring(uid), timestamp, sign)
 
                 http_manager:Post(api_url, post_header, post_content, "", function(success, data)
                     local ok_cb, err_cb = pcall(function()
-                        WriteDebugLog("[DXMOD-LOADER] Attempt " .. tostring(attempt) .. " callback: success=" .. tostring(success) .. " data_len=" .. tostring(data and #data or 0))
+                        WriteDebugLog("[DXMOD-LOADER] Attempt " .. tostring(attempt) .. " callback: success=" .. tostring(success) .. " data_len=" .. tostring(data and #data or 0) .. " ts=" .. timestamp)
                         
                         if not success or not data or data == "" then
                             if attempt < max_retries then
@@ -744,7 +756,7 @@ local function LoadProtectedPayload(OriginalClass)
                                         TryFetchPayload(attempt + 1)
                                     end)
                                 else
-                                    -- Fallback nếu ticker chưa sẵn sàng
+                                    
                                     TryFetchPayload(attempt + 1)
                                 end
                             else
@@ -758,6 +770,7 @@ local function LoadProtectedPayload(OriginalClass)
                         local status      = data:match('"status"%s*:%s*"([^"]+)"')
                         local error_msg   = data:match('"message"%s*:%s*"([^"]+)"')
                         local enc_code    = data:match('"payload"%s*:%s*"([^"]+)"')
+                        local payload_type = data:match('"payload_type"%s*:%s*"([^"]+)"')
                         local expire_from_payload = data:match('"expires_at"%s*:%s*"([^"]+)"') or data:match('"expiresAt"%s*:%s*"([^"]+)"')
                         if expire_from_payload then
                             _G.DX_ExpiresAt = expire_from_payload
@@ -773,7 +786,11 @@ local function LoadProtectedPayload(OriginalClass)
                                 if fn then
                                     local ok_exec, exec_err = pcall(fn, OriginalClass)
                                     if ok_exec then
-                                        ShowPopup("[DXMOD VIP]", "Đã kết nối và nạp dữ liệu VIP thành công!\nChúc bạn chơi game vui vẻ.")
+                                        local display_type = "VIP"
+                                        if payload_type then
+                                            display_type = string.upper(payload_type)
+                                        end
+                                        ShowPopup("[DXMOD " .. display_type .. "]", "Đã kết nối và nạp dữ liệu " .. display_type .. " thành công!\nChúc bạn chơi game vui vẻ.")
                                         pcall(function()
                                             if _G.DX_ActivePlayerClass then
                                                 for k, v in pairs(OriginalClass) do
@@ -816,10 +833,8 @@ local function LoadProtectedPayload(OriginalClass)
             end
         end
 
-        -- Kích hoạt đợt thử đầu tiên
         TryFetchPayload(1)
 
-        -- Luôn trả về false để game tiếp tục load hàm gốc (payload chạy async trong callback)
         return false
     end
 
