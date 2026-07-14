@@ -4207,12 +4207,6 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                                   scopeFactor = math.max(0.0, 1.0 - (scopePercent / 100.0))
                               end
 
-                              -- Áp dụng giảm rung camera
-                              if shootWeaponEntity.RecoilInfo then
-                                  shootWeaponEntity.RecoilInfo.ShotCameraShakeScale = (cache.HK_OrigShotCamShakeScale or 1.0) * scopeFactor
-                              end
-                              shootWeaponEntity.ShotCameraShakeScale = (cache.HK_OrigWeaponCamShakeScale or 1.0) * scopeFactor
-
                               -- 2. Tính hệ số giảm giật (NO_RECOIL_100) độc lập hoàn toàn (giới hạn tối đa 50% để tránh lỗi dame)
                               local recoilPercent = math.min(50, _G.HK_GetVal("NO_RECOIL_100") or 0)
                               if _G.HK_GetVal("REC_WEAPON_MASTER") == 1 and perWeaponRecoilKey and (_G.HK_GetVal(perWeaponRecoilKey) or 0) > 0 then
@@ -4220,22 +4214,28 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                               end
                               local recoilFactor = math.max(0.01, 1.0 - (recoilPercent / 100.0))
                               
-                              -- Áp dụng giảm giật vào các thông số Recoil
+                              -- Áp dụng giảm giật vào các thông số Recoil của shootWeaponEntity
                               shootWeaponEntity.RecoilKick = (cache.HK_OrigRecoilKick or 0.0) * recoilFactor
                               shootWeaponEntity.AccessoriesVRecoilFactor = (cache.HK_OrigAccessoriesV or 1.0) * recoilFactor
                               shootWeaponEntity.AccessoriesHRecoilFactor = (cache.HK_OrigAccessoriesH or 1.0) * recoilFactor
                               shootWeaponEntity.RecoilKickADS = (cache.HK_OrigRecoilKickADS or 0.20) * recoilFactor
                               shootWeaponEntity.AnimationKick = (cache.HK_OrigAnimKick or 0.0) * recoilFactor
-                              if shootWeaponEntity.RecoilInfo then
-                                  shootWeaponEntity.RecoilInfo.VerticalRecoilMin = (cache.HK_OrigVRecoilMin or 0.0) * recoilFactor
-                                  shootWeaponEntity.RecoilInfo.VerticalRecoilMax = (cache.HK_OrigVRecoilMax or 0.0) * recoilFactor
-                                  shootWeaponEntity.RecoilInfo.RecoilSpeedVertical = (cache.HK_OrigSpeedV or 0.0) * recoilFactor
-                                  shootWeaponEntity.RecoilInfo.RecoilSpeedHorizontal = (cache.HK_OrigSpeedH or 0.0) * recoilFactor
-                                  shootWeaponEntity.RecoilInfo.VerticalRecoveryMax = (cache.HK_OrigRecoveryMax or 0.0) * recoilFactor
-                              end
+                              shootWeaponEntity.ShotCameraShakeScale = (cache.HK_OrigWeaponCamShakeScale or 1.0) * scopeFactor
                               shootWeaponEntity.RecoilModifierStand = (cache.HK_OrigModStand or 1.0) * recoilFactor
                               shootWeaponEntity.RecoilModifierCrouch = (cache.HK_OrigModCrouch or 1.0) * recoilFactor
                               shootWeaponEntity.RecoilModifierProne = (cache.HK_OrigModProne or 1.0) * recoilFactor
+
+                              -- Cập nhật thông tin trong struct RecoilInfo và gán lại (Bắt buộc trong Unreal Engine Lua)
+                              if shootWeaponEntity.RecoilInfo then
+                                  local info = shootWeaponEntity.RecoilInfo
+                                  info.ShotCameraShakeScale = (cache.HK_OrigShotCamShakeScale or 1.0) * scopeFactor
+                                  info.VerticalRecoilMin = (cache.HK_OrigVRecoilMin or 0.0) * recoilFactor
+                                  info.VerticalRecoilMax = (cache.HK_OrigVRecoilMax or 0.0) * recoilFactor
+                                  info.RecoilSpeedVertical = (cache.HK_OrigSpeedV or 0.0) * recoilFactor
+                                  info.RecoilSpeedHorizontal = (cache.HK_OrigSpeedH or 0.0) * recoilFactor
+                                  info.VerticalRecoveryMax = (cache.HK_OrigRecoveryMax or 0.0) * recoilFactor
+                                  shootWeaponEntity.RecoilInfo = info
+                              end
                          end
                         
                     end

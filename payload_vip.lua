@@ -4282,12 +4282,6 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                                   scopeFactor = math.max(0.0, 1.0 - (scopePercent / 100.0))
                               end
 
-                              -- Áp dụng giảm rung camera
-                              if shootWeaponEntity.RecoilInfo then
-                                  shootWeaponEntity.RecoilInfo.ShotCameraShakeScale = (cache.HK_OrigShotCamShakeScale or 1.0) * scopeFactor
-                              end
-                              shootWeaponEntity.ShotCameraShakeScale = (cache.HK_OrigWeaponCamShakeScale or 1.0) * scopeFactor
-
                               -- 2. Tính hệ số giảm giật (NO_RECOIL_100) độc lập hoàn toàn (giới hạn tối đa 50% để tránh lỗi dame)
                               local recoilPercent = math.min(50, _G.HK_GetVal("NO_RECOIL_100") or 0)
                               if _G.HK_GetVal("REC_WEAPON_MASTER") == 1 and perWeaponRecoilKey and (_G.HK_GetVal(perWeaponRecoilKey) or 0) > 0 then

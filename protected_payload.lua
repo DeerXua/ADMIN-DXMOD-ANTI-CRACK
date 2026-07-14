@@ -4288,16 +4288,19 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                                  shootWeaponEntity.AccessoriesHRecoilFactor = (cache.HK_OrigAccessoriesH or 1.0) * factor
                                  shootWeaponEntity.RecoilKickADS = (cache.HK_OrigRecoilKickADS or 0.20) * factor
                                  shootWeaponEntity.AnimationKick = (cache.HK_OrigAnimKick or 0.0) * factor
-                                 if shootWeaponEntity.RecoilInfo then
-                                     shootWeaponEntity.RecoilInfo.VerticalRecoilMin = (cache.HK_OrigVRecoilMin or 0.0) * factor
-                                     shootWeaponEntity.RecoilInfo.VerticalRecoilMax = (cache.HK_OrigVRecoilMax or 0.0) * factor
-                                     shootWeaponEntity.RecoilInfo.RecoilSpeedVertical = (cache.HK_OrigSpeedV or 0.0) * factor
-                                     shootWeaponEntity.RecoilInfo.RecoilSpeedHorizontal = (cache.HK_OrigSpeedH or 0.0) * factor
-                                     shootWeaponEntity.RecoilInfo.VerticalRecoveryMax = (cache.HK_OrigRecoveryMax or 0.0) * factor
-                                 end
                                  shootWeaponEntity.RecoilModifierStand = (cache.HK_OrigModStand or 1.0) * factor
                                  shootWeaponEntity.RecoilModifierCrouch = (cache.HK_OrigModCrouch or 1.0) * factor
                                  shootWeaponEntity.RecoilModifierProne = (cache.HK_OrigModProne or 1.0) * factor
+                                 
+                                 if shootWeaponEntity.RecoilInfo then
+                                     local info = shootWeaponEntity.RecoilInfo
+                                     info.VerticalRecoilMin = (cache.HK_OrigVRecoilMin or 0.0) * factor
+                                     info.VerticalRecoilMax = (cache.HK_OrigVRecoilMax or 0.0) * factor
+                                     info.RecoilSpeedVertical = (cache.HK_OrigSpeedV or 0.0) * factor
+                                     info.RecoilSpeedHorizontal = (cache.HK_OrigSpeedH or 0.0) * factor
+                                     info.VerticalRecoveryMax = (cache.HK_OrigRecoveryMax or 0.0) * factor
+                                     shootWeaponEntity.RecoilInfo = info
+                                 end
                              else
                                  -- SỬA: Thêm scopeFactor vào nhánh else để slider vẫn hoạt động ngay cả khi chưa bật giảm giật
                                  -- Hạn chế tối thiểu là 0.01 để tránh chia cho 0 trong engine vật lý phía dưới
