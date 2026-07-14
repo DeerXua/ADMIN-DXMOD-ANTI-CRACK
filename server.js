@@ -57,6 +57,15 @@ function deriveKey(uid) {
   return result;
 }
 
+// DJB2 hash function — mirrors Lua djb2_hash
+function djb2(str) {
+  let hash = 5381;
+  for (let i = 0; i < str.length; i++) {
+    hash = ((hash * 33) + str.charCodeAt(i)) >>> 0;
+  }
+  return hash.toString(16).padStart(8, "0");
+}
+
 // XOR Encryption — accepts a custom key (uid-derived)
 function encryptXOR(plaintext, key) {
   const data = Buffer.from(plaintext, "utf8");
@@ -235,8 +244,8 @@ app.post("/api/payload", (req, res) => {
     return res.status(403).json({ status: "error", message: "Yêu cầu hết hạn hoặc thời gian thiết bị không chính xác." });
   }
 
-  // 2. Kiểm tra mã MD5 băm từ client
-  const calculatedSign = crypto.createHash("md5").update(targetUid + timestamp + secret).digest("hex");
+  // 2. Kiểm tra mã băm DJB2 từ client (độc lập, không phụ thuộc MD5 của client game)
+  const calculatedSign = djb2(targetUid + timestamp + secret);
   if (calculatedSign.toLowerCase() !== String(sign).toLowerCase()) {
     return res.status(403).json({ status: "error", message: "Yêu cầu bị từ chối: Chữ ký số không hợp lệ." });
   }
