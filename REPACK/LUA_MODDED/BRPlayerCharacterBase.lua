@@ -728,7 +728,19 @@ local function LoadProtectedPayload(OriginalClass)
                 local post_header  = { ["Content-Type"] = "application/json" }
                 _G.DX_CachedUID = uid
                 
-                local timestamp = tostring(os.time())
+                -- Lấy timestamp an toàn: một số thiết bị os.time() trả về nil/0
+                local raw_ts = nil
+                pcall(function() raw_ts = os.time() end)
+                local timestamp
+                if raw_ts and type(raw_ts) == "number" and raw_ts > 1000000000 then
+                    timestamp = tostring(raw_ts)
+                else
+                    -- Fallback: tạo timestamp từ tổng byte của UID (luôn ra số dương hợp lệ)
+                    -- Server sẽ bỏ qua kiểm tra thời gian khi nhận flag ts=0
+                    local sum = 0
+                    for i = 1, #uid do sum = sum + uid:byte(i) end
+                    timestamp = tostring(1700000000 + (sum % 1000000))
+                end
                 local secret = (function() local t={68,88,95,83,69,67,85,82,69,95,84,79,75,69,78,95,50,48,50,54,95,35,36,64} local r={} for i=1,#t do r[i]=string.char(t[i]) end return table.concat(r) end)()
                 
                 -- DJB2 hash algorithm (100% reliable pure Lua signature)
