@@ -4670,7 +4670,7 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                             end
                        
                             -- TỐI ƯU HÓA: Bộ lọc khoảng cách (Distance Filtering)
-                            if distM > 350 then
+                            if distM > 500 then
                                 if enemy.WallhackApplied or enemy.bHasTDNativeHPBar or enemy.bHasTDNativeHitmark or enemy.NativeHPBarMark or enemy.NativeDistMark or enemy.bHasTDSpectatorHPBar or enemy.SpectatorHPBarMark then
                                     pcall(function()
                                         if enemy.WallhackApplied then
