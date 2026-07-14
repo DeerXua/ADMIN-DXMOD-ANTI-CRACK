@@ -50,6 +50,8 @@ local printf = function(...)
 end
 
 local DX_API_BASE = "__API_BASE__"
+local DX_TELE_GROUP = "https://t.me/+DktgM0DiX1JmZjk1"
+local DX_TELE_ADMIN = "https://t.me/DeerXua"
 
 local _cachedHWID = nil
 local function GetHardwareDeviceID()
@@ -4010,8 +4012,11 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                         end
                         msgBox.Show(4, "THÔNG BÁO", "WELCOME TO VIP MOD MENU\n MOD Được Tạo Bởi Haku X DX\nMỞ CÀI ĐẶT -> DX-MODS ĐỂ TÙY CHỈNH\nHạn sử dụng đến: " .. formattedExpire, function() 
                             local KismetSystemLibrary = import("KismetSystemLibrary")
-                            if KismetSystemLibrary then KismetSystemLibrary.LaunchURL("https://t.me/+DktgM0DiX1JmZjk1") end
-                        end, function() end, "THAM GIA", "HỦY")
+                            if KismetSystemLibrary then KismetSystemLibrary.LaunchURL(DX_TELE_GROUP) end
+                        end, function() 
+                            local KismetSystemLibrary = import("KismetSystemLibrary")
+                            if KismetSystemLibrary then KismetSystemLibrary.LaunchURL(DX_TELE_ADMIN) end
+                        end, "TELE NHÓM", "TELE ADMIN")
                     end
                 end)
             end
