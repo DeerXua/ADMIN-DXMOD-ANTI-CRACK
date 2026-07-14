@@ -2186,7 +2186,9 @@ _G.HK_WeaponMap = {
 
 _G.HK_OrderedKeywords = {
     "m249", "m24", "helmet3", "helmet_lvl3", "armor3", "armor_lvl3", "vest_level3", "bag3", "bag_lvl3", "backpack_lvl3",
-    "mũ cấp 3", "mũ 3", "giáp cấp 3", "giáp 3", "balo cấp 3", "balo 3",
+    "mũ bảo hiểm (cấp 3)", "mũ (cấp 3)", "mũ cấp 3", "mũ 3", "helmet (lv. 3)", "helmet 3",
+    "giáp quân sự (cấp 3)", "giáp (cấp 3)", "giáp cấp 3", "giáp 3", "vest (lv. 3)", "vest 3",
+    "ba lô (cấp 3)", "ba lô cấp 3", "ba lo (cấp 3)", "balo (cấp 3)", "balo cấp 3", "balo 3", "backpack (lv. 3)", "backpack 3", "bag 3",
     "m416", "akm", "scar", "groza", "aug", "qbz", "m762", "g36c", "famas", "ace32", "honey",
     "kar98", "awm", "mosin", "win94", "amr",
     "sks", "slr", "mini", "mk14", "qbu", "mk12", "vss",
@@ -2211,13 +2213,15 @@ pcall(function()
         [104001] = "dp28", [104002] = "m249", [104003] = "mg3",
         [106001] = "p1911", [106002] = "p92", [106003] = "r1895", [106004] = "deagle", [106005] = "skorpion", [106006] = "p18c",
         [108001] = "pan", [108002] = "sickle", [108003] = "machete", [108004] = "crowbar",
-        [501006] = "helmet3", [502003] = "armor3", [502006] = "armor3", [503003] = "bag3", [503006] = "bag3",
+        [501003] = "helmet3", [501004] = "helmet3", [501005] = "helmet3", [501006] = "helmet3",
+        [502003] = "armor3", [502004] = "armor3", [502005] = "armor3", [502006] = "armor3",
+        [503003] = "bag3", [503004] = "bag3", [503005] = "bag3", [503006] = "bag3",
         [201009] = "scope_8x", [201012] = "scope_6x", [201007] = "scope_4x",
         [601005] = "medkit", [601006] = "firstaid",
         
-        ["mũ cấp 3"] = "helmet3", ["mũ 3"] = "helmet3",
-        ["giáp cấp 3"] = "armor3", ["giáp 3"] = "armor3",
-        ["balo cấp 3"] = "bag3", ["balo 3"] = "bag3",
+        ["mũ bảo hiểm (cấp 3)"] = "helmet3", ["mũ (cấp 3)"] = "helmet3", ["mũ cấp 3"] = "helmet3", ["mũ 3"] = "helmet3",
+        ["giáp quân sự (cấp 3)"] = "armor3", ["giáp (cấp 3)"] = "armor3", ["giáp cấp 3"] = "armor3", ["giáp 3"] = "armor3",
+        ["ba lô (cấp 3)"] = "bag3", ["ba lô cấp 3"] = "bag3", ["ba lo (cấp 3)"] = "bag3", ["balo (cấp 3)"] = "bag3", ["balo cấp 3"] = "bag3", ["balo 3"] = "bag3",
         ["8x"] = "scope_8x", ["6x"] = "scope_6x", ["4x"] = "scope_4x",
         ["bộ y tế"] = "medkit", ["sơ cứu"] = "firstaid",
         ["chảo"] = "pan", ["liềm"] = "sickle", ["rựa"] = "machete", ["xà beng"] = "crowbar"
@@ -5884,7 +5888,7 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                                                         mapping = _G.HK_WeaponMap[itemID]
                                                     else
                                                         for _, kw in ipairs(_G.HK_OrderedKeywords) do
-                                                            if string.find(nameLower, kw) then
+                                                            if string.find(nameLower, kw, 1, true) then
                                                                 matchedKeyword = kw
                                                                 break
                                                             end
