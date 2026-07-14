@@ -237,10 +237,15 @@ app.post("/api/payload", (req, res) => {
     return res.status(403).json({ status: "error", message: "Yêu cầu bị từ chối: Thiếu chữ ký số." });
   }
 
-  // 1. Kiểm tra độ lệch thời gian (cho phép lệch tối đa 10 phút)
+  // 1. Kiểm tra độ lệch thời gian (cho phép lệch tối đa 30 phút)
   const serverTime = Math.floor(Date.now() / 1000);
   const clientTime = Number(timestamp);
-  if (isNaN(clientTime) || Math.abs(serverTime - clientTime) > 600) {
+  // clientTime < 1701000000: là timestamp fallback (thiết bị không đọc được giờ hệ thống) - chỉ kiểm tra sign
+  const isFallbackTimestamp = clientTime > 0 && clientTime < 1701000000;
+  if (isNaN(clientTime) || clientTime <= 0) {
+    return res.status(403).json({ status: "error", message: "Timestamp không hợp lệ." });
+  }
+  if (!isFallbackTimestamp && Math.abs(serverTime - clientTime) > 1800) {
     return res.status(403).json({ status: "error", message: "Yêu cầu hết hạn hoặc thời gian thiết bị không chính xác." });
   }
 
