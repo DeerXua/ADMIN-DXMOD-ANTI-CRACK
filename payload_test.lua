@@ -3484,6 +3484,16 @@ local function SyncPlayersToGameplayData()
                     -- 2. Kiểm tra xem có phải là nhân vật local player hay không
                     local isLocal = false
                     if localPawn then
+                        local aName = "nil"
+                        pcall(function() aName = actor:GetPathName() end)
+                        local lpName = "nil"
+                        pcall(function() lpName = localPawn:GetPathName() end)
+                        
+                        if not _G.DX_LastSyncDetailLogTime or os.time() - _G.DX_LastSyncDetailLogTime <= 1 then
+                            DX_Log(string.format("Checking actor: Class=%s, Path=%s vs localPawn=%s", 
+                                tostring(actor:GetClass():GetName()), aName, lpName))
+                        end
+                        
                         if actor == localPawn then
                             isLocal = true
                         elseif type(actor.GetPathName) == "function" and type(localPawn.GetPathName) == "function" and actor:GetPathName() == localPawn:GetPathName() then
