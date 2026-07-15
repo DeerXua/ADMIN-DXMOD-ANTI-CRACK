@@ -3110,22 +3110,52 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                                 if maxHp <= 0 then maxHp = 100 end
                                 local hpRatio = currentHp / maxHp
 
-                                if enemy.Replay_IsEnemyFrameUIExisted and not enemy:Replay_IsEnemyFrameUIExisted() then 
-                                    enemy:Replay_CreateEnemyFrameUI(true, true) 
+                                local show = true
+                                local SecurityCommonUtils = _G.SecurityCommonUtils or package.loaded["SecurityCommonUtils"] or import("SecurityCommonUtils")
+                                if enemy.HealthStatus and SecurityCommonUtils and SecurityCommonUtils.IsHealthStatusAlive then 
+                                    if not SecurityCommonUtils.IsHealthStatusAlive(enemy.HealthStatus) then show = false end
                                 end
-                                if enemy.Replay_SetVisiableOfFrameUI then 
-                                    enemy:Replay_SetVisiableOfFrameUI(true) 
+                                if show and localPlayerLoc then
+                                    local eLoc = enemy.HK_CachedActorLoc or (type(enemy.K2_GetActorLocation) == "function" and enemy:K2_GetActorLocation())
+                                    if eLoc and SecurityCommonUtils and SecurityCommonUtils.IsVector then
+                                        if SecurityCommonUtils.IsVector(eLoc) and SecurityCommonUtils.IsVector(localPlayerLoc) then
+                                            if eLoc.Z >= 150000 or math_sqrt((localPlayerLoc.X-eLoc.X)^2 + (localPlayerLoc.Y-eLoc.Y)^2)^2 > 50000^2 then 
+                                                show = false 
+                                            end
+                                        end
+                                    end
                                 end
-                                if enemy.Replay_UpdateEnemyFrameUI then 
-                                    enemy:Replay_UpdateEnemyFrameUI(hpRatio) 
-                                end
-                                
-                                local uiComp = enemy.EnemyFrameUI or (type(enemy.GetEnemyFrameUI) == "function" and enemy:GetEnemyFrameUI())
-                                if Valid(uiComp) then
-                                    if enemy.HK_LastFrameUIState ~= "VISIBLE" then
-                                        if type(uiComp.SetVisibility) == "function" then uiComp:SetVisibility(0) end
-                                        if type(uiComp.SetHiddenInGame) == "function" then uiComp:SetHiddenInGame(false) end
-                                        enemy.HK_LastFrameUIState = "VISIBLE"
+
+                                if show then
+                                    if enemy.Replay_IsEnemyFrameUIExisted and not enemy:Replay_IsEnemyFrameUIExisted() then 
+                                        enemy:Replay_CreateEnemyFrameUI(true, true) 
+                                    end
+                                    if enemy.Replay_SetVisiableOfFrameUI then 
+                                        enemy:Replay_SetVisiableOfFrameUI(true) 
+                                    end
+                                    if enemy.Replay_UpdateEnemyFrameUI then 
+                                        enemy:Replay_UpdateEnemyFrameUI(hpRatio) 
+                                    end
+                                    
+                                    local uiComp = enemy.EnemyFrameUI or (type(enemy.GetEnemyFrameUI) == "function" and enemy:GetEnemyFrameUI())
+                                    if Valid(uiComp) then
+                                        if enemy.HK_LastFrameUIState ~= "VISIBLE" then
+                                            if type(uiComp.SetVisibility) == "function" then uiComp:SetVisibility(0) end
+                                            if type(uiComp.SetHiddenInGame) == "function" then uiComp:SetHiddenInGame(false) end
+                                            enemy.HK_LastFrameUIState = "VISIBLE"
+                                        end
+                                    end
+                                else
+                                    if enemy.Replay_SetVisiableOfFrameUI then 
+                                        enemy:Replay_SetVisiableOfFrameUI(false) 
+                                    end
+                                    local uiComp = enemy.EnemyFrameUI or (type(enemy.GetEnemyFrameUI) == "function" and enemy:GetEnemyFrameUI())
+                                    if Valid(uiComp) then
+                                        if enemy.HK_LastFrameUIState ~= "HIDDEN" then
+                                            if type(uiComp.SetVisibility) == "function" then uiComp:SetVisibility(2) end
+                                            if type(uiComp.SetHiddenInGame) == "function" then uiComp:SetHiddenInGame(true) end
+                                            enemy.HK_LastFrameUIState = "HIDDEN"
+                                        end
                                     end
                                 end
                             end)
