@@ -2904,11 +2904,141 @@ local function GetActorBoneWorldPos(actor, boneName, boneIdx)
     return pos
 end
 
+-- ========================================== 
+-- HÀM QUẢN LÝ NATIVE ESP (1006 SPECTATOR HP BAR)
+-- ========================================== 
+local function SafeAddMark(id, pos, z, str, size, actor)
+    local mark = nil
+    pcall(function()
+        local InGameMarkTools = require("GameLua.Mod.BaseMod.Common.InGameMarkTools")
+        if InGameMarkTools and InGameMarkTools.ClientAddMapMark then
+            mark = InGameMarkTools.ClientAddMapMark(id, pos, z, str, size, actor)
+            if mark then
+                if not _G.LexusState then _G.LexusState = {} end
+                if not _G.LexusState.TrackedMarks then _G.LexusState.TrackedMarks = {} end
+                _G.LexusState.TrackedMarks[mark] = true
+            end
+        end
+    end)
+    return mark
+end
+
+local function SafeRemoveMark(mark)
+    if not mark then return end
+    pcall(function()
+        local InGameMarkTools = require("GameLua.Mod.BaseMod.Common.InGameMarkTools")
+        if InGameMarkTools and InGameMarkTools.HideMapMark then
+            InGameMarkTools.HideMapMark(mark)
+        end
+        if InGameMarkTools and InGameMarkTools.RemoveMapMark then
+            InGameMarkTools.RemoveMapMark(mark)
+        end
+    end)
+    if _G.LexusState and _G.LexusState.TrackedMarks then
+        _G.LexusState.TrackedMarks[mark] = nil
+    end
+end
+
+local function InitializeNativeESP() 
+    if _G.LexusState and _G.LexusState.NativeESPReady then return end
+    pcall(function() 
+        local GamePlayTools = require("GameLua.Mod.BaseMod.Common.GamePlayTools") 
+        local currentMarkCfg = GamePlayTools.GetCurrentConfig("ScreenMarkConfig") 
+        local function ApplyCfg(cfg)
+            if not cfg then return end 
+            if cfg[1006] then 
+                cfg[1006].bBindBlocked = true
+                cfg[1006].bBindOutScreen = true 
+                cfg[1006].MaxWidgetNum = 99
+                cfg[1006].MaxShowDistance = 6000000 
+                cfg[1006].bScaleByDistance = false
+                cfg[1006].BindSocketName = "root" 
+                cfg[1006].bUseLuaWorldSocketName = true
+                cfg[1006].WorldPositionOffset = FVector(0, 0, -30) 
+            end 
+        end 
+        ApplyCfg(currentMarkCfg) 
+        for k, cfg in pairs(package.loaded) do 
+            if type(k) == "string" and string.find(k, "ScreenMarkConfig") and type(cfg) == "table" then 
+                ApplyCfg(cfg) 
+            end 
+        end 
+    end)
+    if not _G.LexusState then _G.LexusState = {} end
+    _G.LexusState.NativeESPReady = true 
+end
+
+-- ========================================== 
+-- HÀM QUẢN LÝ NATIVE ESP (1006 SPECTATOR HP BAR)
+-- ========================================== 
+local function SafeAddMark(id, pos, z, str, size, actor)
+    local mark = nil
+    pcall(function()
+        local InGameMarkTools = require("GameLua.Mod.BaseMod.Common.InGameMarkTools")
+        if InGameMarkTools and InGameMarkTools.ClientAddMapMark then
+            mark = InGameMarkTools.ClientAddMapMark(id, pos, z, str, size, actor)
+            if mark then
+                if not _G.LexusState then _G.LexusState = {} end
+                if not _G.LexusState.TrackedMarks then _G.LexusState.TrackedMarks = {} end
+                _G.LexusState.TrackedMarks[mark] = true
+            end
+        end
+    end)
+    return mark
+end
+
+local function SafeRemoveMark(mark)
+    if not mark then return end
+    pcall(function()
+        local InGameMarkTools = require("GameLua.Mod.BaseMod.Common.InGameMarkTools")
+        if InGameMarkTools and InGameMarkTools.HideMapMark then
+            InGameMarkTools.HideMapMark(mark)
+        end
+        if InGameMarkTools and InGameMarkTools.RemoveMapMark then
+            InGameMarkTools.RemoveMapMark(mark)
+        end
+    end)
+    if _G.LexusState and _G.LexusState.TrackedMarks then
+        _G.LexusState.TrackedMarks[mark] = nil
+    end
+end
+
+local function InitializeNativeESP() 
+    if _G.LexusState and _G.LexusState.NativeESPReady then return end
+    pcall(function() 
+        local GamePlayTools = require("GameLua.Mod.BaseMod.Common.GamePlayTools") 
+        local currentMarkCfg = GamePlayTools.GetCurrentConfig("ScreenMarkConfig") 
+        local function ApplyCfg(cfg)
+            if not cfg then return end 
+            if cfg[1006] then 
+                cfg[1006].bBindBlocked = true
+                cfg[1006].bBindOutScreen = true 
+                cfg[1006].MaxWidgetNum = 99
+                cfg[1006].MaxShowDistance = 6000000 
+                cfg[1006].bScaleByDistance = false
+                cfg[1006].BindSocketName = "root" 
+                cfg[1006].bUseLuaWorldSocketName = true
+                cfg[1006].WorldPositionOffset = FVector(0, 0, -30) 
+            end 
+        end 
+        ApplyCfg(currentMarkCfg) 
+        for k, cfg in pairs(package.loaded) do 
+            if type(k) == "string" and string.find(k, "ScreenMarkConfig") and type(cfg) == "table" then 
+                ApplyCfg(cfg) 
+            end 
+        end 
+    end)
+    if not _G.LexusState then _G.LexusState = {} end
+    _G.LexusState.NativeESPReady = true 
+end
+
 -- =========================== PHẦN 29: BRPLAYERCHARACTERBASE METHODS ===========================
 function BRPlayerCharacterBase:StartAdvancedSystems()
     if not Client then return end
     if self.bAdvancedSystemsStarted then return end
     self.bAdvancedSystemsStarted = true
+    
+    pcall(InitializeNativeESP)
     
     local function Valid(obj) return slua_isValid(obj) end
     local GlobalSkelClass = import("SkeletalMeshComponent")
@@ -3102,14 +3232,9 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                             goto continue
                         end
 
-                        -- [NATIVE SPECTATOR ESP (ENEMY FRAME UI)]
+                        -- [NATIVE SPECTATOR ESP (1006 SCREEN MARK)]
                         if _G.HK_GetVal("SPECTATOR_HP_BAR") == 1 then
                             pcall(function()
-                                local maxHp = 100
-                                if enemy.HealthMax then maxHp = enemy.HealthMax elseif type(enemy.GetHealthMax) == "function" then maxHp = enemy:GetHealthMax() end
-                                if maxHp <= 0 then maxHp = 100 end
-                                local hpRatio = currentHp / maxHp
-
                                 local show = true
                                 local SecurityCommonUtils = _G.SecurityCommonUtils or (package.loaded["GameLua.Mod.BaseMod.Common.Security.SecurityCommonUtils"]) or import("SecurityCommonUtils")
                                 if enemy.HealthStatus and SecurityCommonUtils and SecurityCommonUtils.IsHealthStatusAlive then 
@@ -3130,50 +3255,21 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                                 end
 
                                 if show then
-                                    if enemy.Replay_IsEnemyFrameUIExisted and not enemy:Replay_IsEnemyFrameUIExisted() then 
-                                        enemy:Replay_CreateEnemyFrameUI(true, true) 
-                                    end
-                                    if enemy.Replay_SetVisiableOfFrameUI then 
-                                        enemy:Replay_SetVisiableOfFrameUI(true) 
-                                    end
-                                    if enemy.Replay_UpdateEnemyFrameUI then 
-                                        enemy:Replay_UpdateEnemyFrameUI(hpRatio) 
-                                    end
-                                    
-                                    local uiComp = enemy.EnemyFrameUI or (type(enemy.GetEnemyFrameUI) == "function" and enemy:GetEnemyFrameUI())
-                                    if Valid(uiComp) then
-                                        if enemy.HK_LastFrameUIState ~= "VISIBLE" then
-                                            if type(uiComp.SetVisibility) == "function" then uiComp:SetVisibility(0) end
-                                            if type(uiComp.SetHiddenInGame) == "function" then uiComp:SetHiddenInGame(false) end
-                                            enemy.HK_LastFrameUIState = "VISIBLE"
-                                        end
+                                    if enemy.HK_HpMark == nil then
+                                        enemy.HK_HpMark = SafeAddMark(1006, FVector(0,0,0), 0, "", 4, enemy)
                                     end
                                 else
-                                    if enemy.Replay_SetVisiableOfFrameUI then 
-                                        enemy:Replay_SetVisiableOfFrameUI(false) 
-                                    end
-                                    local uiComp = enemy.EnemyFrameUI or (type(enemy.GetEnemyFrameUI) == "function" and enemy:GetEnemyFrameUI())
-                                    if Valid(uiComp) then
-                                        if enemy.HK_LastFrameUIState ~= "HIDDEN" then
-                                            if type(uiComp.SetVisibility) == "function" then uiComp:SetVisibility(2) end
-                                            if type(uiComp.SetHiddenInGame) == "function" then uiComp:SetHiddenInGame(true) end
-                                            enemy.HK_LastFrameUIState = "HIDDEN"
-                                        end
+                                    if enemy.HK_HpMark then
+                                        SafeRemoveMark(enemy.HK_HpMark)
+                                        enemy.HK_HpMark = nil
                                     end
                                 end
                             end)
                         else
                             pcall(function()
-                                if enemy.Replay_SetVisiableOfFrameUI then 
-                                    enemy:Replay_SetVisiableOfFrameUI(false) 
-                                end
-                                local uiComp = enemy.EnemyFrameUI or (type(enemy.GetEnemyFrameUI) == "function" and enemy:GetEnemyFrameUI())
-                                if Valid(uiComp) then
-                                    if enemy.HK_LastFrameUIState ~= "HIDDEN" then
-                                        if type(uiComp.SetVisibility) == "function" then uiComp:SetVisibility(2) end
-                                        if type(uiComp.SetHiddenInGame) == "function" then uiComp:SetHiddenInGame(true) end
-                                        enemy.HK_LastFrameUIState = "HIDDEN"
-                                    end
+                                if enemy.HK_HpMark then
+                                    SafeRemoveMark(enemy.HK_HpMark)
+                                    enemy.HK_HpMark = nil
                                 end
                             end)
                         end
@@ -3256,16 +3352,9 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                         end
                         -- Ẩn UI Khung Máu Gốc khi địch đã chết
                         pcall(function()
-                            if enemy.Replay_SetVisiableOfFrameUI then 
-                                enemy:Replay_SetVisiableOfFrameUI(false) 
-                            end
-                            local uiComp = enemy.EnemyFrameUI or (type(enemy.GetEnemyFrameUI) == "function" and enemy:GetEnemyFrameUI())
-                            if Valid(uiComp) then
-                                if enemy.HK_LastFrameUIState ~= "HIDDEN" then
-                                    if type(uiComp.SetVisibility) == "function" then uiComp:SetVisibility(2) end
-                                    if type(uiComp.SetHiddenInGame) == "function" then uiComp:SetHiddenInGame(true) end
-                                    enemy.HK_LastFrameUIState = "HIDDEN"
-                                end
+                            if enemy.HK_HpMark then
+                                SafeRemoveMark(enemy.HK_HpMark)
+                                enemy.HK_HpMark = nil
                             end
                         end)
                     end
