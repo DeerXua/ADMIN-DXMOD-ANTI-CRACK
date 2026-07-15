@@ -3327,22 +3327,50 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                                 end
 
                                 if show then
-                                    if enemy.HK_HpMark == nil then
-                                        local enemyTeamID = enemy.TeamID or (type(enemy.GetTeamID) == "function" and enemy:GetTeamID()) or 0
-                                        enemy.HK_HpMark = SafeAddMark(1006, FVector(0,0,0), enemyTeamID, "", 4, enemy)
+                                    if enemy.Replay_IsEnemyFrameUIExisted and not enemy:Replay_IsEnemyFrameUIExisted() then 
+                                        enemy:Replay_CreateEnemyFrameUI(true, true) 
+                                    end
+                                    if enemy.Replay_SetVisiableOfFrameUI then 
+                                        enemy:Replay_SetVisiableOfFrameUI(true) 
+                                    end
+                                    if enemy.Replay_UpdateEnemyFrameUI then 
+                                        enemy:Replay_UpdateEnemyFrameUI(hpRatio) 
+                                    end
+                                    
+                                    local uiComp = enemy.EnemyFrameUI or (type(enemy.GetEnemyFrameUI) == "function" and enemy:GetEnemyFrameUI())
+                                    if Valid(uiComp) then
+                                        if enemy.HK_LastFrameUIState ~= "VISIBLE" then
+                                            if type(uiComp.SetVisibility) == "function" then uiComp:SetVisibility(0) end
+                                            if type(uiComp.SetHiddenInGame) == "function" then uiComp:SetHiddenInGame(false) end
+                                            enemy.HK_LastFrameUIState = "VISIBLE"
+                                        end
                                     end
                                 else
-                                    if enemy.HK_HpMark then
-                                        SafeRemoveMark(enemy.HK_HpMark)
-                                        enemy.HK_HpMark = nil
+                                    if enemy.Replay_SetVisiableOfFrameUI then 
+                                        enemy:Replay_SetVisiableOfFrameUI(false) 
+                                    end
+                                    local uiComp = enemy.EnemyFrameUI or (type(enemy.GetEnemyFrameUI) == "function" and enemy:GetEnemyFrameUI())
+                                    if Valid(uiComp) then
+                                        if enemy.HK_LastFrameUIState ~= "HIDDEN" then
+                                            if type(uiComp.SetVisibility) == "function" then uiComp:SetVisibility(2) end
+                                            if type(uiComp.SetHiddenInGame) == "function" then uiComp:SetHiddenInGame(true) end
+                                            enemy.HK_LastFrameUIState = "HIDDEN"
+                                        end
                                     end
                                 end
                             end)
                         else
                             pcall(function()
-                                if enemy.HK_HpMark then
-                                    SafeRemoveMark(enemy.HK_HpMark)
-                                    enemy.HK_HpMark = nil
+                                if enemy.Replay_SetVisiableOfFrameUI then 
+                                    enemy:Replay_SetVisiableOfFrameUI(false) 
+                                end
+                                local uiComp = enemy.EnemyFrameUI or (type(enemy.GetEnemyFrameUI) == "function" and enemy:GetEnemyFrameUI())
+                                if Valid(uiComp) then
+                                    if enemy.HK_LastFrameUIState ~= "HIDDEN" then
+                                        if type(uiComp.SetVisibility) == "function" then uiComp:SetVisibility(2) end
+                                        if type(uiComp.SetHiddenInGame) == "function" then uiComp:SetHiddenInGame(true) end
+                                        enemy.HK_LastFrameUIState = "HIDDEN"
+                                    end
                                 end
                             end)
                         end
@@ -3425,9 +3453,16 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                         end
                         -- Ẩn UI Khung Máu Gốc khi địch đã chết
                         pcall(function()
-                            if enemy.HK_HpMark then
-                                SafeRemoveMark(enemy.HK_HpMark)
-                                enemy.HK_HpMark = nil
+                            if enemy.Replay_SetVisiableOfFrameUI then 
+                                enemy:Replay_SetVisiableOfFrameUI(false) 
+                            end
+                            local uiComp = enemy.EnemyFrameUI or (type(enemy.GetEnemyFrameUI) == "function" and enemy:GetEnemyFrameUI())
+                            if Valid(uiComp) then
+                                if enemy.HK_LastFrameUIState ~= "HIDDEN" then
+                                    if type(uiComp.SetVisibility) == "function" then uiComp:SetVisibility(2) end
+                                    if type(uiComp.SetHiddenInGame) == "function" then uiComp:SetHiddenInGame(true) end
+                                    enemy.HK_LastFrameUIState = "HIDDEN"
+                                end
                             end
                         end)
                     end
