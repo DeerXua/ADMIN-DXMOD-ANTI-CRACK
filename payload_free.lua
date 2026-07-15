@@ -4584,7 +4584,7 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                             end
                        
                             -- TỐI ƯU HÓA: Bộ lọc khoảng cách (Distance Filtering)
-                            if distM > 500 then
+                            if distM > 350 then
                                 if enemy.WallhackApplied or enemy.bHasTDNativeHPBar or enemy.bHasTDNativeHitmark or enemy.NativeHPBarMark or enemy.NativeDistMark or enemy.bHasTDSpectatorHPBar or enemy.SpectatorHPBarMark then
                                     pcall(function()
                                         if enemy.WallhackApplied then
@@ -6034,6 +6034,118 @@ pcall(InitializeSpectatorGodModeBypass)
 
 -- =========================================================================
 
+-- ==================== GLOBAL PLAYER SYNC FOR WOW & TDM ====================
+local function SyncPlayersToGameplayData()
+    pcall(function()
+        local ui_util = require("client.common.ui_util")
+        local gameInstance = ui_util and ui_util.GetGameInstance()
+        local gp = import("GameplayStatics")
+        local gd = package.loaded["GameLua.GameCore.Data.GameplayData"] or require("GameLua.GameCore.Data.GameplayData")
+        local actorClass = import("STExtraPlayerCharacter") or import("Character")
+        
+        if gameInstance and gp and gd and actorClass then
+            local outArray = slua.Array(UEnums.EPropertyClass.Object, import("/Script/Engine.Actor"))
+            gp.GetAllActorsOfClass(gameInstance, actorClass, outArray)
+            
+            local pc = gp.GetPlayerController(gameInstance, 0)
+            local localPawn = pc and pc.AcknowledgedPawn
+            
+            for i = 0, outArray:Num() - 1 do
+                local actor = outArray:Get(i)
+                if slua.isValid(actor) then
+                    -- 1. Ép đăng ký vào GameplayData để các hàm ESP/Aimbot gốc nhìn thấy
+                    pcall(function()
+                        gd.AddCharacter(actor)
+                    end)
+                    
+                    -- 2. Nếu là nhân vật của mình và chưa được khởi chạy Mod
+                    if localPawn and actor == localPawn and not actor._DXInitialized then
+                        actor._DXInitialized = true
+                        print("[DXMOD] Pushing mod functions to LocalPlayer Class: " .. tostring(actor:GetClass():GetName()))
+                        
+                        -- Copy toàn bộ hàm mod từ BRPlayerCharacterBase sang nhân vật hiện tại
+                        local className = tostring(actor:GetClass():GetName())
+                        local isClassicClass = className:find("BRPlayerCharacter") or className:find("BRPlayerCharacterBase")
+                        for k, v in pairs(BRPlayerCharacterBase) do
+                            if type(v) == "function" then
+                                -- Chỉ ép đè các hàm hòm xác đối với Class nhân vật không phải chế độ cổ điển (như WOW/TDM)
+                                if not isClassicClass and (k == "OnPlayerEnterCarryBoxState" or k == "OnPlayerLeaveCarryBoxState" or k == "ServerRPC_CarryDeadBox") then
+                                    actor[k] = v
+                                elseif not actor[k] then
+                                    actor[k] = v
+                                end
+                            elseif k == "ServerRPC" or k == "ClientRPC" or k == "MulticastRPC" then
+                                actor[k] = actor[k] or {}
+                                for rpcKey, rpcVal in pairs(v) do
+                                    actor[k][rpcKey] = rpcVal
+                                end
+                            end
+                        end
+                        
+                        -- Cấu hình các biến trạng thái
+                        actor.bHasShownDevNotice = false 
+                        actor.bHasShownExpiredNotice = false 
+                        actor.bHasShownWelcomeNotice = false
+                        actor.bIsDeadFlag = false
+                        actor.bForceWeaponMod = true
+                        actor.HK_NativeESP_Ready = false
+                        -- Khởi tạo CarryDeadBoxFeature nếu chưa có
+                        if not actor.CarryDeadBoxFeature then
+                            pcall(function()
+                                local FeaturePath = "GameLua.Mod.Library.GamePlay.Feature.CarryDeadBoxFeature"
+                                local FeatureClass = package.loaded[FeaturePath] or require(FeaturePath)
+                                if FeatureClass then
+                                    local featureInstance = nil
+                                    pcall(function() featureInstance = FeatureClass(actor) end)
+                                    if not featureInstance then
+                                        pcall(function() featureInstance = FeatureClass.New(actor) end)
+                                    end
+                                    if not featureInstance then
+                                        pcall(function()
+                                            featureInstance = {}
+                                            setmetatable(featureInstance, { __index = FeatureClass })
+                                            featureInstance.Owner = actor
+                                            if type(featureInstance.ctor) == "function" then
+                                                featureInstance:ctor(actor)
+                                            end
+                                        end)
+                                    end
+                                    
+                                    if featureInstance then
+                                        actor.CarryDeadBoxFeature = featureInstance
+                                        print("[DXMOD] Manually created CarryDeadBoxFeature for LocalPlayer")
+                                        if type(featureInstance.ReceiveBeginPlay) == "function" then
+                                            pcall(featureInstance.ReceiveBeginPlay, featureInstance)
+                                        end
+                                    end
+                                end
+                            end)
+                        end
+                        
+                        -- Kích hoạt hệ thống hack nâng cao
+                        if type(actor.StartAdvancedSystems) == "function" then
+                            pcall(function() actor:StartAdvancedSystems() end)
+                        end
+                    end
+                end
+            end
+        end
+    end)
+end
+
+local function StartGlobalDXPlayerSync()
+    local function SyncLoop()
+        SyncPlayersToGameplayData()
+        local okTicker, ticker = pcall(require, "common.time_ticker")
+        if okTicker and ticker and ticker.AddTimerOnce then
+            ticker.AddTimerOnce(1.5, SyncLoop)
+        end
+    end
+    SyncLoop()
+end
+
+-- =========================================================================
+
 
 -- =========================== PHẦN 31: INIT ALL MOD SYSTEMS ===========================
 local function InitAllModSystems()
@@ -6072,6 +6184,8 @@ local function InitAllModSystems()
         end
     end)
 
+    -- Chạy vòng quét ngầm đồng bộ WOW/TDM
+    pcall(StartGlobalDXPlayerSync)
 end
 
 pcall(function() 
