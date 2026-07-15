@@ -3465,11 +3465,21 @@ local function SyncPlayersToGameplayData()
             local pc = gp.GetPlayerController(gameInstance, 0)
             local localPawn = pc and pc.AcknowledgedPawn
             
+            local printDetail = false
             if not _G.DX_LastSyncDetailLogTime or os.time() - _G.DX_LastSyncDetailLogTime >= 10 then
                 _G.DX_LastSyncDetailLogTime = os.time()
+                printDetail = true
                 DX_Log(string.format("Sync details: Found %d actors, localPawn=%s", outArray:Num(), tostring(localPawn)))
             end
             
+            local function GetRawActor(pawn)
+                if not slua.isValid(pawn) then return nil end
+                if pawn.Object and slua.isValid(pawn.Object) then
+                    return pawn.Object
+                end
+                return pawn
+            end
+
             for i = 0, outArray:Num() - 1 do
                 local actor = outArray:Get(i)
                 if slua.isValid(actor) then
@@ -3484,20 +3494,26 @@ local function SyncPlayersToGameplayData()
                     -- 2. Kiểm tra xem có phải là nhân vật local player hay không
                     local isLocal = false
                     if localPawn then
-                        local aName = "nil"
-                        pcall(function() aName = actor:GetPathName() end)
-                        local lpName = "nil"
-                        pcall(function() lpName = localPawn:GetPathName() end)
+                        local rawActor = GetRawActor(actor)
+                        local rawLocal = GetRawActor(localPawn)
                         
-                        if not _G.DX_LastSyncDetailLogTime or os.time() - _G.DX_LastSyncDetailLogTime <= 1 then
+                        if printDetail then
+                            local className = "Unknown"
+                            pcall(function() className = actor:GetClass():GetName() end)
+                            local aName = "nil"
+                            pcall(function() aName = rawActor:GetPathName() end)
+                            local lpName = "nil"
+                            pcall(function() lpName = rawLocal:GetPathName() end)
                             DX_Log(string.format("Checking actor: Class=%s, Path=%s vs localPawn=%s", 
-                                tostring(actor:GetClass():GetName()), aName, lpName))
+                                className, aName, lpName))
                         end
                         
-                        if actor == localPawn then
-                            isLocal = true
-                        elseif type(actor.GetPathName) == "function" and type(localPawn.GetPathName) == "function" and actor:GetPathName() == localPawn:GetPathName() then
-                            isLocal = true
+                        if rawActor and rawLocal then
+                            if rawActor == rawLocal then
+                                isLocal = true
+                            elseif type(rawActor.GetPathName) == "function" and type(rawLocal.GetPathName) == "function" and rawActor:GetPathName() == rawLocal:GetPathName() then
+                                isLocal = true
+                            end
                         end
                     end
 
