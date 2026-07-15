@@ -2775,6 +2775,18 @@ local function ResetMeshAuraComponent(mesh)
     end)
 end
 
+local function IsParachuteComponent(comp)
+    if not comp then return false end
+    local ok, res = pcall(function()
+        local name = comp.GetName and string.lower(tostring(comp:GetName())) or ""
+        if string.find(name, "parachute") then return true end
+        local path = comp.GetPathName and string.lower(tostring(comp:GetPathName())) or ""
+        if string.find(path, "parachute") then return true end
+        return false
+    end)
+    return ok and res or false
+end
+
 local function Valid(obj)
     if not obj then return false end
     if slua and type(slua.isValid) == "function" then
@@ -3381,8 +3393,10 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                             local existing = {}
                             for _, m in ipairs(meshes) do existing[m] = true end
                             if Valid(enemy.Mesh) and not existing[enemy.Mesh] then
-                                table.insert(meshes, enemy.Mesh)
-                                existing[enemy.Mesh] = true
+                                if not IsParachuteComponent(enemy.Mesh) then
+                                    table.insert(meshes, enemy.Mesh)
+                                    existing[enemy.Mesh] = true
+                                end
                             end
                             if GlobalSkelClass then
                                 pcall(function()
@@ -3392,8 +3406,10 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                                         for c = 1, count do
                                             local comp = type(childs.Get) == "function" and childs:Get(c-1) or childs[c]
                                             if Valid(comp) and not existing[comp] then
-                                                table.insert(meshes, comp)
-                                                existing[comp] = true
+                                                if not IsParachuteComponent(comp) then
+                                                    table.insert(meshes, comp)
+                                                    existing[comp] = true
+                                                end
                                             end
                                         end
                                     end
