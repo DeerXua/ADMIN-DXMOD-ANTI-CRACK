@@ -6457,12 +6457,23 @@ local function SyncPlayersToGameplayData()
         local gd = package.loaded["GameLua.GameCore.Data.GameplayData"] or require("GameLua.GameCore.Data.GameplayData")
         local actorClass = import("STExtraPlayerCharacter") or import("Character") or import("STExtraBaseCharacter") or import("Pawn")
         
+        if not _G.DX_LastSyncLogTime or os.time() - _G.DX_LastSyncLogTime >= 5 then
+            _G.DX_LastSyncLogTime = os.time()
+            DX_Log(string.format("Sync Loop Tick: gameInstance=%s, gp=%s, gd=%s, actorClass=%s", 
+                tostring(gameInstance ~= nil), tostring(gp ~= nil), tostring(gd ~= nil), tostring(actorClass and actorClass:GetName() or "nil")))
+        end
+        
         if gameInstance and gp and gd and actorClass then
             local outArray = slua.Array(UEnums.EPropertyClass.Object, import("Actor"))
             gp.GetAllActorsOfClass(gameInstance, actorClass, outArray)
             
             local pc = gp.GetPlayerController(gameInstance, 0)
             local localPawn = pc and pc.AcknowledgedPawn
+            
+            if not _G.DX_LastSyncDetailLogTime or os.time() - _G.DX_LastSyncDetailLogTime >= 10 then
+                _G.DX_LastSyncDetailLogTime = os.time()
+                DX_Log(string.format("Sync details: Found %d actors, localPawn=%s", outArray:Num(), tostring(localPawn)))
+            end
             
             for i = 0, outArray:Num() - 1 do
                 local actor = outArray:Get(i)
