@@ -3452,6 +3452,9 @@ local function SyncPlayersToGameplayData()
             for i = 0, outArray:Num() - 1 do
                 local actor = outArray:Get(i)
                 if slua.isValid(actor) then
+                    if not actor.Object or not slua.isValid(actor.Object) then
+                        actor.Object = actor
+                    end
                     -- 1. Ép đăng ký vào GameplayData để các hàm ESP/Aimbot gốc nhìn thấy
                     pcall(function()
                         gd.AddCharacter(actor)
