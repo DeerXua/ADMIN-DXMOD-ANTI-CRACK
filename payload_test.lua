@@ -3111,16 +3111,19 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                                 local hpRatio = currentHp / maxHp
 
                                 local show = true
-                                local SecurityCommonUtils = _G.SecurityCommonUtils or package.loaded["SecurityCommonUtils"] or import("SecurityCommonUtils")
+                                local SecurityCommonUtils = _G.SecurityCommonUtils or (package.loaded["GameLua.Mod.BaseMod.Common.Security.SecurityCommonUtils"]) or import("SecurityCommonUtils")
                                 if enemy.HealthStatus and SecurityCommonUtils and SecurityCommonUtils.IsHealthStatusAlive then 
                                     if not SecurityCommonUtils.IsHealthStatusAlive(enemy.HealthStatus) then show = false end
                                 end
                                 if show and localPlayerLoc then
                                     local eLoc = enemy.HK_CachedActorLoc or (type(enemy.K2_GetActorLocation) == "function" and enemy:K2_GetActorLocation())
-                                    if eLoc and SecurityCommonUtils and SecurityCommonUtils.IsVector then
-                                        if SecurityCommonUtils.IsVector(eLoc) and SecurityCommonUtils.IsVector(localPlayerLoc) then
-                                            if eLoc.Z >= 150000 or math_sqrt((localPlayerLoc.X-eLoc.X)^2 + (localPlayerLoc.Y-eLoc.Y)^2)^2 > 50000^2 then 
-                                                show = false 
+                                    if eLoc then
+                                        if eLoc.Z >= 150000 then 
+                                            show = false 
+                                        else
+                                            local distSq = (localPlayerLoc.X - eLoc.X)^2 + (localPlayerLoc.Y - eLoc.Y)^2
+                                            if distSq > 2500000000 then -- 50000^2
+                                                show = false
                                             end
                                         end
                                     end
