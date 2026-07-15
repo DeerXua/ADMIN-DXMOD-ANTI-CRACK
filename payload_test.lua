@@ -3020,6 +3020,32 @@ local function InitializeNativeESP()
                 cfg[1006].bUseLuaWorldSocketName = true
                 cfg[1006].WorldPositionOffset = FVector(0, 0, -30) 
             end 
+            cfg[8888] = { 
+                UIPathName = "/Game/Mod/EvoBase/BluePrints/UIBP/QuickSign/QuickSign_TipHitEnemy_UIBP_New.QuickSign_TipHitEnemy_UIBP_New_C",
+                MaxWidgetNum = 99, 
+                MaxShowDistance = 6000000, 
+                bBindOutScreen = true,
+                bBindBlocked = true, 
+                bIsBindingActor = true,
+                BindSocketName = "head",
+                bUseLuaWorldSocketName = true, 
+                WorldPositionOffset = FVector(0, 0, 30),
+                bNeedPreLoad = true,
+                Priority = 2 
+            } 
+            cfg[9999] = { 
+                UIPathName = "/Game/Mod/EvoBase/BluePrints/UIBP/QuickSign/QuickSign_TipHitEnemy_UIBP_New.QuickSign_TipHitEnemy_UIBP_New_C",
+                MaxWidgetNum = 99, 
+                MaxShowDistance = 6000000, 
+                bBindOutScreen = true,
+                bBindBlocked = true, 
+                bIsBindingActor = true, 
+                BindSocketName = "head",
+                bUseLuaWorldSocketName = true, 
+                WorldPositionOffset = FVector(0, 0, 50),
+                bNeedPreLoad = true, 
+                Priority = 2 
+            } 
         end 
         ApplyCfg(currentMarkCfg) 
         for k, cfg in pairs(package.loaded) do 
@@ -3051,6 +3077,18 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
         end
         
         local pc = GameplayData.GetPlayerController()
+        pcall(function()
+            if pc and slua_isValid(pc) then
+                if not pc.HK_SpectatorHooked then
+                    pc.IsObserver = function() return true end
+                    pc.IsFriendObserver = function() return true end
+                    pc.IsDemoPlayGlobalObserver = function() return true end
+                    pc.IsFriendOrEnemySpectator = function() return true end
+                    pc.HK_SpectatorHooked = true
+                end
+            end
+        end)
+
         local isSpectating = false
         pcall(function()
             if pc and (pc.IsSpectator and pc:IsSpectator() or pc.IsDemoPlaySpectator and pc:IsDemoPlaySpectator() or (type(pc.IsInPetSpectator) == "function" and pc:IsInPetSpectator())) then
@@ -3232,7 +3270,7 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                             goto continue
                         end
 
-                        -- [NATIVE SPECTATOR ESP (1006 SCREEN MARK)]
+                        -- [NATIVE SPECTATOR ESP (1006 SCREEN MARK & 9999 BRACKETS)]
                         if _G.HK_GetVal("SPECTATOR_HP_BAR") == 1 then
                             pcall(function()
                                 local show = true
@@ -3256,12 +3294,20 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
                                 if show then
                                     if enemy.HK_HpMark == nil then
-                                        enemy.HK_HpMark = SafeAddMark(1006, FVector(0,0,0), 0, "", 4, enemy)
+                                        local enemyTeamID = enemy.TeamID or (type(enemy.GetTeamID) == "function" and enemy:GetTeamID()) or 0
+                                        enemy.HK_HpMark = SafeAddMark(1006, FVector(0,0,0), enemyTeamID, "", 4, enemy)
+                                    end
+                                    if enemy.HK_DistMark == nil then
+                                        enemy.HK_DistMark = SafeAddMark(9999, FVector(0,0,0), 0, "", 4, enemy)
                                     end
                                 else
                                     if enemy.HK_HpMark then
                                         SafeRemoveMark(enemy.HK_HpMark)
                                         enemy.HK_HpMark = nil
+                                    end
+                                    if enemy.HK_DistMark then
+                                        SafeRemoveMark(enemy.HK_DistMark)
+                                        enemy.HK_DistMark = nil
                                     end
                                 end
                             end)
@@ -3270,6 +3316,10 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                                 if enemy.HK_HpMark then
                                     SafeRemoveMark(enemy.HK_HpMark)
                                     enemy.HK_HpMark = nil
+                                end
+                                if enemy.HK_DistMark then
+                                    SafeRemoveMark(enemy.HK_DistMark)
+                                    enemy.HK_DistMark = nil
                                 end
                             end)
                         end
@@ -3355,6 +3405,10 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                             if enemy.HK_HpMark then
                                 SafeRemoveMark(enemy.HK_HpMark)
                                 enemy.HK_HpMark = nil
+                            end
+                            if enemy.HK_DistMark then
+                                SafeRemoveMark(enemy.HK_DistMark)
+                                enemy.HK_DistMark = nil
                             end
                         end)
                     end
