@@ -4670,7 +4670,7 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                             end
                        
                             -- TỐI ƯU HÓA: Bộ lọc khoảng cách (Distance Filtering)
-                            if distM > 500 then
+                            if distM > 350 then
                                 if enemy.WallhackApplied or enemy.bHasTDNativeHPBar or enemy.bHasTDNativeHitmark or enemy.NativeHPBarMark or enemy.NativeDistMark or enemy.bHasTDSpectatorHPBar or enemy.SpectatorHPBarMark then
                                     pcall(function()
                                         if enemy.WallhackApplied then
@@ -6448,7 +6448,7 @@ local function SyncPlayersToGameplayData()
         local actorClass = import("STExtraPlayerCharacter") or import("Character")
         
         if gameInstance and gp and gd and actorClass then
-            local outArray = slua.Array(UEnums.EPropertyClass.Object, import("/Script/Engine.Actor"))
+            local outArray = slua.Array(UEnums.EPropertyClass.Object, import("Actor"))
             gp.GetAllActorsOfClass(gameInstance, actorClass, outArray)
             
             local pc = gp.GetPlayerController(gameInstance, 0)

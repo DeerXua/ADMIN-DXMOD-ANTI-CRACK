@@ -6113,7 +6113,7 @@ local function SyncPlayersToGameplayData()
         local actorClass = import("STExtraPlayerCharacter") or import("Character")
         
         if gameInstance and gp and gd and actorClass then
-            local outArray = slua.Array(UEnums.EPropertyClass.Object, import("/Script/Engine.Actor"))
+            local outArray = slua.Array(UEnums.EPropertyClass.Object, import("Actor"))
             gp.GetAllActorsOfClass(gameInstance, actorClass, outArray)
             
             local pc = gp.GetPlayerController(gameInstance, 0)
