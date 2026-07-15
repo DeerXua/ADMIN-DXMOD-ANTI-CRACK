@@ -3102,59 +3102,45 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                             goto continue
                         end
 
-                        -- [DRAW SPECTATOR ESP]
+                        -- [NATIVE SPECTATOR ESP (ENEMY FRAME UI)]
                         if _G.HK_GetVal("SPECTATOR_HP_BAR") == 1 then
                             pcall(function()
-                                local hud = pc and pc.MyHUD
-                                if Valid(hud) and hud.AddDebugText then
-                                    local dynamicScale = math_max(0.55, 0.95 - (distM / 400))
-                                    local maxHp = 100
-                                    if enemy.HealthMax then maxHp = enemy.HealthMax elseif type(enemy.GetHealthMax) == "function" then maxHp = enemy:GetHealthMax() end
-                                    if maxHp <= 0 then maxHp = 100 end
-                                    local hpPercent = currentHp / maxHp
-                                    
-                                    local hpColor = COLOR_GREEN
-                                    if hpPercent < 0.3 then hpColor = COLOR_RED
-                                    elseif hpPercent < 0.7 then hpColor = COLOR_YELLOW end
-                                    if isEnemyKnocked then hpColor = COLOR_RED end
+                                local maxHp = 100
+                                if enemy.HealthMax then maxHp = enemy.HealthMax elseif type(enemy.GetHealthMax) == "function" then maxHp = enemy:GetHealthMax() end
+                                if maxHp <= 0 then maxHp = 100 end
+                                local hpRatio = currentHp / maxHp
 
-                                    local enemyName = enemy.PlayerName or (type(enemy.GetPlayerName) == "function" and enemy:GetPlayerName()) or "Enemy"
-                                    if enemyName == "" then enemyName = "Enemy" end
-                                    
-                                    local teamID = enemy.TeamID or (type(enemy.GetTeamID) == "function" and enemy:GetTeamID()) or 0
-                                    local infoText = string.format("[T:%d] %s", teamID, enemyName)
-                                    if isEnemyKnocked then infoText = "[KNOCK] " .. infoText end
-
-                                    hud:AddDebugText(infoText, enemy, 0.06, {X=0, Y=0, Z=-370}, {X=0, Y=0, Z=-370}, {R=255, G=255, B=255, A=255}, true, false, true, nil, dynamicScale * 1.1, true)
-
-                                    if not isEnemyKnocked then
-                                        local segments = 6
-                                        local filled = math_floor(hpPercent * segments)
-                                        local startZ = 20
-                                        local spacing = 10.0 * dynamicScale 
-                                        for j = 1, segments do
-                                            local color = (j <= filled) and hpColor or {R=30, G=30, B=30, A=180}
-                                            hud:AddDebugText("█", enemy, 0.06, {X=0, Y=-115, Z=startZ + (j * spacing)}, {X=0, Y=-115, Z=startZ + (j * spacing)}, color, true, false, true, nil, dynamicScale * 1.2, true)
-                                        end
-                                        hud:AddDebugText(string.format("%d%%", math.floor(hpPercent * 100)), enemy, 0.06, {X=0, Y=-60, Z=startZ - 12}, {X=0, Y=-60, Z=startZ - 12}, hpColor, true, false, true, nil, dynamicScale * 0.8, true)
-                                    else
-                                        hud:AddDebugText("DOWN", enemy, 0.06, {X=0, Y=-115, Z=50}, {X=0, Y=-115, Z=50}, COLOR_RED, true, false, true, nil, dynamicScale * 1.0, true)
+                                if enemy.Replay_IsEnemyFrameUIExisted and not enemy:Replay_IsEnemyFrameUIExisted() then 
+                                    enemy:Replay_CreateEnemyFrameUI(true, true) 
+                                end
+                                if enemy.Replay_SetVisiableOfFrameUI then 
+                                    enemy:Replay_SetVisiableOfFrameUI(true) 
+                                end
+                                if enemy.Replay_UpdateEnemyFrameUI then 
+                                    enemy:Replay_UpdateEnemyFrameUI(hpRatio) 
+                                end
+                                
+                                local uiComp = enemy.EnemyFrameUI or (type(enemy.GetEnemyFrameUI) == "function" and enemy:GetEnemyFrameUI())
+                                if Valid(uiComp) then
+                                    if enemy.HK_LastFrameUIState ~= "VISIBLE" then
+                                        if type(uiComp.SetVisibility) == "function" then uiComp:SetVisibility(0) end
+                                        if type(uiComp.SetHiddenInGame) == "function" then uiComp:SetHiddenInGame(false) end
+                                        enemy.HK_LastFrameUIState = "VISIBLE"
                                     end
-
-                                    local eWeapon = enemy.CurrentWeapon or (type(enemy.GetCurrentWeapon) == "function" and enemy:GetCurrentWeapon())
-                                    if not eWeapon and enemy.WeaponManagerComponent then
-                                        eWeapon = enemy.WeaponManagerComponent.CurrentWeaponReplicated
+                                end
+                            end)
+                        else
+                            pcall(function()
+                                if enemy.Replay_SetVisiableOfFrameUI then 
+                                    enemy:Replay_SetVisiableOfFrameUI(false) 
+                                end
+                                local uiComp = enemy.EnemyFrameUI or (type(enemy.GetEnemyFrameUI) == "function" and enemy:GetEnemyFrameUI())
+                                if Valid(uiComp) then
+                                    if enemy.HK_LastFrameUIState ~= "HIDDEN" then
+                                        if type(uiComp.SetVisibility) == "function" then uiComp:SetVisibility(2) end
+                                        if type(uiComp.SetHiddenInGame) == "function" then uiComp:SetHiddenInGame(true) end
+                                        enemy.HK_LastFrameUIState = "HIDDEN"
                                     end
-                                    
-                                    local weaponName = "Tay Không"
-                                    if Valid(eWeapon) then
-                                        if type(eWeapon.GetWeaponName) == "function" then
-                                            weaponName = eWeapon:GetWeaponName()
-                                        end
-                                    end
-                                    
-                                    hud:AddDebugText(tostring(weaponName), enemy, 0.06, {X=0, Y=0, Z=-410}, {X=0, Y=0, Z=-410}, COLOR_CYAN, true, false, true, nil, dynamicScale * 1.0, true)
-                                    hud:AddDebugText(string.format("[%dm]", math.floor(distM)), enemy, 0.06, {X=0, Y=115, Z=20}, {X=0, Y=115, Z=20}, {R=100, G=149, B=237, A=255}, true, false, true, nil, dynamicScale * 1.5, true)
                                 end
                             end)
                         end
@@ -3235,6 +3221,20 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                             enemy.LastAuraHash = nil
                             enemy.LastAuraMeshes = nil
                         end
+                        -- Ẩn UI Khung Máu Gốc khi địch đã chết
+                        pcall(function()
+                            if enemy.Replay_SetVisiableOfFrameUI then 
+                                enemy:Replay_SetVisiableOfFrameUI(false) 
+                            end
+                            local uiComp = enemy.EnemyFrameUI or (type(enemy.GetEnemyFrameUI) == "function" and enemy:GetEnemyFrameUI())
+                            if Valid(uiComp) then
+                                if enemy.HK_LastFrameUIState ~= "HIDDEN" then
+                                    if type(uiComp.SetVisibility) == "function" then uiComp:SetVisibility(2) end
+                                    if type(uiComp.SetHiddenInGame) == "function" then uiComp:SetHiddenInGame(true) end
+                                    enemy.HK_LastFrameUIState = "HIDDEN"
+                                end
+                            end
+                        end)
                     end
                     ::continue::
                 end
