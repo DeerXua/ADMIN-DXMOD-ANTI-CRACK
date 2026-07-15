@@ -3003,8 +3003,54 @@ local function SafeRemoveMark(mark)
     end
 end
 
+local function HookSpectatorMethods()
+    if _G.HK_SpectatorHookedGlobal then return end
+    pcall(function()
+        for _, className in ipairs({"STExtraPlayerController", "PlayerController", "STExtraPlayerControllerBlueprint"}) do
+            local cls = import(className)
+            if cls then
+                -- Lưu các hàm gốc nếu chưa lưu
+                if not cls.HK_Orig_IsObserver then cls.HK_Orig_IsObserver = cls.IsObserver end
+                if not cls.HK_Orig_IsSpectator then cls.HK_Orig_IsSpectator = cls.IsSpectator end
+                if not cls.HK_Orig_IsFriendObserver then cls.HK_Orig_IsFriendObserver = cls.IsFriendObserver end
+                if not cls.HK_Orig_IsDemoPlaySpectator then cls.HK_Orig_IsDemoPlaySpectator = cls.IsDemoPlaySpectator end
+                if not cls.HK_Orig_IsDemoPlayGlobalObserver then cls.HK_Orig_IsDemoPlayGlobalObserver = cls.IsDemoPlayGlobalObserver end
+                if not cls.HK_Orig_IsFriendOrEnemySpectator then cls.HK_Orig_IsFriendOrEnemySpectator = cls.IsFriendOrEnemySpectator end
+                
+                -- Định nghĩa hàm hook động
+                cls.IsObserver = function(self)
+                    if _G.HK_GetVal("SPECTATOR_HP_BAR") == 1 then return true end
+                    return cls.HK_Orig_IsObserver and cls.HK_Orig_IsObserver(self) or false
+                end
+                cls.IsSpectator = function(self)
+                    if _G.HK_GetVal("SPECTATOR_HP_BAR") == 1 then return true end
+                    return cls.HK_Orig_IsSpectator and cls.HK_Orig_IsSpectator(self) or false
+                end
+                cls.IsFriendObserver = function(self)
+                    if _G.HK_GetVal("SPECTATOR_HP_BAR") == 1 then return true end
+                    return cls.HK_Orig_IsFriendObserver and cls.HK_Orig_IsFriendObserver(self) or false
+                end
+                cls.IsDemoPlaySpectator = function(self)
+                    if _G.HK_GetVal("SPECTATOR_HP_BAR") == 1 then return true end
+                    return cls.HK_Orig_IsDemoPlaySpectator and cls.HK_Orig_IsDemoPlaySpectator(self) or false
+                end
+                cls.IsDemoPlayGlobalObserver = function(self)
+                    if _G.HK_GetVal("SPECTATOR_HP_BAR") == 1 then return true end
+                    return cls.HK_Orig_IsDemoPlayGlobalObserver and cls.HK_Orig_IsDemoPlayGlobalObserver(self) or false
+                end
+                cls.IsFriendOrEnemySpectator = function(self)
+                    if _G.HK_GetVal("SPECTATOR_HP_BAR") == 1 then return true end
+                    return cls.HK_Orig_IsFriendOrEnemySpectator and cls.HK_Orig_IsFriendOrEnemySpectator(self) or false
+                end
+            end
+        end
+    end)
+    _G.HK_SpectatorHookedGlobal = true
+end
+
 local function InitializeNativeESP() 
     if _G.LexusState and _G.LexusState.NativeESPReady then return end
+    pcall(HookSpectatorMethods)
     pcall(function() 
         local GamePlayTools = require("GameLua.Mod.BaseMod.Common.GamePlayTools") 
         local currentMarkCfg = GamePlayTools.GetCurrentConfig("ScreenMarkConfig") 
@@ -3077,18 +3123,6 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
         end
         
         local pc = GameplayData.GetPlayerController()
-        pcall(function()
-            if pc and slua_isValid(pc) then
-                if not pc.HK_SpectatorHooked then
-                    pc.IsObserver = function() return true end
-                    pc.IsFriendObserver = function() return true end
-                    pc.IsDemoPlayGlobalObserver = function() return true end
-                    pc.IsFriendOrEnemySpectator = function() return true end
-                    pc.HK_SpectatorHooked = true
-                end
-            end
-        end)
-
         local isSpectating = false
         pcall(function()
             if pc and (pc.IsSpectator and pc:IsSpectator() or pc.IsDemoPlaySpectator and pc:IsDemoPlaySpectator() or (type(pc.IsInPetSpectator) == "function" and pc:IsInPetSpectator())) then
@@ -3297,17 +3331,10 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                                         local enemyTeamID = enemy.TeamID or (type(enemy.GetTeamID) == "function" and enemy:GetTeamID()) or 0
                                         enemy.HK_HpMark = SafeAddMark(1006, FVector(0,0,0), enemyTeamID, "", 4, enemy)
                                     end
-                                    if enemy.HK_DistMark == nil then
-                                        enemy.HK_DistMark = SafeAddMark(9999, FVector(0,0,0), 0, "", 4, enemy)
-                                    end
                                 else
                                     if enemy.HK_HpMark then
                                         SafeRemoveMark(enemy.HK_HpMark)
                                         enemy.HK_HpMark = nil
-                                    end
-                                    if enemy.HK_DistMark then
-                                        SafeRemoveMark(enemy.HK_DistMark)
-                                        enemy.HK_DistMark = nil
                                     end
                                 end
                             end)
@@ -3316,10 +3343,6 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                                 if enemy.HK_HpMark then
                                     SafeRemoveMark(enemy.HK_HpMark)
                                     enemy.HK_HpMark = nil
-                                end
-                                if enemy.HK_DistMark then
-                                    SafeRemoveMark(enemy.HK_DistMark)
-                                    enemy.HK_DistMark = nil
                                 end
                             end)
                         end
@@ -3405,10 +3428,6 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                             if enemy.HK_HpMark then
                                 SafeRemoveMark(enemy.HK_HpMark)
                                 enemy.HK_HpMark = nil
-                            end
-                            if enemy.HK_DistMark then
-                                SafeRemoveMark(enemy.HK_DistMark)
-                                enemy.HK_DistMark = nil
                             end
                         end)
                     end
