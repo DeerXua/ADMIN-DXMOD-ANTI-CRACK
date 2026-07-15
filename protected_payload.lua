@@ -6441,11 +6441,21 @@ InitializeAntiSpectator()
 -- ==================== GLOBAL PLAYER SYNC FOR WOW & TDM ====================
 local function SyncPlayersToGameplayData()
     pcall(function()
+        local function DX_Log(msg)
+            pcall(function()
+                local log_f = io.open("/sdcard/Android/data/com.vng.pubgmobile/files/loader_debug.txt", "a")
+                if log_f then
+                    log_f:write(os.date("%Y-%m-%d %H:%M:%S") .. " [DXMOD-SYNC-DEBUG] " .. tostring(msg) .. "\n")
+                    log_f:close()
+                end
+            end)
+        end
+
         local ui_util = require("client.common.ui_util")
         local gameInstance = ui_util and ui_util.GetGameInstance()
         local gp = import("GameplayStatics")
         local gd = package.loaded["GameLua.GameCore.Data.GameplayData"] or require("GameLua.GameCore.Data.GameplayData")
-        local actorClass = import("STExtraPlayerCharacter") or import("Character")
+        local actorClass = import("STExtraPlayerCharacter") or import("Character") or import("STExtraBaseCharacter") or import("Pawn")
         
         if gameInstance and gp and gd and actorClass then
             local outArray = slua.Array(UEnums.EPropertyClass.Object, import("Actor"))
@@ -6465,10 +6475,20 @@ local function SyncPlayersToGameplayData()
                         gd.AddCharacter(actor)
                     end)
                     
-                    -- 2. Nếu là nhân vật của mình và chưa được khởi chạy Mod
-                    if localPawn and actor == localPawn and not actor._DXInitialized then
+                    -- 2. Kiểm tra xem có phải là nhân vật local player hay không
+                    local isLocal = false
+                    if localPawn then
+                        if actor == localPawn then
+                            isLocal = true
+                        elseif type(actor.GetPathName) == "function" and type(localPawn.GetPathName) == "function" and actor:GetPathName() == localPawn:GetPathName() then
+                            isLocal = true
+                        end
+                    end
+
+                    -- 3. Nếu là nhân vật của mình và chưa được khởi chạy Mod
+                    if isLocal and not actor._DXInitialized then
                         actor._DXInitialized = true
-                        print("[DXMOD] Pushing mod functions to LocalPlayer Class: " .. tostring(actor:GetClass():GetName()))
+                        DX_Log("Pushing mod functions to LocalPlayer Class: " .. tostring(actor:GetClass():GetName()))
                         
                         -- Copy toàn bộ hàm mod từ BRPlayerCharacterBase sang nhân vật hiện tại
                         local className = tostring(actor:GetClass():GetName())
