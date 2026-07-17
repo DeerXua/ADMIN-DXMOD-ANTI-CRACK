@@ -10625,6 +10625,10 @@ function F.hookWardrobeData()
             if not o then return end
             wd[name] = function(self, insID, ...)
                 insID = tonumber(insID)
+                -- Khi tắt UnlockWardrobe: gọi hàm gốc, không can thiệp
+                if not _G.HK_Settings or (_G.HK_Settings.UnlockWardrobe or 0) == 0 then
+                    return o(self, insID, ...)
+                end
                 local r = o(self, insID, ...)
                 -- Nếu không tìm thấy (do hết hạn), fallback sang GetHallDepotItemDataByInsID
                 if not r and name == "GetValidHallDepotItemDataByInsID" and wd.GetHallDepotItemDataByInsID then
@@ -10645,7 +10649,11 @@ function F.hookWardrobeData()
             local o = wd[name]
             if not o then return end
             wd[name] = function(self, id, ...)
-                return true  -- Luôn có, luôn hợp lệ, luôn vĩnh viễn
+                -- Khi tắt UnlockWardrobe: gọi hàm gốc để item hết hạn/injected ẩn đi
+                if not _G.HK_Settings or (_G.HK_Settings.UnlockWardrobe or 0) == 0 then
+                    return o(self, id, ...)
+                end
+                return true  -- Bật: luôn có, luôn hợp lệ, luôn vĩnh viễn
             end
         end
         wrapBool("HasItem")
@@ -10661,21 +10669,32 @@ function F.hookPageFilter()
         wl._AddOutfitPageFilterHooked = true
         local o1 = wl.IsValidCurrentPageItem
         wl.IsValidCurrentPageItem = function(self, mainTab, subTab, v, t)
-            if v and F.isInjectedRes(v.resID) then
-                local itemTab = tonumber(v.subTabType) or F.wardrobeTab(v.resID)
-                if itemTab and itemTab == subTab then
-                    if mainTab == PAGE_AVATAR or mainTab == PAGE_VEHICLE then return true end
-                    if mainTab == PAGE_PARACHUTE and F.isHallThemeRes(v.resID) then return true end
+            -- Khi bật: cho phép hiển thị injected items
+            if (_G.HK_Settings and (_G.HK_Settings.UnlockWardrobe or 0) == 1) then
+                if v and F.isInjectedRes(v.resID) then
+                    local itemTab = tonumber(v.subTabType) or F.wardrobeTab(v.resID)
+                    if itemTab and itemTab == subTab then
+                        if mainTab == PAGE_AVATAR or mainTab == PAGE_VEHICLE then return true end
+                        if mainTab == PAGE_PARACHUTE and F.isHallThemeRes(v.resID) then return true end
+                    end
                 end
             end
             return o1(self, mainTab, subTab, v, t)
         end
         local o2 = wl.IsCanUse
         wl.IsCanUse = function(self, resId)
+            -- Khi tắt: gọi hàm gốc để hạn chế đúng theo game
+            if not _G.HK_Settings or (_G.HK_Settings.UnlockWardrobe or 0) == 0 then
+                return o2(self, resId)
+            end
             return true
         end
         local o3 = wl.IsCharacterUse
         wl.IsCharacterUse = function(self, resId)
+            -- Khi tắt: gọi hàm gốc để hạn chế đúng theo game
+            if not _G.HK_Settings or (_G.HK_Settings.UnlockWardrobe or 0) == 0 then
+                return o3(self, resId)
+            end
             return true
         end
         local o4 = wl.GetWardrobeInsIdByResId
@@ -13819,9 +13838,12 @@ function _G.InitModMenuTab()
                             _G.HK_Settings.ModSkin = val
                             _G.HK_Settings.UnlockWardrobe = val
                             if v then
-                                _G.DX_WardrobeInitialized = false  -- Force re-init
+                                -- Bật: reinit wardrobe để inject items vào kho đồ
+                                _G.DX_WardrobeInitialized = false
                                 pcall(_G.DX_InitUnlockWardrobe)
                             end
+                            -- Dù bật hay tắt đều refresh kho đồ ngay để UI cập nhật
+                            pcall(F.refreshWardrobe)
                             _G.EnvRequiresUpdate = true
                             return true
                         end })
