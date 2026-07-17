@@ -10622,14 +10622,13 @@ function F.hookWardrobeData()
             if not o then return end
             wd[name] = function(self, insID, ...)
                 insID = tonumber(insID)
-                local r
-                if F.isInjectedIns(insID) then
-                    local e = F.getEntity()
-                    if e then r = e:GetDataByInsID(insID) end
-                else
-                    r = o(self, insID, ...)
+                local r = o(self, insID, ...)
+                -- Nếu không tìm thấy (do hết hạn), fallback sang GetHallDepotItemDataByInsID
+                if not r and name == "GetValidHallDepotItemDataByInsID" and wd.GetHallDepotItemDataByInsID then
+                    r = wd:GetHallDepotItemDataByInsID(insID)
                 end
-                if r and (F.isInjectedIns(insID) or F.isInjectedRes(r.resID or r.res_id)) then
+                if r then
+                    -- Xóa hạn sử dụng cho TẤT CẢ vật phẩm, không chỉ injected
                     r.expire_ts = 0
                     r.expireTS = 0
                     r.valid_hours = 0
@@ -10643,8 +10642,7 @@ function F.hookWardrobeData()
             local o = wd[name]
             if not o then return end
             wd[name] = function(self, id, ...)
-                if F.isInjectedRes(tonumber(id)) or F.isInjectedIns(tonumber(id)) then return true end
-                return o(self, id, ...)
+                return true  -- Luôn có, luôn hợp lệ, luôn vĩnh viễn
             end
         end
         wrapBool("HasItem")
