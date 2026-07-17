@@ -1,4 +1,4 @@
-﻿local OriginalClass = ...
+local OriginalClass = ...
 
 local BRPlayerCharacterBase = OriginalClass or {
 
@@ -5043,6 +5043,14 @@ _G.DX_RefreshSkinMaps = function()
                 else
                     if cch.outfitRes and cch.outfitRes > 0 then
                         _G.OutfitMap.Suit = cch.outfitRes
+                    end
+                end
+                -- Sync weapons (guns)
+                if cch.weapons then
+                    for wid, w in pairs(cch.weapons) do
+                        if w.resID and w.resID > 0 then
+                            _G.WeaponSkinMap[wid] = w.resID
+                        end
                     end
                 end
                 -- Sync vehicles (cars)
