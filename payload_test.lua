@@ -4802,6578 +4802,8676 @@ _G.VehicleSkins = {
 
 }
 
-_G.CustSlotType = { ClothesEquipemtSlot=5, BackpackEquipemtSlot=8, HelmetEquipemtSlot=9, ParachuteEquipemtSlot=11, GlideEquipemtSlot=15 }
-
-local function DX_DownloadGameItem(id)
-
-    pcall(function()
-
-        local pm = require('client.slua.logic.download.puffer.puffer_manager')
-
-        local pc = require('client.slua.logic.download.puffer_const')
-
-        if pm and pc and pm.GetState(pc.ENUM_DownloadType.ODPTD, {id}) ~= pc.ENUM_DownloadState.Done then
-
-            pm.Download(pc.ENUM_DownloadType.ODPTD, {id})
-
-        end
-
-    end)
-
-end
-
-_G.DX_get_skin_id = function(weaponID)
-
-    if not weaponID then return nil end
-
-    local targetSkinId = _G.WeaponSkinMap and _G.WeaponSkinMap[weaponID]
-
-    if targetSkinId and targetSkinId > 0 then
-
-        if not _G.skinIdCache2[targetSkinId] then
-
-            pcall(DX_DownloadGameItem, targetSkinId)
-
-            _G.skinIdCache2[targetSkinId] = true
-
-        end
-
-        return targetSkinId
-
-    end
-
-    return weaponID
-
-end
-
-_G.DX_EquipCharacterAvatar = function(Character)
-    pcall(function()
-        if not Character or not slua.isValid(Character) or not Character.AvatarComponent2 then return end
-        local BackpackUtils = import("BackpackUtils")
-        local SlotSyncData = Character.AvatarComponent2.NetAvatarData and Character.AvatarComponent2.NetAvatarData.SlotSyncData
-        if not SlotSyncData or not slua.isValid(SlotSyncData) or not BackpackUtils then return end
-
-        local function EquipAvatar(ApplyDataIdx, mappedSkin, ApplyEquipSlot, isLevelDependent, levelFunc)
-            if not mappedSkin or mappedSkin == 0 then return end
-            local slotData = SlotSyncData:Get(ApplyDataIdx)
-            if slotData and slotData.SlotID == ApplyEquipSlot then
-                local applyItemId = mappedSkin
-                if isLevelDependent and type(mappedSkin) == "table" then
-                    local level = levelFunc(slotData.AdditionalItemID) or 1
-                    level = math.max(1, math.min(3, level))
-                    applyItemId = mappedSkin[level] or mappedSkin[1]
-                end
-                if not applyItemId or applyItemId == 0 or slotData.ItemId == applyItemId then return end
-                if not _G.skinIdCache[applyItemId] then
-                    pcall(DX_DownloadGameItem, applyItemId)
-                    _G.skinIdCache[applyItemId] = true
-                end
-                slotData.ItemId = applyItemId
-                SlotSyncData:Set(ApplyDataIdx, slotData)
-                Character.AvatarComponent2:OnRep_BodySlotStateChanged()
-            end
-        end
-
-        local requiredSlots = {
-            [1] = _G.OutfitMap.Hat or 0,
-            [2] = _G.OutfitMap.Glasses or 0,
-            [3] = _G.OutfitMap.Top or 0,
-            [4] = _G.OutfitMap.Pants or 0,
-            [5] = _G.OutfitMap.Suit or 0,
-            [6] = _G.OutfitMap.Shoes or 0,
-            [7] = _G.OutfitMap.Gloves or 0,
-            [8] = _G.OutfitMap.Bag or 0,
-            [9] = _G.OutfitMap.Helmet or 0,
-            [10] = _G.OutfitMap.Mask or 0,
-            [11] = _G.OutfitMap.Parachute or 0
-        }
-
-        local existingSlots = {}
-        for i = 0, SlotSyncData:Num() - 1 do
-            local slotData = SlotSyncData:Get(i)
-            if slotData then
-                existingSlots[slotData.SlotID] = true
-            end
-        end
-
-        for slotID, targetID in pairs(requiredSlots) do
-            if targetID and targetID > 0 then
-                if not existingSlots[slotID] then
-                    SlotSyncData:Add({ SlotID = slotID, ItemId = 0 })
-                end
-            end
-        end
-
-        for i = 0, SlotSyncData:Num() - 1 do
-            EquipAvatar(i, _G.OutfitMap.Hat or 0, 1, false)
-            EquipAvatar(i, _G.OutfitMap.Glasses or 0, 2, false)
-            EquipAvatar(i, _G.OutfitMap.Top or 0, 3, false)
-            EquipAvatar(i, _G.OutfitMap.Pants or 0, 4, false)
-            EquipAvatar(i, _G.OutfitMap.Suit or 0, 5, false)
-            EquipAvatar(i, _G.OutfitMap.Shoes or 0, 6, false)
-            EquipAvatar(i, _G.OutfitMap.Gloves or 0, 7, false)
-            EquipAvatar(i, _G.OutfitMap.Bag,    8, true, BackpackUtils.GetEquipmentBagLevel)
-            EquipAvatar(i, _G.OutfitMap.Helmet, 9,  true, BackpackUtils.GetEquipmentHelmetLevel)
-            EquipAvatar(i, _G.OutfitMap.Mask or 0, 10, false)
-            EquipAvatar(i, _G.OutfitMap.Parachute or 0, 11, false)
-        end
-    end)
-end
-
-_G.DX_ApplyVehicleSkins = function(PlayerCharacter)
-    pcall(function()
-        if not slua.isValid(PlayerCharacter) then return end
-        local Vehicle = PlayerCharacter:GetCurrentVehicle()
-        if not slua.isValid(Vehicle) then
-            _G.DX_LastVehicle = nil
-            return
-        end
-
-        if _G.DX_LastVehicle == Vehicle and _G.DX_CurVehicleSkinID ~= nil then
-            return
-        end
-
-        local VehicleAvatar = Vehicle.VehicleAvatar or Vehicle.VehicleAvatarComponent_BP
-        if not slua.isValid(VehicleAvatar) then
-            pcall(function() VehicleAvatar = Vehicle:GetAvatarComponent() end)
-        end
-        if not slua.isValid(VehicleAvatar) then return end
-
-        local defId = tostring(VehicleAvatar:GetDefaultAvatarID() or Vehicle.VehicleID or "")
-        local currentId = tostring(Vehicle:GetAvatarId() or "")
-        local applySkinId = 0
-
-        for baseMapId, targetSkin in pairs(_G.VehicleSkinMap) do
-            if defId:find(tostring(baseMapId)) or currentId:find(tostring(baseMapId)) then
-                applySkinId = targetSkin
-                break
-            end
-        end
-
-        if applySkinId and applySkinId > 0 then
-            _G.skinIdCache = _G.skinIdCache or {}
-            if not _G.skinIdCache[applySkinId] then
-                pcall(DX_DownloadGameItem, applySkinId)
-                _G.skinIdCache[applySkinId] = true
-            end
-
-            VehicleAvatar.curSwitchEffectId = 7303001
-            if VehicleAvatar.ChangeItemAvatar then VehicleAvatar:ChangeItemAvatar(applySkinId, true) end
-
-            _G.DX_CurVehicleSkinID = applySkinId
-            _G.DX_LastVehicle = Vehicle
-        end
-    end)
-end
-
-_G.DX_RefreshSkinMaps = function()
-
-    pcall(function()
-
-        local s = _G.HK_Settings
-
-        if not s then return end
-
-        -- Avatar
-
-        if _G.OutfitSkins then
-
-            if _G.OutfitSkins.Suit[s.SkinSuit] then _G.OutfitMap.Suit = _G.OutfitSkins.Suit[s.SkinSuit] end
-
-            if _G.OutfitSkins.Bag[s.SkinBag] then _G.OutfitMap.Bag = _G.OutfitSkins.Bag[s.SkinBag] end
-
-            if _G.OutfitSkins.Helmet[s.SkinHelmet] then _G.OutfitMap.Helmet = _G.OutfitSkins.Helmet[s.SkinHelmet] end
-
-        end
-
-        -- Weapon
-
-        if _G.skinIdMappings then
-
-            if _G.skinIdMappings[101004] and _G.skinIdMappings[101004][s.SkinM416] then _G.WeaponSkinMap[101004] = _G.skinIdMappings[101004][s.SkinM416] end
-
-            if _G.skinIdMappings[101001] and _G.skinIdMappings[101001][s.SkinAKM]  then _G.WeaponSkinMap[101001] = _G.skinIdMappings[101001][s.SkinAKM]  end
-
-            if _G.skinIdMappings[101003] and _G.skinIdMappings[101003][s.SkinSCAR] then _G.WeaponSkinMap[101003] = _G.skinIdMappings[101003][s.SkinSCAR] end
-
-            if _G.skinIdMappings[101008] and _G.skinIdMappings[101008][s.SkinM762] then _G.WeaponSkinMap[101008] = _G.skinIdMappings[101008][s.SkinM762] end
-
-            if _G.skinIdMappings[101006] and _G.skinIdMappings[101006][s.SkinAUG]  then _G.WeaponSkinMap[101006] = _G.skinIdMappings[101006][s.SkinAUG]  end
-
-            if _G.skinIdMappings[102002] and _G.skinIdMappings[102002][s.SkinUMP]  then _G.WeaponSkinMap[102002] = _G.skinIdMappings[102002][s.SkinUMP]  end
-
-            if _G.skinIdMappings[102001] and _G.skinIdMappings[102001][s.SkinUZI]  then _G.WeaponSkinMap[102001] = _G.skinIdMappings[102001][s.SkinUZI]  end
-
-            if _G.skinIdMappings[101005] and _G.skinIdMappings[101005][s.SkinGroza] then _G.WeaponSkinMap[101005] = _G.skinIdMappings[101005][s.SkinGroza] end
-
-        end
-
-        -- Vehicle
-
-        if _G.VehicleSkins then
-
-            if _G.VehicleSkins[1903001] and _G.VehicleSkins[1903001][s.SkinDacia]  then _G.VehicleSkinMap[1903001] = _G.VehicleSkins[1903001][s.SkinDacia]  end
-
-            if _G.VehicleSkins[1908001] and _G.VehicleSkins[1908001][s.SkinUAZ]    then _G.VehicleSkinMap[1908001] = _G.VehicleSkins[1908001][s.SkinUAZ]    end
-
-            if _G.VehicleSkins[1961001] and _G.VehicleSkins[1961001][s.SkinCoupe]  then _G.VehicleSkinMap[1961001] = _G.VehicleSkins[1961001][s.SkinCoupe]  end
-
-            if _G.VehicleSkins[1907001] and _G.VehicleSkins[1907001][s.SkinBuggy]  then _G.VehicleSkinMap[1907001] = _G.VehicleSkins[1907001][s.SkinBuggy]  end
-
-            if _G.VehicleSkins[1915001] and _G.VehicleSkins[1915001][s.SkinMirado] then _G.VehicleSkinMap[1915001] = _G.VehicleSkins[1915001][s.SkinMirado] end
-
-        end
-
-        -- NHÓM 8 LOBBY WARDROBE UNLOCKER SYNCRONIZATION:
-        if _G.HK_GetVal("UnlockWardrobe") == 1 then
-            local cch = _G.AddOutfitEquippedCache
-            if cch then
-                if cch.slots then
-                    _G.OutfitMap.Hat = cch.slots[1] and cch.slots[1].resID or 0
-                    _G.OutfitMap.Glasses = cch.slots[2] and cch.slots[2].resID or 0
-                    _G.OutfitMap.Top = cch.slots[3] and cch.slots[3].resID or 0
-                    _G.OutfitMap.Pants = cch.slots[4] and cch.slots[4].resID or 0
-                    _G.OutfitMap.Suit = cch.slots[5] and cch.slots[5].resID or cch.outfitRes or 0
-                    _G.OutfitMap.Shoes = cch.slots[6] and cch.slots[6].resID or 0
-                    _G.OutfitMap.Gloves = cch.slots[7] and cch.slots[7].resID or 0
-                    _G.OutfitMap.Bag = cch.slots[8] and cch.slots[8].resID or _G.OutfitMap.Bag or 0
-                    _G.OutfitMap.Helmet = cch.slots[9] and cch.slots[9].resID or _G.OutfitMap.Helmet or 0
-                    _G.OutfitMap.Mask = cch.slots[10] and cch.slots[10].resID or 0
-                    _G.OutfitMap.Parachute = cch.slots[11] and cch.slots[11].resID or _G.OutfitMap.Parachute or 0
-                else
-                    if cch.outfitRes and cch.outfitRes > 0 then
-                        _G.OutfitMap.Suit = cch.outfitRes
-                    end
-                end
-                -- Sync weapons (guns)
-                if cch.weapons then
-                    for wid, w in pairs(cch.weapons) do
-                        if w.resID and w.resID > 0 then
-                            _G.WeaponSkinMap[wid] = w.resID
-                        end
-                    end
-                end
-                -- Sync vehicles (cars)
-                if cch.vehicles then
-                    for vid, v in pairs(cch.vehicles) do
-                        if v.resID and v.resID > 0 then
-                            _G.VehicleSkinMap[vid] = v.resID
-                        end
-                    end
-                end
-            end
-        end
-
-    end)
-
-end
-
-_G.DX_InitSkinModSystem = function()
-
-    pcall(function()
-
-        local LobbyAvatar = package.loaded["client.logic.avatar.LobbyAvatar"] or require("client.logic.avatar.LobbyAvatar")
-
-        if LobbyAvatar and not _G.DX_LobbyBypassHacked then
-
-            local originalPutonEquipment = LobbyAvatar.PutonEquipment
-
-            LobbyAvatar.PutonEquipment = function(self, itemID, tAvatarCustom, tExtraData)
-
-                local attachIndex = _G.BaseAttachToIndex and _G.BaseAttachToIndex[itemID]
-
-                if attachIndex then
-
-                    local holdingWeaponSkinID = self.GetCurHoldingWeaponSkinID and self:GetCurHoldingWeaponSkinID()
-
-                    if holdingWeaponSkinID and holdingWeaponSkinID >= 10000000 and _G.VIP_Attachments and _G.VIP_Attachments[holdingWeaponSkinID] then
-
-                        local vipAttachID = _G.VIP_Attachments[holdingWeaponSkinID][attachIndex]
-
-                        if vipAttachID and vipAttachID > 0 then
-
-                            if self.HandleDownload then self:HandleDownload(vipAttachID, nil, nil, false) end
-
-                            itemID = vipAttachID
-
-                        end
-
-                    end
-
-                end
-
-                if originalPutonEquipment then return originalPutonEquipment(self, itemID, tAvatarCustom, tExtraData) end
-
-            end
-
-            _G.DX_LobbyBypassHacked = true
-
-        end
-
-    end)
-
-end
-
--- Khởi tạo ban đầu maps skin
-
-pcall(_G.DX_RefreshSkinMaps)
-
-pcall(_G.DX_InitSkinModSystem)
-
--- Loop apply skin mỗi 1.5 giây
-
-do
-
-    local function DX_SkinLoop()
-
-        if _G.HK_GetVal("ModSkin") == 1 or _G.HK_GetVal("UnlockWardrobe") == 1 then
-
-            pcall(_G.DX_RefreshSkinMaps)
-
-            pcall(function()
-
-                local gd = require("GameLua.GameCore.Data.GameplayData")
-
-                local lp = gd and gd.GetPlayerCharacter and gd.GetPlayerCharacter()
-
-                if slua.isValid(lp) then
-
-                    pcall(_G.DX_EquipCharacterAvatar, lp)
-
-                    pcall(_G.DX_ApplyWeaponSkins, lp)
-
-                    pcall(_G.DX_ApplyVehicleSkins, lp)
-
-                end
-
-            end)
-
-        end
-
-        local ok, ticker = pcall(require, "common.time_ticker")
-
-        if ok and ticker and ticker.AddTimerOnce then
-
-            ticker.AddTimerOnce(1.5, DX_SkinLoop)
-
-        end
-
-    end
-
-    pcall(function()
-
-        local ok, ticker = pcall(require, "common.time_ticker")
-
-        if ok and ticker and ticker.AddTimerOnce then
-
-            ticker.AddTimerOnce(2.0, DX_SkinLoop)
-
-        end
-
-    end)
-
-end
-
--- ===================== KẾT THÚC NHÓM 7 =====================
-
-_G.LobbyCosmeticEnabled = false
-
-do
-
-    local function UpdateCosmeticState()
-
-        _G.LobbyCosmeticEnabled = (_G.HK_GetVal("UnlockWardrobe") == 1)
-
-        local ok, ticker = pcall(require, "common.time_ticker")
-
-        if ok and ticker and ticker.AddTimerOnce then
-
-            ticker.AddTimerOnce(1.0, UpdateCosmeticState)
-
-        end
-
-    end
-
-    pcall(function()
-
-        local ok, ticker = pcall(require, "common.time_ticker")
-
-        if ok and ticker and ticker.AddTimerOnce then
-
-            ticker.AddTimerOnce(2.0, UpdateCosmeticState)
-
-        end
-
-    end)
-
-end
-
-local function initFullskin()
-
-    _G.HK_GetVal = _G.HK_GetVal or function(id) return _G.HK_Settings and _G.HK_Settings[id] or 0 end
-
-local function isInRealMatch()
-
-    local ok, r = pcall(function()
-
-        return GameStatus and GameStatus.IsInFightingStatus and GameStatus.IsInFightingStatus()
-
-    end)
-
-    return ok and r == true
-
-end
-
-local function getLocalChar()
-
-    local ok, GD = pcall(require, "GameLua.GameCore.Data.GameplayData")
-
-    if not ok or not GD then return nil end
-
-    local char = GD.GetPlayerCharacter()
-
-    if char and slua.isValid(char) then return char end
-
-    return nil
-
-end
-
-_G.killCountInfo = _G.killCountInfo or {}
-
-_G.lastFileContent = ""
-
-_G.isFileWatcherActive = false
-
-_G.LastKillTime = {}
-
-_G.lastDisplayedKills = {}
-
-local VehicleAvatarComponent = require("GameLua.GameCore.Module.Vehicle.Component.VehicleAvatarComponent")
-
-VehicleAvatarComponent.__inner_impl.CheckCanPlaySkinSwitchEffect = function(self, curVehicleId, lastVehicleId)
-
- return true
-
-end
-
-VehicleAvatarComponent.__inner_impl.ShowVehicleSwitchEffect = function(self)
-
- if not self.curSwitchEffectId or self.curSwitchEffectId <= 0 then
-
- self.curSwitchEffectId = 7303001
-
- end
-
- local vehicleActor = self:GetOwner()
-
- if not slua.isValid(vehicleActor) then return false end
-
- if self.uSwitchEffectActor then
-
- self:StopSkinSwitchEffect()
-
- self.uSwitchEffectActor:K2_DestroyActor()
-
- self.uSwitchEffectActor = nil
-
- end
-
- if not self.lastEquipedAvatarId or self.lastEquipedAvatarId <= 0 then
-
- self.lastEquipedAvatarId = vehicleActor.ClientUsedAvatarID or vehicleActor:GetDefaultAvatarID() or 0
-
- end
-
- local currentAvatarID = vehicleActor.ClientUsedAvatarID or self.lastEquipedAvatarId or 0
-
- local bIsLobbyActor = self:IsLobbyActor()
-
- local world = slua_GameFrontendHUD:GetWorld()
-
- local VehiclePlateLicenseUtil = require("GameLua.Activity.Commercialize.GamePlay.Vehicle.VehiclePlateLicenseUtil")
-
- local SkinSwitchEffectActorPath = VehiclePlateLicenseUtil.GetSwitchEffectActorPath()
-
- local BP_DissolveVehicleClass = import(SkinSwitchEffectActorPath)
-
- self.uSwitchEffectActor = world:SpawnActor(BP_DissolveVehicleClass, nil, nil, nil)
-
- if not slua.isValid(self.uSwitchEffectActor) then
-
- self.uSwitchEffectActor = nil
-
- return false
-
- end
-
- self.uSwitchEffectActor:K2_AttachToActor(vehicleActor, "None", 1, 1, 1, false)
-
- self.uSwitchEffectActor:K2_SetActorRelativeLocation(FVector(0, 0, 0), false, nil, false)
-
- self.uSwitchEffectActor:K2_SetActorRelativeRotation(FRotator(0, 0, 0), false, nil, false)
-
- self:ChangeFakeSwitchVehicleAvatar(self.uSwitchEffectActor.Mesh, self.lastEquipedAvatarId)
-
- self.uSwitchEffectActor:SetAnimInsAndAnimState(self.uOldVehicleMeshAnimClass, vehicleActor)
-
- self.uSwitchEffectActor:StartVehicleSwitchEffect(vehicleActor, self.curSwitchEffectId, self.lastEquipedAvatarId, currentAvatarID, bIsLobbyActor)
-
- self.uOldVehicleMeshAnimClass = nil
-
- return true
-
-end
-
-VehicleAvatarComponent.__inner_impl.ResetAnimationState = function(self)
-
- if self.uSwitchEffectActor then
-
- self:StopSkinSwitchEffect()
-
- self.uSwitchEffectActor:K2_DestroyActor()
-
- self.uSwitchEffectActor = nil
-
- end
-
- self.lastEquipedAvatarId = 0
-
- self.curSwitchEffectId = 7303001
-
-end
-
-local O_ReceiveBeginPlay = VehicleAvatarComponent.__inner_impl.ReceiveBeginPlay
-
-VehicleAvatarComponent.__inner_impl.ReceiveBeginPlay = function(self)
-
- O_ReceiveBeginPlay(self)
-
- self:ResetAnimationState()
-
-end
-
--- ============================================================================
-
--- COSMETIC ITEM DATABASE - All paywalled outfits & weapon skins
-
--- ============================================================================
-
--- Match configuration: Defines which cosmetics to apply in-game
-
-local MATCH_CONFIG = {
-
-    outfitRes = 0,          -- Target outfit resource ID (0 = use cached)
-
-    weaponSkins = {},       -- WeaponID -> SkinResID mapping for in-match
-
+-- ==============================================================================
+-- ================= BẮT ĐẦU CORE ADD-OUTFIT V7.5 (HỆ THỐNG SKIN) =================
+-- ==============================================================================
+-- Bảng map ID phụ kiện gốc ra index mảng
+_G.BaseAttachToIndex = {
+    [201010]=1, [201005]=1, [201004]=1, [201009]=2, [201003]=2, [201002]=2, 
+    [201011]=3, [201007]=3, [201006]=3, [204012]=4, [204005]=4, [204008]=4, 
+    [204011]=5, [204004]=5, [204007]=5, [204013]=6, [204006]=6, [204009]=6, 
+    [203001]=7, [203002]=8, [203003]=9, [203014]=10, [203004]=11, [203015]=12, [203005]=13, 
+    [202002]=14, [202001]=15, [202004]=16, [202005]=17, [202007]=18, [202006]=19, 
+    [205002]=20, [205003]=20, [205001]=20, [203018]=21, [204014]=22 
 }
 
--- Master list of all injected cosmetic item resource IDs
+-- DÁN ID PHỤ KIỆN CỦA BẠN VÀO BÊN TRONG NGOẶC NHỌN DƯỚI ĐÂY ↓↓↓
+_G.VIP_Attachments = {
+    [1101004236]={1010042307,1010042306,1010042308,1010042304,1010042300,1010042305,1010042299,1010042298,1010042297,1010042296,1010042295,1010042294,0,1010042314,1010042309,1010042316,1010042317,1010042318,1010042310,1010042315,1010042319,0},
+    [1101001116]={1010011106,1010011107,1010011108,0,1010011109,1010011112,1010011105,1010011104,1010011103,0,1010011102,0,0,0,0,0,0,0,0,0,0,0},
+    [1101001128]={1010011232,1010011233,1010011234,1010011228,1010011227,1010011229,1010011226,1010011225,1010011224,1010011223,1010011222,0,0,0,0,0,0,0,0,0,0,0},
+    [1101001154]={1010011487,1010011488,1010011489,1010011493,1010011490,1010011494,1010011486,1010011485,1010011484,1010011483,1010011482,1010011497,0,0,0,0,0,0,0,0,1010011498,0},
+    [1101001174]={1010011667,1010011668,1010011669,1010011673,1010011670,1010011674,1010011666,1010011665,1010011664,1010011663,1010011662,0,0,0,0,0,0,0,0,0,0,0},
+    [1101001213]={1010012067,1010012068,1010012069,1010012072,1010012070,1010012073,1010012066,1010012065,1010012064,1010012063,1010012062,0,0,0,0,0,0,0,0,0,1010012074,0},
+    [1101001231]={1010012267,1010012268,1010012269,1010012273,1010012272,1010012274,1010012266,1010012265,1010012264,1010012263,1010012262,1010012075,0,0,0,0,0,0,0,0,1010012275,0},
+    [1101001242]={1010012357,1010012358,1010012359,1010012363,1010012362,1010012364,1010012356,1010012355,1010012354,1010012353,1010012352,1010012276,0,0,0,0,0,0,0,0,1010012365,0},
+    [1101001249]={1010012437,1010012438,1010012439,1010012443,1010012442,1010012444,1010012436,1010012435,1010012434,1010012433,1010012432,1010012366,0,0,0,0,0,0,0,0,1010012445,0},
+    [1101001256]={1010012588,1010012589,1010012590,1010012593,1010012592,1010012594,1010012587,1010012586,1010012585,1010012584,1010012583,1010012582,0,0,0,0,0,0,0,0,1010012595,0},
+    [1101001265]={1010012698,1010012699,1010012700,1010012703,1010012702,1010012704,1010012697,1010012696,1010012695,1010012694,1010012693,1010012692,0,0,0,0,0,0,0,0,1010012705,0},
+    [1101001276]={1010012698,1010012699,1010012700,1010012703,1010012702,1010012704,1010012697,1010012696,1010012695,1010012694,1010012693,1010012692,0,0,0,0,0,0,0,0,1010012705,0},
+    [1101002029]={1010020249,1010020250,1010020255,1010020247,1010020246,1010020248,1010020240,1010020239,1010020238,1010020237,1010020236,1010020235,0,0,0,0,0,0,0,1010020257,1010020256,1010020258},
+    [1101002056]={1010020519,0,0,1010020517,1010020516,1010020518,1010020500,1010020509,1010020508,1010020507,1010020506,1010020505,0,0,0,0,0,0,0,0,0,0},
+    [1101002081]={1010020768,1010020769,1010020770,1010020766,1010020760,1010020767,1010020759,1010020758,1010020757,1010020756,1010020755,1010020776,0,0,0,0,0,0,0,1010020775,1010020777,1010020778},
+    [1101003070]={1010030654,1010030653,1010030655,1010030649,1010030648,1010030650,1010030647,1010030646,1010030645,1010030644,1010030643,1010030642,0,1010030658,1010030656,1010030660,1010030662,1010030659,1010030657,0,1010030663,0},
+    [1101003080]={1010030754,1010030753,1010030755,1010030749,1010030748,1010030750,1010030747,1010030746,1010030745,1010030744,1010030743,1010030742,0,1010030758,1010030756,1010030760,1010030762,1010030759,1010030757,0,1010030763,0},
+    [1101003099]={1010030943,1010030944,1010030945,1010030939,1010030938,1010030942,1010030937,1010030936,1010030935,1010030934,1010030933,1010030932,0,1010030947,1010030946,1010030948,1010030949,1010030953,1010030952,0,1010030955,0},
+    [1101003119]={1010031139,1010031140,1010031142,1010031138,1010031137,1010031146,1010031136,1010031135,1010031134,1010031133,1010031132,0,0,1010031144,1010031143,0,0,0,1010031145,0,0,0},
+    [1101003146]={1010031229,1010031230,1010031237,1010031228,1010031227,1010031242,1010031226,1010031225,1010031224,1010031223,1010031222,0,0,1010031239,1010031238,0,0,0,1010031240,0,0,0},
+    [1101003167]={1010031609,1010031610,1010031613,1010031608,1010031607,1010031617,1010031606,1010031605,1010031604,1010031603,1010031602,1010031618,0,1010031615,1010031614,1010031620,1010031622,1010031619,1010031616,0,1010031623,0},
+    [1101003181]={1010031765,1010031764,1010031766,1010031759,1010031758,1010031763,1010031757,1010031756,1010031755,1010031754,1010031753,1010031752,0,1010031769,1010031767,1010031773,1010031774,1010031772,1010031768,0,1010031775,0},
+    [1101003195]={1010031912,1010031911,1010031913,1010031908,1010031907,1010031909,1010031906,1010031905,1010031904,1010031903,1010031902,1010031901,0,1010031916,1010031914,1010031918,1010031919,1010031917,1010031915,0,1010031921,0},
+    [1101003208]={1010032034,1010032033,1010032045,1010032029,1010032028,1010032032,1010032027,1010032026,1010032025,1010032024,1010032023,1010032022,0,1010032038,1010032036,1010032042,1010032043,1010032039,1010032037,0,1010032044,0},
+    [1101004046]={1010040474,1010040475,1010040476,1010040472,1010040471,1010040473,1010040470,1010040469,1010040468,1010040467,1010040466,1010040481,0,1010040479,1010040477,1010040482,1010040483,1010040484,1010040478,1010040480,1010040485,0},
+    [1101004062]={1010040578,1010040577,1010040579,1010040575,1010040570,1010040576,1010040569,1010040568,1010040567,1010040566,1010040565,1010040564,0,1010040585,1010040580,1010040587,1010040588,1010040589,1010040584,1010040586,1010040590,1010040594},
+    [1101004098]={1010040924,1010040926,1010040925,0,1010040937,1010040938,1010040935,1010040934,1010040929,1010040928,1010040927,0,0,1010040939,1010040945,0,0,0,1010040944,1010040936,0,0},
+    [1101004138]={1010041136,1010041137,1010041138,1010041134,1010041129,1010041135,1010041128,1010041127,1010041126,1010041125,1010041124,0,0,1010041145,1010041139,0,0,0,1010041144,1010041146,0,0},
+    [1101004163]={1010041570,1010041574,1010041575,1010041568,1010041567,1010041569,1010041566,1010041565,1010041564,1010041560,1010041554,0,0,1010041578,1010041576,0,0,0,1010041577,1010041579,0,0},
+    [1101004201]={1010041956,1010041957,1010041958,1010041950,1010041949,1010041955,1010041948,1010041947,1010041946,1010041945,1010041944,1010041967,0,1010041965,1010041959,0,0,0,1010041960,1010041966,0,0},
+    [1101004209]={1010042038,1010042037,1010042039,1010042035,1010042034,1010042036,1010042029,1010042028,1010042027,1010042026,1010042025,1010042024,0,1010042046,1010042044,1010042048,1010042049,1010042054,1010042045,1010042047,1010042055,0},
+    [1101004218]={1010042128,1010042127,1010042129,1010042125,1010042124,1010042126,1010042119,1010042118,1010042117,1010042116,1010042115,1010042114,0,1010042136,1010042134,1010042138,1010042139,1010042144,1010042135,1010042137,1010042145,0},
+    [1101004226]={1010042238,1010042237,1010042239,1010042235,1010042234,1010042236,1010042233,1010042232,1010042231,1010042219,1010042218,1010042217,0,1010042243,1010042241,1010042245,1010042246,1010042247,1010042242,1010042244,1010042248,0},
+    [1101004246]={1010042406,1010042407,1010042408,1010042404,1010042400,1010042405,1010042399,1010042398,1010042397,1010042396,1010042395,1010042394,0,1010042414,1010042409,1010042416,1010042417,1010042418,1010042410,1010042415,1010042419,1010042420},
+    [1101005038]={0,0,1010050327,1010050329,1010050328,1010050330,1010050326,1010050325,1010050324,1010050323,1010050322,1010050334,0,0,0,0,0,0,0,0,0,0},
+    [1101005052]={0,0,1010050467,1010050469,1010050468,1010050470,1010050466,1010050465,1010050464,1010050463,1010050462,1010050473,0,0,0,0,0,0,0,0,0,0},
+    [1101005098]={0,0,1010050928,1010050930,1010050929,1010050932,1010050927,1010050926,1010050925,1010050924,1010050923,1010050922,0,0,0,0,0,0,0,0,0,0},
+    [1101006062]={1010060573,1010060572,1010060574,1010060564,1010060563,1010060571,1010060562,1010060561,1010060554,1010060553,1010060552,1010060551,0,1010060583,1010060581,1010060591,1010060592,1010060584,1010060582,0,1010060593,0},
+    [1101006075]={1010060702,1010060701,1010060703,1010060698,1010060697,1010060699,1010060696,1010060695,1010060694,1010060693,1010060692,1010060691,0,1010060706,1010060704,1010060708,1010060709,1010060707,1010060705,0,1010060711,0},
+    [1101006085]={1010060796,1010060795,1010060797,1010060793,1010060789,1010060794,1010060788,1010060787,1010060786,1010060785,1010060784,1010060783,0,1010060800,1010060798,1010060804,1010060805,1010060803,1010060799,0,1010060806,0},
+    [1101007046]={1010070410,1010070413,1010070414,1010070408,1010070407,1010070409,1010070406,1010070405,1010070404,1010070403,1010070402,1010070418,0,1010070417,1010070415,1010070420,1010070422,1010070419,1010070416,0,1010070423,0},
+    [1101007062]={1010070579,1010070578,1010070581,1010070576,1010070575,1010070577,1010070574,1010070573,1010070572,1010070571,1010070569,1010070568,0,1010070584,1010070582,1010070585,1010070586,1010070587,1010070583,0,1010070588,0},
+    [1101007071]={1010070663,1010070662,1010070664,1010070659,1010070658,1010070660,1010070657,1010070656,1010070655,1010070654,1010070653,1010070652,0,1010070667,1010070665,1010070668,1010070669,1010070670,1010070666,0,1010070672,0},
+    [1101008051]={1010080463,1010080464,1010080465,1010080459,1010080458,1010080462,1010080457,1010080456,1010080455,1010080454,1010080453,1010080452,0,1010080467,1010080466,1010080468,1010080469,1010080473,1010080472,0,1010080475,0},
+    [1101008061]={1010080563,1010080564,1010080565,1010080559,1010080558,1010080562,1010080557,1010080556,1010080555,1010080554,1010080553,0,0,1010080567,1010080566,0,0,0,1010080572,0,0,0},
+    [1101008070]={1010080609,1010080612,1010080613,1010080608,1010080607,1010080617,1010080606,1010080605,1010080604,1010080603,1010080602,0,0,1010080615,1010080614,0,0,0,1010080616,0,0,0},
+    [1101008081]={1010080740,1010080743,1010080745,1010080738,1010080737,1010080739,1010080736,1010080735,1010080734,1010080733,1010080732,1010080748,0,1010080747,1010080746,1010080750,1010080752,1010080749,1010080744,0,1010080753,0},
+    [1101008104]={1010080980,1010080982,1010080984,1010080978,1010080977,1010080979,1010080976,1010080975,1010080974,1010080973,1010080972,1010080992,0,1010080986,1010080985,1010080989,1010080987,1010080993,1010080983,0,1010080988,0},
+    [1101008116]={1010081110,1010081112,1010081114,1010081108,1010081107,1010081109,1010081106,1010081105,1010081104,1010081103,1010081102,0,0,1010081116,1010081115,0,0,0,1010081113,0,0,0},
+    [1101008126]={1010081210,1010081225,1010081226,1010081208,1010081207,1010081209,1010081206,1010081205,1010081204,1010081203,1010081202,1010081218,0,1010081217,1010081216,1010081219,1010081220,1010081222,1010081214,1010081228,1010081227,1010081229},
+    [1101008136]={1010081314,1010081315,1010081316,1010081312,1010081308,1010081313,1010081307,1010081306,1010081305,1010081304,1010081303,1010081302,0,1010081318,1010081317,1010081322,1010081323,1010081325,1010081324,0,1010081326,0},
+    [1101008146]={1010081401,1010081402,1010081403,1010081398,1010081397,1010081399,1010081396,1010081395,1010081394,1010081393,1010081392,1010081391,0,1010081405,1010081404,1010081406,1010081407,1010081409,1010081408,0,1010081411,0},
+    [1101008154]={1010081531,1010081532,1010081533,1010081528,1010081527,1010081529,1010081526,1010081525,1010081524,1010081523,1010081522,1010081521,0,1010081541,1010081534,1010081542,1010081543,1010081545,1010081544,0,1010081546,0},
+    [1101008163]={1010081582,1010081583,1010081584,1010081579,1010081578,1010081580,1010081577,1010081576,1010081575,1010081574,1010081573,1010081572,0,1010081586,1010081585,1010081587,1010081588,1010081590,1010081589,0,1010081592,0},
+    [1101012033]={1010120284,1010120285,1010120286,1010120280,1010120279,1010120283,1010120278,1010120277,1010120276,1010120275,1010120274,1010120273,0,0,0,0,0,0,0,0,1010120287,0},
+    [1101100012]={1011000066,1011000067,1011000068,0,0,0,1011000058,1011000057,1011000056,1011000055,1011000054,1011000053,0,0,0,0,0,0,0,0,1011000073,0},
+    [1101102007]={1011010025,1011010024,1011010026,1011010020,1011010019,1011010023,1011010018,1011010017,1011010016,1011010015,1011010014,1011010013,0,0,0,0,0,0,0,0,1011010027,0},
+    [1101102017]={1011020027,1011020028,1011020029,1011020025,1011020024,1011020026,1011020019,1011020018,1011020017,1011020016,1011020015,1011020014,0,1011020036,1011020034,1011020038,1011020039,1011020044,1011020035,1011020037,1011020045,1011020047},
+    [1101102025]={1011020127,1011020128,1011020129,1011020125,1011020124,1011020126,1011020119,1011020118,1011020117,1011020116,1011020115,1011020114,0,1011020136,1011020134,1011020138,1011020139,1011020144,1011020135,1011020137,1011020145,0},
+    [1101102041]={1011020214,1011020215,1011020216,1011020212,1011020211,1011020213,1011020209,1011020208,1011020207,1011020206,1011020205,1011020204,0,1011020219,1011020217,1011020222,1011020223,1011020224,1011020218,1011020221,1011020225,1011020229},
+    [1101102049]={1011020356,1011020357,1011020358,1011020354,1011020350,1011020355,1011020349,1011020348,1011020347,1011020346,1011020345,1011020344,0,1011020364,1011020359,1011020366,1011020367,1011020368,1011020360,1011020365,1011020369,1011020370},
+    [1101101007]={1011020436,1011020437,1011020438,1011020434,1011020430,1011020435,1011020429,1011020428,1011020427,1011020426,1011020425,1011020424,0,1011020444,1011020439,1011020446,1011020447,1011020448,1011020440,1011020445,1011020449,1011020450},
+    [1102001120]={1020011137,1020011138,1020011139,1020011135,1020011134,1020011136,1020011133,1020011132,0,0,0,0,0,0,0,0,0,0,0,1020011142,0,0},
+    [1102001130]={1020011247,1020011248,1020011249,1020011245,1020011244,1020011246,1020011243,1020011242,0,0,0,0,0,0,0,0,0,0,0,1020011250,0,0},
+    [1102002043]={1020020372,1020020374,1020020373,1020020383,1020020380,1020020384,1020020379,1020020378,1020020377,1020020376,1020020375,1020020388,0,1020020385,1020020387,0,0,0,1020020386,0,0,0},
+    [1102002061]={1020020552,1020020554,1020020553,1020020563,1020020562,1020020564,1020020559,1020020558,1020020557,1020020556,1020020555,1020020578,0,1020020565,1020020567,1020020573,1020020574,1020020572,1020020566,0,1020020569,0},
+    [1102002136]={1020021314,1020021313,1020021315,1020021309,1020021308,1020021312,1020021307,1020021306,1020021305,1020021304,1020021303,1020021302,0,1020021318,1020021316,1020021323,1020021324,1020021322,1020021317,0,1020021325,0},
+    [1102002424]={1020024193,1020024192,1020024194,1020024189,1020024188,1020024190,1020024187,1020024186,1020024185,1020024184,1020024183,1020024182,0,1020024197,1020024195,1020024199,1020024200,1020024198,1020024196,0,1020024202,0},
+    [1102003080]={1020030755,1020030756,1020030758,0,1020030749,1020030754,1020030748,1020030747,1020030746,1020030745,1020030744,1020030764,0,1020030760,0,1020030759,1020030757,0,0,1020030765,0,0},
+    [1102003100]={1020030956,1020030957,1020030958,1020030954,1020030950,1020030955,1020030949,1020030948,1020030947,1020030946,1020030945,1020030944,0,1020030964,0,1020030960,1020030959,1020030965,0,1020030967,1020030966,1020030968},
+    [1102005064]={1020050588,1020050589,1020050590,0,0,0,1020050587,1020050586,1020050585,1020050584,1020050583,1020050582,0,0,0,0,0,0,0,0,1020050592,0},
+    [1103001101]={1030010954,1030010955,1030010956,0,0,0,0,0,0,0,1030010953,1030010952,1030010951,0,0,0,0,0,0,1030010957,0,1030010958},
+    [1103001146]={1030011344,1030011345,1030011346,0,0,0,0,0,0,0,1030011343,1030011342,1030011341,0,0,0,0,0,0,1030011347,0,1030011348},
+    [1103001154]={1030011484,1030011485,1030011486,0,0,0,0,0,0,0,1030011483,1030011482,1030011481,0,0,0,0,0,0,1030011487,0,1030011488},
+    [1103001179]={1030011738,1030011739,1030011741,0,0,0,1030011737,1030011736,1030011735,1030011734,1030011733,1030011732,1030011731,0,0,0,0,0,0,1030011742,1030011743,1030011744},
+    [1103001191]={1030011858,1030011859,1030011861,0,0,0,1030011857,1030011856,1030011855,1030011854,1030011853,1030011852,1030011851,0,0,0,0,0,0,1030011862,1030011863,1030011864},
+    [1103001202]={1030011948,1030011949,1030011950,0,0,0,1030011947,1030011946,1030011945,1030011944,1030011943,1030011942,1030011941,0,0,0,0,0,0,1030011951,1030011952,1030011953},
+    [1103002030]={1030020245,1030020246,1030020247,1030020252,1030020249,1030020253,1030020258,1030020257,1030020256,1030020255,1030020244,1030020243,1030020242,0,0,0,0,0,0,1030020248,0,0},
+    [1103002059]={1030020544,1030020545,1030020546,1030020542,1030020539,1030020543,1030020538,1030020537,1030020536,1030020535,1030020534,1030020533,1030020532,0,0,0,0,0,0,1030020547,1030020548,0},
+    [1103002087]={1030020824,1030020825,1030020826,0,0,0,1030020818,1030020817,1030020816,1030020815,1030020814,1030020813,1030020812,0,0,0,0,0,0,1030020827,1030020828,0},
+    [1103002106]={1030021009,1030021010,1030021012,1030021015,1030021014,1030021016,1030021008,1030021007,1030021006,1030021005,1030021004,1030021003,1030021002,0,0,0,0,0,0,1030021013,1030021017,0},
+    [1103002113]={1030021079,1030021080,1030021082,1030021085,1030021084,1030021086,1030021078,1030021077,1030021076,1030021075,1030021074,1030021073,1030021072,0,0,0,0,0,0,1030021083,1030021087,0},
+    [1103003022]={1030030165,1030030166,1030030167,1030030172,1030030169,1030030173,0,0,0,0,1030030164,1030030163,1030030162,0,0,0,0,0,0,0,0,0},
+    [1103003030]={1030030256,1030030257,1030030258,1030030254,1030030253,1030030255,1030030248,1030030247,1030030246,1030030245,1030030244,1030030243,1030030242,0,0,0,0,0,0,1030030259,1030030249,0},
+    [1103003042]={1030030374,1030030375,1030030376,1030030372,1030030369,1030030373,0,0,0,0,1030030364,1030030363,1030030362,0,0,0,0,0,0,1030030377,0,0},
+    [1103003051]={1030030458,1030030459,1030030460,1030030456,1030030455,1030030457,0,0,0,0,1030030454,1030030453,1030030452,0,0,0,0,0,0,1030030463,0,0},
+    [1103003062]={1030030568,1030030569,1030030570,1030030566,1030030565,1030030567,0,0,0,0,1030030564,1030030563,1030030562,0,0,0,0,0,0,1030030572,0,0},
+    [1103003079]={1030030744,1030030745,1030030746,1030030742,1030030740,1030030743,1030030738,1030030737,1030030736,1030030735,1030030734,1030030733,1030030732,0,0,0,0,0,0,1030030747,1030030739,0},
+    [1103003087]={1030030825,1030030826,1030030827,1030030823,1030030824,1030030824,1030030818,1030030817,1030030816,1030030815,1030030814,1030030813,1030030812,0,0,0,0,0,0,1030030828,1030030819,0},
+    [1103004037]={1030040315,1030040316,1030040317,1030040325,1030040324,1030040323,0,0,0,0,1030040314,1030040313,1030040312,1030040327,1030040326,0,0,0,1030040328,1030040329,0,0},
+    [1103006030]={1030060245,1030060246,1030060247,0,1030060253,1030060252,0,0,0,0,1030060244,1030060243,1030060242,0,0,0,0,0,0,0,0,0},
+    [1103007028]={1030070233,1030070234,1030070235,1030070226,1030070225,1030070227,1030070218,1030070217,1030070216,1030070215,1030070214,1030070213,1030070212,0,0,0,0,0,0,1030070236,1030070219,0},
+    [1103012010]={0,0,0,0,0,0,1030120038,1030120037,1030120036,1030120035,1030120034,1030120033,1030120032,0,0,0,0,0,0,0,0,0},
+    [1103012019]={0,0,0,0,0,0,1030120138,1030120137,1030120136,1030120135,1030120134,1030120133,1030120132,0,0,0,0,0,0,0,0,0},
+    [1103012031]={0,0,0,0,0,0,1030120258,1030120257,1030120256,1030120255,1030120254,1030120253,1030120252,0,0,0,0,0,0,0,0,0},
+    [1103012039]={0,0,0,0,0,0,1030120339,1030120338,1030120337,1030120336,1030120335,1030120334,1030120333,0,0,0,0,0,0,0,0,0},
+    [1103102007]={1031020026,1031020027,1031020028,1031020024,1031020023,1031020025,1031020019,1031020018,1031020017,1031020016,1031020015,1031020014,1031020013,0,0,0,0,0,0,1031020029,0,0},
+    [1105001034]={0,0,0,0,1050010287,1050010289,1050010286,1050010285,1050010284,1050010283,1050010282,0,0,0,0,0,0,0,0,1050010292,0,0},
+    [1105001048]={0,0,0,1050010429,1050010428,1050010434,1050010427,1050010426,1050010425,1050010424,1050010423,0,0,0,0,0,0,0,0,1050010435,0,1050010436},
+    [1105001069]={0,0,0,1050010639,1050010638,1050010640,1050010637,1050010636,1050010635,1050010634,1050010633,1050010645,0,0,0,0,0,0,0,1050010643,1050010646,1050010644},
+    [1105002091]={0,0,0,0,0,0,1050020847,1050020846,1050020845,1050020844,1050020843,1050020842,0,0,0,0,0,0,0,0,0,1050020848},
+    [1105010019]={0,0,0,0,0,0,1050100144,1050100143,1050100142,1050100141,1050100139,1050100138,0,0,0,0,0,0,0,0,0,0}
+}
+-- DÁN ID PHỤ KIỆN CỦA BẠN VÀO TRÊN ĐÂY ↑↑↑
 
--- These IDs represent outfits, weapon skins, vehicle skins, and other cosmetics
+local cached_GameplayStatics = nil
+local cached_PlayerTombBox = nil
+local cached_ActorClass = nil
+_G.NeedCheckDeadBoxTimer = 0
 
--- Source: Reverse engineered from game data tables
+_G.DeadBox_TemperRequest = function(PlayerController)
+    if not _G.LexusConfig.SkinDeadBox or _G.NeedCheckDeadBoxTimer <= 0 then return end
+    
+    local curTime = os.clock()
+    if _G.LastCheckDeadBoxTime and (curTime - _G.LastCheckDeadBoxTime) < 2.0 then return end
+    _G.LastCheckDeadBoxTime = curTime
+    _G.NeedCheckDeadBoxTimer = _G.NeedCheckDeadBoxTimer - 1
 
+    local PlayerCharacter = PlayerController:GetPlayerCharacterSafety()
+    if not slua.isValid(PlayerCharacter) then return end
+    
+    if not cached_GameplayStatics then
+        cached_GameplayStatics = import("GameplayStatics")
+        cached_ActorClass = import("Actor")
+        cached_PlayerTombBox = import("PlayerTombBox")
+    end
+    
+    if not _G.CachedActorArray_DB then
+        _G.CachedActorArray_DB = slua.Array(UEnums.EPropertyClass.Object, cached_ActorClass)
+    end
+    
+    local UI_Util = require("client.common.ui_util")
+    local GameInstance = UI_Util and UI_Util.GetGameInstance()
+    if not GameInstance or not cached_GameplayStatics then return end
+
+    -- Tối ưu: Lấy trước ID người chơi và ID súng/xe ở ngoài vòng lặp để tránh tính toán lại
+    local myPlayerKey = PlayerController.PlayerKey
+    local currentBoxSkinId = 0
+    pcall(function()
+        local curVeh = PlayerCharacter.CurrentVehicle or (type(PlayerCharacter.GetCurrentVehicle) == "function" and PlayerCharacter:GetCurrentVehicle())
+        if slua.isValid(curVeh) and _G.CurrentEquipVehicleID and _G.CurrentEquipVehicleID ~= 0 then
+            currentBoxSkinId = tonumber(tostring(_G.CurrentEquipVehicleID) .. "1") or 0
+        else
+            -- [FIX CHUẨN VIP]: Lấy ID của vũ khí đang cầm trên tay để xuất đúng hòm xác, Bỏ vòng lặp để chống Drop FPS
+            local curWeapon = PlayerCharacter.GetCurrentWeapon and PlayerCharacter:GetCurrentWeapon() or PlayerCharacter.CurrentWeapon
+            if slua.isValid(curWeapon) then
+                local defineIDObj = curWeapon.GetItemDefineID and curWeapon:GetItemDefineID()
+                local curWeaponID = (defineIDObj and slua.isValid(defineIDObj)) and defineIDObj.TypeSpecificID or 0
+                
+                -- Đối chiếu với kho Skin đã lưu để lấy đúng ID Skin hiện tại
+                if curWeaponID > 0 and _G.AddOutfitLastAppliedSkin and _G.AddOutfitLastAppliedSkin[curWeaponID] then
+                    local skinID = _G.AddOutfitLastAppliedSkin[curWeaponID]
+                    if skinID and skinID > 1000000 then 
+                        currentBoxSkinId = skinID 
+                    end
+                end
+            end
+        end
+    end)
+
+    if currentBoxSkinId == 0 then return end
+
+    local deadBoxes = cached_GameplayStatics.GetAllActorsOfClass(GameInstance, cached_PlayerTombBox, _G.CachedActorArray_DB)
+    if not deadBoxes then return end
+    
+    local count = type(deadBoxes.Num) == "function" and deadBoxes:Num() or #deadBoxes
+    for i = 1, count do
+        local deadBoxActor = type(deadBoxes.Get) == "function" and deadBoxes:Get(i-1) or deadBoxes[i]
+        if slua.isValid(deadBoxActor) and not deadBoxActor.bIsTDSkinApplied then
+            local damageCauser = deadBoxActor.DamageCauser
+            -- So sánh cực nhanh bằng MyPlayerKey đã cache
+            if slua.isValid(damageCauser) and damageCauser.PlayerKey == myPlayerKey then
+                local DeadBoxAvatarComponent = deadBoxActor.DeadBoxAvatarComponent_BP
+                if slua.isValid(DeadBoxAvatarComponent) then
+                    pcall(function()
+                        DeadBoxAvatarComponent:ResetItemAvatar()
+                        DeadBoxAvatarComponent:PreChangeItemAvatar(currentBoxSkinId)
+                        DeadBoxAvatarComponent:SyncChangeItemAvatar(currentBoxSkinId)
+                    end)
+                    deadBoxActor.bIsTDSkinApplied = true
+                end
+            end
+        end
+    end
+end
+
+--[[ AddOutfit v7.5 — Tích hợp hệ thống chọn Skin qua tủ đồ (Wardrobe) ]]
+local F = {}
+local DEBUG = false  
+function F.log(...)
+    if DEBUG then print("[AddOutfit]", ...) end
+end
+
+local MATCH_CONFIG = {
+    outfitRes = 0,        
+    hatRes    = 0,        
+    maskRes   = 0,
+    glassRes  = 0,
+    tshirtRes = 0,        
+    pantsRes  = 0,        
+    shoesRes  = 0,        
+    bagRes    = 0,        
+    helmetRes = 0,        
+    weaponSkins = {},
+}
+
+-- Bảng ID các siêu xe (Thêm tự do nếu có ID mới)
 local ITEMS = {
+    -- ==============================================================================
+    -- HỆ THỐNG GỐC CỦA V7.5 (KHÔNG ĐƯỢC XÓA DÒNG NÀY)
+    -- ==============================================================================
+    703029, 703044, 703046, 703048, 1400010, 1400062, 1400070, 1400083, 1400100, 1400106, 1400112, 1400117, 1400134, 1407917, 1400170, 
+    1400172, 1400173, 1400174, 1400175, 1400177, 1400179, 1400180, 1400228, 1400231, 1400233, 1400236, 1400237, 1400238, 1400242, 1400244,
+    202408070, 202408071, 202408072, 202408073, 202408074, 202408075,
+    1407905, 1407906, 1407907, 1407908, 1407909, 1407910, 1407911, 1407912, 1407913, 1407914, 1407915, 1407916, 1410585,
+    -- ==============================================================================
+    -- 1. SÚNG NÂNG CẤP (CHỈ LẤY CẤP ĐỘ CAO NHẤT CỦA TỪNG KHẨU SÚNG)
+    -- ==============================================================================
+    -- [ M416 ]
+    1101004163, -- Hoàng Gia Lộng Lẫy - M416 (Cấp 8)
+    1101004201, -- Bạch Lân Nhả Ngọc - M416 (Cấp 8)
+    1101004209, -- Thủy Triều Dậy Sóng - M416 (Cấp 8)
+    1101004218, -- Ma Ảnh - M416 (Cấp 8)
+    1101004226, -- Phong Ấn U Minh - M416 (Cấp 8)
+    1101004236, -- Lam Sư Đoạt Mệnh - M416 (Cấp 8)
+    1101004246, -- Hỏa Liên - M416 (Cấp 8)
+    1101004046, -- Băng giá - M416 (Cấp 7)
+    1101004062, -- Chú hề - M416 (Cấp 7)
+    1101004078, -- Kẻ lang thang - M416 (Cấp 7)
+    1101004086, -- Bò Sát Gầm Gừ - M416 (Cấp 7)
+    1101004098, -- Tiếng Gọi Hoang Dã - M416 (Cấp 7)
+    1101004138, -- Lõi Công Nghệ - M416 (Cấp 7)
 
-    202408001, 202408003, 202408005, 202408009, 202408010, 202408011, 202408012, 202408013, 202408014, 202408015,
+    -- [ AKM ]
+    1101001174, -- Bạo Chúa Bộ Lạc - AKM (Cấp 8)
+    1101001213, -- Đô Đốc Hải Long Tinh - AKM (Cấp 8)
+    1101001242, -- Ngày Phán Quyết - AKM (Cấp 8)
+    1101001265, -- Thời Quang Khả Biến - AKM (Cấp 8)
+    1101001276, -- Huyễn Thần - AKM (Cấp 8)
+    1101001063, -- Huyền thoại Seven Seas - AKM (Cấp 7)
+    1101001089, -- Băng giá - AKM (Cấp 7)
+    1101001103, -- Hóa Thạch - AKM (Cấp 7)
+    1101001116, -- Bí Ngô Kinh Dị - AKM (Cấp 7)
+    1101001128, -- Long Vương - AKM (Cấp 7)
+    1101001143, -- Hải Tặc Vàng - AKM (Cấp 7)
+    1101001154, -- Người Giải Mã - AKM (Cấp 7)
+    1101001231, -- Thỏ Tinh Nghịch - AKM (Cấp 7)
+    1101001249, -- Thánh Quang (Trăng Thần) - AKM (Cấp 7)
+    1101001256, -- Thánh Quang (Lông Vũ Hoàng Kim) - AKM (Cấp 7)
+    1101001042, -- Ánh kim - AKM (Cấp 6)
+    1101001068, -- Hổ gầm gừ - AKM (Cấp 5)
 
-    202408016, 202408017, 202408018, 202408019, 202408021, 202408022, 202408023, 202408024, 202408025, 202408026,
+    -- [ SCAR-L ]
+    1101003146, -- Gai Tà Ác - SCAR-L (Cấp 8)
+    1101003167, -- Ma Vương Huyết Hồn - SCAR-L (Cấp 8)
+    1101003227, -- Thiên Điểu - SCAR-L (Cấp 8)
+    1101003057, -- Súng nước - SCAR-L (Cấp 7)
+    1101003070, -- Bí Ngô Ma Quái - SCAR-L (Cấp 7)
+    1101003080, -- Chiến Dịch Vì Ngày Mai - SCAR-L (Cấp 7)
+    1101003099, -- Drop Da Bass - SCAR-L (Cấp 7)
+    1101003119, -- Tinh thể Hextech SCAR-L (Cấp 7)
+    1101003188, -- Cái Ôm Của Chú Hề - SCAR-L (Cấp 7)
+    1101003195, -- Thánh Nữ Huyền Ảo - SCAR-L (Cấp 7)
+    1101003208, -- Vương Quốc Huyền Ảo - SCAR-L (Cấp 7)
+    1101003219, -- Kính Pha Lê - SCAR-L (Cấp 7)
+    1101003173, -- Ánh Sáng Hoàng Tộc - SCAR-L (Cấp 5)
+    1101003212, -- Mèo Ăn Vặt - SCAR-L (Cấp 3)
 
-    202408027, 202408028, 202408029, 202408030, 202408031, 202408032, 202408033, 202408034, 202408035, 202408036,
+    -- [ M762 ]
+    1101008081, -- Vị Khách Nổi Loạn - M762 (Cấp 8)
+    1101008104, -- Lõi Sao Huyền Ảo - M762 (Cấp 8)
+    1101008146, -- Bạch Cốt U Minh - M762 (Cấp 8)
+    1101008154, -- Khung Xương - M762 (Cấp 8)
+    1101008051, -- Bản Nhạc Tình Yêu - M762 (Cấp 7)
+    1101008061, -- Phát Bắn Chí Mạng - M762 (Cấp 7)
+    1101008070, -- GACKT MOONSAGA - M762 (Cấp 7)
+    1101008116, -- Biểu Tượng Bóng Đá Messi - M762 (Cấp 7)
+    1101008126, -- Huyết Rồng - M762 (Cấp 7)
+    1101008136, -- Tiên Linh Lưu Ly - M762 (Cấp 7)
+    1101008163, -- Cổ Vật Hắc Ám - M762 (Cấp 7)
+    1101008026, -- Pony Bé Nhỏ - M762 (Cấp 5)
+    1101008036, -- Đóa Sen Phẫn Nộ - M762 (Cấp 5)
 
-    202408037, 202408038, 202408039, 202408040, 202408041, 202408042, 202408043, 202408044, 202408045, 202408046,
+    -- [ AUG ]
+    1101006062, -- Tinh Linh Băng Giá - AUG (Cấp 8)
+    1101006085, -- Hoa Hồng Ma Mị - AUG (Cấp 8)
+    1101006075, -- Hỏa Ca - AUG (Cấp 7)
+    1101006033, -- Gánh Xiếc Rong - AUG (Cấp 5)
+    1101006044, -- Evangelion Angel Thứ 4 - AUG (Cấp 5)
+    1101006067, -- Ác Mộng Biển Sâu - AUG (Cấp 5)
 
-    202408047, 202408048, 202408049, 202408050, 202408051, 202408052, 202408053, 202408054, 202408055, 202408056,
+    -- [ GROZA ]
+    1101005038, -- Ryomen Sukuna - Groza (Cấp 7)
+    1101005052, -- Lửa U Minh - Groza (Cấp 7)
+    1101005098, -- Godzilla Bốc Lửa - Groza (Cấp 7)
+    1101005019, -- Kỵ Binh Rừng Sâu - GROZA (Cấp 5)
+    1101005025, -- Đêm Huyền Ảo - GROZA (Cấp 5)
+    1101005043, -- Trận Chiến Sắc Màu - Groza (Cấp 5)
+    1101005082, -- Lồng Đèn Bí Ngô - Groza (Cấp 5)
+    1101005090, -- Di Tích Thượng Cổ - Groza (Cấp 5)
+    1101005105, -- Singam Roar - Groza (Cấp 5)
 
-    202408057, 202408058, 202408059, 202408060, 202408061, 202408062, 202408063, 202408064, 202408065, 202408066,
+    -- [ QBZ & Mk47 & G36C & Honey Badger & FAMAS & ASM Abakan & ACE32 ]
+    1101007046, -- Công Chúa Hắc Ám - QBZ (Cấp 7)
+    1101007062, -- Hoa Kiếm Chí Mạng - QBZ (Cấp 7)
+    1101007071, -- Thiên Mệnh - QBZ (Cấp 7)
+    1101007025, -- Ánh Dương - QBZ (Cấp 5)
+    1101007036, -- Càn Quét - QBZ (Cấp 5)
+    1101007079, -- Băng Quyền - QBZ (Cấp 5)
+    1101009019, -- Thỏ Tinh Quái - Mk47 (Cấp 3)
+    1101010029, -- Xung Nhịp Sân Cỏ - G36C (Cấp 5)
+    1101012033, -- Cổ Mộc Chiến Khí - Honey Badger (Cấp 7)
+    1101012009, -- Sắc Màu Huyền Ảo - Honey Badger (Cấp 5)
+    1101012018, -- Thanh Âm Du Dương - Honey Badger (Cấp 5)
+    1101012024, -- Honey Badger Mikey (Cấp 5)
+    1101100012, -- Đế Vương Thần Vực - FAMAS (Cấp 8)
+    1101100018, -- Ảo Ảnh Điện Tử - FAMAS (Cấp 5)
+    1101101007, -- Uy Vũ Hắc Điểu - ASM Abakan (Cấp 7)
+    1101102025, -- Thủy Quái - ACE32 (Cấp 8)
+    1101102041, -- Tiên Tri Điềm Lành - ACE32 (Cấp 8)
+    1101102049, -- Thì Thầm Cánh Bướm - ACE32 (Cấp 8)
+    1101102007, -- Kamehameha - ACE32 (Cấp 7)
+    1101102017, -- Ngọc Bích - ACE32 (Cấp 7)
+    1101102032, -- Cáo Tinh Nghịch - ACE32 (Cấp 5)
 
-    202408067, 202408068, 202408069, 202408070, 202408071, 202408072, 202408073, 202408074, 202408075, 202408076,
+    -- [ SMG (UZI, UMP45, Vector, Thompson, Bizon, MP5K, P90) ]
+    1102001120, -- Băng Giá - UZI (Cấp 8)
+    1102001130, -- Xiềng Xích Hỏa Ngục - UZI (Cấp 7)
+    1102001024, -- Savagery - UZI (Cấp 6)
+    1102001036, -- Vật Tổ Thần Bí - UZI (Cấp 5)
+    1102001058, -- Khoảnh Khắc Bất Ngờ - UZI (Cấp 5)
+    1102001069, -- UZI Quang Hóa (Cấp 5)
+    1102001089, -- Ma Pháp - UZI (Cấp 5)
+    1102001103, -- Cam Tươi Mát - UZI (Cấp 5)
+    1102001102, -- Máy Ép Trái Cây - UZI (Cấp 5)
+    1102002438, -- Song Tử Chiến - UMP45 (Cấp 8)
+    1102002446, -- Song Tử Đỏ Thẫm - UMP45 (Cấp 8)
+    1102002043, -- Hỏa long - UMP45 (Cấp 7)
+    1102002061, -- Ảo Mộng Chết Chóc - UMP45 (Cấp 7)
+    1102002136, -- Băng Giá - UMP45 (Cấp 7)
+    1102002424, -- Thần Khí Anukhra - UMP45 (Cấp 7)
+    1102002053, -- EMP - UMP45 (Cấp 5)
+    1102002070, -- Đồ Tể Bạch Kim - UMP45 (Cấp 5)
+    1102002090, -- Cuộc Chiến 8-Bit - UMP45 (Cấp 5)
+    1102002112, -- Ngày Giáng Sinh - UMP45 (Cấp 5)
+    1102002117, -- Ong Bắp Cày - UMP45 (Cấp 5)
+    1102002129, -- Con Sóng Lễ Hội - UMP45 (Cấp 5)
+    1102002143, -- PUBGM X NewJeans - UMP45 (Cấp 5)
+    1102003080, -- Cánh Rồng - Vector (Cấp 7)
+    1102003100, -- Tuyết Diệt Ảnh - Vector (Cấp 7)
+    1102003020, -- Nanh Dơi Huyết Tộc - Vector (Cấp 5)
+    1102003031, -- Hoa Hồng Đêm - Vector (Cấp 5)
+    1102003039, -- Gấu Tinh Nghịch - Vector (Cấp 5)
+    1102003052, -- Bá Tước Vàng - Vector (Cấp 5)
+    1102003065, -- Lưỡi Liềm Vàng - Vector (Cấp 5)
+    1102003072, -- Sát Thủ Tối Thượng - Vector (Cấp 5)
+    1102003090, -- KMF Lancelot - Vector (Cấp 5)
+    1102004018, -- Kẹo ngọt - Thompson (Cấp 5)
+    1102004034, -- Máy Chạy Hơi Nước - Thompson (Cấp 5)
+    1102004048, -- Tử Đằng - Thompson SMG (Cấp 3)
+    1102005064, -- Quang Ảo Điện Tử - PP-19 Bizon (Cấp 7)
+    1102005007, -- Tắc Kè - PP-19 Bizon (Cấp 5)
+    1102005020, -- Skullcrusher - PP-19 Bizon (Cấp 5)
+    1102005041, -- Thần Binh Võ Thuật - PP-19 Bizon (Cấp 5)
+    1102005052, -- DP Quantum Quake - Bizon (Cấp 5)
+    1102005057, -- Lân Sư - PP-19 Bizon (Cấp 5)
+    1102005072, -- Huyết Tế - PP-19 Bizon (Cấp 5)
+    1102005078, -- SAKAMOTO SHOP - PP-19 (Cấp 5)
+    1102007019, -- PUBGM X QWER - MP5K (Cấp 5)
+    1102007022, -- Pixel Cổ Điển - MP5K (Cấp 3)
+    1102105012, -- Miêu Nữ Công Nghệ - P90 (Cấp 7)
+    1102105028, -- Thiên Mã - P90 (Cấp 7)
+    1102105018, -- Móng Vuốt Hoàng Kim - P90 (Cấp 5)
 
-    202408077, 202408078, 202408079, 202408080, 202408081, 202408082, 202408083, 202408084, 202408085, 202408086,
+    -- [ SNIPER & MARKSMAN RIFLE (Kar98, M24, AWM, SKS, SLR, Mk14, etc.) ]
+    1103001202, -- Băng Yêu - Kar98K (Cấp 8)
+    1103001060, -- Dấu nanh Phẫn nộ - Kar98K (Cấp 7)
+    1103001079, -- Kukulkan Cuồng Nộ - Kar98K (Cấp 7)
+    1103001101, -- Ánh Trăng - Kar98K (Cấp 7)
+    1103001129, -- Gackt Moon - Kar98K (Cấp 7)
+    1103001146, -- Cá Mập Titan - Kar98K (Cấp 7)
+    1103001154, -- Mật Mã Chết Chóc - Kar98K (Cấp 7)
+    1103001179, -- Điện Cực Tím - Kar98K (Cấp 7)
+    1103001191, -- Hồng Hỏa Diệm - Kar98K (Cấp 7)
+    1103001085, -- Đêm Nhạc Rock - Kar98K (Cấp 5)
+    1103001160, -- Thợ Săn Tinh Vân - Kar98K (Cấp 5)
+    1103001183, -- Nhịp Điệu Mèo Con - Kar98K (Cấp 3)
+    1103002030, -- Quyền Trượng Pharaoh - M24 (Cấp 7)
+    1103002059, -- Tuần Hoàn Sự Sống - M24 (Cấp 7)
+    1103002087, -- Nhịp Điệu Hoàn Mỹ - M24 (Cấp 7)
+    1103002106, -- Minh Nguyệt Cấm Vực - M24 (Cấp 7)
+    1103002156, -- Bình Minh Bóng Tối - M24 (Cấp 7)
+    1103002049, -- Hồ Điệp Phu Nhân - M24 (Cấp 5)
+    1103002047, -- Giai Điệu Chí Mạng - M24 (Cấp 5)
+    1103002094, -- Công Nghệ Cao - M24 (Cấp 5)
+    1103003022, -- Neon - AWM (Cấp 7)
+    1103003030, -- Chỉ Huy Chiến Trường - AWM (Cấp 7)
+    1103003042, -- Godzilla - AWM (Cấp 7)
+    1103003051, -- Đại Long Cầu Vồng - AWM (Cấp 7)
+    1103003062, -- Hỏa Phượng Hoàng - AWM (Cấp 7)
+    1103003079, -- Huyết Hải Thiên Long - AWM (Cấp 7)
+    1103003087, -- Thanh Hoa Xà - AWM (Cấp 7)
+    1103003099, -- Hắc Khí - AWM (Cấp 7)
+    1103003092, -- Hồng Hoang - AWM (Cấp 5)
+    1103004037, -- Quý Bà Đỏ - SKS (Cấp 7)
+    1103004046, -- Rừng Thép - SKS (Cấp 5)
+    1103004058, -- Năng Lượng Băng Tuyết - SKS (Cấp 5)
+    1103004080, -- Khiết Hoa Nở Rộ - SKS (Cấp 5)
+    1103004087, -- Giai Điệu Tử Thần - SKS (Cấp 5)
+    1103005024, -- Quạ Đen - VSS (Cấp 5)
+    1103005048, -- Trinh Sát Tuyết Trắng - VSS (Cấp 3)
+    1103009022, -- Mùa Hoa Đào - SLR (Cấp 5)
+    1103009037, -- Ngọn Lửa Ma Thuật - SLR (Cấp 5)
+    1103009051, -- Ma Mộng - SLR (Cấp 5)
+    1103009042, -- Thanh Âm Hải Huyền - SLR (Cấp 3)
+    1103006030, -- Sông Băng - Mini14 (Cấp 7)
+    1103006046, -- Nét Đẹp Thuần Khiết - Mini14 (Cấp 5)
+    1103006058, -- Mèo Chiêu Tài - Mini14 (Cấp 5)
+    1103006063, -- Tay Đua Gan Dạ - Mini14 (Cấp 5)
+    1103006075, -- Nhịp Chiến Nhanh - Mini14 (Cấp 5)
+    1103007028, -- Vương Quốc Rồng - Mk14 (Cấp 8)
+    1103007020, -- Sức Mạnh Ngân Hà - Mk14 (Cấp 5)
+    1103007038, -- Rồng Sữa Mềm Mại - Mk14 (Cấp 5)
+    1103007043, -- Hộp Quà May Mắn - Mk14 (Cấp 5)
+    1103012010, -- Khủng Long Ephialtes - AMR (Cấp 8)
+    1103012019, -- Hỏa Thần - AMR (Cấp 7)
+    1103012031, -- Vô Âm Ly Biệt - AMR (Cấp 7)
+    1103012039, -- Đại Chiến Huyễn Sắc - AMR (Cấp 7)
+    1103012024, -- Tinh Thể Onyx - AMR (Cấp 5)
+    1103100007, -- Thú Săn Mồi - Mk12 (Cấp 5)
+    1103102007, -- Chiến Hạm Vũ Trụ - DSR (Cấp 7)
+    1103103007, -- Vinh Quang Chiến Binh - M1 Garand (Cấp 7)
 
-    202408087, 202408088, 202408089, 202408090, 202408091, 202408092, 202408093, 202408094, 202408095, 202408096,
+    -- [ SHOTGUN & MACHINE GUN (S12K, DBS, M249, DP-28, MG3...) ]
+    1104001035, -- Độc Hồn - S686 (Cấp 5)
+    1104002022, -- Chạng Vạng - S1897 (Cấp 5)
+    1104002049, -- Xung Kích Sắc Màu - S1897 (Cấp 3)
+    1104003026, -- S12K GACKT (Cấp 7)
+    1104003037, -- Kích Hoạt Nguyên Tử - S12K (Cấp 5)
+    1104003046, -- Trái Tim Cyber - S12K (Cấp 5)
+    1104004035, -- Chiến Giáp Quái Thú - DBS (Cấp 5)
+    1104004041, -- Sandsinger - DBS (Cấp 5)
+    1104004051, -- Okarun - DBS (Cấp 5)
+    1104004024, -- Báo Sắc Màu - DBS (Cấp 3)
+    1104102004, -- Tàn Tích Hoàng Kim - NS2000 (Cấp 3)
+    1105001034, -- Pháo Giáng Sinh - M249 (Cấp 7)
+    1105001048, -- Nữ Đế Ánh Sáng - M249 (Cấp 7)
+    1105001069, -- Vương Quyền Hắc Ám - M249 (Cấp 7)
+    1105001020, -- Nữ Hoàng Băng Giá M249 V (Cấp 5)
+    1105001054, -- Stargaze Fury - M249 (Cấp 5)
+    1105001062, -- Graffiti Đường Phố - M249 (Cấp 5)
+    1105001075, -- Cá Mập Thép - M249 (Cấp 4)
+    1105002091, -- Huyết Họa - DP28 (Cấp 8)
+    1105002018, -- Sát Thủ Bí Ẩn - DP-28 (Cấp 5)
+    1105002035, -- Ngọc Long - DP-28 (Cấp 5)
+    1105002058, -- Chiến Binh Hàng Hải - DP28 (Cấp 5)
+    1105002063, -- Rồng Thần Shenron - DP-28 (Cấp 5)
+    1105002071, -- Chiến Sĩ Thần Giáp - DP-28 (Cấp 5)
+    1105002076, -- Mèo Số Hóa - DP-28 (Cấp 5)
+    1105002083, -- DP-28 Frieren's Staff (Cấp 5)
+    1105002096, -- Hồ Tộc - DP-28 (Cấp 3)
+    1105010019, -- Chiến Thần Bầu Trời - MG3 (Cấp 7)
+    1105010008, -- Thiên Khung - MG3 (Cấp 5)
+    1105010026, -- Mina Ashiro - MG3 (Cấp 5)
 
-    202408097, 202408098, 202408099, 202408100, 202408101, 202408102, 202501001, 202501002, 202501003, 202501004,
+    -- [ CẬN CHIẾN & VŨ KHÍ KHÁC (Skorpion, Nỏ, Chảo, Dao...) ]
+    1106008013, -- Mật Mã Vàng - Skorpion (Cấp 5)
+    1106008022, -- Bí Ẩn Tinh Tú - Skorpion (Cấp 3)
+    1106011008, -- Rồng Rắn Lên Mây - MP7 Kép (Cấp 5)
+    1106011003, -- Thợ Săn Kẹo - MP7 (Cấp 3)
+    1107001018, -- Chúa Hề Thịnh Nộ - Nỏ (Cấp 3)
+    1107098003, -- Rung Chấn Công Nghệ - MGL (Cấp 3)
+    1108001057, -- Săn Rồng - Dao (Cấp 3)
+    1108001064, -- Đoản Kiếm Yor SPY×FAMILY (Cấp 3)
+    1108001069, -- Ki Sword (Cấp 3)
+    1108001081, -- Rìu Godzilla Bốc Lửa (Cấp 3)
+    1108001085, -- Kiếm Trung Đoàn Trinh Sát Cấp 3
+    1108001098, -- Thương Đảo Ngược Thiên Đường - Dao (Cấp 3)
+    1108001104, -- Xích Tay - Dao (Cấp 3)
+    1108002059, -- Đinh Ba Thủy Triều Thịnh Nộ (Cấp 5)
+    1108004125, -- Hũ Mật Ong - Chảo (Cấp 5)
+    1108004160, -- Cá Sấu - Chảo (Cấp 5)
+    1108004145, -- Đêm Nhạc Rock - Chảo (Cấp 5)
+    1108004283, -- Vinh Quang - Chảo (Cấp 6)
+    1108004337, -- Chảo Điện Nguyên Tử (Cấp 6)
+    1108004356, -- Gà Rán - Chảo (Cấp 3)
+    1108004365, -- Yokai Huyền Bí - Chảo (Cấp 3)
+    1108004377, -- Chảo Cánh Cụt Vui Vẻ (Cấp 5)
+    1108004416, -- Quạt Vũ Điệu Nóng Bỏng - Chảo (Cấp 3)
+    1108005050, -- Rồng Băng Giá - Dao Găm (Cấp 3)
 
-    202501005, 202501006, 202501007, 202501008, 202501009, 202501010, 202501011,
+    -- ==============================================================================
+    -- 2. FULL SIÊU XE (VIP VEHICLES)
+    -- ==============================================================================
+    -- [ McLaren ]
+    1961007, -- McLaren 570S (Đen)
+    1961010, -- McLaren 570S (Trắng)
+    1961012, -- McLaren 570S (Hồng)
+    1961013, -- McLaren 570S (Vàng Trắng)
+    1961014, -- McLaren 570S (Vàng Đen)
+    1961015, -- McLaren 570S (Ánh Kim)
+    1961147, -- McLaren P1 (Trời Sao)
+    1961148, -- McLaren P1 (Hồng Rực Rỡ)
+    1961149, -- McLaren P1 (Vàng Núi Lửa)
+    1907054, -- Xe Đua Đội McLaren F1 (Điện Tử)
+    1907058, -- Xe Đua Đội McLaren F1
+    1907059, -- Xe Đua Đội McLaren F1 (Chiến Thắng)
 
-1400001,1400002,1400003,1400004,1400007,1400008,1400009,1400010,1400011,1400012,1400013,1400014,1400015,1400016,1400017,1400018,1400020,1400021,1400022,1400023,1400024,1400025,1400026,1400027,1400028,1400029,1400030,1400031,1400032,1400038,1400039,1400040,1400041,1400042,1400043,1400044,1400045,1400046,1400047,1400048,1400049,1400050,1400051,1400052,1400053,1400054,1400055,1400062,1400063,1400064,1400065,1400066,1400067,1400068,1400069,1400072,1400073,1400074,1400075,1400076,1400077,1400078,1400079,1400080,1400081,1400082,1400084,1400085,1400086,1400087,1400088,1400089,1400090,1400091,1400092,1400093,1400094,1400095,1400096,1400097,1400098,1400099,1400100,1400101,1400103,1400104,1400105,1400106,1400107,1400108,1400109,1400110,1400111,1400112,1400113,1400114,1400115,1400117,1400118,1400119,1400120,1400121,1400122,1400123,1400124,1400125,1400127,1400128,1400129,1400130,1400132,1400133,1400134,1400135,1400136,1400137,1400138,1400139,1400141,1400142,1400143,1400146,1400147,1400148,1400149,1400150,1400151,1400152,1400153,1400154,1400155,1400156,1400158,1400159,1400160,1400161,1400162,1400163,1400164,1400165,1400166,1400167,1400168,1400169,1400213,1400215,1400216,1400218,1400219,1400221,1400224,1400225,1400226,1400227,1400228,1400229,1400230,1400231,1400232,1400233,1400237,1400239,1400240,1400242,1400243,1400244,1400247,1400249,1400251,1400253,1400255,1400258,1400259,1400261,1400262,1400264,1400265,1400266,1400267,1400268,1400269,1400270,1400271,1400272,1400274,1400276,1400277,1400279,1400280,1400281,1400282,1400283,1400284,1400285,1400286,1400287,1400288,1400289,1400290,1400291,1400292,1400293,1400294,1400295,1400296,1400297,1400298,1400299,1400301,1400302,1400303,1400306,1400307,1400308,1400314,1400315,1400316,1400317,1400318,1400319,1400320,1400321,1400322,1400323,1400324,1400325,1400326,1400327,1400328,1400329,1400332,1400333,1400334,1400336,1400337,1400338,1400339,1400341,1400342,1400344,1400345,1400347,1400348,1400350,1400351,1400352,1400353,1400354,1400355,1400356,1400357,1400358,1400359,1400360,1400361,1400362,1400363,1400364,1400365,1400366,1400367,1400368,1400369,1400370,1400371,1400374,1400375,1400376,1400377,1400378,1400380,1400381,1400384,1400385,1400386,1400387,1400388,1400389,1400390,1400391,1400392,1400393,1400394,1400395,1400396,1400397,1400398,1400399,1400400,1400401,1400402,1400403,1400404,1400405,1400406,1400407,1400408,1400409,1400410,1400411,1400412,1400413,1400414,1400415,1400416,1400417,1400418,1400419,1400420,1400421,1400422,1400423,1400424,1400425,1400426,1400427,1400428,1400429,1400430,1400431,1400432,1400433,1400434,1400435,1400436,1400437,1400439,1400441,1400442,1400443,1400444,1400445,1400446,1400447,1400448,1400449,1400450,1400451,1400453,1400455,1400456,1400457,1400458,1400459,1400460,1400461,1400463,1400464,1400465,1400468,1400470,1400472,1400473,1400474,1400475,1400476,1400477,1400478,1400479,1400480,1400481,1400482,1400483,1400484,1400485,1400486,1400488,1400489,1400490,1400491,1400492,1400493,1400494,1400495,1400498,1400499,1400500,1400501,1400502,1400503,1400504,1400505,1400506,1400508,1400509,1400511,1400512,1400513,1400514,1400515,1400516,1400517,1400518,1400520,1400521,1400522,1400523,1400524,1400525,1400526,1400527,1400528,1400529,1400530,1400531,1400532,1400533,1400534,1400535,1400539,1400540,1400541,1400542,1400543,1400544,1400545,1400546,1400547,1400548,1400549,1400550,1400551,1400552,1400553,1400554,1400555,1400556,1400559,1400563,1400564,1400565,1400566,1400567,1400568,1400569,1400570,1400571,1400572,1400573,1400574,1400575,1400576,1400577,1400578,1400583,1400584,1400585,1400586,1400587,1400588,1400589,1400590,1400592,1400594,1400595,1400596,1400597,1400598,1400599,1400600,1400601,1400603,1400604,1400606,1400619,1400620,1400622,1400623,1400624,1400625,1400626,1400643,1400644,1400645,1400646,1400647,1400648,1400649,1400650,1400651,1400652,1400653,1400654,1400656,1400657,1400658,1400659,1400660,1400661,1400664,1400665,1400666,1400668,1400669,1400670,1400673,1400678,1400679,1400680,1400682,1400683,1400687,1400688,1400689,1400690,1400691,1400692,1400693,1400694,1400695,1400696,1400697,1400698,1400702,1400704,1400705,1400708,1400709,1400714,1400715,1400716,1400719,1400721,1400727,1400728,1400729,1400730,1400731,1400732,1400733,1400734,1400735,1400736,1400737,1400738,1400739,1400740,1400741,1400742,1400743,1400744,1400746,1400747,1400749,1400750,1400751,1400772,1400773,1400774,1400775,1400776,1400777,1400778,1400779,1400780,1400781,1400782,1400783,1400784,1400785,1400786,1400787,1400788,1400789,1400790,1400791,1400792,1400793,1400794,1400795,1400796,1400798,1400799,1400801,1400802,1400803,1400804,1400805,1400806,1400807,1400808,1400809,1400810,1400811,1400812,1400813,1400814,1400816,1401846,1402000,1402002,1402004,1402005,1402006,1402007,1402008,1402009,1402012,1402015,1402016,1402018,1402019,1402020,1402021,1402022,1402024,1402025,1402026,1402027,1402028,1402029,1402031,1402032,1402033,1402035,1402037,1402038,1402039,1402040,1402041,1402042,1402043,1402044,1402045,1402046,1402047,1402049,1402050,1402051,1402052,1402053,1402054,1402055,1402056,1402059,1402062,1402063,1402065,1402067,1402068,1402069,1402070,1402071,1402073,1402074,1402075,1402076,1402077,1402078,1402079,1402080,1402081,1402082,1402083,1402084,1402085,1402086,1402088,1402090,1402091,1402092,1402093,1402098,1402099,1402101,1402102,1402103,1402104,1402105,1402106,1402107,1402108,1402110,1402111,1402112,1402113,1402114,1402115,1402116,1402117,1402118,1402119,1402120,1402121,1402122,1402123,1402124,1402125,1402126,1402127,1402128,1402129,1402130,1402132,1402133,1402134,1402135,1402136,1402137,1402138,1402139,1402140,1402141,1402142,1402143,1402144,1402145,1402146,1402147,1402148,1402149,1402150,1402151,1402152,1402153,1402154,1402155,1402156,1402157,1402158,1402159,1402160,1402161,1402162,1402163,1402164,1402165,1402166,1402167,1402169,1402170,1402171,1402172,1402173,1402174,1402175,1402176,1402177,1402178,1402179,1402180,1402181,1402182,1402183,1402184,1402185,1402187,1402188,1402189,1402192,1402193,1402194,1402195,1402197,1402198,1402199,1402200,1402201,1402202,1402203,1402204,1402205,1402206,1402208,1402209,1402210,1402211,1402212,1402213,1402214,1402215,1402216,1402217,1402218,1402219,1402220,1402221,1402222,1402223,1402224,1402225,1402227,1402228,1402229,1402230,1402231,1402232,1402233,1402235,1402236,1402238,1402239,1402240,1402241,1402242,1402243,1402244,1402245,1402246,1402248,1402249,1402250,1402251,1402252,1402253,1402254,1402255,1402256,1402257,1402258,1402259,1402260,1402261,1402262,1402263,1402267,1402278,1402279,1402280,1402281,1402282,1402283,1402284,1402285,1402286,1402287,1402288,1402289,1402290,1402291,1402292,1402294,1402295,1402296,1402297,1402298,1402299,1402300,1402301,1402302,1402303,1402304,1402305,1402306,1402307,1402308,1402309,1402310,1402311,1402312,1402313,1402315,1402316,1402317,1402318,1402319,1402322,1402323,1402324,1402325,1402326,1402327,1402328,1402329,1402330,1402331,1402332,1402333,1402334,1402335,1402336,1402338,1402342,1402343,1402344,1402345,1402346,1402347,1402348,1402349,1402350,1402352,1402353,1402355,1402356,1402357,1402358,1402359,1402360,1402361,1402362,1402364,1402368,1402369,1402370,1402372,1402373,1402374,1402375,1402376,1402377,1402378,1402383,1402384,1402385,1402386,1402387,1402388,1402390,1402391,1402392,1402393,1402395,1402396,1402397,1402399,1402400,1402401,1402402,1402403,1402404,1402405,1402406,1402407,1402408,1402410,1402411,1402412,1402413,1402415,1402416,1402417,1402418,1402419,1402420,1402421,1402422,1402423,1402424,1402431,1402432,1402433,1402434,1402435,1402436,1402442,1402443,1402444,1402445,1402446,1402447,1402448,1402449,1402450,1402451,1402452,1402453,1402454,1402455,1402456,1402460,1402461,1402462,1402463,1402464,1402470,1402471,1402472,1402473,1402481,1402489,1402490,1402491,1402492,1402493,1402494,1402495,1402496,1402497,1402498,1402499,1402500,1402501,1402502,1402503,1402504,1402505,1402506,1402507,1402508,1402509,1402510,1402511,1402515,1402517,1402518,1402519,1402520,1402521,1402522,1402523,1402524,1402525,1402527,1402530,1402531,1402532,1402533,1402534,1402535,1402536,1402538,1402539,1402542,1402543,1402544,1402545,1402546,1402547,1402548,1402549,1402550,1402552,1402553,1402554,1402557,1402558,1402559,1402560,1402561,1402562,1402563,1402565,1402566,1402567,1402568,1402569,1402570,1402571,1402572,1402573,1402574,1402575,1402576,1402577,1402578,1402579,1402580,1402581,1402582,1402583,1402584,1402585,1402586,1402587,1402588,1402589,1402590,1402592,1402593,1402594,1402595,1402598,1402600,1402601,1402602,1402603,1402604,1402607,1402608,1402610,1402611,1402612,1402613,1402614,1402615,1402618,1402619,1402620,1402621,1402623,1402624,1402625,1402626,1402627,1402628,1402629,1402631,1402632,1402633,1402634,1402635,1402636,1402637,1402642,1402643,1402644,1402646,1402647,1402648,1402649,1402650,1402651,1402652,1402653,1402654,1402655,1402656,1402657,1402659,1402662,1402663,1402664,1402666,1402668,1402669,1402670,1402671,1402672,1402673,1402674,1402675,1402676,1402677,1402678,1402679,1402680,1402681,1402684,1402685,1402686,1402687,1402688,1402689,1402690,1402691,1402692,1402693,1402694,1402695,1402696,1402697,1402698,1402699,1402700,1402701,1402704,1402706,1402707,1402708,1402713,1402716,1402717,1402718,1402720,1402721,1402722,1402723,1402725,1402726,1402727,1402728,1402729,1402730,1402731,1402735,1402736,1402738,1402739,1402740,1402741,1402742,1402743,1402745,1402746,1402748,1402749,1402750,1402751,1402752,1402753,1402754,1402755,1402756,1402757,1402758,1402759,1402760,1402761,1402762,1402763,1402764,1402766,1402767,1402768,1402769,1402770,1402771,1402772,1402774,1402775,1402776,1402777,1402778,1402780,1402782,1402783,1402784,1402786,1402787,1402797,1402798,1402800,1402801,1402802,1402811,1402812,1402815,1402816,1402817,1402818,1402819,1402820,1402821,1402822,1402823,1402824,1402826,1402827,1402828,1402829,1402830,1402834,1402835,1402837,1402838,1402839,1402840,1402841,1402843,1402844,1402845,1402846,1402847,1402848,1402850,1402851,1402854,1402855,1402858,1402860,1402861,1402862,1402863,1402864,1402865,1402866,1402869,1402870,1402871,1402872,1402873,1402874,1402875,1402876,1402877,1402878,1402879,1402880,1402881,1402882,1402883,1402884,1402885,1402886,1402888,1402890,1402891,1402892,1402894,1402896,1402897,1402898,1402899,1402900,1402901,1402902,1402903,1402904,1402905,1402906,1402907,1402908,1402909,1402910,1402912,1402913,1402914,1402915,1402916,1402917,1402918,1402920,1402921,1402922,1402923,1402924,1402926,1402927,1402928,1402929,1402930,1402931,1402932,1402933,1402934,1402935,1402936,1402937,1402938,1402940,1402941,1402942,1402943,1402944,1402945,1402946,1402947,1402948,1402952,1402953,1402954,1402955,1402956,1402957,1402958,1402959,1402960,1402961,1402962,1402963,1402964,1402966,1402967,1402968,1402969,1402970,1402971,1402972,1402973,1402974,1402975,1402977,1402978,1402979,1402980,1402981,1402982,1402983,1402984,1402987,1402988,1402989,1402990,1402991,1402992,1402997,1402998,1403000,1403001,1403002,1403004,1403005,1403006,1403007,1403009,1403010,1403011,1403012,1403013,1403014,1403015,1403016,1403017,1403018,1403019,1403020,1403022,1403023,1403024,1403025,1403026,1403027,1403028,1403031,1403032,1403033,1403034,1403035,1403036,1403037,1403038,1403039,1403040,1403041,1403042,1403044,1403045,1403046,1403047,1403048,1403049,1403050,1403051,1403052,1403053,1403054,1403055,1403056,1403058,1403061,1403062,1403064,1403065,1403066,1403067,1403068,1403069,1403070,1403071,1403072,1403073,1403074,1403077,1403078,1403079,1403081,1403082,1403083,1403084,1403085,1403086,1403087,1403088,1403090,1403091,1403092,1403093,1403094,1403095,1403096,1403098,1403099,1403100,1403101,1403112,1403113,1403115,1403117,1403119,1403120,1403122,1403123,1403124,1403127,1403128,1403129,1403130,1403131,1403132,1403133,1403134,1403135,1403136,1403137,1403138,1403139,1403141,1403142,1403143,1403146,1403147,1403148,1403149,1403150,1403151,1403152,1403153,1403154,1403155,1403156,1403157,1403158,1403159,1403161,1403162,1403163,1403164,1403166,1403167,1403168,1403169,1403170,1403171,1403172,1403174,1403175,1403176,1403177,1403178,1403179,1403181,1403182,1403183,1403184,1403185,1403186,1403187,1403188,1403189,1403190,1403191,1403192,1403193,1403194,1403196,1403197,1403200,1403201,1403202,1403204,1403205,1403206,1403207,1403208,1403211,1403214,1403215,1403217,1403220,1403221,1403222,1403223,1403224,1403227,1403228,1403229,1403230,1403231,1403233,1403235,1403236,1403237,1403238,1403240,1403241,1403244,1403246,1403248,1403249,1403250,1403251,1403253,1403254,1403255,1403256,1403257,1403258,1403259,1403260,1403261,1403263,1403264,1403266,1403267,1403272,1403273,1403274,1403275,1403276,1403277,1403280,1403287,1403288,1403292,1403294,1403297,1403302,1403304,1403305,1403307,1403309,1403310,1403311,1403312,1403314,1403315,1403316,1403317,1403318,1403323,1403324,1403325,1403326,1403327,1403328,1403329,1403330,1403331,1403332,1403333,1403334,1403335,1403336,1403338,1403339,1403340,1403341,1403342,1403343,1403344,1403347,1403348,1403349,1403350,1403351,1403352,1403353,1403354,1403356,1403357,1403359,1403361,1403364,1403365,1403366,1403368,1403369,1403370,1403371,1403372,1403374,1403375,1403379,1403381,1403383,1403385,1403386,1403387,1403390,1403393,1403394,1403395,1403397,1403398,1403399,1403400,1403401,1403403,1403404,1403405,1403408,1403409,1403410,1403411,1403412,1403414,1403416,1403419,1403420,1403421,1403424,1403425,1403428,1403429,1403430,1403431,1403432,1403436,1403437,1403438,1403439,1403440,1403442,1403444,1403445,1403446,1403447,1403450,1403451,1403452,1403455,1403456,1403457,1403458,1403460,1403462,1403463,1403464,1403465,1403468,1403476,1403477,1403478,1403486,1403487,1403490,1403496,1403498,1403506,1403507,1403508,1403509,1403513,1403514,1403517,1403518,1403519,1403523,1403524,1403525,1403527,1403528,1403534,1403535,1403540,1403541,1403542,1403544,1403545,1403552,1403553,1403559,1403562,1403563,1403564,1403565,1403566,1403567,1403569,1403570,1403571,1403572,1403575,1403577,1403578,1403581,1403585,1403586,1403587,1403590,1403591,1403592,1403593,1403594,1403597,1403600,1403601,1403602,1403603,1403604,1403605,1403607,1403609,1403610,1403611,1403615,1403616,1403617,1403618,1403621,1403622,1403623,1403625,1403627,1403628,1403630,1403631,1403633,1403635,1403636,1403638,1403639,1403640,1403641,1403642,1403643,1403644,1403645,1403646,1403647,1403648,1403649,1403650,1403651,1403652,1403653,1403654,1403655,1403656,1403658,1403659,1403660,1403661,1403662,1403663,1403664,1403665,1403666,1403667,1403668,1403669,1403672,1403673,1403674,1403675,1403676,1403677,1403678,1403679,1403680,1403681,1403682,1403683,1403684,1403685,1403686,1403687,1403688,1403689,1403690,1403691,1403692,1403693,1403694,1403695,1403696,1403697,1403698,1403699,1403700,1403701,1403702,1403703,1403704,1403705,1403706,1403707,1403708,1403709,1403710,1403711,1403712,1403713,1403714,1403715,1403716,1403717,1403718,1403719,1403720,1403721,1403722,1403723,1403724,1403725,1403726,1403727,1403728,1403729,1403730,1403731,1403732,1403733,1403734,1403735,1403736,1403737,1403738,1403739,1403740,1403741,1403742,1403743,1403744,1403745,1403746,1403747,1403748,1403749,1403750,1403751,1403752,1403753,1403754,1403755,1403756,1403757,1403758,1403759,1403760,1403761,1403762,1403763,1403764,1403765,1403766,1403767,1403768,1403769,1404000,1404001,1404002,1404003,1404004,1404005,1404006,1404007,1404008,1404009,1404010,1404011,1404012,1404013,1404014,1404015,1404016,1404017,1404018,1404019,1404020,1404021,1404022,1404023,1404024,1404025,1404026,1404027,1404028,1404029,1404030,1404031,1404032,1404033,1404034,1404035,1404036,1404037,1404038,1404040,1404041,1404042,1404043,1404044,1404045,1404046,1404047,1404048,1404049,1404050,1404051,1404052,1404053,1404054,1404055,1404056,1404057,1404058,1404059,1404060,1404061,1404062,1404063,1404064,1404065,1404066,1404080,1404081,1404082,1404083,1404084,1404085,1404086,1404087,1404088,1404089,1404090,1404091,1404092,1404093,1404094,1404095,1404096,1404127,1404128,1404129,1404130,1404131,1404132,1404133,1404134,1404135,1404136,1404137,1404138,1404139,1404140,1404141,1404142,1404143,1404144,1404145,1404146,1404147,1404148,1404149,1404150,1404151,1404152,1404153,1404154,1404155,1404156,1404157,1404158,1404159,1404160,1404161,1404162,1404163,1404164,1404165,1404166,1404167,1404168,1404169,1404170,1404171,1404172,1404173,1404174,1404175,1404176,1404177,1404178,1404179,1404180,1404181,1404182,1404183,1404184,1404185,1404186,1404187,1404188,1404189,1404190,1404191,1404192,1404193,1404194,1404195,1404196,1404197,1404198,1404199,1404200,1404201,1404202,1404203,1404204,1404205,1404206,1404207,1404208,1404209,1404210,1404211,1404212,1404213,1404214,1404215,1404216,1404217,1404218,1404219,1404220,1404222,1404223,1404224,1404225,1404226,1404227,1404228,1404229,1404230,1404231,1404232,1404233,1404234,1404235,1404236,1404237,1404238,1404239,1404240,1404241,1404242,1404243,1404244,1404245,1404246,1404247,1404248,1404249,1404250,1404251,1404252,1404253,1404254,1404255,1404256,1404257,1404258,1404259,1404260,1404261,1404262,1404263,1404264,1404265,1404266,1404267,1404268,1404269,1404270,1404271,1404272,1404273,1404274,1404275,1404276,1404277,1404278,1404280,1404281,1404282,1404283,1404284,1404285,1404286,1404287,1404288,1404289,1404292,1404293,1404294,1404295,1404296,1404297,1404298,1404299,1404300,1404301,1404302,1404303,1404304,1404305,1404306,1404307,1404308,1404309,1404310,1404311,1404312,1404313,1404314,1404315,1404316,1404317,1404318,1404319,1404320,1404321,1404322,1404323,1404325,1404326,1404327,1404330,1404331,1404332,1404333,1404334,1404335,1404336,1404337,1404338,1404339,1404340,1404341,1404342,1404343,1404344,1404345,1404346,1404347,1404348,1404349,1404350,1404351,1404352,1404353,1404354,1404355,1404356,1404357,1404358,1404359,1404360,1404361,1404362,1404363,1404364,1404365,1404366,1404367,1404368,1404369,1404370,1404371,1404372,1404373,1404374,1404375,1404376,1404377,1404378,1404379,1404380,1404381,1404382,1404383,1404384,1404385,1404386,1404387,1404388,1404389,1404390,1404391,1404394,1404395,1404396,1404397,1404398,1404399,1404400,1404401,1404402,1404403,1404405,1404406,1404407,1404408,1404409,1404410,1404411,1404412,1404413,1404414,1404415,1404416,1404417,1404418,1404419,1404420,1404421,1404422,1404423,1404425,1404426,1404427,1404428,1404430,1404431,1404432,1404433,1404434,1404435,1404436,1404437,1404438,1404439,1404440,1404441,1404442,1404443,1404444,1404445,1404446,1404447,1404448,1404449,1404450,1404451,1404452,1404453,1404454,1404455,1404456,1404457,1404458,1404459,1404460,1404461,1404462,1404463,1404464,1404465,1404466,1404467,1404468,1404469,1404470,1404471,1404472,1404473,1404474,1404475,1404476,1404477,1404478,1404479,1404480,1404481,1404482,1404483,1404484,1404485,1404486,1404487,1404488,1404489,1404490,1404491,1404492,1404493,1404494,1404495,1404496,1404497,1404498,1404499,1404500,1404501,1404502,1404503,1404504,1404505,1404506,1404507,1404508,1404509,1404510,1404511,1404512,1404513,1404514,1404515,1404516,1404517,1404518,1404519,1404520,1404521,1404522,1404523,1404524,1404525,1404526,1404527,1404528,1405000,1405001,1405002,1405003,1405004,1405005,1405006,1405007,1405008,1405009,1405010,1405011,1405012,1405013,1405014,1405015,1405016,1405017,1405018,1405019,1405020,1405021,1405022,1405023,1405024,1405026,1405027,1405028,1405029,1405030,1405031,1405032,1405033,1405034,1405035,1405036,1405037,1405038,1405039,1405040,1405041,1405042,1405043,1405044,1405045,1405046,1405047,1405048,1405049,1405050,1405051,1405052,1405053,1405054,1405055,1405056,1405057,1405058,1405059,1405060,1405061,1405062,1405063,1405064,1405065,1405066,1405067,1405068,1405069,1405070,1405071,1405072,1405073,1405075,1405076,1405077,1405078,1405079,1405080,1405081,1405082,1405083,1405084,1405085,1405086,1405087,1405088,1405090,1405091,1405092,1405093,1405094,1405095,1405096,1405097,1405098,1405099,1405100,1405101,1405102,1405103,1405104,1405105,1405106,1405107,1405108,1405109,1405110,1405111,1405112,1405113,1405114,1405115,1405116,1405117,1405118,1405119,1405120,1405121,1405122,1405123,1405124,1405125,1405126,1405127,1405128,1405129,1405130,1405131,1405132,1405133,1405134,1405135,1405136,1405137,1405138,1405141,1405142,1405143,1405144,1405145,1405146,1405147,1405148,1405149,1405150,1405151,1405152,1405153,1405154,1405155,1405156,1405157,1405158,1405159,1405160,1405161,1405162,1405163,1405164,1405165,1405166,1405167,1405168,1405169,1405170,1405171,1405172,1405173,1405174,1405175,1405176,1405177,1405178,1405179,1405180,1405181,1405186,1405187,1405188,1405189,1405190,1405191,1405192,1405193,1405194,1405195,1405196,1405197,1405198,1405199,1405200,1405201,1405202,1405203,1405204,1405205,1405206,1405207,1405208,1405209,1405210,1405211,1405212,1405213,1405216,1405218,1405219,1405220,1405221,1405222,1405223,1405224,1405225,1405226,1405227,1405228,1405229,1405230,1405231,1405232,1405233,1405234,1405235,1405236,1405237,1405238,1405239,1405240,1405241,1405242,1405243,1405244,1405245,1405246,1405247,1405248,1405256,1405257,1405258,1405259,1405260,1405261,1405262,1405263,1405264,1405265,1405266,1405267,1405268,1405269,1405270,1405271,1405272,1405273,1405274,1405275,1405276,1405277,1405278,1405279,1405280,1405281,1405282,1405283,1405284,1405285,1405286,1405287,1405289,1405290,1405291,1405292,1405293,1405294,1405295,1405296,1405297,1405298,1405299,1405300,1405301,1405302,1405303,1405304,1405305,1405306,1405307,1405308,1405318,1405319,1405320,1405321,1405322,1405323,1405324,1405325,1405326,1405327,1405328,1405329,1405330,1405331,1405332,1405333,1405334,1405335,1405336,1405337,1405338,1405339,1405340,1405341,1405342,1405343,1405344,1405345,1405346,1405347,1405348,1405349,1405350,1405351,1405352,1405353,1405354,1405355,1405356,1405357,1405358,1405359,1405360,1405361,1405362,1405363,1405364,1405365,1405366,1405367,1405368,1405369,1405370,1405371,1405372,1405373,1405374,1405375,1405376,1405377,1405378,1405379,1405380,1405381,1405382,1405384,1405385,1405386,1405387,1405388,1405389,1405390,1405391,1405392,1405393,1405394,1405395,1405396,1405397,1405398,1405399,1405400,1405401,1405402,1405403,1405404,1405405,1405406,1405407,1405408,1405409,1405410,1405411,1405412,1405413,1405414,1405415,1405416,1405417,1405418,1405419,1405420,1405421,1405422,1405423,1405424,1405425,1405426,1405427,1405428,1405429,1405430,1405431,1405432,1405433,1405434,1405435,1405436,1405437,1405438,1405439,1405440,1405441,1405442,1405443,1405444,1405445,1405446,1405447,1405448,1405449,1405450,1405451,1405452,1405453,1405454,1405455,1405456,1405457,1405458,1405459,1405460,1405461,1405462,1405463,1405464,1405465,1405466,1405467,1405468,1405469,1405470,1405471,1405472,1405473,1405474,1405475,1405476,1405477,1405478,1405479,1405480,1405481,1405482,1405483,1405484,1405485,1405486,1405487,1405488,1405489,1405490,1405491,1405492,1405493,1405494,1405495,1405496,1405497,1405498,1405499,1405500,1405501,1405502,1405503,1405504,1405505,1405506,1405507,1405508,1405509,1405510,1405511,1405512,1405513,1405514,1405515,1405516,1405517,1405518,1405519,1405520,1405521,1405522,1405523,1405524,1405525,1405526,1405527,1405528,1405529,1405530,1405531,1405532,1405533,1405534,1405535,1405536,1405537,1405538,1405539,1405540,1405541,1405542,1405543,1405544,1405545,1405546,1405547,1405548,1405549,1405550,1405551,1405552,1405553,1405554,1405555,1405556,1405557,1405558,1405559,1405560,1405561,1405562,1405563,1405564,1405565,1405566,1405567,1405569,1405570,1405571,1405572,1405573,1405574,1405575,1405576,1405577,1405578,1405579,1405580,1405581,1405582,1405583,1405584,1405585,1405586,1405587,1405588,1405589,1405590,1405591,1405592,1405593,1405594,1405595,1405596,1405597,1405598,1405599,1405600,1405601,1405602,1405603,1405604,1405605,1405606,1405607,1405608,1405609,1405611,1405612,1405613,1405614,1405615,1405616,1405617,1405618,1405619,1405620,1405621,1405622,1405623,1405624,1405625,1405629,1405630,1405631,1405632,1405633,1405634,1405638,1405639,1405640,1405641,1405642,1405643,1405644,1405645,1405646,1405647,1405648,1405649,1405650,1405651,1405652,1405653,1405654,1405655,1405656,1405657,1405658,1405659,1405660,1405661,1405662,1405663,1405664,1405665,1405666,1405667,1405668,1405669,1405670,1405671,1405672,1405673,1405674,1405675,1405676,1405677,1405678,1405679,1405680,1405681,1405682,1405683,1405684,1405685,1405686,1405687,1405688,1405689,1405690,1405691,1405692,1405695,1405696,1405697,1405698,1405655,1405656,1405657,1405658,1405703,1405704,1405705,1405706,1405707,1405708,1405709,1405710,1405711,1405712,1405713,1405714,1405715,1405716,1405717,1405718,1405719,1405720,1405721,1405722,1405723,1405724,1405725,1405726,1405727,1405728,1405731,1405732,1405733,1405734,1405735,1405736,1405737,1405738,1405739,1405740,1405741,1405742,1405744,1405745,1405746,1405747,1405748,1405749,1405750,1405751,1405752,1405753,1405754,1405755,1405756,1405757,1405758,1405760,1405762,1405763,1405764,1405765,1405766,1405767,1405768,1405769,1405770,1405771,1405772,1405773,1405774,1405775,1405776,1405777,1405778,1405779,1405780,1405781,1405782,1405783,1405784,1405785,1405786,1405787,1405788,1405789,1405790,1405791,1405792,1405793,1405794,1405795,1405796,1405797,1405798,1405799,1405800,1405801,1405802,1405803,1405804,1405805,1405806,1405807,1405808,1405809,1405810,1405811,1405812,1405813,1405814,1405815,1405816,1405817,1405818,1405819,1405820,1405821,1405822,1405823,1405824,1405825,1405826,1405827,1405828,1405829,1405830,1405831,1405832,1405833,1405834,1405835,1405836,1405837,1405838,1405839,1405856,1405857,1405858,1405859,1405860,1405861,1405862,1405863,1405864,1405865,1405866,1405867,1405872,1405873,1405874,1405875,1405876,1405877,1405878,1405879,1405880,1405881,1405882,1405883,1405884,1405885,1405886,1405887,1405888,1405889,1405890,1405891,1405892,1405893,1405894,1405895,1405896,1405898,1405899,1405900,1405901,1405902,1405903,1405904,1405905,1405906,1405910,1405911,1405912,1405913,1405914,1405915,1405917,1405918,1405919,1405920,1405921,1405922,1405923,1405924,1405925,1405926,1405927,1405928,1405929,1405930,1405931,1405932,1405933,1405934,1405935,1405936,1405937,1405938,1405939,1405940,1405941,1405942,1405943,1405944,1405945,1405946,1405947,1405948,1405949,1405950,1405951,1405952,1405953,1405954,1405955,1405956,1405957,1405958,1405959,1405960,1405961,1405962,1405963,1405964,1405965,1405966,1405967,1405968,1405927,1405928,1405929,1405930,1405973,1105974,1405975,1405976,1405977,1405984,1405985,1405986,1405987,1405988,1405989,1405990,1405991,1405992,1405993,1405994,1405995,1405996,1405997,1405998,1405999,1406000,1406001,1406004,1406005,1406006,1406007,1406008,1406009,1406010,1406011,1406012,1406013,1406014,1406015,1406016,1406017,1406018,1406019,1406020,1406021,1406022,1406023,1406024,1406025,1406026,1406027,1406028,1406029,1406030,1406031,1406032,1406033,1406034,1406035,1406036,1406037,1406038,1406039,1406040,1406041,1406042,1406043,1406044,1406045,1406046,1406047,1406048,1406049,1406050,1406051,1406052,1406053,1406054,1406055,1406056,1406057,1406058,1406059,1406060,1406061,1406062,1406063,1406064,1406065,1406066,1406067,1406068,1406069,1406070,1406071,1406072,1406073,1406074,1406075,1406076,1406077,1406078,1406079,1406080,1406081,1406082,1406083,1406084,1406085,1406086,1406087,1406088,1406089,1406090,1406091,1406092,1406093,1406094,1406095,1406096,1406097,1406098,1406099,1406100,1406101,1406102,1406103,1406104,1406105,1406106,1406107,1406108,1406109,1406110,1406111,1406112,1406113,1406114,1406115,1406116,1406117,1406118,1406119,1406120,1406121,1406122,1406123,1406124,1406125,1406126,1406127,1406128,1406129,1406130,1406131,1406132,1406133,1406134,1406135,1406136,1406137,1406138,1406139,1406140,1406141,1406142,1406143,1406144,1406145,1406146,1406153,1406154,1406155,1406156,1406157,1406158,1406159,1406160,1406161,1406162,1406163,1406164,1406165,1406166,1406167,1406168,1406169,1406170,1406171,1406172,1406173,1406174,1406175,1406176,1406177,1406178,1406179,1406180,1406181,1406182,1406183,1406184,1406185,1406186,1406187,1406188,1406189,1406190,1406191,1406192,1406193,1406194,1406195,1406196,1406197,1406198,1406199,1406200,1406201,1406202,1406203,1406204,1406205,1406206,1406207,1406208,1406209,1406210,1406211,1406214,1406215,1406216,1406217,1406218,1406219,1406220,1406221,1406222,1406223,1406224,1406225,1406226,1406227,1406228,1406229,1406230,1406231,1406232,1406233,1406234,1406235,1406236,1406237,1406238,1406239,1406240,1406241,1406242,1406243,1406244,1406245,1406246,1406247,1406248,1406249,1406250,1406251,1406252,1406253,1406254,1406255,1406256,1406257,1406258,1406259,1406260,1406261,1406262,1406263,1406264,1406265,1406266,1406267,1406268,1406269,1406270,1406271,1406272,1406273,1406274,1406275,1406276,1406277,1406278,1406279,1406280,1406281,1406282,1406283,1406284,1406285,1406286,1406287,1406288,1406289,1406290,1406291,1406292,1406293,1406294,1406295,1406296,1406297,1406298,1406299,1406300,1406301,1406302,1406303,1406304,1406305,1406312,1406313,1406314,1406315,1406316,1406317,1406318,1406319,1406320,1406321,1406322,1406323,1406324,1406325,1406326,1406327,1406328,1406329,1406330,1406331,1406332,1406333,1406334,1406335,1406336,1406337,1406338,1406339,1406340,1406341,1406342,1406343,1406344,1406345,1406346,1406347,1406348,1406349,1406350,1406351,1406352,1406353,1406354,1406355,1406356,1406357,1406358,1406359,1406360,1406361,1406362,1406363,1406364,1406365,1406366,1406367,1406368,1406369,1406370,1406371,1406372,1406373,1406374,1406375,1406376,1406377,1406378,1406379,1406380,1406381,1406382,1406383,1406384,1406385,1406386,1406387,1406388,1406389,1406390,1406391,1406392,1406393,1406394,1406395,1406396,1406397,1406398,1406399,1406400,1406401,1406402,1406403,1406404,1406405,1406406,1406407,1406408,1406409,1406410,1406411,1406412,1406413,1406414,1406415,1406416,1406417,1406418,1406419,1406420,1406421,1406422,1406423,1406424,1406425,1406426,1406427,1406428,1406429,1406430,1406431,1406432,1406433,1406434,1406435,1406436,1406437,1406438,1406439,1406440,1406441,1406442,1406443,1406444,1406445,1406446,1406447,1406448,1406449,1406450,1406451,1406452,1406453,1406454,1406455,1406456,1406457,1406458,1406459,1406460,1406461,1406462,1406463,1406464,1406465,1406466,1406467,1406468,1406469,1406470,1406476,1406477,1406478,1406479,1406480,1406481,1406482,1406483,1406484,1406485,1406486,1406487,1406488,1406489,1406490,1406491,1406492,1406493,1406494,1406495,1406496,1406497,1406498,1406499,1406500,1406501,1406502,1406503,1406504,1406505,1406506,1406507,1406508,1406509,1406510,1406511,1406512,1406513,1406514,1406515,1406516,1406517,1406518,1406519,1406520,1406521,1406522,1406523,1406524,1406525,1406526,1406527,1406528,1406529,1406530,1406531,1406532,1406533,1406534,1406535,1406536,1406537,1406538,1406539,1406540,1406541,1406542,1406543,1406544,1406545,1406546,1406547,1406548,1406549,1406550,1406551,1406552,1406553,1406554,1406555,1406556,1406557,1406558,1406559,1406560,1406561,1406562,1406563,1406564,1406565,1406566,1406567,1406568,1406569,1406570,1406571,1406572,1406573,1406574,1406575,1406576,1406577,1406578,1406579,1406580,1406581,1406582,1406583,1406584,1406585,1406586,1406587,1406588,1406589,1406590,1406591,1406592,1406593,1406594,1406595,1406596,1406597,1406598,1406599,1406600,1406601,1406602,1406603,1406604,1406605,1406606,1406607,1406608,1406609,1406610,1406611,1406612,1406613,1406614,1406615,1406616,1406617,1406618,1406619,1406620,1406621,1406622,1406623,1406624,1406625,1406626,1406627,1406628,1406629,1406630,1406631,1406632,1406633,1406634,1406635,1406636,1406637,1406638,1406639,1406640,1406641,1406642,1406643,1406644,1406645,1406646,1406647,1406648,1406649,1406650,1406651,1406652,1406653,1406654,1406655,1406656,1406657,1406658,1406659,1406660,1406661,1406662,1406663,1406664,1406665,1406666,1406667,1406668,1406669,1406670,1406671,1406672,1406673,1406674,1406675,1406676,1406677,1406678,1406679,1406680,1406681,1406682,1406683,1406684,1406685,1406686,1406687,1406688,1406689,1406690,1406691,1406692,1406693,1406694,1406695,1406696,1406697,1406698,1406699,1406700,1406701,1406702,1406703,1406704,1406705,1406706,1406707,1406708,1406709,1406710,1406711,1406712,1406713,1406714,1406715,1406716,1406719,1406720,1406721,1406722,1406723,1406724,1406725,1406726,1406727,1406728,1406729,1406730,1406731,1406732,1406733,1406734,1406735,1406736,1406737,1406738,1406739,1406740,1406741,1406742,1406744,1406745,1406746,1406747,1406748,1406749,1406751,1406752,1406753,1406754,1406755,1406756,1406757,1406758,1406759,1406760,1406761,1406762,1406763,1406764,1406765,1406766,1406767,1406768,1406769,1406770,1406771,1406772,1406773,1406774,1406775,1406776,1406777,1406778,1406779,1406780,1406781,1406782,1406783,1406784,1406785,1406786,1406787,1406788,1406789,1406790,1406791,1406792,1406793,1406794,1406795,1406796,1406797,1406800,1406801,1406802,1406803,1406804,1406805,1406806,1406807,1406808,1406809,1406816,1406817,1406818,1406819,1406820,1406821,1406822,1406823,1406824,1406825,1406826,1406827,1406828,1406829,1406830,1406831,1406832,1406833,1406834,1406835,1406836,1406837,1406838,1406839,1406840,1406841,1406842,1406843,1406844,1406845,1406846,1406847,1406848,1406849,1406850,1406851,1406852,1406853,1406854,1406855,1406856,1406857,1406858,1406859,1406860,1406861,1406862,1406863,1406864,1406865,1406866,1406867,1406868,1406869,1406870,1406871,1406872,1406873,1406874,1406875,1406876,1406877,1406878,1406879,1406880,1406881,1406882,1406883,1406884,1406885,1406886,1406887,1406888,1406889,1406890,1406891,1406892,1406893,1406894,1406895,1406896,1406897,1406898,1406899,1406900,1406901,1406902,1406903,1406906,1406907,1406908,1406909,1406910,1406911,1406912,1406913,1406914,1406915,1406916,1406917,1406918,1406919,1406920,1406921,1406922,1406923,1406924,1406925,1406926,1406927,1406928,1406929,1406930,1406931,1406932,1406933,1406934,1406935,1406936,1406937,1406938,1406939,1406940,1406941,1406942,1406943,1406944,1406945,1406946,1406947,1406948,1406949,1406950,1406951,1406952,1406953,1406954,1406955,1406956,1406957,1406958,1406959,1406960,1406961,1406962,1406963,1406964,1406971,1406972,1406973,1406974,1406975,1406976,1406977,1406978,1406979,1406980,1406981,1406982,1406984,1406985,1406986,1406987,1406988,1406989,1406990,1406991,1406992,1406993,1406994,1406995,1406996,1406997,1406998,1406999,1407000,1407001,1407002,1407003,1407004,1407005,1407006,1407007,1407008,1407009,1407010,1407011,1407012,1407013,1407014,1407015,1407016,1407017,1407018,1407020,1406937,1406948,1406953,1407028,1407029,1407030,1407031,1407032,1407034,1407035,1407036,1407037,1407038,1407039,1407040,1407041,1407042,1407043,1407044,1407045,1407046,1407047,1407048,1407049,1407050,1407051,1407052,1407055,1407056,1407057,1407058,1407059,1407060,1407061,1407062,1407063,1407064,1407065,1407066,1407067,1407068,1407069,1407070,1407071,1407072,1407073,1407074,1407075,1407076,1407077,1407078,1407079,1407080,1407081,1407082,1407083,1407084,1407085,1407086,1407087,1407088,1407089,1407090,1407091,1407092,1407093,1407094,1407095,1407096,1407103,1407104,1407105,1407106,1407107,1407108,1407111,1407112,1407113,1407114,1407115,1407116,1407117,1407118,1407119,1407120,1407121,1407122,1407123,1407124,1407125,1407126,1407127,1407128,1407129,1407130,1407131,1407132,1407133,1407134,1407135,1407136,1407137,1407138,1407139,1407140,1407141,1407142,1407143,1407144,1407145,1407146,1407147,1407148,1407149,1407150,1407151,1407152,1407153,1407154,1407155,1407156,1407157,1407158,1407159,1407160,1407161,1407162,1407165,1407166,1407167,1407168,1407169,1407170,1407171,1407172,1407173,1407174,1407175,1407176,1407177,1407178,1407179,1407180,1407181,1407182,1407183,1407184,1407185,1407186,1407187,1407188,1407189,1407190,1407191,1407192,1407193,1407194,1407195,1407196,1407197,1407198,1407199,1407200,1407201,1407202,1407203,1407204,1407205,1407206,1407208,1407209,1407210,1407211,1407212,1407219,1407220,1407221,1407222,1407223,1407224,1407225,1407226,1407229,1407230,1407231,1407232,1407233,1407234,1407235,1407236,1407237,1407238,1407239,1407240,1407241,1407242,1407243,1407244,1407245,1407246,1407247,1407248,1407249,1407250,1407251,1407252,1407260,1407261,1407262,1407263,1407264,1407265,1407266,1407267,1407268,1407269,1407270,1407271,1407272,1407273,1407274,1407275,1407276,1407277,1407278,1407279,1407280,1407281,1407282,1407283,1407284,1407285,1407286,1407287,1407290,1407291,1407292,1407293,1407294,1407295,1407296,1407297,1407298,1407299,1407300,1407301,1407302,1407303,1407304,1407305,1407306,1407307,1407308,1407309,1407310,1407311,1407312,1407313,1407314,1407315,1407316,1407317,1407318,1407319,1407320,1407321,1407322,1407323,1407324,1407325,1407326,1407327,1407328,1407329,1407330,1407331,1407334,1407335,1407336,1407337,1407338,1407339,1407340,1407341,1407342,1407343,1407344,1407345,1407346,1407347,1407348,1407349,1407350,1407351,1407352,1407353,1407354,1407355,1407356,1407357,1407358,1407359,1407366,1407369,1407372,1407373,1407374,1407375,1407376,1407377,1407378,1407379,1407380,1407381,1407382,1407383,1407384,1407385,1407386,1407387,1407388,1407389,1407390,1407391,1407392,1407393,1407396,1407397,1407398,1407399,1407400,1407401,1407402,1407404,1407405,1407406,1407407,1407408,1407409,1407410,1407411,1407412,1407413,1407414,1407415,1407416,1407417,1407418,1407419,1407420,1407421,1407422,1407423,1407424,1407425,1407426,1407427,1407428,1407429,1407430,1407431,1407432,1407433,1407434,1407435,1407436,1407437,1407438,1407439,1407440,1407441,1407442,1407445,1407446,1407447,1407448,1407449,1407450,1407451,1407452,1407453,1407454,1407455,1407456,1407457,1407458,1407459,1407460,1407461,1407462,1407463,1407464,1407465,1407466,1407467,1407468,1407469,1407470,1407471,1407472,1407475,1407476,1407477,1407478,1407479,1407480,1407481,1407482,1407483,1407485,1407486,1407487,1407488,1407489,1407490,1407491,1407492,1407493,1407494,1407495,1407496,1407497,1407498,1407499,1407500,1407501,1407502,1407503,1407504,1407505,1407512,1407513,1407514,1407515,1407516,1407517,1407518,1407519,1407520,1407521,1407522,1407523,1407524,1407527,1407528,1407529,1407530,1407531,1407532,1407533,1407534,1407535,1407536,1407537,1407538,1407539,1407540,1407541,1407542,1407543,1407544,1407545,1407546,1407547,1407548,1407549,1407550,1407551,1407552,1407553,1407554,1407555,1407556,1407557,1407558,1407559,1407560,1407561,1407562,1407563,1407564,1407565,1407566,1407567,1407568,1407569,1407570,1407571,1407572,1407573,1407574,1407577,1407578,1407579,1407580,1407581,1407582,1407583,1407584,1407585,1407586,1407587,1407588,1407589,1407590,1407591,1407592,1407593,1407594,1407595,1407596,1407597,1407598,1407599,1407600,1407601,1407602,1407603,1407604,1407605,1407606,1407607,1407608,1407609,1407610,1407611,1407612,1407613,1407614,1407615,1407616,1407617,1407618,1407625,1407626,1407627,1407628,1407629,1407630,1407631,1407632,1407633,1407636,1407637,1407638,1407639,1407640,1407641,1407642,1407643,1407644,1407645,1407646,1407647,1407648,1407649,1407650,1407651,1407652,1407653,1407654,1407655,1407656,1407657,1407658,1407659,1407660,1407668,1407669,1407670,1407671,1407672,1407673,1407674,1407675,1407676,1407677,1407678,1407679,1407680,1407681,1407682,1407683,1407684,1407685,1407686,1407687,1407688,1407689,1407690,1407691,1407692,1407693,1407694,1407695,1407696,1407697,1407700,1407701,1407702,1407703,1407704,1407705,1407706,1407707,1407708,1407709,1407710,1407711,1407712,1407713,1407714,1407715,1407716,1407717,1407718,1407719,1407720,1407721,1407722,1407723,1407724,1407725,1407726,1407727,1407729,1407730,1407731,1407732,1407733,1407734,1407735,1407736,1407737,1407738,1407739,1407740,1407741,1407742,1407743,1407744,1407745,1407746,1407747,1407748,1407749,1407750,1407751,1407752,1407753,1407754,1407755,1407756,1407757,1407758,1407759,1407760,1407763,1407764,1407765,1407766,1407767,1407768,1407769,1407770,1407771,1407772,1407773,1407774,1407775,1407776,1407778,1407779,1407780,1407781,1407782,1407783,1407784,1407785,1407786,1407787,1407788,1407789,1407790,1407791,1407792,1407793,1407794,1407795,1407796,1407797,1407798,1407799,1407800,1407801,1407802,1407803,1407804,1407805,1407806,1407807,1407808,1407809,1407810,1407811,1407812,1407813,1407816,1407817,1407818,1407819,1407820,1407821,1407822,1407823,1407824,1407825,1407826,1407827,1407828,1407829,1407830,1407831,1407832,1407833,1407834,1407835,1407836,1407837,1407838,1407839,1407840,1407841,1407842,1407843,1407844,1407845,1407846,1407847,1407848,1407849,1407856,1407857,1407858,1407859,1407860,1407861,1407862,1407863,1407864,1407865,1407866,1407867,1407868,1407869,1407870,1407871,1407872,1407875,1407876,1407877,1407878,1407879,1407880,1407881,1407882,1407883,1407884,1407885,1407886,1407887,1407888,1407889,1407890,1407891,1407892,1407893,1407894,1407895,1407896,1407897,1407898,1407899,1407900,1407901,1407902,1407903,1407904,1407905,1407906,1407907,1407908,1407909,1407910,1407911,1407912,1407913,1407914,1407915,1407916,1407917,1407918,1407919,1407920,1407921,1407922,1407923,1407926,1407927,1407928,1407929,1407930,1407931,1407935,1407936,1407937,1407938,1407947,1407948,1407949,1410000,1410001,1410002,1410003,1410004,1410005,1410006,1410007,1410008,1410009,1410010,1410011,1410012,1410013,1410014,1410015,1410016,1410017,1410018,1410019,1410020,1410021,1410022,1410023,1410024,1410025,1410026,1410027,1410028,1410029,1410030,1410031,1410032,1410033,1410034,1410035,1410036,1410037,1410038,1410039,1410040,1410041,1410042,1410043,1410044,1410045,1410046,1410047,1410048,1410049,1410050,1410051,1410052,1410053,1410054,1410055,1410056,1410057,1410058,1410059,1410060,1410061,1410062,1410063,1410064,1410065,1410066,1410067,1410068,1410069,1410070,1410071,1410072,1410073,1410074,1410075,1410077,1410078,1410079,1410080,1410081,1410082,1410083,1410084,1410085,1410086,1410087,1410088,1410089,1410090,1410091,1410092,1410093,1410094,1410095,1410096,1410097,1410098,1410099,1410100,1410101,1410102,1410103,1410104,1410105,1410106,1410107,1410108,1410109,1410110,1410111,1410112,1410113,1410114,1410115,1410116,1410117,1410118,1410119,1410120,1410121,1410122,1410123,1410124,1410125,1410126,1410127,1410128,1410129,1410130,1410131,1410132,1410133,1410134,1410135,1410136,1410137,1410138,1410139,1410140,1410141,1410142,1410143,1410144,1410145,1410146,1410147,1410148,1410149,1410150,1410151,1410152,1410153,1410154,1410155,1410156,1410157,1410158,1410159,1410160,1410161,1410162,1410163,1410164,1410165,1410166,1410167,1410168,1410169,1410170,1410171,1410172,1410173,1410174,1410175,1410176,1410177,1410178,1410179,1410180,1410181,1410182,1410183,1410184,1410185,1410186,1410187,1410188,1410189,1410190,1410191,1410192,1410193,1410194,1410195,1410196,1410198,1410199,1410200,1410201,1410202,1410203,1410204,1410205,1410206,1410207,1410208,1410209,1410210,1410211,1410212,1410213,1410214,1410215,1410216,1410217,1410218,1410219,1410220,1410221,1410222,1410223,1410224,1410225,1410226,1410227,1410228,1410229,1410230,1410231,1410232,1410233,1410234,1410235,1410236,1410237,1410238,1410239,1410240,1410241,1410242,1410243,1410244,1410245,1410246,1410247,1410248,1410249,1410250,1410251,1410252,1410253,1410254,1410255,1410256,1410257,1410258,1410259,1410260,1410261,1410262,1410263,1410264,1410265,1410266,1410267,1410268,1410269,1410270,1410271,1410272,1410273,1410274,1410275,1410276,1410277,1410278,1410279,1410280,1410281,1410282,1410283,1410284,1410285,1410286,1410287,1410288,1410289,1410290,1410291,1410292,1410293,1410294,1410295,1410296,1410297,1410298,1410299,1410300,1410301,1410302,1410303,1410304,1410305,1410306,1410307,1410308,1410309,1410310,1410311,1410312,1410313,1410314,1410315,1410316,1410317,1410318,1410319,1410320,1410323,1410324,1410325,1410326,1410327,1410328,1410329,1410330,1410331,1410332,1410333,1410334,1410335,1410336,1410337,1410338,1410339,1410340,1410341,1410342,1410343,1410344,1410345,1410346,1410347,1410348,1410349,1410350,1410351,1410352,1410353,1410354,1410355,1410356,1410357,1410358,1410359,1410360,1410361,1410362,1410363,1410364,1410365,1410366,1410367,1410368,1410369,1410370,1410371,1410372,1410373,1410374,1410375,1410376,1410377,1410378,1410379,1410380,1410381,1410382,1410383,1410384,1410385,1410386,1410387,1410388,1410389,1410390,1410391,1410393,1410394,1410395,1410396,1410397,1410398,1410399,1410400,1410401,1410402,1410403,1410404,1410405,1410406,1410407,1410408,1410409,1410410,1410411,1410412,1410413,1410414,1410415,1410416,1410417,1410418,1410419,1410420,1410421,1410422,1410423,1410424,1410425,1410426,1410427,1410430,1410431,1410432,1410433,1410434,1410435,1410436,1410437,1410438,1410439,1410440,1410441,1410442,1410443,1410444,1410445,1410446,1410447,1410448,1410449,1410450,1410451,1410452,1410453,1410454,1410455,1410456,1410457,1410458,1410460,1410461,1410462,1410463,1410464,1410465,1410466,1410467,1410468,1410469,1410470,1410471,1410472,1410473,1410474,1410475,1410478,1410479,1410480,1410481,1410482,1410483,1410484,1410485,1410486,1410487,1410490,1410491,1410492,1410493,1410494,1410495,1410497,1410498,1410499,1410500,1410501,1410502,1410503,1410504,1410505,1410506,1410507,1410508,1410509,1410510,1410511,1410512,1410513,1410514,1410515,1410516,1410517,1410518,1410519,1410520,1410521,1410522,1410523,1410524,1410525,1410526,1410527,1410531,1410532,1410533,1410534,1410535,1410536,1410537,1410538,1410539,1410540,1410541,1410542,1410543,1410544,1410545,1410546,1410547,1410548,1410549,1410550,1410551,1410552,1410553,1410554,1410555,1410556,1410557,1410558,1410559,1410560,1410561,1410565,1410566,1410567,1410568,1410569,1410570,1410571,1410572,1410573,1410574,1410575,1410576,1410577,1410578,1410579,1410580,1410581,1410582,1410583,1410584,1410585,1410586,1410587,1410588,1410589,1410590,1410591,1410592,1410593,1410594,1410595,1410596,1410597,1410598,1410599,1410600,1410601,1410602,1410603,1410604,1410605,1410606,1410607,1410608,1410609,1410610,1410611,1410612,1410613,1410614,1410615,1410616,1410617,1410618,1410619,1410620,1410621,1410622,1410623,1410624,1410625,1410626,1410627,1410628,1410629,1410630,1410631,1410633,1410634,1410635,1410636,1410637,1410638,1410639,1410640,1410641,1410642,1410643,1410644,1410645,1410646,1410647,1410648,1410650,1410651,1410652,1410653,1410654,1410655,1410656,1410657,1410658,1410659,1410660,1410661,1410662,1410663,1410664,1410665,1410666,1410667,1410668,1410669,1410670,1410671,1410672,1410673,1410674,1410675,1410676,1410677,1410678,1410679,1410680,1410681,1410682,1410683,1410684,1410685,1410686,1410687,1410688,1410689,1410690,1410691,1410692,1410693,1410694,1410695,1410696,1410697,1410698,1410699,1410700,1410702,1410704,1410706,1410708,1410710,1410711,1410712,1410713,1410714,1410715,1410716,1410717,1410718,1410719,1410720,1410721,1410722,1410723,1410724,1410725,1410726,1410727,1410728,1410729,1410730,1410731,1410732,1410733,1410734,1410735,1410736,1410737,1410738,1410739,1410740,1410741,1410742,1410743,1410744,1410745,1410746,1410747,1410748,1410749,1410750,1410751,1410752,1410753,1410754,1410755,1410756,1410757,1410758,1410759,1410760,1410761,1410762,1410763,1410764,1410765,1410766,1410767,1410768,1410769,1410770,1410771,1410772,1410773,1410774,1410775,1410776,1410777,1410778,1410779,1410780,1410781,1410782,1410783,1410784,1410785,1410786,1410787,1410788,1410789,1410790,1410791,1410792,1410793,1410794,1410795,1410796,1410797,1410798,1410799,1410800,1410801,1410802,1410803,1410804,1410805,1410806,1410807,1410808,1410809,1410810,1410811,1410812,1410813,1410814,1410815,1410816,1410817,1410818,1410819,1410820,1410821,1410822,1410823,1410824,1410825,1410826,1410827,1410828,1410829,1410830,1410831,1410832,1410833,1410834,1410835,1410836,1410837,1410838,1410839,1410840,1410841,1410842,1410846,1410847,1410848,1410849,1410850,1410851,1410852,1410853,1410854,1410855,1410856,1410857,1410858,1410859,1410860,1410861,1410862,1410863,1410864,1410865,1410866,1410867,1410868,1410869,1410870,
+    -- [ Koenigsegg ]
+    1961016, -- Koenigsegg Jesko (Xám Bạc)
+    1961017, -- Koenigsegg Jesko (Cầu Vồng)
+    1961018, -- Koenigsegg Jesko (Bình Minh)
+    1961029, -- Koenigsegg One:1 Gilt
+    1961030, -- Koenigsegg One:1 Cyber Nebula
+    1961031, -- Koenigsegg One:1 Jade
+    1961032, -- Koenigsegg One:1 Phoenix
+    1903074, -- Koenigsegg Gemera (Xám Bạc)
+    1903075, -- Koenigsegg Gemera (Cầu Vồng)
+    1903076, -- Koenigsegg Gemera (Bình Minh)
 
-    1501001687, 1501001677, 1501001672, 1501001649, 1501001174, 1501001668, 1501001081, 1501001618, 1501001220,
+    -- [ Lamborghini ]
+    1961020, -- Lamborghini Aventador SVJ Verde Alceo
+    1961021, -- Lamborghini Centenario Galassia
+    1961024, -- Lamborghini Aventador SVJ Blue
+    1961025, -- Lamborghini Centenario Carbon Fiber
+    1961144, -- Lamborghini Invencible Rosso Efesto
+    1961145, -- Lamborghini Invencible Nebula Drift
+    1903079, -- Lamborghini Estoque Oro
+    1903080, -- Lamborghini Estoque Metal Grey
+    1908066, -- Lamborghini Urus Pink
+    1908067, -- Lamborghini Urus Giallo Inti
 
-    1501001582, 1501001047, 1501001496, 1501001051, 1501001588, 1501000057, 1501001061, 1501001058, 1501001069,
+    -- [ Bugatti ]
+    1961041, -- Bugatti Veyron 16.4 (Sắc Màu)
+    1961042, -- Bugatti Veyron 16.4 (Vàng)
+    1961043, -- Bugatti Veyron 16.4
+    1961044, -- Bugatti La Voiture Noire
+    1961045, -- Bugatti La Voiture Noire (Hợp Kim)
+    1961046, -- Bugatti La Voiture Noire (Chiến Binh)
+    1961047, -- Bugatti La Voiture Noire (Tinh Vân)
+    1961151, -- Bugatti Bolide (Lưỡi Gương)
+    1961152, -- Bugatti Bolide (Bỉ Ngạn)
+    1961153, -- Bugatti Bolide (Ảo Ảnh Hồ Băng)
 
-    1501001628,
+    -- [ Aston Martin ]
+    1961048, -- Aston Martin Valkyrie (Luminous Diamond)
+    1961049, -- Aston Martin Valkyrie (Racing Green)
+    1915005, -- Aston Martin DBS Volante (Deep Cosmos)
+    1915006, -- Aston Martin DBS Volante (Celestial Pink)
+    1915007, -- Aston Martin DBS Volante (Black-Bronze Satin)
+    1908084, -- Aston Martin DBX707 (Neon Purple)
+    1908085, -- Aston Martin DBX707 (Quasar Blue)
 
-    1501002687, 1501002677, 1501002672, 1501002649, 1501002174, 1501002668, 1501002081, 1501002618, 1501002220,
+    -- [ Pagani ]
+    1961051, -- Pagani Zonda R (Tricolore Carbon)
+    1961052, -- Pagani Zonda R (Bianco Benny)
+    1961053, -- Pagani Zonda R (Melodic Midnight)
+    1961054, -- Pagani Imola (Grigio Montecarlo)
+    1961055, -- Pagani Imola (Crystal Clear Carbon)
+    1961056, -- Pagani Imola (Nebula Dream)
+    1961057, -- Pagani Imola (Arctic Aegis)
 
-    1501002582, 1501002047, 1501002496, 1501002051, 1501002588, 1501000057, 1501002061, 1501002058, 1501002069,
+    -- [ Bentley ]
+    1961137, -- Bentley Batur (Kim Cương Lấp Lánh)
+    1961138, -- Bentley Batur (Tận Cùng Thời Gian)
+    1961139, -- Bentley Betayga Azure (Vương Quốc Huyền Ảo)
+    1903200, -- Bentley Flying Spur Mulliner (Tinh Vân Xanh)
+    1903201, -- Bentley Flying Spur Mulliner (Dòng Chảy Vịnh Hẹp)
+    1908094, -- Bentley Betayga Azure (Mưa Hoa)
+    1908095, -- Bentley Betayga Azure (Đêm Yên Tĩnh)
+    1915008, -- Bentley Continental GTC Mulliner (Mộng Cảnh Lung Linh)
+    1915009, -- Bentley Continental GTC Mulliner (Quý Tộc Áo Tím)
 
-    1501002628,
+    -- [ Maserati ]
+    1961038, -- Maserati MC20 Bianco Audace
+    1961039, -- Maserati MC20 Rosso Vincente
+    1961040, -- Maserati MC20 Sogni
+    1908075, -- Maserati Levante Blu Emozione
+    1908076, -- Maserati Luce Arancione
+    1908077, -- Maserati Levante Neon Urbano
+    1908078, -- Maserati Levante Firmamento
 
-    1501003687, 1501003677, 1501003672, 1501003649, 1501003174, 1501003668, 1501003081, 1501003618, 1501003220,
+    -- [ Dodge / SRT ]
+    1961036, -- Dodge Challenger SRT Hellcat - Blaze
+    1961037, -- Dodge Challenger SRT Hellcat - Lime
+    1961050, -- Dodge Challenger SRT Hellcat Jailbreak - Hellfire
+    1961136, -- Dodge Challenger SRT Hellcat - Blaze
+    1961150, -- Dodge Challenger SRT Hellcat Jailbreak - Hellfire
+    1903088, -- Dodge Charger SRT Hellcat - Fuchsia
+    1903089, -- Dodge Charger SRT Hellcat - Tuscan Torque
+    1903090, -- Dodge Charger SRT Hellcat Jailbreak - Violet Venom
+    1903189, -- Dodge Charger SRT Hellcat - Tuscan Torque
+    1903190, -- Dodge Charger SRT Hellcat Jailbreak - Violet Venom
+    1908086, -- Dodge Hornet - Scarlet Sting
+    1908088, -- Dodge Hornet GLH Concept - Redline
+    1908089, -- Dodge Hornet - Sunburst
+    1908188, -- Dodge Hornet GLH Concept - Redline
+    1908189, -- Dodge Hornet - Sunburst
 
-    1501003582, 1501003047, 1501003496, 1501003051, 1501003588, 1501000057, 1501003061, 1501003058, 1501003069,
+    -- [ Porsche ]
+    1961062, -- Porsche 918 Spyder (Dòng Nước)
+    1961063, -- Porsche 918 Spyder (964 Bạc Ánh Kim)
+    1961064, -- Porsche 918 Spyder (Hồng)
+    1903218, -- Porsche Panamera Turbo S (Lam Ngọc)
+    1903219, -- Porsche Panamera Turbo S (Xanh Viper)
+    1908108, -- Porsche Cayenne Turbo GT (Đường Đua Rực Lửa)
+    1908109, -- Porsche Cayenne Turbo GT (Cam Dung Nham)
+    1915021, -- Porsche 911 Carrera 4 GTS Cabriolet (Ngàn Sao)
+    1915022, -- Porsche 911 Carrera 4 GTS Cabriolet (Đỏ Ruby)
 
-    1501003628,
+    -- [ Shelby / Ford ]
+    1961058, -- Shelby 427 Cobra (Xanh & Trắng)
+    1961059, -- Shelby 427 Cobra (Graffiti Phục Cổ)
+    1903210, -- Shelby GT500 (Đen & Đỏ)
+    1903211, -- Shelby GT500 (Người Ngoài Hành Tinh Cyber)
+    1961068, -- Ford Mustang GTD (Huyền Thoại Xanh Tươi)
+    1961069, -- Ford Mustang GTD (Tinh Thần Nước Mỹ)
 
-    1502001014, 1502001069, 1502001023, 1502002014, 1502002069, 1502002023, 1502003014, 1502003069, 1502003023,
+    -- [ Lotus ]
+    1961060, -- Lotus Emira (Rừng Sâu Thẫm)
+    1961061, -- Lotus Emira (Lướt Sắc Xanh)
 
-    1908094, 1908095, 1908032, 1908036, 1908066, 1908067, 1908075, 1908076, 1908077, 1908078, 1908084, 1908085,
+    -- [ Apollo ]
+    1961065, -- Apollo EVO (Vàng Rực Rỡ)
+    1961066, -- Apollo EVO (Hoàng Hôn)
+    1961067, -- Apollo EVO (Băng Giá)
+    1903220, -- Apollo Intensa Emozione (Hỏa Ngục Nóng Chảy)
+    1903221, -- Apollo Intensa Emozione (Bóng Ma Tím)
+    1903222, -- Apollo Intensa Emozione (Quyết Đấu)
+    1903223, -- Apollo Intensa Emozione (Bão Tố)
 
-    1908086, 1908088, 1908089, 1908188, 1908189, 1901091, 1901073, 1901074, 1901075, 1901076, 1901047, 1901102,
+    -- [ SSC Tuatara ]
+    1961140, -- Ảo Ảnh Hoa Hồng SSC Tuatara
+    1961141, -- Hạc Trời SSC Tuatara
+    1961142, -- Đao Bình Minh SSC Tuatara Striker
+    1961143, -- Màn Đêm Xanh SSC Tuatara Striker
 
-    1901085, 1902022, 1902030, 1966018, 1960002, 1960003, 1903193, 1903201, 1903075, 1903071, 1903072, 1903073,
+    -- [ Tesla ]
+    1903071, -- Tesla Roadster (Kim Cương)
+    1903072, -- Tesla Roadster (Pha Lê Tím)
+    1903073, -- Tesla Roadster (Xanh Biển Cả)
 
-    1903074, 1903076, 1961062, 1961063, 1961064, 1961147, 1961148, 1961149, 1961015, 1961145, 1961144, 1961056,
+    -- [ Ducati / Motor VIP ]
+    1901073, -- DUCATI Panigale V4S
+    1901074, -- Ducati Panigale V4S Black Phantom
+    1901075, -- Ducati Panigale V4S Crimson Storm
+    1901076, -- Ducati Panigale V4S Swift Mirage
 
-    1961055, 1961052, 1961007, 1961010, 1961012, 1961013, 1961014, 1961016, 1961017, 1961018, 1961020, 1961021,
+    -- ==============================================================================
+    -- 3. FULL BAY DÙ (DÙ RƠI, TÀU LƯỢN, VÁN TRƯỢT BAY)
+    -- ==============================================================================
+    -- [ DÙ (Parachutes) ]
+    1401000, -- New Years Blessing Parachute
+    1401001, -- Happy New Year Parachute
+    1401002, -- Dù Xương Đỏ
+    1401003, -- Dù tiểu quỷ tinh nghịch
+    1401005, -- Dù nhện biến hình
+    1401006, -- Dù Mùa 5
+    1401007, -- Dù sinh nhật
+    1401008, -- Dù Sếu Vàng
+    1401009, -- Dù Quỷ Đỏ
+    1401010, -- Dù hoa bách thảo
+    1401011, -- Dù anh đào
+    1401012, -- Dù Campus Tournament
+    1401013, -- Dù Joker
+    1401014, -- Dù chú hề
+    1401015, -- Carabao Parachute
+    1401016, -- Orange Life Parachute
+    1401017, -- Dù ưng vàng
+    1401018, -- Dù Quán quân Mùa 8
+    1401019, -- Dù Đội trưởng Ryan
+    1401020, -- Dù kẻ lang thang
+    1401021, -- Dù cung trăng
+    1401022, -- OPPO F11 PRO SURVIVOURS PARACHUTE
+    1401023, -- Dù lãnh chúa Sekigahara (Vuông)
+    1401024, -- Dù Đồng Minh Loot Thính
+    1401025, -- Dù Đêm Mê Hoặc (Vuông)
+    1401026, -- Dù cát tường
+    1401027, -- Dù PMCO
+    1401028, -- Dù Quán quân Mùa 7
+    1401029, -- Dù sinh nhật rực rỡ
+    1401031, -- Dù Quán quân Mùa 6
+    1401032, -- Dù Dao Găm Đỏ
+    1401033, -- Dù WALKER
+    1401034, -- Dù Phù Thủy Băng Giá
+    1401035, -- Dù người thách đấu
+    1401036, -- Dù BAPE X PUBGM CAMO
+    1401037, -- Dù Godzilla (Trắng)
+    1401038, -- Dù Godzilla (Vàng)
+    1401039, -- Dù Godzilla (Xanh)
+    1401040, -- Dù Monarch
+    1401041, -- Dù Cà Ri
+    1401043, -- Dù Người Gác Đêm
+    1401044, -- Dù hoa hồng đen
+    1401045, -- Dù Mèo May Mắn
+    1401046, -- Dù Đêm u ám
+    1401047, -- Dù Cá Voi Sát Thủ
+    1401048, -- Dù thủy quái Kraken
+    1401050, -- Dù giai điệu âm nhạc
+    1401051, -- Dù OPPO Reno
+    1401052, -- Dù OPPO VOOC
+    1401053, -- Dù Đêm Mê Hoặc
+    1401054, -- Dù Chú Heo Tinh Nghịch
+    1401055, -- Dù Red (Dài)
+    1401056, -- PMJC Parachute
+    1401057, -- PMSC Parachute
+    1401059, -- Dù Quán quân Draconian
+    1401060, -- Dù lãnh chúa Sekigahara
+    1401061, -- Dù Tiểu Quỷ
+    1401062, -- Dù Quán quân Mùa 9
+    1401063, -- Dù Quán quân Mùa 10
+    1401064, -- Dù Mèo Đen
+    1401065, -- Dù Gà trống
+    1401066, -- Dù Mọt Sách Băng Giá
+    1401067, -- Dù Người Giảm Đau #11
+    1401068, -- Super Power Parachute
+    1401071, -- Dù Luân Hồi Vô Tận
+    1401072, -- Dù Chúa Tể Muôn Loài
+    1401074, -- Dù Bí Ngô Kinh Dị
+    1401085, -- Dù Gà Thơm Ngon
+    1401086, -- Dù Quán quân Mùa 11
+    1401087, -- Dù Hoa Sen Máu
+    1401088, -- Dù Hành Tinh Trôi Dạt
+    1401089, -- Dù Quán Quân Mùa 12
+    1401090, -- Dù Ninja Sát Thủ
+    1401091, -- Dù Neko Sakura
+    1401092, -- Dù Người Tiên Phong
+    1401094, -- Dù Fantasy Girl
+    1401095, -- Dù Tranh Vẽ Chiến Trường
+    1401096, -- Dù Người Phán Quyết
+    1401097, -- Dù Africa Pride
+    1401098, -- Dù Africa Unite
+    1401100, -- Dù Cậu Vàng
+    1401102, -- Dù đặc vụ PMSC World Cup
+    1401103, -- Dù Quân Đoàn Thất Lạc
+    1401104, -- Dù Giải Đấu PMCO
+    1401106, -- Dù Trung Úy Vũ Trụ
+    1401107, -- Dù Đầy Tớ Huyết Nha
+    1401108, -- Dù Street Dancer 3
+    1401109, -- Dù Unique KingCard
+    1401111, -- Dù Bánh Ú
+    1401112, -- Dù Gào Thét
+    1401113, -- Dù Thủ Vệ Tự Do
+    1401115, -- Dù Kẹo Ngọt
+    1401117, -- Dù Cao Bồi Viễn Tây
+    1401119, -- Dù Giáp Samurai
+    1401122, -- Incredible Parachute
+    1401124, -- Dù Warrior
+    1401125, -- Dù Quý Cô Gothic
+    1401127, -- Dù Thần Thoại Ả Rập
+    1401128, -- Dù Nhà Vô Địch Arena
+    1401129, -- Dù Quán Quân Mùa 13
+    1401130, -- Dù Gorilla
+    1401131, -- Dù PMGC
+    1401133, -- Dù Mùa 15
+    1401134, -- Dù Tulip
+    1401135, -- Dù Ác Ma Cuồng Nộ
+    1401137, -- Dù Mùa 14
+    1401138, -- Dù Pro League (Vàng)
+    1401139, -- Dù Pro League (Bạc)
+    1401140, -- Dù Lạc Đà Bảnh Bao
+    1401141, -- Dù Gà Rán
+    1401142, -- Dù CLB Hoàng Gia
+    1401145, -- Dù Bảy Sắc
+    1401146, -- Dù Mountain Dew
+    1401147, -- Dù Tư Tế Tối Cao
+    1401148, -- Dù Idol
+    1401149, -- Dù Dang Rộng Đôi Cánh
+    1401150, -- Dù Chiến Binh Thép
+    1401151, -- Dù Quán Quân Mùa 16
+    1401152, -- Dù Liềm Tử Thần
+    1401153, -- Dù emoji Thỏa Mãn
+    1401154, -- Dù emoji
+    1401155, -- Dù emoji Vui Nhộn
+    1401156, -- Dù Qualcomm
+    1401157, -- Dù Điểm Sơ Tán
+    1401159, -- Dù Lãnh Chúa Độc Tài
+    1401160, -- Dù Kẹp Hạt Dẻ Vui Vẻ
+    1401161, -- Dù Long Vương
+    1401163, -- Dù Giáp Chiến Thần
+    1401164, -- Dù Giai Điệu Yêu Thương
+    1401165, -- Dù Quán Quân Mùa 17
+    1401167, -- Dù Ánh Trăng Huyền Bí
+    1401168, -- Dù Tiệc Disco
+    1401169, -- Dù Quán Quân Mùa 18
+    1401170, -- Dù Tuyết Anh Đào
+    1401171, -- Dù Tổ Ong
+    1401174, -- Dù Quán Quân Mùa 19
+    1401177, -- Dù Quán Quân C1S1
+    1401178, -- Dù Băng Cát Sét
+    1401179, -- Dù El Diablo
+    1401181, -- Chúa Tể Băng Giá - Dù
+    1401182, -- Dù Kẻ Săn Mồi Biển Xanh
+    1401183, -- Dù Mộng Điệp
+    1401184, -- Dù Bọ Cánh Cứng
+    1401186, -- Dù Rùa và Thỏ
+    1401187, -- Dù Nhịp Bước Mạnh Mẽ
+    1401188, -- Dù PMPL Mùa Xuân 2021
+    1401189, -- Dù GodzillaVsKong
+    1401190, -- Dù Hành Trình Kỳ Diệu
+    1401191, -- Dù Dấu Ấn Vũ Trụ
+    1401192, -- Dù Đầu Bếp Gà
+    1401193, -- Dù Nghệ Thuật Sắc Màu
+    1401194, -- Dù Aerial Punk Rich Brian
+    1401195, -- Dù OPPO
+    1401196, -- Dù BUG
+    1401197, -- Dù Chúa Tể Bánh Răng
+    1401198, -- Dù Xiaomi
+    1401200, -- Dù Đôi Mắt Biển Sâu
+    1401201, -- Dù OnePlus
+    1401204, -- Dù foodpanda
+    1401205, -- Dù PMPL Mùa Thu 2021
+    1401208, -- Dù Thành Phố Trên Không
+    1401209, -- Dù Bóng Ma Tương Lai
+    1401210, -- Dù Mật Thám Cơ Khí
+    1401212, -- Dù Thành Phố Sắc Màu
+    1401213, -- Dù Súng Hoa Hồng
+    1401215, -- Dù Băng Giá
+    1401216, -- Dù Bản Đồ Kho Báu
+    1401217, -- Dù Cơn Sốt Giáng Sinh
+    1401218, -- Dù Họa Tiết Vàng
+    1401219, -- Dù Vương Quốc Vàng
+    1401220, -- Dù Hoàng Hôn Rực Rỡ
+    1401221, -- Dù Bồ Câu Trắng
+    1401222, -- Dù Vòng Xoay Thời Gian
+    1401223, -- Dù Zong
+    1401224, -- Dù Quán Quân C1S2
+    1401225, -- Dù Quán Quân C1S3
+    1401227, -- Dù Đại Hạ Giá
+    1401228, -- Dù Lãng Khách Thời Thượng
+    1401231, -- Dù PMGC 2021
+    1401232, -- Dù Liverpool FC
+    1401233, -- Dù Đột Phá
+    1401234, -- Dù Voi Sắc Màu
+    1401235, -- Dù Hợp Tác Egor Kreed
+    1401236, -- Gackt Moon Parachute
+    1401237, -- Dù Dune
+    1401238, -- Dù Guruh Gundala
+    1401239, -- Dù C2S4
+    1401240, -- Dù Baby Shark
+    1401241, -- Dù JAPAN LEAGUE S2
+    1401242, -- Dù Đầu Bếp Quái Thú
+    1401243, -- Dù Bá Chủ Đại Dương
+    1401244, -- Dù C2S5
+    1401245, -- Dù Nữ Hoàng Điện Tử
+    1401246, -- Dù Nhâm Dần
+    1401247, -- Dù Sắc Xuân
+    1401248, -- Dù Jujutsu Kaisen
+    1401249, -- Dù Shiba Inu
+    1401250, -- Dù Motorola
+    1401252, -- Dù Trận Chiến Trendy
+    1401254, -- Dù DJ Cá Tính
+    1401255, -- Dù Chị Chị Em Em
+    1401256, -- Dù Graffiti Neon
+    1401257, -- Dù C2S6
+    1401258, -- Dù Người Nhện: Không Còn Nhà
+    1401259, -- Dù Sát Thủ Thời Không
+    1401260, -- Dù Vùng Đất Hoang
+    1401261, -- Dù Sắc Màu
+    1401262, -- Dù Lễ Hội Sắc Màu
+    1401263, -- Dù Rạp Xiếc Thần Kỳ
+    1401264, -- Dù Thiếu Nữ Tóc Đỏ
+    1401265, -- Dù Bộ Đôi Hoàn Hảo
+    1401266, -- Dù Thiếu Nữ Song Sinh
+    1401267, -- Dù Cánh Cổng Kỳ Dị
+    1401268, -- Dù Thiếu Nữ Anime
+    1401269, -- Dù Gà Chiến Đấu
+    1401270, -- Dù Nến Xanh
+    1401271, -- Dù Hồn Ma Nghịch Ngợm
+    1401272, -- Dù Thiếu Nữ Cầu Nguyện
+    1401273, -- Dù Ma Nữ Đáng Yêu
+    1401274, -- Dù Evangelion NERV
+    1401275, -- Dù Chị Em Song Sinh
+    1401276, -- Dù PMPL Mùa Xuân 2022
+    1401277, -- Dù Gấu Teddy GB
+    1401278, -- Dù Sư Tử Thời Trang
+    1401280, -- Dù Kỷ Niệm Tuổi Thơ
+    1401281, -- Dù C3S7
+    1401282, -- Dù Mèo Khổng Lồ
+    1401283, -- Dù Butterfinger
+    1401284, -- Siêu Dù Nhảy
+    1401285, -- Dù Đồng Minh Mùa Hè
+    1401286, -- Dù Sóc Chuột
+    1401287, -- Dù Hỏa Diệm Ma Giáp
+    1401289, -- Dù Heartrocker
+    1401290, -- Dù Sư Tử Lưỡng Hà
+    1401291, -- Dù realme
+    1401292, -- Dù Lil Burger
+    1401294, -- Dù Dòng Sông Mộng Mơ
+    1401295, -- Dù C3S8
+    1401296, -- Dù Đêm Của Phép Màu
+    1401298, -- Dù Vinh Quang
+    1401299, -- Dù Bản Đồ Sao
+    1401300, -- Dù Chúa Tể Gai Độc
+    1401301, -- Dù Bóng Ma Và Nàng
+    1401302, -- Dù Gai Bé Bỏng
+    1401303, -- Dù Uqabi
+    1401308, -- Dù Phù Thủy Băng Giá
+    1401309, -- Dù Tốc Độ Cực Hạn
+    1401310, -- Dù PMWI 2022
+    1401311, -- BGMI Esports Parachute
+    1401312, -- PMJL SEASON3 Parachute
+    1401313, -- PMPS 2022 Parachute
+    1401314, -- Dù Chiến Binh Ngưu
+    1401315, -- Dù Quyền Lực Tối Thượng
+    1401316, -- Dù Đội Bóng Ả Rập
+    1401317, -- Dù Ngàn Sao Rực Rỡ
+    1401318, -- Dù Pháp Sư Thiên Văn
+    1401319, -- Dù C3S9
+    1401320, -- Dù BoBoiBoy
+    1401323, -- Dù Đường Đua Hoang Dã
+    1401324, -- Dù Tuần Lộc Trắng
+    1401325, -- Dù Rìu Hoàng Kim
+    1401326, -- Dù Vàng Huyền Bí
+    1401330, -- Dù Du Hành Tinh Vân
+    1401332, -- Dù Mèo Tuyết
+    1401334, -- Dù KFC
+    1401335, -- Dù Thủy Sư Cuồng Nộ
+    1401336, -- Dù Sọ Nham Thạch
+    1401337, -- Dù Bá Chủ Bầu Trời
+    1401338, -- Dù Grubhub
+    1401339, -- Dù AFA
+    1401340, -- Dù Huyền Thoại Siêu Sao Messi
+    1401343, -- Dù PMGC 2022
+    1401345, -- Dù Bản Đồ Kho Báu
+    1401346, -- Dù Nobru
+    1401347, -- Dù Sony
+    1401349, -- Dù Đột Kích Trên Không
+    1401351, -- Dù Nữ Hiệp
+    1401353, -- Dù Chú Hề Quỷ Quyệt
+    1401355, -- Dù Lý Tiểu Long
+    1401356, -- Dù Cặp Đôi Diễn Võ
+    1401357, -- Dù Donkey King
+    1401360, -- Dù Pro League
+    1401361, -- Dù Kế Hoạch Đỏ Thẫm
+    1401362, -- Dù C4S11
+    1401363, -- Dù Bản Đồ Vũ Trụ
+    1401364, -- Dù BE@RBRICK
+    1401365, -- Dù Nguồn Sáng Vinh Quang
+    1401366, -- Dù Ký Ức Xưa
+    1401367, -- Dù Bugatti
+    1401368, -- Dù Hóa Thạch Khủng Long
+    1401369, -- Dù Trốn Thoát T-Rex
+    1401370, -- Dù Dragon Ball Super
+    1401371, -- Dù C4S12
+    1401372, -- Dù Huyết Rồng
+    1401373, -- UNIVERSTAR BT21 Parachute
+    1401374, -- Dù HUAWEI AppGallery
+    1401375, -- Dù PMWI 2023
+    1401376, -- Dù C5S13
+    1401377, -- Dù Thỏ Disco
+    1401378, -- Dù Aston Martin
+    1401379, -- Dù Mùa Hè Trên Bãi Biển
+    1401380, -- Dù C5S14
+    1401381, -- Dù C5S15
+    1401382, -- Dù PMGC 2023
+    1401383, -- Dù KFC
+    1401385, -- Dù Yeti Khổng Lồ
+    1401386, -- Dù Pagani
+    1401387, -- Dù Báo Sắc Màu
+    1401388, -- Dù Bé Sóc Đáng Yêu
+    1401389, -- Dù Kỳ Giông Hồng
+    1401390, -- RS Swagster Parachute
+    1401391, -- Dù Gấu Trúc Ngọt Ngào
+    1401392, -- Dù Chiến Binh Hoa Hồng
+    1401393, -- Dù Cuộc Chiến Chính Nghĩa
+    1401394, -- Dù LINE FRIENDS
+    1401395, -- Dù Hồ Ly Thần Bí
+    1401396, -- Dù Zanmang Loopy
+    1401397, -- Hardik Sky Parachute
+    1401398, -- Dù C6S16
+    1401399, -- Dù Bóng Ma Quyến Rũ
+    1401400, -- Dù Bảo Hộ Hoàng Gia
+    1401401, -- Dù Bentley
+    1401402, -- SPY×FAMILY Dù
+    1401403, -- Dù Nhật Thực
+    1401404, -- Dù Chiến Sĩ Thần Giáp
+    1401405, -- Dù C6S17
+    1401406, -- Dù Giai Điệu Mèo Con
+    1401407, -- Dù Thành Phố Hỗn Loạn
+    1401408, -- Dù Đôi Cánh Cận Vệ
+    1401409, -- Dù Thiết Mã
+    1401410, -- Dù Bay Lướt Vũ Trụ
+    1401411, -- Dù C6 S18
+    1401412, -- Dù Nữ Đế Hắc Ám
+    1401413, -- Dù Hợp Tác Lamborghini
+    1401416, -- Dù Tượng Đá Cổ Xưa
+    1401417, -- Dù Đại Dương Xanh
+    1401418, -- KAKAO FRIENDS Parachute
+    1401419, -- Dù Infinix GT
+    1401420, -- Dù Esports World Cup 2024
+    1401421, -- Dù C7S19
+    1401422, -- Dù Thỏ Tinh Quái
+    1401423, -- Dù Hợp Tác VW
+    1401424, -- Dù Miêu Linh Sắc Màu
+    1401425, -- Dù Hắc Long Ma Nhãn
+    1401426, -- Dù Âm Dương
+    1401427, -- NieR:Automata Parachute
+    1401428, -- Dù Đam Mê Esports
+    1401429, -- Dù C7S20
+    1401430, -- Dù Venom: Kèo Cuối
+    1401431, -- Dù Bộ Tộc Ngân Hà
+    1401432, -- Dù Tuần Lộc Hoàng Gia
+    1401433, -- Dù McLaren
+    1401434, -- Dù PMGC 2024
+    1401435, -- Dù lượn Sói Tuyết
+    1401436, -- Dù lượn Bóng Nước
+    1401437, -- Dù lượn C7S21
+    1401438, -- Dù Cá Koi Xuân Sắc
+    1401439, -- Dù Đại Bàng
+    1401440, -- Dù Hoa Hồng Bóng Đêm
+    1401441, -- Opanchu Parachute
+    1401442, -- Neon Drop BE 6 Parachute
+    1401443, -- Dù C8S22
+    1401444, -- Dù Lượn Hắc Cốt
+    1401445, -- Dù Cực Quang Tinh Tú
+    1401446, -- Godzilla vs. Dù Destoroyah
+    1401447, -- Dù Thỏ Bồng Bềnh
+    1401448, -- Parachute(Frieren&Fern)
+    1401449, -- Dù C8S23
+    1401450, -- Dù Lượn Mã Số Hóa 
+    1401451, -- Dù Lượn Khuếch Đại Sắc Màu
+    1401452, -- Dù Hợp Tác Shelby
+    1401453, -- Dù Ráng Chiều Rực Cháy
+    1401454, -- Dù Attack on Titan
+    1401455, -- Dù Cơ Khí 
+    1401456, -- Mountain Dew Neon Shard Parachute
+    1401457, -- Dù C8S24
+    1401458, -- Dù Vũ Trụ
+    1401459, -- Dù Transformers
+    1401460, -- Dù Thần Mệnh
+    1401461, -- Dù Cún Yêu
+    1401462, -- Bbangbbang's diary Parachute
+    1401463, -- Realme Parachute
+    1401464, -- Dù Infinix GT
+    1401465, -- Dù C9S25
+    1401466, -- Dù Ác Quỷ
+    1401467, -- Dù Kaiju No. 8
+    1401468, -- Dù TEAM SONIC
+    1401469, -- Dù Hồ Điệp Lấp Lánh
+    1401470, -- Dù Lotus
+    1401471, -- Dù Bông Xù
+    1401472, -- Dù Gen Hoàn Hảo
+    1401473, -- Tokyo Revengers Parachute
+    1401474, -- Sky Striker Parachute
+    1401475, -- Dù C9S26
+    1401476, -- Dù Lượn Gấu Ngọt Ngào
+    1401477, -- Dù Balenciaga
+    1401478, -- Dù Lượn Tuyết Hàn
+    1401479, -- Dù Porsche
+    1401480, -- Dù Hắc Linh
+    1401481, -- Dù Chồn Chill
+    1401482, -- TV Anime DAN DA DAN Parachute
+    1401483, -- Dù C9S27
+    1401484, -- Dù Lượn Shuriken
+    1401485, -- Dù Bóng Ma Anh Quốc
+    1401486, -- Dù The King of Fighters
+    1401487, -- Dù Lượn Vũ Khúc
+    1401488, -- Dù Bảo Thạch
+    1401489, -- Dù Chuỗi Mùa Giải (2026H1)
+    1401490, -- Dù S28
+    1401491, -- Dù Trò Chơi Chúa Hề Lém Lĩnh
+    1401492, -- Dù Apollo
+    1401493, -- Dù Hacker Lạnh Lùng
+    1401494, -- Dù Hội Tụ Đa Chiều
+    1401495, -- Catch! Teenieping Parachute
+    1401496, -- SAKAMOTO TARO Parachute
+    1401497, -- Nakiri Ayame Parachute
+    1401498, -- Dù S29
+    1401499, -- Toxic Parachute
+    1401500, -- Dù Red (Tròn)
+    1401511, -- Dù Mèo Tinh Nghịch
+    1401513, -- Dù San Martin FC
+    1401515, -- Dù Mắt Quỷ
+    1401516, -- Dù Sóng Đêm
+    1401517, -- Dù Quả Quýt
+    1401519, -- Dù Gấu Ngáy Ngủ
+    1401520, -- Dù Hậu Duệ Đế Vương
+    1401521, -- Dù Mây Cuộn
+    1401526, -- Dù Hoa Văn Tráng Lệ
+    1401527, -- Dù Trái Tim Biển Cả
+    1401528, -- Dù Hành Tinh Mẹ
+    1401529, -- Dù Hoàng Tử Ánh Kim
+    1401530, -- Dù Giáp Gai
+    1401531, -- Dù Vùng Nguy Hiểm
+    1401532, -- Dù Ốc Biển
+    1401534, -- Dù Vịt Vàng B.Duck
+    1401538, -- Dù Thỏ Dịu Dàng
+    1401540, -- Dù Yeti
+    1401541, -- Dù Pixel Sắc Màu
+    1401542, -- Dù Mỹ Vị
+    1401543, -- Dù I Love Tao Kae Noi
+    1401544, -- Dù Vẹt Baby
+    1401545, -- Dù U.F.O
+    1401546, -- Dù Baby Shark
+    1401547, -- Dù Gấu Nhồi Bông
+    1401548, -- Dù Mèo Nghiêm Túc
+    1401549, -- Dù Vinh Quang Trường Tồn
+    1401551, -- Dù Nữ Vương Khôi Giáp
+    1401554, -- Dù Khủng Long Pixel
+    1401555, -- Dù Cánh Bướm Hoàng Gia
+    1401556, -- Dù Hành Trình Ngọt Ngào
+    1401610, -- Dù Chúc Mừng Sinh Nhật
+    1401611, -- Dù Sân Khấu Lấp Lánh
+    1401613, -- Dù Thẩm Phán Anubis
+    1401615, -- Dù Thần Horus
+    1401616, -- Dù One Plus
+    1401617, -- Dù Sư Tử Hống
+    1401618, -- Dù Facebook
+    1401619, -- Dù Bùa Hộ Mệnh Pharaoh
+    1401620, -- Dù Pharaoh (Xanh)
+    1401621, -- Dù Huyết Nha
+    1401622, -- Dù LINE FRIENDS
+    1401623, -- Dù PMNC 2021
+    1401624, -- Dù Poseidon
+    1401625, -- Dù Công Chúa Bộ Lạc
+    1401628, -- Dù Phượng Hoàng Adarna Ảo Diệu
+    1401629, -- Dù Thiếu Nữ Sáng Thế
+    1401811, -- Giannis Parachute
+    1401813, -- Dù Hành Trình Anh Hùng
+    1401814, -- Dù Rock 'n' Roll
+    1401815, -- Dù Chỉ Huy Chiến Trường
+    1401816, -- Dù BURGER KING
+    1401817, -- Dù Chiến Binh Huyết Ưng
+    1401820, -- Dù Cá Chuồn
+    1401822, -- Dù Quái Thú Đầm Lầy
+    1401823, -- Dù Lãnh Chúa Phong
+    1401824, -- Dù Hộp Quà
+    1401826, -- Dù - Mối Tình Đầu
+    1401827, -- Dù Nữ Hoàng Cà Phê
+    1401828, -- Dù Vệ Binh Cổ Đại
+    1401829, -- Dù Cơn Giận Của Thần
+    1401832, -- Dù C4S10
+    1401833, -- Dù Quái Thú Mê Cung
+    1401835, -- Dù Poker Đối Kháng
+    1401836, -- Dù Trò Chơi Chú Hề
+    1401837, -- Dù Huyễn Ảnh
+    1401838, -- Dù BLUE LOCK
+    1401839, -- Dù Ford
+    1401840, -- Dù Harley-Davidson®
+    1401841, -- Dù Hoa Hồng Cốt
+    1401842, -- Dù Song Tử
+    1401843, -- Dù Lượn Vòng Nguyệt Quế
+    1401844, -- Parachute(Pubniku)
+    1401845, -- Dù S30
+    1401846, -- Dù Sự Kiện Trial of Fire
 
-    1961024, 1961025, 1961029, 1961030, 1961031, 1961041, 1961042, 1961044, 1961048, 1961050, 1961051, 1907054,
+    -- [ TÀU LƯỢN / VÁN TRƯỢT / THIẾT BỊ BAY (Gliders/Hoverboards) ]
+    4151001, -- Dù (Xanh)
+    4151002, -- Hiệu ứng nhảy dù (Vàng)
+    4151003, -- Khói Lượn Dù (Hồng)
+    4151004, -- Khói lượn xanh
+    4151006, -- Khói lượn cầu vồng
+    4151010, -- Thiết bị bay Bằng Chíu
+    4151012, -- Ván Trượt Chu Kỳ
+    4151013, -- Ván Trượt Tuyết
+    4151014, -- Ván trượt CHU KỲ 2
+    4151015, -- Khói Lượn Dù Chúc Mừng (3 màu)
+    4151017, -- Ván trượt Trái Tim Rừng Xanh
+    4151018, -- Ván trượt Sinh Nhật
+    4151019, -- Tàu Lượn Chiến Thần Tình Yêu
+    4151020, -- Ván Trượt Cảnh Vệ C3
+    4151021, -- Tàu Lượn Sứ Giả Của Thần
+    4151022, -- Tàu Lượn Cánh Vàng
+    4151023, -- Ván Trượt Hợp Tác Messi
+    4151024, -- Tàu Lượn Giáo Sĩ Đỏ Thẫm
+    4151025, -- Tàu Lượn Diều Giấy
+    4151026, -- Ván Trượt Đại Sư Võ Hồn
+    4151027, -- Ván Trượt Cycle 4
+    4151028, -- Ván Trượt Giọt Lệ Huyết
+    4151029, -- Tàu Lượn Nữ Đế Ánh Sáng
+    4151030, -- Tàu Lượn Ma Vương Huyết Hồn
+    4151031, -- Tàu Lượn Khủng Long Túi Tiền
+    4151032, -- Tàu Lượn Cánh Rồng Đỏ Thẫm
+    4151034, -- Cân Đẩu Vân
+    4151035, -- Tàu Lượn Giao Hưởng Gió
+    4151036, -- Ván Trượt Máy Dập Sóng
+    4151037, -- Ván Trượt CYCLE 5
+    4151038, -- Dù Lượn Ngọc Trai Tuyệt Hảo
+    4151040, -- Ván trượt Thợ Săn Điện Quang
+    4151041, -- Dù Lượn Xương Xanh
+    4151042, -- Tàu Lượn Công Chúa Công Nghệ
+    4151043, -- Tàu Lượn Công Chúa Công Nghệ
+    4151044, -- Ván Trượt Cá Mập
+    4151045, -- Dù Lượn Mùa Đông Hoàng Gia
+    4151046, -- Ván Trượt Lưỡi Dao Trời Xanh
+    4151056, -- Dù Lượn Mùa Đông Hoàng Gia
+    4151057, -- Ván Trượt Hỏa Hồ Ly
+    4151058, -- Dù Lượn LINE FRIENDS
+    4151059, -- Ván Trượt Xuyên Mây
+    4151060, -- Dù Lượn Xà Kim
+    4151061, -- Ván Trượt CYCLE 6
+    4151062, -- Khói Lượn Dù Zanmang Loopy
+    4151063, -- SPY×FAMILY Tàu Lượn Bond
+    4151064, -- Dù Lượn Thiên Sứ
+    4151065, -- Dù Lượn Thiên Sứ
+    4151066, -- Dù Lượn Đế Vương Thần Vực
+    4151067, -- Dù Lượn Kính Vạn Hoa
+    4151068, -- Tàu Lượn Chúa Tể Gai Độc
+    4151069, -- Tàu Lượn Tinh Vân Sấm Sét
+    4151070, -- Tàu Lượn Kỵ Binh Thần Giáp
+    4151071, -- Dù Lượn Vệ Thần Tình Ái
+    4151072, -- Dù Lượn Ngao Du Vũ Trụ
+    4151073, -- Dù Lượn Neon Huyền Bí
+    4151074, -- PUBGM X NewJeans Glider
+    4151075, -- Dù Lượn Vệ Thần Tình Ái
+    4151076, -- Tàu Lượn Cửu Phong Thiên Tôn
+    4151077, -- Máy Bay
+    4151078, -- Tàu Lượn Hải Mã Sắt
+    4151079, -- Tàu Lượn Đôi Cánh Thế Giới Ngầm
+    4151080, -- Ván Trượt Cycle 7
+    4151083, -- Dù Lượn Long Cốt
+    4151084, -- Hồng Hỏa Diệm - Kar98 (Cấp 8)
+    4151085, -- Dù Lượn Cánh Thép Xuyên Không
+    4151086, -- DP Drift Parachute
+    4151087, -- Dù Lượn Long Cốt
+    4151089, -- Dù Lượn Hắc Điểu 
+    4151090, -- Dù Lượn Giấc Mộng Ngọt Ngào
+    4151091, -- Tàu Lượn Nhà Khám Phá Vũ Trụ
+    4151092, -- Dù Lượn Lam Sư Tinh Hà
+    4151093, -- Dù Lượn Ngọc Lang Thiên Giới
+    4151094, -- Ván Trượt CYCLE 8
+    4151095, -- Dù Lượn Đôi Cánh Anukhra
+    4151096, -- Dù Lượn Đôi Cánh Pharaoh
+    4151097, -- Tàu Lượn Siêu Thú Ghidorah
+    4151098, -- Dù Lượn Thời Quang Khả Biến
+    4151099, -- Dù Lượn Vương Quyền Hắc Ám
+    4151103, -- Dù Lượn Chiến Xa Tinh Tú
+    4151104, -- Tàu Lượn Thiết Bị ODM
+    4151105, -- Dù Lượn Định Mệnh Huyết Chú
+    4151106, -- Dù Lượn Quang Ảo Điện Từ 
+    4151107, -- Dù Lượn Chiến Xa Tinh Tú
+    4151108, -- Tàu Lượn Laserbreak
+    4151109, -- Tàu Lượn Băng Thần
+    4151110, -- Tàu Lượn Long Thánh
+    4151111, -- Tàu Lượn Thợ Săn Phản Lực
+    4151112, -- Tàu Lượn Tà Thần Mỹ Quang
+    4151113, -- Ván Trượt CYCLE 9
+    4151114, -- Tàu Lượn Long Thánh
+    4151115, -- Tàu Lượn Băng Thần
+    4151117, -- Tàu Lượn Preondactyl
+    4151118, -- Dù Lượn Hồ Điệp Lấp Lánh
+    4151119, -- Dù Lượn Chổi Phép Thuật
+    4151120, -- Dù Lượn Long Kính
+    4151121, -- Mikey Glider
+    4151122, -- Dù Lượn Hồ Điệp Lấp Lánh
+    4151123, -- Tàu Lượn Băng Linh Lưu Ly
+    4151124, -- Tàu Lượn Huyết Dực Tử Thần
+    4151125, -- Tàu Lượn Vệ Binh Ngân Hà
+    4151126, -- Tàu Lượn Giải Trí
+    4151127, -- Tàu Lượn Linh Mộc Vĩnh Cửu
+    4151128, -- Tàu Lượn Thần Quang
+    4151129, -- Ván Trượt Chuỗi Mùa Giải (2026H1)
+    4151130, -- Tàu Lượn Nue
+    4151131, -- Tàu Lượn Phượng Hoàng Đế Vương
+    4151132, -- Tàu Lượn Huyết Dực Hắc Điểu
+    4151133, -- Tàu Lượn Dịch Chuyển Không Gian
+    4151134, -- Dù Lượn Đa Vũ Trụ
+    4151135, -- SAKAMOTO TARO Glider
+    4151138, -- Tàu Lượn Sấm Sét Đỏ
+    4151139, -- Tàu Lượn Hư Không
+    4151140, -- Tàu Lượn Song Tử
+    4151141, -- Tàu Lượn Cerberus
+    4151142, -- Tàu Lượn Ngọc Trai
+    4151143, -- Tàu Lượn Song Tử
+    4152031, -- Tàu Lượn Ma Vương Huyết Hồn
+    4152035, -- Cân Đẩu Vân
+    4152036, -- Windborne Euphony Glider
+    4152037, -- Ván Trượt Máy Dập Sóng
+    4152038, -- Ván Trượt CYCLE 5
+    4152039, -- Tàu Lượn Ngọc Trai Tuyệt Hảo
+    4152041, -- Boxerbolt Hoverboard (Shop)
+    4152042, -- Blueyonder Glider
+    4152043, -- Agile Charmer Glider
+    4152044, -- Agile Charmer Glider
+    4152045, -- Chilly Perch Glider
+    4152046, -- Foxy Flare Hoverboard
+    4152058, -- LINE FRIENDS Glider (Shop)
+    4152059, -- Cloud Piercer Hoverboard (Shop)
+    4152060, -- Golden Wings Glider (Shop)
+    4152061, -- CYCLE 6 Skateboard (Shop)
+    4152063, -- Tàu Lượn Bond SPY×FAMILY (Cửa Hàng)
+    4152066, -- Dù Lượn Đế Vương Thần Vực (Cửa Hàng)
+    4152067, -- Tàu Lượn Kính Vạn Hoa (Cửa Hàng)
+    4152068, -- Tàu Lượn Chúa Tể Gai Độc (Cửa Hàng)
+    4152069, -- Tàu Lượn Tinh Vân Sấm Sét (Cửa Hàng)
+    4152070, -- Tàu Lượn Kỵ Binh Thần Giáp (Cửa Hàng)
+    4152076, -- Tàu Lượn Cửu Phong Thiên Tôn (Cửa Hàng)
+    4152077, -- Tàu Lượn (Cửa Hàng)
+    4152078, -- Tàu Lượn Hải Mã Sắt (Cửa Hàng)
+    4152079, -- Tàu Lượn Đôi Cánh Thế Giới Ngầm (Cửa Hàng)
+    4152080, -- Ván Trượt CYCLE 7 (Cửa Hàng)
+    4152092, -- Tàu Lượn Lam Sư Tinh Hà (Cửa Hàng)
+    4152093, -- Tàu Lượn Ngọc Lang Thiên Giới (Cửa Hàng)
+    4152094, -- Ván Trượt CYCLE 8 (Cửa Hàng)
+    4152095, -- Dù Lượn Đôi Cánh Anukhra
+    4152096, -- Dù Lượn Đôi Cánh Pharaoh
+    4152097, -- Tàu Lượn Siêu Thú Ghidorah
+    4152098, -- Dù Lượn Thời Quang Khả Biến
+    4152099, -- Dù Lượn Vương Quyền Hắc Ám
+    4152116, -- Tàu Lượn Long Thánh (Sảnh Một Người)
 
-    1907058, 1907059, 1907063, 1915008, 1915012, 1915021, 1915022, 1915005, 1915006, 1915007, 1915009, 1953008,
+    -- ==============================================================================
+    -- 3. TRANG PHỤC (OUTFITS), X-SUIT & PHỤ KIỆN
+    -- ==============================================================================
+    -- [ X-SUIT ]
+    1407895, -- X-Suit Quạ Huyết (7 Sao)
+    1407856, -- X-Suit Phượng Hoàng (7 Sao)
+    1405628, -- X-Suit Pharaoh Vàng (6 Sao)
+    1406469, -- X-Suit Pharaoh Vàng (7 Sao)
+    1405870, -- X-Suit Quạ Huyết (6 Sao)
+    1407140, -- X-Suit Poseidon (7 Sao)
+    1407142, -- X-Suit Silvanus (7 Sao)
+    1407141, -- X-Suit Bão Tuyết (7 Sao)
+    1407550, -- X-Suit Ánh Sáng Cầu Vồng (7 Sao)
+    1406638, -- X-Suit Hề Bí Ẩn (6 Sao) [Đen]
+    1406641, -- X-Suit Hề Bí Ẩn (6 Sao) [Trắng]
+    1406872, -- X-Suit Chúa Tể Âm Ty (7 Sao)
+    1406971, -- X-Suit Marmoris (7 Sao)
+    1407103, -- X-Suit Fiore (7 Sao)
+    1407219, -- X-Suit Ignis (7 Sao)
+    1407366, -- X-Suit Galadria (7 Sao)
+    1407512, -- X-Suit Anukhra (7 Sao)
+    1407625, -- X-Suit Dravion (7 Sao) [Nam]
+    1407667, -- X-Suit Dravion (7 Sao) [Nữ]
 
-    1953016, 1953004, 1904015, 1916004, 1916005, 1916006, 1919011,
+    -- [ OUTFITS ]
+    1407870, -- Bộ Nữ Thần Không Gian
+    1407871, -- Bộ Thám Tử Đa Vũ Trụ
+    1407812, -- Bộ Vệ Binh Hoang Dã
+    1407758, -- Bộ Tiên Nữ Mùa Đông
+    1407286, -- Bộ Mèo Cyber Tinh Nghịch
+    1407329, -- Bộ Ánh Sáng Tĩnh Lặng
+    1407391, -- Bộ Nữ Bá Tước Ma Cà Rồng
+    1407392, -- Bộ Kẻ Phá Hoại Man Rợ
+    1407387, -- Bộ Tử Thần Tận Thế
+    1407440, -- Bộ Kẻ Chinh Phục Bắc Cực
+    1406985, -- Bộ Người Tình Bãi Biển
+    1407470, -- Bộ Thiên Thần Nổi Loạn
+    1407471, -- Bộ Cực Quang Nanh Ngọc
+    1407522, -- Bộ Hậu Duệ Tiên Cát
+    1407330, -- Bộ Đô Đốc Bóng Ma
+    1407523, -- Bộ Uy Quyền Tà Ác
+    1407558, -- Bộ Thái Dương Thăng Hoa
+    1407559, -- Bộ Ánh Sáng Nguyệt Cung
+    1407572, -- Bộ Huyết Dạ Hoàng Hôn
+    1407682, -- Bộ Kén Ẩn Sĩ
+    1407695, -- Bộ Lễ Tình Nhân Rùng Rợn
+    1407696, -- Bộ Lăng Kính Thăng Hoa
+    1407632, -- Bộ Hắc Dạ Tà Ác
+    1407573, -- Bộ Bóng Ma Điện Tử
+    1406398, -- Bộ Bóng Ma Rực Lửa
+    1406399, -- Bộ Kỵ Binh Oai Vệ
+    1406482, -- Bộ Chúa Tể Gai Góc
+    1406483, -- Bộ Tinh Vân Sấm Sét
+    1406555, -- Bộ Khuôn Mặt Địa Ngục
+    1406573, -- Bộ Thiên Nga Bóng Ma
+    1406574, -- Bộ Quan Tòa Vũ Trụ
+    1406656, -- Bộ Trưa Đẫm Máu
+    1406657, -- Bộ Đô Đốc Biển Sao
+    1406742, -- Bộ Đạo Sư Bạc
+    1406744, -- Bộ Hiệp Sĩ Thái Dương
+    1406789, -- Bộ Bóng Ma Địa Ngục
+    1406823, -- Bộ Giọt Nguyệt Bất Diệt
+    1406824, -- Bộ Kẻ Thù Nhuốm Máu
+    1406897, -- Bộ Ác Mộng Đỏ Thẫm
+    1407277, -- Trang Phục Hỏa Thần Cổ Ngữ
+    1406891, -- Trang Phục Linh Hồn Xác Ướp
+    1405623, -- Bộ Xác Ướp Vàng
+    1400687, -- Bộ Xác Ướp Trắng
+    1407618, -- Bộ Thực Hồn Bắc Cực (Polar Spectrophage)
 
-1101001001,1101001002,1101001003,1101001004,1101001005,1101001006,1101001007,1101001009,1101001019,1101001020,1101001022,1101001023,1101001024,1101001025,1101001027,1101001028,1101001029,1101001030,1101001031,1101001033,1101001035,1101001036,1101001042,1101001044,1101001045,1101001046,1101001047,1101001048,1101001050,1101001051,1101001052,1101001053,1101001054,1101001055,1101001056,1101001063,1101001068,1101001071,1101001079,1101001081,1101001089,1101001091,1101001092,1101001093,1101001094,1101001095,1101001103,1101001104,1101001105,1101001107,1101001108,1101001109,1101001116,1101001117,1101001118,1101001121,1101001128,1101001129,1101001130,1101001131,1101001132,1101001135,1101001136,1101001139,1101001143,1101001144,1101001145,1101001146,1101001154,1101001155,1101001156,1101001157,1101001158,1101001160,1101001161,1101001164,1101001173,1101001174,1101001177,1101001178,1101001179,1101001181,1101001184,1101001193,1101001199,1101001213,1101001221,1101001231,1101001232,1101001233,1101001242,1101001249,1101001256,1101001257,1101001265,1101001266,1101001267,1101001268,1101001276,1101002001,1101002002,1101002003,1101002004,1101002005,1101002006,1101002007,1101002008,1101002009,1101002019,1101002020,1101002029,1101002030,1101002038,1101002039,1101002040,1101002041,1101002042,1101002043,1101002044,1101002045,1101002046,1101002047,1101002048,1101002049,1101002056,1101002057,1101002058,1101002060,1101002061,1101002062,1101002063,1101002068,1101002070,1101002071,1101002073,1101002074,1101002081,1101002083,1101002084,1101002085,1101002086,1101002087,1101002089,1101002090,1101002091,1101002092,1101002093,1101002095,1101002097,1101002098,1101002103,1101002104,1101002105,1101002110,1101002111,1101002112,1101002117,1101002118,1101002119,1101002120,1101002125,1101002128,1101002133,1101002134,1101002135,1101002136,1101002137,1101002138,1101002139,1101002140,1101002141,1101002142,1101002143,1101002144,1101002156,1101002157,1101003001,1101003002,1101003003,1101003004,1101003005,1101003006,1101003007,1101003008,1101003009,1101003010,1101003011,1101003012,1101003013,1101003014,1101003015,1101003016,1101003017,1101003018,1101003019,1101003020,1101003021,1101003022,1101003032,1101003033,1101003034,1101003035,1101003036,1101003037,1101003038,1101003039,1101003040,1101003041,1101003042,1101003043,1101003044,1101003045,1101003046,1101003048,1101003049,1101003050,1101003058,1101003059,1101003060,1101003061,1101003062,1101003063,1101003071,1101003073,1101003082,1101003083,1101003084,1101003085,1101003087,1101003088,1101003089,1101003090,1101003100,1101003101,1101003103,1101003112,1101003119,1101003120,1101003121,1101003125,1101003130,1101003131,1101003132,1101003133,1101003134,1101003135,1101003136,1101003138,1101003140,1101003141,1101003146,1101003147,1101003148,1101003150,1101003157,1101003158,1101003167,1101003168,1101003173,1101003174,1101003195,1101003196,1101003199,1101003200,1101003201,1101003208,1101003209,1101003212,1101003219,1101003227,1101004001,1101004002,1101004003,1101004004,1101004005,1101004006,1101004007,1101004008,1101004009,1101004010,1101004011,1101004013,1101004014,1101004015,1101004016,1101004017,1101004018,1101004019,1101004030,1101004031,1101004032,1101004033,1101004034,1101004035,1101004036,1101004039,1101004046,1101004049,1101004051,1101004053,1101004054,1101004055,1101004062,1101004067,1101004069,1101004070,1101004071,1101004078,1101004079,1101004086,1101004087,1101004088,1101004089,1101004090,1101004091,1101004098,1101004099,1101004107,1101004110,1101004117,1101004118,1101004119,1101004120,1101004122,1101004123,1101004124,1101004125,1101004133,1101004138,1101004145,1101004146,1101004148,1101004149,1101004150,1101004151,1101004154,1101004160,1101004163,1101004164,1101004179,1101004201,1101004209,1101004210,1101004218,1101004226,1101004227,1101004228,1101004236,1101004237,1101004238,1101004246,1101005001,1101005002,1101005012,1101005013,1101005014,1101005019,1101005025,1101005027,1101005028,1101005029,1101005030,1101005031,1101005038,1101005043,1101005044,1101005045,1101005052,1101005055,1101005066,1101005072,1101005082,1101005083,1101005084,1101005085,1101005090,1101005091,1101005098,1101005099,1101005100,1101005101,1101005102,1101005103,1101005104,1101005105,1101006001,1101006002,1101006003,1101006004,1101006005,1101006006,1101006007,1101006017,1101006018,1101006019,1101006020,1101006021,1101006023,1101006027,1101006028,1101006033,1101006036,1101006037,1101006038,1101006039,1101006040,1101006041,1101006042,1101006043,1101006044,1101006045,1101006051,1101006052,1101006053,1101006054,1101006062,1101006067,1101006068,1101006075,1101006076,1101006077,1101006085,1101006086,1101006087,1101006088,1101006089,1101007001,1101007002,1101007003,1101007004,1101007005,1101007006,1101007007,1101007008,1101007009,1101007010,1101007011,1101007012,1101007013,1101007014,1101007017,1101007018,1101007019,1101007020,1101007025,1101007033,1101007034,1101007036,1101007037,1101007038,1101007039,1101007046,1101007047,1101007048,1101007054,1101007055,1101007062,1101007063,1101007064,1101007071,1101007072,1101007073,1101007078,1101007079,1101008010,1101008011,1101008012,1101008013,1101008014,1101008015,1101008016,1101008017,1101008018,1101008019,1101008020,1101008021,1101008026,1101008029,1101008030,1101008031,1101008036,1101008039,1101008051,1101008052,1101008053,1101008054,1101008061,1101008062,1101008063,1101008070,1101008071,1101008072,1101008080,1101008081,1101008082,1101008083,1101008084,1101008087,1101008088,1101008092,1101008104,1101008106,1101008116,1101008117,1101008118,1101008126,1101008127,1101008128,1101008129,1101008136,1101008137,1101008138,1101008146,1101008154,1101008155,1101008156,1101008163,1101009001,1101009002,1101009003,1101009004,1101009005,1101009006,1101009007,1101009008,1101009009,1101009010,1101009011,1101009012,1101009013,1101009014,1101009015,1101009016,1101009019,1101009020,1101009021,1101009022,1101009023,1101010010,1101010011,1101010012,1101010013,1101010016,1101010018,1101010019,1101010020,1101010021,1101010022,1101010023,1101010024,1101010029,1101012001,1101012004,1101012009,1101012010,1101012011,1101012012,1101012013,1101012018,1101012019,1101012020,1101012021,1101012022,1101012023,1101012024,1101012025,1101012026,1101012033,1101100003,1101100004,1101100012,1101100013,1101100019,1101100020,1101100021,1101101001,1101101002,1101101003,1101101004,1101101005,1101101006,1101101007,1101102007,1101102017,1101102025,1101102026,1101102027,1101102032,1101102033,1101102041,1101102049,1102001001,1102001002,1102001003,1102001004,1102001006,1102001016,1102001017,1102001018,1102001024,1102001027,1102001028,1102001029,1102001030,1102001031,1102001036,1102001039,1102001040,1102001041,1102001044,1102001050,1102001051,1102001053,1102001058,1102001059,1102001060,1102001062,1102001063,1102001064,1102001069,1102001072,1102001073,1102001074,1102001075,1102001076,1102001077,1102001078,1102001080,1102001081,1102001082,1102001084,1102001085,1102001089,1102001090,1102001095,1102001102,1102001103,1102001104,1102001105,1102001106,1102001107,1102001108,1102001109,1102001112,1102001120,1102001121,1102001122,1102001123,1102001130,1102001131,1102001132,1102001133,1102001134,1102002001,1102002002,1102002003,1102002004,1102002005,1102002006,1102002007,1102002008,1102002009,1102002019,1102002020,1102002021,1102002023,1102002024,1102002025,1102002026,1102002027,1102002028,1102002029,1102002030,1102002031,1102002032,1102002033,1102002034,1102002035,1102002036,1102002043,1102002044,1102002045,1102002048,1102002053,1102002054,1102002061,1102002062,1102002063,1102002067,1102002068,1102002070,1102002071,1102002072,1102002080,1102002081,1102002082,1102002083,1102002084,1102002085,1102002090,1102002091,1102002092,1102002097,1102002098,1102002102,1102002103,1102002104,1102002109,1102002112,1102002117,1102002119,1102002121,1102002124,1102002129,1102002136,1102002137,1102002138,1102002139,1102002140,1102002141,1102002142,1102002143,1102002413,1102002414,1102002415,1102002416,1102002417,1102002424,1102002425,1102002426,1102002427,1102002428,1102002429,1102002430,1102002438,1102002446,1102002999,1102003001,1102003002,1102003003,1102003014,1102003015,1102003020,1102003023,1102003024,1102003025,1102003026,1102003031,1102003034,1102003039,1102003042,1102003045,1102003049,1102003050,1102003052,1102003054,1102003058,1102003063,1102003065,1102003072,1102003073,1102003080,1102003081,1102003082,1102003083,1102003084,1102003085,1102003086,1102003087,1102003088,1102003089,1102003090,1102003091,1102003092,1102003093,1102003100,1102003101,1102003102,1102003103,1102003104,1102003105,1102003199,1102004001,1102004011,1102004012,1102004013,1102004018,1102004020,1102004021,1102004022,1102004024,1102004025,1102004026,1102004027,1102004028,1102004029,1102004034,1102004038,1102004039,1102004040,1102004041,1102004042,1102004043,1102004044,1102004045,1102004048,1102004049,1102004050,1102004051,1102004052,1102004053,1102004054,1102004055,1102005001,1102005002,1102005007,1102005010,1102005011,1102005015,1102005020,1102005021,1102005022,1102005023,1102005024,1102005025,1102005027,1102005028,1102005029,1102005030,1102005031,1102005032,1102005033,1102005041,1102005042,1102005045,1102005046,1102005047,1102005048,1102005049,1102005050,1102005051,1102005052,1102005057,1102005064,1102005065,1102005066,1102005067,1102005072,1102005073,1102005074,1102005075,1102005076,1102005077,1102005078,1102007013,1102007014,1102007015,1102007016,1102007017,1102007018,1102007019,1102007022,1102007023,1102008001,1102105001,1102105002,1102105003,1102105004,1102105005,1102105012,1102105013,1102105018,1102105019,1102105020,1102105021,1102105028,1102105029,1103001001,1103001002,1103001003,1103001004,1103001005,1103001006,1103001007,1103001008,1103001009,1103001010,1103001011,1103001012,1103001013,1103001014,1103001015,1103001025,1103001026,1103001027,1103001028,1103001029,1103001030,1103001031,1103001032,1103001033,1103001035,1103001036,1103001037,1103001038,1103001039,1103001040,1103001042,1103001044,1103001045,1103001046,1103001050,1103001060,1103001068,1103001069,1103001070,1103001072,1103001079,1103001080,1103001085,1103001088,1103001089,1103001090,1103001092,1103001093,1103001094,1103001101,1103001102,1103001107,1103001110,1103001111,1103001112,1103001120,1103001121,1103001122,1103001123,1103001124,1103001125,1103001126,1103001127,1103001128,1103001129,1103001133,1103001137,1103001138,1103001139,1103001141,1103001142,1103001146,1103001154,1103001155,1103001160,1103001162,1103001166,1103001167,1103001172,1103001179,1103001180,1103001183,1103001184,1103001191,1103001192,1103001193,1103001199,1103001202,1103001203,1103002001,1103002011,1103002012,1103002013,1103002018,1103002021,1103002022,1103002023,1103002030,1103002031,1103002032,1103002033,1103002034,1103002035,1103002036,1103002037,1103002047,1103002049,1103002050,1103002051,1103002052,1103002059,1103002060,1103002063,1103002065,1103002066,1103002067,1103002070,1103002071,1103002076,1103002078,1103002080,1103002087,1103002088,1103002089,1103002094,1103002095,1103002096,1103002097,1103002098,1103002099,1103002100,1103002101,1103002102,1103002103,1103002104,1103002105,1103002106,1103002107,1103002108,1103002109,1103002110,1103002111,1103002112,1103002113,1103002114,1103002115,1103002116,1103002120,1103002121,1103002122,1103002123,1103002124,1103002125,1103002126,1103002130,1103002131,1103002132,1103002133,1103002134,1103002135,1103002136,1103002140,1103002141,1103002142,1103002143,1103002144,1103002145,1103002146,1103002150,1103002151,1103002152,1103002153,1103002154,1103002155,1103002156,1103003001,1103003002,1103003003,1103003004,1103003006,1103003014,1103003015,1103003022,1103003030,1103003031,1103003032,1103003035,1103003042,1103003044,1103003051,1103003052,1103003053,1103003055,1103003062,1103003066,1103003067,1103003068,1103003069,1103003070,1103003071,1103003072,1103003079,1103003080,1103003087,1103003092,1103003099,1103004001,1103004002,1103004003,1103004004,1103004006,1103004016,1103004017,1103004018,1103004019,1103004020,1103004021,1103004022,1103004023,1103004025,1103004026,1103004028,1103004029,1103004030,1103004037,1103004038,1103004039,1103004040,1103004041,1103004046,1103004051,1103004052,1103004053,1103004058,1103004060,1103004061,1103004062,1103004063,1103004064,1103004066,1103004067,1103004068,1103004069,1103004070,1103004071,1103004072,1103004073,1103004074,1103004075,1103004080,1103004081,1103004082,1103004087,1103004088,1103004089,1103005010,1103005011,1103005012,1103005013,1103005014,1103005015,1103005016,1103005017,1103005018,1103005019,1103005024,1103005027,1103005028,1103005029,1103005030,1103005031,1103005032,1103005033,1103005034,1103005035,1103005036,1103005037,1103005038,1103005039,1103005040,1103005041,1103005042,1103005043,1103005044,1103005045,1103005048,1103005049,1103005050,1103006001,1103006002,1103006004,1103006014,1103006015,1103006016,1103006017,1103006018,1103006019,1103006020,1103006021,1103006022,1103006023,1103006030,1103006031,1103006032,1103006033,1103006034,1103006036,1103006037,1103006038,1103006039,1103006040,1103006041,1103006046,1103006047,1103006048,1103006049,1103006050,1103006051,1103006052,1103006053,1103006058,1103006063,1103006064,1103006065,1103006066,1103006067,1103006068,1103006069,1103006070,1103006075,1103006076,1103007010,1103007011,1103007015,1103007020,1103007028,1103007029,1103007030,1103007031,1103007032,1103007033,1103007034,1103007035,1103007036,1103007037,1103007038,1103007043,1103008001,1103008004,1103008014,1103008015,1103008016,1103008017,1103008018,1103008019,1103008020,1103008021,1103008022,1103008023,1103009010,1103009011,1103009012,1103009013,1103009016,1103009017,1103009022,1103009027,1103009028,1103009029,1103009030,1103009031,1103009032,1103009037,1103009038,1103009039,1103009042,1103009043,1103009044,1103009045,1103009046,1103009051,1103009052,1103010001,1103010002,1103010003,1103010004,1103010005,1103010006,1103010007,1103010008,1103010010,1103010011,1103010012,1103010013,1103010014,1103010015,1103010016,1103010017,1103010018,1103010019,1103010020,1103011001,1103011002,1103011003,1103011004,1103011005,1103011009,1103011010,1103012010,1103012011,1103012012,1103012019,1103012024,1103012031,1103012032,1103012039,1103100007,1103100008,1103100013,1103102007,1103102008,1103103007,1104001001,1104001002,1104001004,1104001005,1104001015,1104001017,1104001018,1104001019,1104001021,1104001022,1104001023,1104001027,1104001028,1104001029,1104001030,1104001035,1104002002,1104002003,1104002004,1104002005,1104002015,1104002016,1104002017,1104002022,1104002025,1104002026,1104002027,1104002028,1104002029,1104002030,1104002032,1104002033,1104002034,1104002035,1104002036,1104002037,1104002038,1104002044,1104002045,1104002046,1104002049,1104002050,1104003001,1104003002,1104003003,1104003005,1104003015,1104003017,1104003018,1104003019,1104003026,1104003027,1104003028,1104003029,1104003030,1104003031,1104003032,1104003037,1104003038,1104003039,1104003040,1104003041,1104003046,1104003199,1104004010,1104004011,1104004012,1104004013,1104004014,1104004015,1104004017,1104004018,1104004019,1104004020,1104004021,1104004024,1104004027,1104004028,1104004029,1104004030,1104004035,1104004036,1104004041,1104004042,1104004043,1104004044,1104004045,1104004046,1104004051,1104004052,1104004053,1104004054,1104101001,1104101002,1104102001,1104102004,1104102005,1105001001,1105001002,1105001012,1105001013,1105001014,1105001020,1105001025,1105001026,1105001034,1105001035,1105001036,1105001037,1105001038,1105001040,1105001041,1105001048,1105001049,1105001050,1105001051,1105001052,1105001053,1105001054,1105001055,1105001057,1105001062,1105001069,1105001070,1105001075,1105001076,1105001077,1105001078,1105001079,1105002001,1105002011,1105002012,1105002013,1105002018,1105002021,1105002022,1105002023,1105002024,1105002027,1105002028,1105002030,1105002031,1105002035,1105002038,1105002040,1105002041,1105002042,1105002045,1105002046,1105002047,1105002048,1105002051,1105002053,1105002058,1105002063,1105002064,1105002065,1105002066,1105002071,1105002076,1105002077,1105002078,1105002083,1105002091,1105002092,1105002093,1105002096,1105002097,1105002098,1105002199,1105010001,1105010008,1105010009,1105010010,1105010011,1105010012,1105010019,1105010020,1105010021,1105010026,1105010027,1105010028,1106001001,1106001002,1106001003,1106001005,1106001015,1106001016,1106001017,1106001019,1106001020,1106002004,1106002005,1106002006,1106002016,1106002021,1106002023,1106002024,1106002025,1106002026,1106002027,1106002028,1106002029,1106003001,1106003011,1106003012,1106003013,1106003014,1106004001,1106004002,1106004003,1106004004,1106005001,1106005002,1106005004,1106005005,1106006001,1106006003,1106006013,1106006014,1106006015,1106008001,1106008002,1106008003,1106008005,1106008006,1106008007,1106008008,1106008013,1106008014,1106008015,1106008016,1106008017,1106008018,1106008019,1106008022,1106010001,1106010002,1106010003,1106011003,1107001001,1107001011,1107001012,1107001014,1107001015,1107001018,1107001019,1107001020,1107008001,1107098001,1107098002,1107098003,1108001010,1108001011,1108001012,1108001013,1108001014,1108001015,1108001016,1108001018,1108001019,1108001021,1108001022,1108001023,1108001024,1108001025,1108001026,1108001031,1108001032,1108001033,1108001037,1108001038,1108001039,1108001040,1108001041,1108001042,1108001045,1108001047,1108001048,1108001049,1108001052,1108001053,1108001057,1108001058,1108001060,1108001061,1108001062,1108001063,1108001064,1108001066,1108001067,1108001068,1108001069,1108001070,1108001071,1108001072,1108001073,1108001074,1108001075,1108001076,1108001077,1108001078,1108001081,1108001082,1108001085,1108001086,1108001087,1108001088,1108001089,1108001090,1108001091,1108001092,1108001093,1108001094,1108001095,1108001098,1108001099,1108001100,1108001103,1108001104,1108002001,1108002003,1108002010,1108002011,1108002012,1108002013,1108002014,1108002015,1108002016,1108002018,1108002020,1108002021,1108002022,1108002023,1108002024,1108002025,1108002026,1108002027,1108002028,1108002030,1108002032,1108002033,1108002037,1108002038,1108002039,1108002040,1108002043,1108002044,1108002045,1108002046,1108002047,1108002048,1108002049,1108002050,1108002051,1108002052,1108002053,1108002055,1108002059,1108002060,1108002061,1108002062,1108002063,1108003001,1108003010,1108003011,1108003012,1108003013,1108003014,1108003016,1108003017,1108003018,1108003022,1108003024,1108003025,1108004001,1108004002,1108004003,1108004004,1108004005,1108004006,1108004007,1108004008,1108004009,1108004010,1108004011,1108004012,1108004013,1108004014,1108004015,1108004016,1108004017,1108004018,1108004019,1108004020,1108004021,1108004023,1108004025,1108004026,1108004027,1108004028,1108004029,1108004030,1108004031,1108004032,1108004033,1108004034,1108004035,1108004036,1108004037,1108004038,1108004039,1108004040,1108004041,1108004042,1108004043,1108004044,1108004045,1108004046,1108004047,1108004048,1108004049,1108004050,1108004051,1108004053,1108004054,1108004057,1108004059,1108004060,1108004061,1108004062,1108004063,1108004066,1108004067,1108004068,1108004069,1108004071,1108004072,1108004073,1108004074,1108004075,1108004076,1108004077,1108004078,1108004080,1108004081,1108004082,1108004084,1108004085,1108004086,1108004087,1108004088,1108004089,1108004090,1108004091,1108004092,1108004093,1108004094,1108004095,1108004096,1108004098,1108004099,1108004100,1108004101,1108004103,1108004104,1108004105,1108004106,1108004107,1108004109,1108004110,1108004111,1108004112,1108004113,1108004116,1108004117,1108004119,1108004120,1108004121,1108004122,1108004123,1108004124,1108004125,1108004127,1108004132,1108004133,1108004134,1108004135,1108004136,1108004137,1108004138,1108004141,1108004142,1108004143,1108004145,1108004147,1108004149,1108004150,1108004151,1108004155,1108004156,1108004160,1108004161,1108004162,1108004163,1108004164,1108004167,1108004169,1108004173,1108004174,1108004175,1108004176,1108004177,1108004178,1108004179,1108004180,1108004181,1108004183,1108004184,1108004195,1108004197,1108004200,1108004201,1108004203,1108004205,1108004206,1108004207,1108004208,1108004209,1108004210,1108004212,1108004215,1108004216,1108004217,1108004220,1108004221,1108004225,1108004226,1108004227,1108004230,1108004232,1108004233,1108004234,1108004235,1108004237,1108004238,1108004239,1108004240,1108004242,1108004243,1108004244,1108004245,1108004246,1108004248,1108004250,1108004251,1108004252,1108004253,1108004254,1108004255,1108004256,1108004257,1108004258,1108004260,1108004261,1108004265,1108004266,1108004269,1108004271,1108004272,1108004273,1108004274,1108004276,1108004277,1108004283,1108004286,1108004289,1108004290,1108004291,1108004292,1108004295,1108004296,1108004298,1108004299,1108004300,1108004301,1108004303,1108004308,1108004309,1108004310,1108004312,1108004318,1108004320,1108004321,1108004324,1108004325,1108004327,1108004333,1108004334,1108004336,1108004337,1108004341,1108004342,1108004343,1108004344,1108004345,1108004346,1108004347,1108004348,1108004349,1108004350,1108004351,1108004352,1108004353,1108004356,1108004357,1108004358,1108004359,1108004360,1108004361,1108004362,1108004365,1108004366,1108004367,1108004368,1108004369,1108004370,1108004371,1108004372,1108004377,1108004378,1108004379,1108004380,1108004381,1108004382,1108004383,1108004384,1108004385,1108004386,1108004387,1108004388,1108004389,1108004390,1108004391,1108004392,1108004393,
+    -- [ Dragon Ball Super Collab ]
+    1406937, -- Trang Phục Nhân Vật Super Saiyan Son Goku
+    1406938, -- Trang Phục Nhân Vật Frieza
+    1406939, -- Trang Phục Nhân Vật Son Goku
+    1406947, -- Trang Phục Nhân Vật Vegeta
+    1406948, -- Trang Phục Nhân Vật Super Saiyan Vegeta
+    1406950, -- Trang Phục Beerus
+    1406951, -- Trang Phục Ma Bư
+    1406952, -- Trang Phục Quy Lão Kame
+    1406953, -- Trang Phục Nhân Vật Gohan Siêu Cấp
+    1406954, -- Trang Phục Nhân Vật Piccolo
+    1407264, -- Trang Phục Nhân Vật Vegito
+    1407265, -- Trang Phục Nhân Vật Vegito Siêu Saiyan
+    1407266, -- Trang Phục Nhân Vật Vegito Siêu Saiyan Xanh
+    1407267, -- Trang Phục Nhân Vật Son Goku Siêu Saiyan Xanh
+    1407268, -- Trang Phục Nhân Vật Son Goku Siêu Saiyan Xanh (Bị Thương)
+    1407269, -- Trang Phục Nhân Vật Vegeta Super Saiyan Xanh
+    1407270, -- Trang Phục Nhân Vật Vegeta Siêu Saiyan Xanh (Bị Thương)
+    1407271, -- Trang Phục Nhân Vật Bulma
 
-22010009,22010010,22010011,22010012,22010013,22010015,22010017,22010018,22010019,22010020,22010021,22010022,22010024,22010026,22010027,22010028,22010029,22010030,22010033,22010035,22010036,22010037,22010038,22010039,22010040,22010042,22010044,22010045,22010048,22010049,22010051,22010052,22010054,22010055,22010057,22010058,22010059,22010060,22010062,22010063,22010065,12200501,12200601,12200701,12200801,12201201,12201301,12201401,12201801,12201901,12202001,12202601,12202801,12202901,12203101,12203201,12203401,12203601,12203801,12204001,12204201,12204401,12204601,12205001,12205201,12205401,12205601,12205801,12206001,12206801,12207001,12207201,12207301,12207401,12207501,12207701,12207901,12208001,12208201,12208401,12208601,12208801,12209001,12209101,12209201,12209301,12209501,12209801,12210001,12210201,12210601,12210801,12211401,12211501,12211801,12212001,12212201,12212401,12212601,12212701,12213001,12213201,12213401,12213601,12213801,12214001,12214201,12214401,12214601,12214701,12214801,12214901,12215001,12215101,12215201,12215401,12215504,12215506,12215507,12215511,12215513,12215514,12215515,12215516,12215517,12215518,12215519,12215520,12215521,12215522,12215528,12215529,12215530,12215532,12215533,12215534,12215535,12215601,12215701,12216001,12216101,12216301,12219001,12219002,12219003,12219004,12219006,12219007,12219008,12219009,12219021,12219022,12219024,12219026,12219030,12219043,12219044,12219045,12219046,12219047,12219048,12219049,12219050,12219051,12219052,12219053,12219054,12219055,12219061,12219064,12219065,12219067,12219068,12219069,12219071,12219072,12219073,12219074,12219078,12219080,12219082,12219083,12219084,12219085,12219086,12219088,12219089,12219091,12219095,12219097,12219098,12219099,12219100,12219107,12219108,12219109,12219110,12219112,12219113,12219114,12219121,12219201,12219203,12219204,12219205,12219206,12219207,12219208,12219209,12219210,12219211,12219212,12219213,12219214,12219215,12219216,12219217,12219218,12219219,12219220,12219223,12219224,12219225,12219226,12219227,12219228,12219230,12219236,12219239,12219240,12219242,12219244,12219245,12219249,12219251,12219253,12219254,12219255,12219256,12219257,12219258,12219270,12219271,12219272,12219274,12219275,12219276,12219277,12219278,12219279,12219280,12219291,12219293,12219294,12219295,12219296,12219297,12219298,12219299,12219300,12219301,12219302,12219303,12219304,12219305,12219306,12219309,12219310,12219313,12219314,12219315,12219317,12219319,12219326,12219328,12219329,12219331,12219332,12219334,12219335,12219339,12219340,12219341,12219343,12219344,12219345,12219346,12219348,12219350,12219352,12219353,12219354,12219355,12219361,12219362,12219363,12219364,12219365,12219366,12219367,12219368,12219370,12219377,12219379,12219381,12219383,12219395,12219396,12219397,12219398,12219415,12219416,12219417,12219418,12219419,12219420,12219422,12219424,12219425,12219426,12219427,12219429,12219430,12219431,12219433,12219435,12219438,12219440,12219441,12219442,12219443,12219444,12219445,12219446,12219450,12219452,12219453,12219454,12219455,12219458,12219459,12219461,12219462,12219463,12219468,12219470,12219471,12219472,12219499,12219501,12219503,12219504,12219505,12219509,12219510,12219512,12219523,12219524,12219525,12219526,12219527,12219528,12219529,12219530,12219532,12219535,12219537,12219538,12219539,12219540,12219545,12219546,12219551,12219552,12219559,12219561,12219562,12219563,12219564,12219565,12219567,12219574,12219575,12219576,12219579,12219581,12219585,12219586,12219587,12219594,12219596,12219597,12219601,12219607,12219608,12219609,12219610,12219616,12219617,12219618,12219619,12219621,12219624,12219625,12219626,12219639,12219640,12219641,12219643,12219644,12219645,12219649,12219656,12219657,12219659,12219661,12219667,12219668,12219677,12219679,12219680,12219681,12219682,12219684,12219685,12219686,12219690,12219691,12219692,12219693,12219694,12219698,12219699,12219703,12219710,12219715,12219716,12219720,12219721,12219722,12219723,12219725,12219726,12219814,12219819,12219824,12219825,12219829,12219836,12219840,12219841,12219842,12220001,12220002,12220003,12220004,12220005,12220006,12220007,12220008,12220009,12220011,12220012,12220013,12220014,12220016,12220017,12220019,12220020,12220021,12220022,12220023,12220028,12220040,12220042,12220043,12220044,12220045,12220046,12220048,12220049,12220054,12220063,12220064,12220065,12220073,12220074,12220081,12220082,12220093,12220094,12220095,12220096,12220097,12220098,12220099,12220110,12220111,12220116,12220121,12220126,12220131,12220140,12220141,12220142,12220143,12220157,12220158,12220159,12220160,12220161,12220163,12220168,12220170,0,0,12220173,12220174,12220176,12220177,12220178,12220179,12220180,12220182,12220183,12220184,12220187,0,0,12220200,12220205,12220210,12220211,12220212,12220213,12220214,12220215,12220216,12220218,12220219,12220220,12220221,12220226,12220228,12220229,12220233,12220235,12220237,12220238,12220239,12220240,12220241,12220243,12220246,12220247,12220248,12220249,12220250,12220251,12220252,12220257,12220258,12220259,12220264,12220269,12220274,12220275,12220276,12220277,12220278,12220279,12220280,12220285,12220286,12220287,12220288,12220289,12220300,12220301,12220302,12220303,12220305,12220307,12220308,12220310,0,0,12220313,12220314,12220315,12220316,12220320,12220324,12220330,0,12220336,12220340,12220341,12220342,12220343,12220345,12220347,12220348,12220350,12220352,12220353,12220354,12220355,12220356,12220357,12220358,12220359,12220364,12220369,12220370,12220380,12220381,12220382,12220383,12220385,12220387,12220388,12220389,12220394,12220399,12220400,12220401,12220402,12220403,12220404,12220405,12220407,12220410,12220411,12220412,12220413,12220435,12220436,12220440,12220441,12220442,12220443,12220446,12220447,12220448,12220450,12220451,12220452,12220453,12220454,12220460,12220465,12220470,12220475,12220477,12220478,12220479,12220480,12220481,12220482,12220483,12220484,12220491,12220502,12220503,12220504,12220505,12220507,12220519,12220520,12220523,12220524,12220525,12220526,12220527,12220528,12220530,1403780,1403781,12220543,12220548,12220553,12220554,12220555,12220556,12220557,12220558,12220559,12220563,12220564,12220568,12220573,12220574,12220575,12220576,12220577,12220578,12220582,12220592,12220597,12220598,12220599,12220600,12220601,12220602,12220603,12220605,12220620,12220621,12220627,12220623,12220630,12220636,12220639,12220640,12220645,12220704,12220705,12220706,12220707,12220711,12220713,12220717,12220718,12220719,12220723,12220724,12220730,12220734,12220735,12220740,12220741,12220804,12220809,12220810,12220811,12220812,12220813,12220814,12220816,12220819,12220822,12220824,12220826,12220828,12220849,12220854,12220859,12220860,12220861,12220862,12220863,12220864,12220880,12220882,12220885,12220911,12220912,12220920,12220921,12220922,12220954,12220959,12220964,12220965,12220966,12220967,12220968,12220969,12220970,12220971,
+    -- [ Evangelion Collab ]
+    1406385, -- Plugsuit Evangelion Shinji
+    1406386, -- Plugsuit Evangelion Rei
+    1406387, -- Plugsuit Evangelion Asuka
+    1406388, -- Plugsuit Evangelion Mari
+    1406389, -- Plugsuit Evangelion Kaworu
 
-452001,452002,452003
+    -- [ Attack on Titan Collab ]
+    1407563, -- Trang Phục Nhân Vật Eren Jaeger
+    1407565, -- Trang Phục Nhân Vật Mikasa Ackermann
+    1407566, -- Trang Phục Nhân Vật Armin Arlelt
+    1407567, -- Trang Phục Titan Khổng Lồ (Armin)
+    1407568, -- Trang Phục Nhân Vật Levi
+    1407569, -- Trang Phục Titan Bọc Thép
 
+    -- [ Kaiju No. 8 Collab ]
+    1407672, -- Trang Phục Nhân Vật Kafka Hibino
+    1407673, -- Trang Phục Kaiju No. 8
+    1407674, -- Trang Phục Nhân Vật Kikoru Shinomiya
+    1407675, -- Trang Phục Kaiju No. 9
+    1407676, -- Trang Phục Kaiju No. 10
+    1407677, -- Trang Phục Nhân Vật Mina Ashiro
+    1407678, -- Trang Phục Nhân Vật Reno Ichikawa
+    1407679, -- Trang Phục Nhân Vật Soshiro Hoshina
+
+    -- [ BlackPink & Kpop Collabs ]
+    1406132, -- Trang phục DDU-DU DDU-DU ROSÉ
+    1406133, -- Trang phục DDU-DU DDU-DU JENNIE
+    1406134, -- Trang phục DDU-DU DDU-DU JISOO
+    1406135, -- Trang phục DDU-DU DDU-DU LISA
+    1406161, -- Trang phục How You Like That ROSÉ
+    1406162, -- Trang phục How You Like That JENNIE
+    1406163, -- Trang phục How You Like That JISOO 
+    1406164, -- Trang phục How You Like That LISA
+    1406178, -- Trang phục Lovesick Girls ROSÉ
+    1406179, -- Trang phục Lovesick Girls JENNIE
+    1406180, -- Trang phục Lovesick Girls JISOO
+    1406181, -- Trang phục Lovesick Girls LISA
+    1407346, -- PUBGM X NewJeans MINJI Set
+    1407347, -- PUBGM X NewJeans HANNI Set
+    1407348, -- PUBGM X NewJeans HAERIN Set
+    1407349, -- PUBGM X NewJeans DANIELLE Set
+    1407350, -- PUBGM X NewJeans HYEIN Set
+    1407745, -- Trang Phục RAMI (Babymonster)
+    1407746, -- Trang Phục ASA (Babymonster)
+    1407747, -- Trang Phục AHYEON (Babymonster)
+    1407748, -- Trang Phục RORA (Babymonster)
+    1407749, -- Trang Phục CHIQUITA (Babymonster)
+    1407750, -- Trang Phục PHARITA (Babymonster)
+    1407751, -- Trang Phục RUKA (Babymonster)
+    1407826, -- Trang Phục PUBG MOBILE × aespa KARINA
+    1407827, -- Trang Phục PUBG MOBILE × aespa GISELLE
+    1407828, -- Trang Phục PUBG MOBILE × aespa WINTER
+    1407829, -- Trang Phục PUBG MOBILE × aespa NINGNING
+    1407687, -- Trang Phục G-DRAGON PEACEMINUSONE
+    1407688, -- Trang Phục Sân Khấu của G-DRAGON
+
+    -- [ CÁC COLLAB NỔI BẬT KHÁC (Messi, Lý Tiểu Long, SPYxFAMILY...) ]
+    1406648, -- Trang Phục Biểu Tượng Bóng Đá Messi
+    1406649, -- Trang Phục Huyền Thoại Siêu Sao Messi
+    1406728, -- Trang Phục Kung Fu Lý Tiểu Long
+    1406729, -- Trang Phục Chuyên Gia Cận Chiến Lý Tiểu Long
+    1406730, -- Trang Phục Rồng Gầm Lý Tiểu Long
+    1406731, -- Trang Phục Võ Sĩ Lý Tiểu Long
+    1407206, -- SPY×FAMILY Trang Phục Hoàng Hôn
+    1407401, -- C.C. Set
+    1407402, -- Kallen Kozuki Set
+    1407404, -- Suzaku Kururugi Set
+    1407405, -- ZERO Set
+    1407408, -- Emperor Lelouch Set
+    1407769, -- Okarun(transformed) Set
+    1407770, -- Okarun Set
+    1407771, -- Momo Set
+    1407772, -- Jiji(transformed) Set
+    1407773, -- Aira Set
+    1407794, -- Trang Phục Nhân Vật John Shelby
+    1407795, -- Trang Phục Nhân Vật Arthur Shelby
+    1407796, -- Trang phục Thomas Shelby
+    1407798, -- Trang Phục Nhân Vật Iori Yagami
+    1407800, -- Trang Phục Nhân Vật Mai Shiranui
+    1407801, -- Trang Phục Nhân Vật Nakoruru
+    1407846, -- Trang Phục Nhân Vật Kimono Ryomen Sukuna
+    1407848, -- Trang Phục Nhân Vật Suguru Geto
+    1407901, -- Trang Phục Nhân Vật Isagi Yoichi
+    1407902, -- Trang Phục Nhân Vật Bachira Meguru
+
+    -- [ Set Đồ Đỏ Tự Nhiên & Siêu VIP của Game ]
+    1405160, -- Huyền Thoại Godzilla
+    1405161, -- Siêu Thú Ghidorah
+    1405186, -- Bộ Đồ Godzilla
+    1405662, -- Trang phục Giáp Samurai
+    1405663, -- Trang phục Sát Thủ Bóng Đêm
+    1406020, -- Trang phục Quái Thú
+    1406398, -- Trang phục Hỏa Diệm Ma Giáp
+    1406399, -- Trang phục Kỵ Binh Thần Giáp
+    1406456, -- Trang Phục Anh Hùng Truyền Thuyết
+    1406568, -- Trang Phục Nữ Hoàng Bóng Đêm
+    1406569, -- Trang Phục Minh Vương Hành Quyết
+    1406732, -- Trang Phục Nữ Đế Hoàng Kim
+    1406733, -- Trang Phục Hoàng Đế Hoàng Kim
+    1406764, -- Trang Phục Thiếu Nữ Đỏ Rực
+
+    -- ==============================================================================
+    -- 4. ÁO, QUẦN, GIÀY ĐẸP & TDM (PHONG CÁCH CỰC CHẤT)
+    -- ==============================================================================
+    -- [ BAPE & ALAN WALKER ]
+    1400569, -- BAPE MIX CAMO HOODIE
+    1400650, -- BAPE MIX CAMO SHORTS
+    1400651, -- BAPE STA MID
+    1404000, -- BAPE City Camo Hoodie
+    1404002, -- BAPE City Camo Pants
+    1404003, -- BAPE Sta Mid
+    1404048, -- Áo BAPE X PUBGM CAMO
+    1404049, -- Áo Hoodie cá mập BAPE X PUBGM CAMO
+    1404050, -- Quần BAPE X PUBGM CAMO
+    1404051, -- Giày BAPE X PUBGM CAMO
+    1404016, -- Alan Walker T-shirt
+    1404017, -- Alan Walker Hoodie
+    1404042, -- Trang phục Alan Walker
+    1404043, -- Áo Alan Walker
+    1404044, -- Quần Alan Walker
+    1404045, -- Giày Alan Walker
+    1404340, -- Trang phục Alan Walker 2021
+    1403038, -- Alan Walker Mask
+    1403064, -- Khẩu trang Alan Walker
+
+    -- [ Đồ TDM Phổ Biến (Khăn bịt mặt, Áo Lính, Áo Khoác Đen...) ]
+    402001, -- Khăn rằn sinh tồn
+    402037, -- Khăn quàng cao bồi
+    402043, -- Khăn quàng PUBG (Đỏ-Đen)
+    402045, -- Khăn quàng PUBG (Chiến thuật)
+    1400158, -- Mặt Nạ Hockey
+    1402005, -- Mysterious Leather Mask
+    1403100, -- Mặt nạ người leo núi
+    403010, -- Áo Ba Lỗ Bẩn (Trắng)
+    403028, -- Áo Trench coat (Màu đen)
+    403181, -- Áo lính sa mạc
+    403182, -- Áo Hoodie săn mồi (Đen)
+    403183, -- Áo Hoodie biệt kích (Trắng)
+    403192, -- Áo khoác bomber
+    404006, -- Quần Jeans (Nâu)
+    404008, -- Quần lính (Ka-ki)
+    404013, -- Quần lính (Rằn ri)
+    404015, -- Quần Jeans Bó (Màu Lam)
+    404026, -- Quần túi hộp (Màu be)
+    404028, -- Quần túi hộp (Màu đen)
+    404084, -- Quần thể thao ngắn (Đen)
+    404100, -- Quần người ẩn nấp (Đen)
+    405001, -- Giày đế mềm (Màu trắng)
+    405002, -- Giày thể thao cổ cao
+    405019, -- Giày lính chim ưng (Đen)
+    405044, -- Giày đế mềm (Đen)
+    1400013, -- Quần Jeans Mỹ
+
+    -- [ CÁC ÁO LẺ VIP (Collab, Siêu Xe) ]
+    1404142, -- Áo thun THE WALKING DEAD (Trắng)
+    1404143, -- Áo thun THE WALKING DEAD (Đen)
+    1404218, -- Áo Hoodie COVERNAT (Trắng)
+    1404219, -- Áo Hoodie COVERNAT (Đen)
+    1404326, -- Áo thun Xiaomi
+    1404327, -- Áo thun OnePlus
+    1404405, -- Áo Đấu Hợp Tác Messi × PUBG MOBILE
+    1404406, -- Áo Thun Lý Tiểu Long
+    1404411, -- Hoodie Ducati
+    1404412, -- Giày Ducati Corse City C2
+    1404413, -- Quần Ducati Sport C2
+    1404414, -- Áo Khoác Ducati Speed Evo C2
+    1404426, -- Áo PMGC 2023
+    1404427, -- Quần Người Chinh Phục Pagani
+    1404428, -- Giày Người Chinh Phục Pagani
+    1404508, -- Áo Hoodie Mr.Beast
+    1400324, -- áo b
+    1400325, -- áo a
+    452001, 452002, 452003, -- Găng Tay (Gloves)
+    
+        -- [ HÀNH ĐỘNG ]
+    12201301, -- Hành động Sát thủ Gothic
+    12216101, -- Hành động Võ sĩ Huyết Ưng
+    12212201, -- Hành động Sát thủ Cực Ám
+    12219207, -- Hành động Đại tướng Thiên Ngưu
+    12209001, -- Hành động Võ sĩ (Samurai)
+    12219561, -- Hành động Áo choàng Đỏ thẫm
+    12210001, -- Hành động Cái chạm của Tử thần
+    12219022, -- Hành động Thiết vệ Gai góc
+    12208801, -- Hành động Dũng sĩ Bán thần
+    12210801, -- Hành động Thợ săn Vỏ bạc
+    12200701, -- Hành động Du hành Không thời gian
+    12219242, -- Hành động Dạo bước Bầu trời
+    12206001, -- Hành động Hoa linh Đồng xanh
+    12205401, -- Hành động Vua của muôn thú
+    12205201, -- Hành động Trái tim Cự thú
+    12212601, -- Hành động Sát lục Thần bí
+    12205601, -- Hành động Linh hồn Cự thú
+    12219208, -- Hành động Hầu vương Cyber
+    12212001, -- Hành động Võ thánh
+    12206801, -- Hành động Hải long Thần bí
+    12209801, -- Hành động Ngự linh sư
+    12211401, -- Hành động Nữ phù thủy Băng tuyết
+    12207001, -- Hành động Du hành Biển sao
+    12211801, -- Hành động Chúa tể Trật tự
+    12207901, -- Hành động Hải vương Quyến rũ
+    12203401, -- Hành động Kỷ niệm Ảo ảnh
+    12204001, -- Hành động Chú hề (Ngày Cá tháng Tư)
+    12201801, -- Hành động Người bảo vệ Vùng tuyết
+    12215601, -- Hành động Siêu nhân Hằng tinh
+    12215532, -- Hành động Lãnh chúa Ngọn lửa
+    12213201, -- Hành động Kế hoạch Ngày mai
+    12215529, -- Hành động Kỵ sĩ Đua xe
+    12219053, -- Hành động Nữ hoàng Trân bảo
+    12204601, -- Hành động Thiên hạ Bố võ
+    12215701, -- Hành động Hành tinh Vượn người
+    12219003, -- Hành động Bóng tối Thần linh
+    12219004, -- Hành động Ngân hồn Rực lửa
+    12219009, -- Hành động Mê hoặc Rực lửa
+    12219216, -- Hành động Tế tư Héo úa
+    
+    
+    -- tóc mặt tùm lum
+    1404198, 1410085, 1404366, 1403137, 1410480, 1403028, 1400158, 40605011, 1404323, 1406001, 1403002,
+
+-- ==============================================================================
+    -- MŨ GIÁP VIP (CHỈ LẤY CẤP 1 - GỌN GÀNG, DỄ ẨN NẤP)
+    -- ==============================================================================
+    1502001183, -- Godzilla Helmet (Lv. 1)
+    1502001194, -- Mũ MECHAGODZILLA (Cấp 1)
+    1502001093, -- Mũ Thẩm Phán Anubis (Cấp 1) - Pharaoh
+    1502001305, -- Mũ Giáp Siêu Nhân Thép (Cấp 1)
+    1502001320, -- Mũ Giáp Biểu Tượng Bóng Đá Messi (Cấp 1)
+    1502001105, -- Mũ Tàng Hình (Cấp 1)
+    1502001364, -- Mũ Giáp PMGC 2023 (Cấp 1)
+    1502001373, -- Mũ Giáp LINE FRIENDS BROWN (Cấp 1)
+    1502001402, -- APEACH Helmet (LV.1)
+    1502001403, -- Bellygom Helmet (LV.1)
+    1502001427, -- Opanchu Helmet (Lv.1)
+    1502001443, -- Mũ Giáp Sóng Âm Cuồng Loạn (Cấp 1)
+    1502001450, -- Mũ Giáp Cún Tinh Nghịch (Cấp 1)
+    1502001471, -- Turbo Granny (Beckoning cat) Helmet (Lv. 1)
+    1502001480, -- Mũ Giáp PUBG MOBILE × aespa (Cấp 1)
+    1502001490, -- Nakiri Ayame Helmet (Lv.1)
+    1502001495, -- Mũ BLUE LOCK (Cấp 1)
+    1502001001, -- Mũ pizza nóng (Cấp 1)
+    1502001004, -- Mũ Cyberpunk (Tím) (Cấp 1)
+    1502001005, -- Mũ hộp sọ (Cấp 1)
+    1502001046, -- Mũ Samurai - danh dự (Cấp 1)
+    1502001058, -- Mũ bảo hiểm Monarch (Cấp 1)
+    1502001064, -- Mũ bảo hiểm Thiên Sứ (Cấp 1)
+    1502001073, -- Mũ Vệ Binh Robot (Cấp 1)
+    1502001078, -- Mũ Ninja Sát Thủ (Cấp 1)
+    1502001086, -- Mũ Chuột Tinh Nghịch (Cấp 1)
+    1502001099, -- Mũ Corgi (Cấp 1)
+    1502001115, -- Mũ Bọ Rùa (Cấp 1)
+    1502001133, -- Mũ Bí Ngô Kinh Dị (Cấp 1)
+    1502001145, -- Mũ Chú Lính Chì (Cấp 1)
+    1502001154, -- Mũ Giáp Đại Bàng Tỏa Sáng (Cấp 1)
+    1502001175, -- Mũ Vịt Vàng B.Duck (Cấp 1)
+    1502001230, -- Mũ Rồng Công Nghệ (Cấp 1)
+    1502001248, -- Mũ Người Mở Đường (Cấp 1)
+    1502001264, -- Mũ Ét Ô Ét (Cấp 1)
+    1502001276, -- Mũ Vũ Công Bí Ẩn (Cấp 1)
+    1502001294, -- Mũ Giáp Ma Pháp Sư (Cấp 1)
+    1502001301, -- Mũ Giáp Archon Lừng Lẫy (Cấp 1)
+    1502001357, -- Mũ Giáp Son Goku (Cấp 1)
+    1502001381, -- Mũ Giáp Hỏa Linh Chí Tôn (Cấp 1)
+    1502001416, -- Mũ Giáp PMGC 2024 (Cấp 1)
+    1502001453, -- 2025 Esports Helmet (Lv. 1)
+
+    -- ==============================================================================
+    -- BA LÔ VIP (CHỈ LẤY CẤP 1 - GỌN GÀNG, DỄ ẨN NẤP)
+    -- ==============================================================================
+    1501001174, -- Ba lô Pharaoh (Cấp 1)
+    1501001220, -- Ba lô Huyết Nha (Cấp 1)
+    1501001265, -- Ba lô Poseidon (Cấp 1)
+    1501001548, -- Balo Thần Thoại Viễn Cổ (Cấp 1)
+    1501001559, -- Balo Thanh Hoa Xà (Cấp 1)
+    1501001567, -- Ba Lô Hỏa Linh Chí Tôn (Cấp 1)
+    1501001577, -- Balo Đôi Cánh Vệ Thần (Cấp 1)
+    1501001607, -- Balo Dơi Bóng Đêm (Cấp 1)
+    1501001061, -- Ba lô Godzilla (Cấp 1)
+    1501001062, -- Ba Lô Siêu Thú Ghidorah (Cấp 1)
+    1501001082, -- Ba lô Genbu (Cấp 1)
+    1501001112, -- Ba lô Pig Ngốc Nghếch (Cấp 1)
+    1501001133, -- Ba lô Joker Khát Máu (Cấp 1)
+    1501001243, -- Ba Lô Vịt Vàng B.Duck (Cấp 1)
+    1501001273, -- Ba lô MECHAGODZILLA (Cấp 1)
+    1501001304, -- Ba lô Ma Vương (Cấp 1)
+    1501001331, -- Ba lô của Jinx (Cấp 1)
+    1501001340, -- Ba Lô Hải Cẩu Tuyết (Cấp 1)
+    1501001376, -- Ba lô Máy Hát Cổ Điển (Cấp 1)
+    1501001400, -- Ba lô Baby Shark (Cấp 1)
+    1501001463, -- Ba Lô BoBoiBoy (Cấp 1)
+    1501001476, -- Ba Lô Biểu Tượng Bóng Đá Messi (Cấp 1)
+    1501001480, -- Ba Lô Mì Indomie (Cấp 1)
+    1501001487, -- Ba Lô Con Mắt Chết Chóc (Cấp 1)
+    1501001521, -- Ba Lô Quy Lão Kame (Cấp 1)
+    1501001539, -- Ba Lô PMGC 2023 (Cấp 1)
+    1501001540, -- Ba Lô Gà Rán KFC (Cấp 1)
+    1501001554, -- Ba Lô LINE FRIENDS SALLY (Cấp 1)
+    1501001587, -- Ba Lô Đại Úy Loạn Thế (Cấp 1)
+    1501001597, -- Bellygom Backpack (LV.1)
+    1501001632, -- Opanchu Backpack (Lv.1)
+    1501001643, -- Frieren&Mimic Backbag (Lv.1)
+    1501001650, -- Ba Lô Titan Khổng Lồ Cấp 1
+    1501001683, -- Ba Lô Balenciaga (Cấp 1)
+    1501001715, -- SAKAMOTO TARO Backpack (Lv.1)
+    1501001720, -- Ba Lô BLUE LOCK (Cấp 1)
+    
+        -- [ BALO, MŨ & DÙ LƯỢN ]
+    1501001024, -- Balo Bá Tước
+    1502001014, -- Mũ Đinh
+    1502001439, -- mũ vương miện
+    1502001069, -- mũ cương thi
+    1502001023, -- mũ băng
+    
+
+    
+    -- id bổ xung
+    1400092, 1400101, 1400122, --tư lệnh
+    1404191, -- quần bộ hành
+    1405128, 1405129, 140224445, 140224445, -- crew
+    1407961, 1407962, 1407963, 1407964, 1407965, 1407966, 1407967, 1407968, 1407969, 1407970, 1407971, 1502001508, 1502002508, 1502003508, 1411134, 1411133, 1411135, 1403771, 1403770, 1407994, 1407993, 1101006106, 1101006098, 4151145, 1903230, 1903231, 1903232, 1908117, 1908118, 1908119, 19116002, 19116003, 19116004, 1961070, 1961071, 1961072, 1961073, 1408045, 1408038, 1407990,
 }
 
 local INS_BASE = 2000000000
-
 local PKG_SLOT = 3
-
 local MELEE_ID = 108
+local HAT_SUB = 401
+local MASK_SUB = 402
+local OUTFIT_SUB = 403
+local PANTS_SUB = 404
+local SHOES_SUB = 405
+local GLASS_SUB = 407
+local GLIDER_SUB = 415      
+local GLOVES_SUB = 452
+local GLIDER_SUBS = { [413] = true, [414] = true, [415] = true }
 
+F.CUST_SLOT = {
+    NONE = 0,
+    HeadEquipemtSlot = 1,
+    HairEquipemtSlot = 2,
+    HatEquipemtSlot = 3,
+    FaceEquipemtSlot = 4,
+    ClothesEquipemtSlot = 5,
+    PantsEquipemtSlot = 6,
+    ShoesEquipemtSlot = 7,
+    BackpackEquipemtSlot = 8,
+    HelmetEquipemtSlot = 9,
+    ArmorEquipemtSlot = 10,
+    ParachuteEquipemtSlot = 11,
+    GlassEquipemtSlot = 12,
+    NightVisionEquipemtSlot = 13,
+    BeardEquipemtSlot = 14,
+    GlideEquipemtSlot = 15,
+    HandEffectEquipemtSlot = 16,
+    BackPack_PendantSlot = 17,
+}
+_G.CustSlotType = F.CUST_SLOT
+
+local CHASSIS_LIGHT_SUB = 7302
+local CHASSIS_LIGHT_IDS = { [7302001] = true, [7302002] = true }
+local DEFAULT_CHASSIS_LIGHT = 7302002
+local PARACHUTE_SUB = 701   
+local DEFAULT_PARACHUTE_RES = 703001  
+local TAB_SUIT = 10
+local TAB_CLOTHES = 3
+local PAGE_AVATAR = 1
+local PAGE_VEHICLE = 6
+local PAGE_PARACHUTE = 5
+local HALL_THEME_TYPE = 202
+local SUBTYPE_DEFAULT_TAB = {
+    [401] = 1, [402] = 2, [403] = 10, [404] = 4, [405] = 5, [407] = 14,
+    [501] = 15, [504] = 15, [502] = 16, [505] = 16,
+}
+local HAT_SUBS = { [401] = true }
+local HELMET_SUBS = { [502] = true, [505] = true }
+local HEAD_SUBS = { [401] = true } -- [FIX VIP] Đã xóa 502 và 505 để tách biệt hoàn toàn Mũ Bảo Hiểm khỏi Tóc/Mũ Thời Trang
+local BAG_SUBS = { [501] = true, [504] = true }
+local FACE_SUBS = { [402] = true, [407] = true }
+local BODY_SUBS = { [404] = true, [405] = true, [501] = true, [504] = true, [502] = true, [505] = true }
 local GUN_SUB = { [101]=true, [102]=true, [103]=true, [104]=true, [105]=true, [106]=true, [107]=true }
-
 local NET_OK = NetErrorCode_NONE or "ok"
 
-local R = { insToRes = {}, resToIns = {} }
-
+local R = { insToRes = {}, resToIns = {}, byWeapon = {} }
 local _matchApplied = false
 
-local _weaponSkinCache = {}
+_G.AddOutfitPersist = _G.AddOutfitPersist or { path = nil, dirty = false, scheduled = false, loaded = nil, lastWritten = nil, configVehicleSlots = nil, configWeapons = nil, configSlots = nil, lobbyVehicleSubType = nil, lobbyVehicleIns = nil, lobbyVehicleResID = nil, hallThemeResID = nil, hallThemeIns = nil, configChassisLight = nil, configChassisLightMap = nil }
+local PERSIST = _G.AddOutfitPersist
 
-local function cache()
+F.persistMarkDirty = function() end
+
+local PERF = {
+    lobbySynced     = false,
+    mappingsDirty   = true,
+    desiredSkins    = nil,
+    skinTarget      = {},
+    matchActive     = false,
+    lastBootstrapAt = 0,
+    wearDoneThisMatch = false,  
+}
+local MATCH_TICK_SEC    = 3.0
+local MATCH_MAX_SEC     = 45.0
+local BOOTSTRAP_COOLDOWN = 2.0
+local INJECT_RETRY_MAX  = 5
+local INJECT_RETRY_SEC  = 3.0
+
+function F.lobbyState()
+    _G.AddOutfitLobbyState = _G.AddOutfitLobbyState or {
+        wardrobeRefreshed = false,
+        reapplyScheduled  = false,
+        reapplyDone       = false,
+        outfitResolved    = false,
+        skinResolved      = false,
+        cachedOutfit      = nil,
+        cachedSkin        = nil,
+        injectRefreshGen  = 0,
+        lobbySynced       = false,
+    }
+    return _G.AddOutfitLobbyState
+end
+
+local LOBBY = setmetatable({}, {
+    __index = function(_, k) return F.lobbyState()[k] end,
+    __newindex = function(_, k, v) F.lobbyState()[k] = v end,
+})
+
+function F.invalidateLobbyResolved()
+    LOBBY.outfitResolved = false
+    LOBBY.skinResolved   = false
+    LOBBY.cachedOutfit   = nil
+    LOBBY.cachedSkin     = nil
+end
+
+function F.perfInvalidateLobby()
+    LOBBY.lobbySynced   = false
+    PERF.mappingsDirty = true
+    PERF.desiredSkins  = nil
+    for k in pairs(PERF.skinTarget) do PERF.skinTarget[k] = nil end
+    F.invalidateLobbyResolved()
+end
+
+function F.cache()
     _G.AddOutfitEquippedCache = _G.AddOutfitEquippedCache or {
         outfitRes = nil, outfitIns = nil,
+        hatRes = nil, hatIns = nil,
+        maskRes = nil, maskIns = nil,
+        glassRes = nil, glassIns = nil,
+        tshirtRes = nil, tshirtIns = nil,
+        pantsRes = nil, pantsIns = nil,
+        shoesRes = nil, shoesIns = nil,
+        bagRes = nil, bagIns = nil,
+        helmetRes = nil, helmetIns = nil,
         weapons = {},
-        vehicles = {},
-        slots = {},
+        vehicleSlots = {},  
+        hallThemeRes = nil, hallThemeIns = nil,
+        parachuteRes = nil, parachuteIns = nil,
+        gliderRes = nil, gliderIns = nil,
+        glovesRes = nil, glovesIns = nil,
     }
     return _G.AddOutfitEquippedCache
 end
 
-_G.SaveLobbyWardrobe = function()
-    pcall(function()
-        local cch = cache()
-        local content = "return {\n"
-        content = content .. "  outfitRes = " .. tostring(cch.outfitRes or 0) .. ",\n"
-        content = content .. "  outfitIns = " .. tostring(cch.outfitIns or 0) .. ",\n"
-        content = content .. "  weapons = {\n"
-        for wid, w in pairs(cch.weapons) do
-            content = content .. "    [" .. tostring(wid) .. "] = { resID = " .. tostring(w.resID or 0) .. ", insID = " .. tostring(w.insID or 0) .. " },\n"
-        end
-        content = content .. "  },\n"
-        content = content .. "  vehicles = {\n"
-        for vid, v in pairs(cch.vehicles or {}) do
-            content = content .. "    [" .. tostring(vid) .. "] = { resID = " .. tostring(v.resID or 0) .. ", insID = " .. tostring(v.insID or 0) .. " },\n"
-        end
-        content = content .. "  },\n"
-        content = content .. "  slots = {\n"
-        for slotID, item in pairs(cch.slots or {}) do
-            content = content .. "    [" .. tostring(slotID) .. "] = { resID = " .. tostring(item.resID or 0) .. ", insID = " .. tostring(item.insID or 0) .. " },\n"
-        end
-        content = content .. "  }\n"
-        content = content .. "}"
-        local paths = GetConfigPaths("dx_wardrobe.ini")
-        for _, path in ipairs(paths) do
-            local file = io.open(path, "w")
-            if file then
-                file:write(content)
-                file:close()
-                break
-            end
-        end
-    end)
-end
-
-_G.LoadLobbyWardrobe = function()
-    pcall(function()
-        local paths = GetConfigPaths("dx_wardrobe.ini")
-        local content = nil
-        for _, path in ipairs(paths) do
-            local file = io.open(path, "r")
-            if file then
-                content = file:read("*a")
-                file:close()
-                break
-            end
-        end
-        if content then
-            local func = load(content)
-            if func then
-                local savedData = func()
-                if savedData and type(savedData) == "table" then
-                    local cch = cache()
-                    cch.outfitRes = savedData.outfitRes
-                    cch.outfitIns = savedData.outfitIns
-                    if savedData.weapons then
-                        for wid, w in pairs(savedData.weapons) do
-                            cch.weapons[wid] = { resID = w.resID, insID = w.insID }
-                            _weaponSkinCache[wid] = { resID = w.resID, insID = w.insID }
-                        end
-                    end
-                    cch.vehicles = cch.vehicles or {}
-                    if savedData.vehicles then
-                        for vid, v in pairs(savedData.vehicles) do
-                            cch.vehicles[vid] = { resID = v.resID, insID = v.insID }
-                        end
-                    end
-                    cch.slots = cch.slots or {}
-                    if savedData.slots then
-                        for slotID, item in pairs(savedData.slots) do
-                            cch.slots[slotID] = { resID = item.resID, insID = item.insID }
-                        end
-                    end
-                    if cch.slots[5] then
-                        cch.outfitRes = cch.slots[5].resID
-                        cch.outfitIns = cch.slots[5].insID
-                    end
-                end
-            end
-        end
-    end)
-end
-
-local function cfg(resID)
-
+function F.cfg(resID)
     if not resID or not CDataTable or not CDataTable.GetTableData then return nil end
-
     return CDataTable.GetTableData("Item", resID)
-
 end
 
-local function subType(c)
-
+function F.subType(c)
     return c and (c.ItemSubType or c.itemSubType) or nil
-
 end
 
-local ST_TOP     = (ENUM_ITEM_SUBTYPE and ENUM_ITEM_SUBTYPE.Package_Slot) or 403
-
-local ST_PANTS   = (ENUM_ITEM_SUBTYPE and ENUM_ITEM_SUBTYPE.Pants_Slot) or 404
-
-local ST_SHOES   = (ENUM_ITEM_SUBTYPE and ENUM_ITEM_SUBTYPE.Shoes_Slot) or 405
-
-local ST_UNDER_T = (ENUM_ITEM_SUBTYPE and ENUM_ITEM_SUBTYPE.UnderCloth) or 450
-
-local ST_UNDER_P = (ENUM_ITEM_SUBTYPE and ENUM_ITEM_SUBTYPE.UnderPants) or 451
-
-local WARDROBE_TAB_SUIT, WARDROBE_TAB_CLOTHES = 10, 3
-
-pcall(function()
-
-    local wm = require("client.slua.umg.Wardrobe.wardrobe_macro")
-
-    WARDROBE_TAB_SUIT = wm.ENUM_WardrobeSubTabString.ENUM_WardrobeSubTabString_suit
-
-    WARDROBE_TAB_CLOTHES = wm.ENUM_WardrobeSubTabString.ENUM_WardrobeSubTabString_clothes
-
-end)
-
-local FULL_SUIT_CLEAR_ST = {
-
-    [ST_TOP] = true, [ST_PANTS] = true, [ST_SHOES] = true,
-
-    [ST_UNDER_T] = true, [ST_UNDER_P] = true,
-
-}
-
-local function wardrobeTab(resID, depotData)
-
-    if depotData and depotData.subTabType then return tonumber(depotData.subTabType) end
-
-    local c = cfg(resID)
-
-    return c and tonumber(c.WardrobeTab or c.wardrobeTab) or nil
-
+function F.wardrobeTab(resID)
+    local c = F.cfg(resID)
+    return c and tonumber(c.WardrobeTab) or 0
 end
 
-local function isFullSuitRes(resID, depotData)
-
-    resID = tonumber(resID)
-
-    if not resID or resID <= 0 then return false end
-
-    local ok, xs = pcall(function()
-
-        local LogicXSuit = require("client.slua.logic.XSuit.logic_xsuit")
-
-        return LogicXSuit.IsXSuit(resID)
-
-    end)
-
-    if ok and xs then return true end
-
-    local tab = wardrobeTab(resID, depotData)
-
-    if tab == WARDROBE_TAB_SUIT then return true end
-
-    if tab == WARDROBE_TAB_CLOTHES then return false end
-
-    for _, id in ipairs(ITEMS) do
-
-        if tonumber(id) == resID and subType(cfg(resID)) == ST_TOP then
-
-            return true
-
-        end
-
-    end
-
-    return false
-
+function F.depotResID(v)
+    return v and tonumber(v.resID or v.res_id) or nil
 end
 
-local function getClothKind(resID, depotData)
-
-    resID = tonumber(resID)
-
-    if not resID then return nil end
-
-    local st = subType(cfg(resID))
-
-    if st == ST_TOP then
-
-        return isFullSuitRes(resID, depotData) and "full_suit" or "top"
-
-    end
-
-    if st == ST_PANTS then return "pants" end
-
-    if st == ST_SHOES then return "shoes" end
-
-    if st == ST_UNDER_T then return "under_top" end
-
-    if st == ST_UNDER_P then return "under_pants" end
-
+function F.resToCustSlot(resID, st)
+    resID, st = tonumber(resID), tonumber(st)
+    if not resID or resID <= 0 then return nil end
+    st = st or F.subType(F.cfg(resID))
+    if st == HAT_SUB or HAT_SUBS[st] then return F.CUST_SLOT.HatEquipemtSlot end
+    if st == OUTFIT_SUB then return F.CUST_SLOT.ClothesEquipemtSlot end
+    if st == PANTS_SUB then return F.CUST_SLOT.PantsEquipemtSlot end
+    if st == SHOES_SUB then return F.CUST_SLOT.ShoesEquipemtSlot end
+    if st == MASK_SUB then return F.CUST_SLOT.FaceEquipemtSlot end
+    if st == GLASS_SUB then return F.CUST_SLOT.GlassEquipemtSlot end
+    if st == GLOVES_SUB then return F.CUST_SLOT.HandEffectEquipemtSlot end
+    if BAG_SUBS[st] then return F.CUST_SLOT.BackpackEquipemtSlot end
+    if HELMET_SUBS[st] then return F.CUST_SLOT.HelmetEquipemtSlot end
+    if F.isParachuteRes(resID) or st == PARACHUTE_SUB then return F.CUST_SLOT.ParachuteEquipemtSlot end
+    if F.isGlideRes(resID) or GLIDER_SUBS[st] then return F.CUST_SLOT.GlideEquipemtSlot end
     return nil
-
 end
 
-local function subTypesToClearForKind(kind)
-
-    if kind == "full_suit" then return FULL_SUIT_CLEAR_ST end
-
-    if kind == "top" then return { [ST_TOP] = true } end
-
-    if kind == "pants" then return { [ST_PANTS] = true } end
-
-    if kind == "shoes" then return { [ST_SHOES] = true } end
-
-    if kind == "under_top" then return { [ST_UNDER_T] = true } end
-
-    if kind == "under_pants" then return { [ST_UNDER_P] = true } end
-
-    return nil
-
+function F.isSuitRes(resID)
+    if F.subType(F.cfg(resID)) ~= OUTFIT_SUB then return false end
+    return F.wardrobeTab(resID) ~= TAB_CLOTHES
 end
 
-local function isBodyClothSubType(st)
-
-    st = tonumber(st)
-
-    return st == ST_TOP or st == ST_PANTS or st == ST_SHOES or st == ST_UNDER_T or st == ST_UNDER_P
-
+function F.isTshirtRes(resID)
+    return F.subType(F.cfg(resID)) == OUTFIT_SUB and F.wardrobeTab(resID) == TAB_CLOTHES
 end
 
-local function weaponIdFromSkin(resID)
-
+function F.weaponIdFromSkin(resID)
     local m = CDataTable and CDataTable.GetTableData and CDataTable.GetTableData("WeaponSkinMapping", resID)
-
     if not m then return nil end
-
     return m.WeaponID or m.WeaponId
-
 end
 
-local function isInjectedIns(ins)
-
-    return ins and R.insToRes[tonumber(ins)] ~= nil
-
+function F.isValidWeaponId(weaponID)
+    weaponID = tonumber(weaponID)
+    if not weaponID or weaponID <= 0 then return false end
+    if weaponID == MELEE_ID then return true end
+    return weaponID >= 101000 and weaponID < 108000
 end
 
-local function isInjectedRes(res)
-
-    return res and R.resToIns[tonumber(res)] ~= nil
-
+function F.isValidWeaponPersistEntry(weaponID, resID)
+    weaponID, resID = tonumber(weaponID), tonumber(resID)
+    if not F.isValidWeaponId(weaponID) or not resID or resID <= 0 then return false end
+    if weaponID == resID then return false end
+    if resID >= 1800000 and resID < 1810000 then return false end
+    if resID >= 1900000 and resID < 2000000 then return false end
+    if F.isInjectedRes(resID) then
+        local wid = tonumber(F.weaponIdFromSkin(resID))
+        return wid and wid == weaponID
+    end
+    local wid = tonumber(F.weaponIdFromSkin(resID))
+    return wid and wid == weaponID
 end
 
-local function invalidateSocialWearCache()
-
-    local s = _G.AddOutfitSocialState
-
-    if s then
-
-        s.wearPatchKey, s.snapshotKey, s.fullSnapshot, s.lastHandSkin = nil, nil, nil, nil
-
+function F.sanitizeConfigWeapons(wmap)
+    if type(wmap) ~= "table" then return {} end
+    local clean = {}
+    for wid, res in pairs(wmap) do
+        wid, res = tonumber(wid), tonumber(res)
+        if F.isValidWeaponPersistEntry(wid, res) then clean[wid] = res end
     end
-
+    return clean
 end
 
-local function saveWeaponToCache(weaponID, resID, insID)
-
-    weaponID, resID, insID = tonumber(weaponID), tonumber(resID), tonumber(insID)
-
-    if not weaponID or not resID or resID <= 0 then return end
-
-    local cch = cache()
-
-    cch.weapons[weaponID] = { resID = resID, insID = insID or 0 }
-
-    _weaponSkinCache[weaponID] = { resID = resID, insID = insID or 0 }
-
-    _G.AddOutfitLastAppliedSkin = {}
-
-    _matchApplied = false
-
-    invalidateSocialWearCache()
-
-    if _G.SaveLobbyWardrobe then _G.SaveLobbyWardrobe() end
-
-end
-
-local function cacheWeaponSkinFromIns(weaponID, insID)
-
-    weaponID, insID = tonumber(weaponID), tonumber(insID)
-
-    if not weaponID or not insID or insID <= 0 then return end
-
-    if isInjectedIns(insID) then
-
-        saveWeaponToCache(weaponID, R.insToRes[insID], insID)
-
-        return
-
-    end
-
-    pcall(function()
-
-        local wd = require("client.slua.logic.wardrobe.wardrobe_data")
-
-        local d = wd:GetValidHallDepotItemDataByInsID(insID) or wd:GetHallDepotItemDataByInsID(insID)
-
-        if d and d.resID and tonumber(d.resID) > 0 then
-
-            saveWeaponToCache(weaponID, tonumber(d.resID), insID)
-
-        end
-
-    end)
-
-end
-
-local function resolveSlotBySubType(st, resID)
-    st = tonumber(st) or 0
-    resID = tonumber(resID) or 0
-    
-    -- Subtypes matching:
-    if st == 401 or st == 408 then return 1 end -- Hat / Headgear / Hair
-    if st == 407 then return 2 end -- Glasses (Face)
-    if st == 402 then return 10 end -- Mask
-    if st == 403 then
-        if isFullSuitRes(resID) then
-            return 5 -- Suit
-        else
-            return 3 -- Top
-        end
-    end
-    if st == 404 then return 4 end -- Pants
-    if st == 405 then return 6 end -- Shoes
-    if st == 406 then return 7 end -- Gloves
-    
-    -- Backpack, Helmet, Parachute, Glider
-    if resID >= 1501000000 and resID < 1502000000 or resID >= 501000 and resID < 502000 then
-        return 8 -- Backpack
-    end
-    if resID >= 1502000000 and resID < 1503000000 or resID >= 502000 and resID < 503000 then
-        return 9 -- Helmet
-    end
-    if resID >= 1503000000 and resID < 1504000000 or resID >= 503000 and resID < 504000 then
-        return 11 -- Parachute
-    end
-    if resID >= 1507000000 and resID < 1508000000 then
-        return 15 -- Glider
-    end
-    
-    if st == 501 or st == 8 then return 8 end
-    if st == 502 or st == 9 then return 9 end
-    if st == 503 or st == 11 then return 11 end
-    if st == 507 or st == 15 then return 15 end
-    
-    -- WardrobeTab Fallback (very robust)
-    local tab = wardrobeTab(resID)
-    if tab then
-        tab = tonumber(tab) or 0
-        if tab == 1 or tab == 4 then return 1 end -- Hat / Hair
-        if tab == 2 then return 10 end -- Mask
-        if tab == 3 then return 3 end  -- Top
-        if tab == 4 then return 4 end  -- Pants
-        if tab == 5 then return 6 end  -- Shoes
-        if tab == 6 then return 7 end  -- Gloves
-        if tab == 10 then return 5 end -- Suit
-    end
-    
-    return nil
-end
-
-local function saveEquip(resID, insID)
+function F.indexWeaponSkin(resID, insID)
     resID, insID = tonumber(resID), tonumber(insID)
     if not resID or not insID then return end
-    local c = cfg(resID)
-    local st = subType(c)
-    local cch = cache()
-    
-    if GUN_SUB[st] then
-        local wid = weaponIdFromSkin(resID)
-        if wid then saveWeaponToCache(wid, resID, insID) end
-        return
-    elseif st == MELEE_ID then
-        saveWeaponToCache(MELEE_ID, resID, insID)
-        return
-    end
-    
-    local slotID = resolveSlotBySubType(st, resID)
-    if slotID then
-        cch.slots = cch.slots or {}
-        if slotID == 5 then
-            cch.outfitRes, cch.outfitIns = resID, insID
-            cch.slots[5] = { resID = resID, insID = insID }
-            cch.slots[3] = nil -- Shirt
-            cch.slots[4] = nil -- Pants
-            cch.slots[6] = nil -- Shoes
-            _G.AddOutfitLastLobbyOutfitRes = resID
-        else
-            if slotID == 3 or slotID == 4 or slotID == 6 then
-                cch.outfitRes, cch.outfitIns = nil, nil
-                cch.slots[5] = nil
-            end
-            cch.slots[slotID] = { resID = resID, insID = insID }
-        end
-        invalidateSocialWearCache()
-        _matchApplied = false
-        if _G.SaveLobbyWardrobe then _G.SaveLobbyWardrobe() end
-    end
+    local c = F.cfg(resID)
+    local st = F.subType(c)
+    if not (GUN_SUB[st] or st == MELEE_ID) then return end
+    local wid = F.weaponIdFromSkin(resID)
+    wid = tonumber(wid)
+    if not wid or wid <= 0 then return end
+    R.byWeapon[wid] = R.byWeapon[wid] or {}
+    R.byWeapon[wid][resID] = insID
 end
 
-_G.saveVehicleEquip = function(resID, instID)
-    resID, instID = tonumber(resID), tonumber(instID)
-    if not resID or not instID then return end
-    local baseId = nil
-    if _G.VehicleSkins then
-        for bId, list in pairs(_G.VehicleSkins) do
-            for _, id in ipairs(list) do
-                if id == resID then baseId = bId break end
-            end
-            if baseId then break end
-        end
-    end
-    if not baseId then
-        if resID >= 1903000 and resID < 1904000 then baseId = 1903001
-        elseif resID >= 1908000 and resID < 1909000 then baseId = 1908001
-        elseif resID >= 1961000 and resID < 1962000 then baseId = 1961001
-        elseif resID >= 1907000 and resID < 1908000 then baseId = 1907001
-        elseif resID >= 1915000 and resID < 1916000 then baseId = 1915001
-        end
-    end
-    if baseId then
-        local cch = cache()
-        cch.vehicles = cch.vehicles or {}
-        cch.vehicles[baseId] = { resID = resID, insID = instID }
-        if _G.SaveLobbyWardrobe then _G.SaveLobbyWardrobe() end
-    end
+function F.isInjectedIns(ins)
+    return ins and R.insToRes[tonumber(ins)] ~= nil
 end
 
-local function syncWeaponCacheFromLobby()
+function F.isInjectedRes(res)
+    return res and R.resToIns[tonumber(res)] ~= nil
+end
 
-    if isInRealMatch() then return end
+function F.isWeaponSkinRes(resID)
+    resID = tonumber(resID)
+    if not resID then return false end
+    local st = F.subType(F.cfg(resID))
+    return GUN_SUB[st] or st == MELEE_ID
+end
 
-    local cch = cache()
+function F.isWeaponSkinIns(insID)
+    insID = tonumber(insID)
+    if not insID then return false end
+    local res = R.insToRes[insID]
+    return res and F.isWeaponSkinRes(res)
+end
 
+function F.cleanArmoryPollution()
     pcall(function()
-
-        local fbd = require("client.slua.logic.wardrobe.fashionbag.fashionbag_data")
-
-        local bag = fbd.GetCurrentFashionBag and fbd:GetCurrentFashionBag()
-
-        if bag and bag.weapon_skin_list then
-
-            for weaponID, entry in pairs(bag.weapon_skin_list) do
-
-                weaponID = tonumber(weaponID)
-
-                local insID = tonumber(entry and (entry.skin_id or entry.skinId)) or 0
-
-                if weaponID and weaponID > 0 and insID > 0 then
-
-                    if isInjectedIns(insID) then
-
-                        local res = tonumber(R.insToRes[insID])
-
-                        if res and res > 0 then
-
-                            cch.weapons[weaponID] = { resID = res, insID = insID }
-
-                        end
-
-                    else
-
-                        local wd = require("client.slua.logic.wardrobe.wardrobe_data")
-
-                        local d = wd:GetValidHallDepotItemDataByInsID(insID)
-
-                            or wd:GetHallDepotItemDataByInsID(insID)
-
-                        if d and d.resID and tonumber(d.resID) > 0 then
-
-                            cch.weapons[weaponID] = { resID = tonumber(d.resID), insID = insID }
-
-                        end
-
-                    end
-
-                end
-
-            end
-
-        end
-
-    end)
-
-    pcall(function()
-
         local Arm = require("client.logic.armory.logic_armory")
-
-        if Arm.rsp_list and Arm.rsp_list.install_list then
-
-            for weaponID, entry in pairs(Arm.rsp_list.install_list) do
-
-                weaponID = tonumber(weaponID)
-
-                local insID = tonumber(entry and entry.skin_id) or 0
-
-                if weaponID and weaponID > 0 and insID > 0 then
-
-                    if isInjectedIns(insID) then
-
-                        local res = tonumber(R.insToRes[insID])
-
-                        if res and res > 0 then
-
-                            cch.weapons[weaponID] = { resID = res, insID = insID }
-
-                        end
-
-                    else
-
-                        local wd = require("client.slua.logic.wardrobe.wardrobe_data")
-
-                        local d = wd:GetValidHallDepotItemDataByInsID(insID)
-
-                            or wd:GetHallDepotItemDataByInsID(insID)
-
-                        if d and d.resID and tonumber(d.resID) > 0 then
-
-                            cch.weapons[weaponID] = { resID = tonumber(d.resID), insID = insID }
-
-                        end
-
-                    end
-
+        if not Arm.rsp_list then return end
+        if Arm.rsp_list.install_list then
+            for wid, entry in pairs(Arm.rsp_list.install_list) do
+                local ins = tonumber(entry and entry.skin_id)
+                if ins and not F.isWeaponSkinIns(ins) then
+                    Arm.rsp_list.install_list[wid] = nil
                 end
-
             end
-
         end
-
-    end)
-
-    pcall(function()
-
-        local wgl = require("client.slua.logic.wardrobe.logic_wardrobe_gun")
-
-        if wgl.GetSkinIdByWeaponID then
-
-            local guns = { 101001, 101002, 101003, 101004, 101005, 101006, 101007, 101008, 101009, 101010, 101012, 102001, 102002, 102003, 102004, 102005, 102007, 103001, 103002, 103003, 103004, 103005, 103006, 103007, 103008, 103009, 103010, 103011, 103012, 104001, 104002, 104003, 104004, 105001, 105002, 106001, 106002, 106003, 106004, 106005, 106006, 106007, 106008, 106010 }
-
-            local wd = require("client.slua.logic.wardrobe.wardrobe_data")
-
-            for _, wid in ipairs(guns) do
-
-                local insID = tonumber(wgl:GetSkinIdByWeaponID(wid)) or 0
-
-                if insID > 0 then
-
-                    local d = wd:GetValidHallDepotItemDataByInsID(insID) or wd:GetHallDepotItemDataByInsID(insID)
-
-                    if d and d.resID and tonumber(d.resID) > 0 then
-
-                        cch.weapons[wid] = { resID = tonumber(d.resID), insID = insID }
-
+        if Arm.rsp_list.skin_list then
+            for wid, skins in pairs(Arm.rsp_list.skin_list) do
+                if type(skins) == "table" then
+                    for resID in pairs(skins) do
+                        if not F.isWeaponSkinRes(tonumber(resID)) then
+                            skins[resID] = nil
+                        end
                     end
-
                 end
-
             end
-
         end
-
     end)
-
 end
 
-local function getCachedWeaponSkin(weaponID)
-
-    weaponID = tonumber(weaponID) or 0
-
-    if weaponID <= 0 then return nil end
-
-    syncWeaponCacheFromLobby()
-
-    local w = cache().weapons[weaponID]
-
-    if w and w.resID and w.resID > 0 then return w.resID end
-
-    return nil
-
+function F.depotSubType(insID, resID)
+    resID = tonumber(resID) or tonumber(R.insToRes[insID])
+    local st = F.subType(F.cfg(resID))
+    if st then return st end
+    local wd = require("client.slua.logic.wardrobe.wardrobe_data")
+    local d = wd:GetHallDepotItemDataByInsID(insID)
+    return d and tonumber(d.itemSubType)
 end
 
-local function getMatchWeaponSkin(weaponID)
+function F.tryLocalWearByIns(insID)
+    insID = tonumber(insID)
+    if not insID then return false end
+    if _G.LexusConfig and _G.LexusConfig.ModSkin == false then return false end -- Bỏ qua nếu tắt Mod Skin
+    local resID = R.insToRes[insID]
+    local wd = require("client.slua.logic.wardrobe.wardrobe_data")
+    local d = wd:GetHallDepotItemDataByInsID(insID)
+    if not resID and d then resID = tonumber(d.resID or d.res_id) end
+    if not resID or resID <= 0 then return false end
+    local st = F.depotSubType(insID, resID)
 
-    weaponID = tonumber(weaponID) or 0
-
-    local fromCache = getCachedWeaponSkin(weaponID)
-
-    if fromCache then return fromCache end
-
-    if MATCH_CONFIG.weaponSkins then
-
-        local fixed = tonumber(MATCH_CONFIG.weaponSkins[weaponID])
-
-        if fixed and fixed > 0 then return fixed end
-
+    local function mapLocal()
+        if not R.insToRes[insID] then
+            R.insToRes[insID] = resID
+            R.resToIns[resID] = insID
+        end
     end
 
-    return nil
+    if st == GLOVES_SUB then mapLocal(); F.putOnGloves(insID) return true end
+    F.clearItemExpire(d, insID, resID)
+    F.ensureDepotItemValid(insID, resID)
+    if F.isParachuteRes(resID) then mapLocal(); return F.putOnParachute(insID) end
+    if F.isGlideRes(resID) or GLIDER_SUBS[st] then mapLocal(); return F.putOnGlider(insID) end
 
+    if st == OUTFIT_SUB then
+        mapLocal()
+        if F.isSuitRes(resID) or F.wardrobeTab(resID) == TAB_SUIT then
+            F.putOnOutfit(insID)
+        else
+            F.putOnRoleWear(insID)
+        end
+        return true
+    end
+    if st == HAT_SUB or HEAD_SUBS[st] then mapLocal(); F.putOnHat(insID) return true end
+    if FACE_SUBS[st] then mapLocal(); F.putOnFaceAccessory(insID) return true end
+    if BODY_SUBS[st] or HELMET_SUBS[st] then mapLocal(); F.putOnRoleWear(insID) return true end
+
+    if not F.isInjectedIns(insID) then return false end
+    if GUN_SUB[st] then
+        local wid = F.weaponIdFromSkin(resID)
+        if wid then F.equipWeaponSkin(wid, insID) end
+        return true
+    end
+    if st == MELEE_ID then F.equipWeaponSkin(MELEE_ID, insID) return true end
+    if F.isHallThemeRes(resID) and (F.isInjectedIns(insID) or F.isInjectedRes(resID)) then
+        mapLocal()
+        return F.putOnHallTheme(insID)
+    end
+    if F.isVehicleRes(resID) and (F.isInjectedIns(insID) or F.isInjectedRes(resID)) then
+        mapLocal()
+        return F.putOnVehicle(insID)
+    end
+    return false
 end
 
-local function findWornInsBySubType(st)
+function F.isHallThemeRes(resID)
+    local c = F.cfg(tonumber(resID))
+    if not c then return false end
+    local t = c.ItemType or c.itemType
+    return t == HALL_THEME_TYPE
+end
 
+function F.isResourcesReady(resID)
+    resID = tonumber(resID)
+    if not resID or resID <= 0 then return false end
+    if not F.isInjectedRes(resID) then return true end
+    local ready = false
+    pcall(function()
+        local PufferConst = require("client.slua.logic.download.puffer_const")
+        local mgr = ModuleManager.GetModule(ModuleManager.CommonModuleConfig.puffer_odpak_manager)
+        if mgr and mgr.GetStateByItemID then
+            local st = mgr:GetStateByItemID(resID)
+            ready = st == PufferConst.ENUM_DownloadState.Done
+        end
+    end)
+    return ready
+end
+
+function F.requestResourceDownload(resID)
+    resID = tonumber(resID)
+    if not resID or resID <= 0 or not F.isInjectedRes(resID) then return end
+    if F.isResourcesReady(resID) then return end
+    _G.AddOutfitDownloadQueued = _G.AddOutfitDownloadQueued or {}
+    if _G.AddOutfitDownloadQueued[resID] then return end
+    _G.AddOutfitDownloadQueued[resID] = true
+    pcall(function()
+        local PM = require("client.slua.logic.download.puffer.puffer_manager")
+        local PufferConst = require("client.slua.logic.download.puffer_const")
+        PM.Download(PufferConst.ENUM_DownloadType.ODPAK, { resID }, "AddOutfit", function()
+            _G.AddOutfitDownloadQueued[resID] = nil
+        end)
+    end)
+end
+
+function F.ensureInjectedResources()
+    for res in pairs(R.resToIns) do
+        F.requestResourceDownload(tonumber(res))
+    end
+end
+
+function F.restorePufferHooks()
+    pcall(function()
+        local mgr = ModuleManager.GetModule(ModuleManager.CommonModuleConfig.puffer_odpak_manager)
+        if mgr and _G.AddOutfitPufferOrig then
+            mgr.GetStateByItemID = _G.AddOutfitPufferOrig
+        end
+    end)
+    pcall(function()
+        local PM = require("client.slua.logic.download.puffer.puffer_manager")
+        if PM and _G.AddOutfitPufferGetStateOrig then
+            PM.GetState = _G.AddOutfitPufferGetStateOrig
+        end
+    end)
+    pcall(function()
+        local VAC = require("GameLua.GameCore.Module.Vehicle.Component.VehicleAvatarComponent")
+        local vacImpl = VAC and VAC.__inner_impl
+        if vacImpl and _G.AddOutfitVehOrigAssets then
+            vacImpl.LuaIsAssetsAlreadyAvailable = _G.AddOutfitVehOrigAssets
+        end
+    end)
+end
+
+function F.invalidateSocialWearCache()
+    local s = _G.AddOutfitSocialState
+    if s then
+        s.wearPatchKey, s.snapshotKey, s.fullSnapshot, s.lastHandSkin = nil, nil, nil, nil
+    end
+end
+
+function F.clearWeaponEquippedMark(weaponID)
+    _G.AddOutfitWeaponEquipped = _G.AddOutfitWeaponEquipped or {}
+    if weaponID then
+        _G.AddOutfitWeaponEquipped[tonumber(weaponID)] = nil
+    else
+        for k in pairs(_G.AddOutfitWeaponEquipped) do _G.AddOutfitWeaponEquipped[k] = nil end
+    end
+end
+
+function F.isWeaponVisuallyEquipped(weaponID, insID)
+    weaponID, insID = tonumber(weaponID), tonumber(insID)
+    if not weaponID or not insID then return false end
+    return _G.AddOutfitWeaponEquipped and _G.AddOutfitWeaponEquipped[weaponID] == insID
+end
+
+function F.saveWeaponToCache(weaponID, resID, insID)
+    F.clearWeaponEquippedMark(weaponID)
+    weaponID, resID, insID = tonumber(weaponID), tonumber(resID), tonumber(insID)
+    if not F.isValidWeaponPersistEntry(weaponID, resID) then return end
+    local cch = F.cache()
+    cch.weapons[weaponID] = { resID = resID, insID = insID or 0 }
+    PERSIST.configWeapons = PERSIST.configWeapons or {}
+    PERSIST.configWeapons[weaponID] = resID
+    _G.AddOutfitLastAppliedSkin = {}
+    _matchApplied = false
+    F.perfInvalidateLobby()
+    F.invalidateSocialWearCache()
+    F.persistMarkDirty()
+    F.log("ذاكرة سكن", weaponID, "→", resID)
+end
+
+function F.cacheWeaponSkinFromIns(weaponID, insID)
+    weaponID, insID = tonumber(weaponID), tonumber(insID)
+    if not weaponID or not insID or insID <= 0 then return end
+    if F.isInjectedIns(insID) then
+        F.saveWeaponToCache(weaponID, R.insToRes[insID], insID)
+        return
+    end
+    pcall(function()
+        local wd = require("client.slua.logic.wardrobe.wardrobe_data")
+        local d = wd:GetValidHallDepotItemDataByInsID(insID) or wd:GetHallDepotItemDataByInsID(insID)
+        if d and d.resID and tonumber(d.resID) > 0 then
+            F.saveWeaponToCache(weaponID, tonumber(d.resID), insID)
+        end
+    end)
+end
+
+function F.saveEquip(resID, insID)
+    resID, insID = tonumber(resID), tonumber(insID)
+    if not resID or not insID then return end
+    local c = F.cfg(resID)
+    local st = F.subType(c)
+    local cch = F.cache()
+    if st == OUTFIT_SUB then
+        if F.wardrobeTab(resID) == TAB_CLOTHES then
+            cch.tshirtRes, cch.tshirtIns = resID, insID
+            _G.AddOutfitLastLobbyTshirtRes = resID
+            F.persistRememberSlot("tshirt", resID)
+        else
+            cch.outfitRes, cch.outfitIns = resID, insID
+            _G.AddOutfitLastLobbyOutfitRes = resID
+            F.persistRememberSlot("outfit", resID)
+            F.invalidateSocialWearCache()
+        end
+    elseif st == HAT_SUB then
+        cch.hatRes, cch.hatIns = resID, insID
+        _G.AddOutfitLastLobbyHatRes = resID
+        F.persistRememberSlot("hat", resID)
+    elseif st == MASK_SUB then
+        cch.maskRes, cch.maskIns = resID, insID
+        _G.AddOutfitLastLobbyMaskRes = resID
+        F.persistRememberSlot("mask", resID)
+    elseif st == GLASS_SUB then
+        cch.glassRes, cch.glassIns = resID, insID
+        _G.AddOutfitLastLobbyGlassRes = resID
+        F.persistRememberSlot("glass", resID)
+    elseif st == PANTS_SUB then
+        cch.pantsRes, cch.pantsIns = resID, insID
+        _G.AddOutfitLastLobbyPantsRes = resID
+        F.persistRememberSlot("pants", resID)
+    elseif st == SHOES_SUB then
+        cch.shoesRes, cch.shoesIns = resID, insID
+        _G.AddOutfitLastLobbyShoesRes = resID
+        F.persistRememberSlot("shoes", resID)
+    elseif BAG_SUBS[st] then
+        cch.bagRes, cch.bagIns = resID, insID
+        _G.AddOutfitLastLobbyBagRes = resID
+        F.persistRememberSlot("bag", resID)
+    elseif HELMET_SUBS[st] then
+        cch.helmetRes, cch.helmetIns = resID, insID
+        _G.AddOutfitLastLobbyHelmetRes = resID
+        F.persistRememberSlot("helmet", resID)
+    elseif st == PARACHUTE_SUB then
+        cch.parachuteRes, cch.parachuteIns = resID, insID
+        _G.AddOutfitLastLobbyParachuteRes = resID
+        F.persistRememberSlot("parachute", resID)
+    elseif F.isGlideRes(resID) then
+        cch.gliderRes, cch.gliderIns = resID, insID
+        _G.AddOutfitLastLobbyGliderRes = resID
+        F.persistRememberSlot("glider", resID)
+    elseif st == GLOVES_SUB then
+        cch.glovesRes, cch.glovesIns = resID, insID
+        _G.AddOutfitLastLobbyGlovesRes = resID
+        F.persistRememberSlot("gloves", resID)
+    elseif GUN_SUB[st] then
+        local wid = F.weaponIdFromSkin(resID)
+        if wid then F.saveWeaponToCache(wid, resID, insID) end
+    elseif st == MELEE_ID then
+        F.saveWeaponToCache(MELEE_ID, resID, insID)
+    end
+    _matchApplied = false
+    F.perfInvalidateLobby()
+    F.persistMarkDirty()
+end
+
+function F.findWornInsBySubType(st, filterFn)
     st = tonumber(st)
-
     if not st then return nil end
-
     local wd = require("client.slua.logic.wardrobe.wardrobe_data")
-
     local AvatarData = require("client.logic.data.AvatarData")
-
     for _, ins in pairs(AvatarData.GetRoleWear()) do
-
         ins = tonumber(ins)
-
         if ins and ins > 0 then
-
             local d = wd:GetHallDepotItemDataByInsID(ins)
-
             if d and tonumber(d.itemSubType) == st then
-
-                return ins, d.resID
-
+                local res = tonumber(d.resID)
+                if not filterFn or filterFn(res, d) then
+                    return ins, res
+                end
             end
-
         end
-
     end
-
     return nil
-
 end
 
-local function removeRoleWearBySubTypes(stMap)
-
-    if not stMap then return end
-
-    local wd = require("client.slua.logic.wardrobe.wardrobe_data")
-
-    local AvatarData = require("client.logic.data.AvatarData")
-
-    for _, ins in pairs(AvatarData.GetRoleWear()) do
-
-        ins = tonumber(ins)
-
-        if ins and ins > 0 then
-
-            local d = wd:GetHallDepotItemDataByInsID(ins)
-
-            if d and stMap[tonumber(d.itemSubType)] then
-
-                AvatarData.RemoveRoleWearDataByValue(ins)
-
-            end
-
+function F.syncHatCacheFromLobby()
+    local cch = F.cache()
+    pcall(function()
+        local ins, res = F.findWornInsBySubType(HAT_SUB)
+        if ins and res and tonumber(res) > 0 then
+            cch.hatRes, cch.hatIns = tonumber(res), ins
+            return
         end
+        local fbd = require("client.slua.logic.wardrobe.fashionbag.fashionbag_data")
+        local bag = fbd.GetCurrentFashionBag and fbd:GetCurrentFashionBag()
+        local headIns = tonumber(bag and bag.head_show) or 0
+        if headIns <= 0 then return end
+        local wd = require("client.slua.logic.wardrobe.wardrobe_data")
+        local d = wd:GetValidHallDepotItemDataByInsID(headIns) or wd:GetHallDepotItemDataByInsID(headIns)
+        if not d or not d.resID or tonumber(d.resID) <= 0 then return end
+        local st = tonumber(d.itemSubType or F.subType(F.cfg(d.resID)))
+        if HEAD_SUBS[st] then
+            cch.hatRes, cch.hatIns = tonumber(d.resID), headIns
+        end
+    end)
+end
 
+function F.syncFaceCacheFromLobby()
+    local cch = F.cache()
+    pcall(function()
+        local ins, res = F.findWornInsBySubType(MASK_SUB)
+        if ins and res and tonumber(res) > 0 then
+            cch.maskRes, cch.maskIns = tonumber(res), ins
+            _G.AddOutfitLastLobbyMaskRes = tonumber(res)
+        end
+    end)
+    pcall(function()
+        local ins, res = F.findWornInsBySubType(GLASS_SUB)
+        if ins and res and tonumber(res) > 0 then
+            cch.glassRes, cch.glassIns = tonumber(res), ins
+            _G.AddOutfitLastLobbyGlassRes = tonumber(res)
+        end
+    end)
+end
+
+function F.syncBodyCacheFromLobby()
+    local cch = F.cache()
+    pcall(function()
+        local ins, res = F.findWornInsBySubType(OUTFIT_SUB, function(r) return F.wardrobeTab(r) == TAB_CLOTHES end)
+        if ins and res and tonumber(res) > 0 then
+            cch.tshirtRes, cch.tshirtIns = tonumber(res), ins
+            _G.AddOutfitLastLobbyTshirtRes = tonumber(res)
+        end
+    end)
+    pcall(function()
+        local ins, res = F.findWornInsBySubType(PANTS_SUB)
+        if ins and res and tonumber(res) > 0 then
+            cch.pantsRes, cch.pantsIns = tonumber(res), ins
+            _G.AddOutfitLastLobbyPantsRes = tonumber(res)
+        end
+    end)
+    pcall(function()
+        local ins, res = F.findWornInsBySubType(SHOES_SUB)
+        if ins and res and tonumber(res) > 0 then
+            cch.shoesRes, cch.shoesIns = tonumber(res), ins
+            _G.AddOutfitLastLobbyShoesRes = tonumber(res)
+        end
+    end)
+    pcall(function()
+        local ins, res = F.findWornInsBySubType(GLOVES_SUB)
+        if ins and res and tonumber(res) > 0 then
+            cch.glovesRes, cch.glovesIns = tonumber(res), ins
+            _G.AddOutfitLastLobbyGlovesRes = tonumber(res)
+        end
+    end)
+    pcall(function()
+        for st in pairs(BAG_SUBS) do
+            local ins, res = F.findWornInsBySubType(st)
+            if ins and res and tonumber(res) > 0 then
+                cch.bagRes, cch.bagIns = tonumber(res), ins
+                _G.AddOutfitLastLobbyBagRes = tonumber(res)
+                break
+            end
+        end
+    end)
+    pcall(function()
+        for st in pairs(HELMET_SUBS) do
+            local ins, res = F.findWornInsBySubType(st)
+            if ins and res and tonumber(res) > 0 then
+                cch.helmetRes, cch.helmetIns = tonumber(res), ins
+                _G.AddOutfitLastLobbyHelmetRes = tonumber(res)
+                break
+            end
+        end
+    end)
+    pcall(function()
+        local ins, res = F.findWornInsBySubType(OUTFIT_SUB, function(r) return F.isSuitRes(r) end)
+        if ins and res and tonumber(res) > 0 then
+            cch.outfitRes, cch.outfitIns = tonumber(res), ins
+            _G.AddOutfitLastLobbyOutfitRes = tonumber(res)
+        end
+    end)
+end
+
+function F.syncAirborneCacheFromLobby(saveToConfig)
+    local cch = F.cache()
+    local cfgPara = tonumber(PERSIST.configSlots and PERSIST.configSlots.parachute)
+    local cfgGlide = tonumber(PERSIST.configSlots and PERSIST.configSlots.glider)
+    local changed = false
+
+    local function maybeSave(slotName, res)
+        if not saveToConfig or not res or res <= 0 then return end
+        if slotName == "parachute" and res == DEFAULT_PARACHUTE_RES
+            and cfgPara and cfgPara > 0 and cfgPara ~= DEFAULT_PARACHUTE_RES then
+            return
+        end
+        F.persistRememberSlot(slotName, res)
+        changed = true
     end
 
-end
-
-local function clearFashionBagSlots(stMap)
-
-    if not stMap then return end
-
-    pcall(function()
-
-        local fbd = require("client.slua.logic.wardrobe.fashionbag.fashionbag_data")
-
-        local wfu = require("client.slua.logic.wardrobe.fashionbag.wardrobe_fashion_utils")
-
-        local bag = fbd.GetCurrentFashionBag and fbd:GetCurrentFashionBag()
-
-        if not bag or not bag.rolewear_list then return end
-
-        for st, _ in pairs(stMap) do
-
-            local idx = wfu.GetRoleWearIndexBySubType and wfu:GetRoleWearIndexBySubType(st)
-
-            if idx then bag.rolewear_list[idx] = 0 end
-
+    local function applyPara(res, ins)
+        res, ins = tonumber(res), tonumber(ins)
+        if not res or not ins or not F.isParachuteRes(res) then return end
+        if cfgPara and cfgPara > 0 and not saveToConfig then
+            if res == cfgPara then cch.parachuteIns = ins end
+            return
         end
+        if res == DEFAULT_PARACHUTE_RES and not saveToConfig then return end
+        if cch.parachuteRes ~= res or cch.parachuteIns ~= ins then
+            cch.parachuteRes, cch.parachuteIns = res, ins
+            _G.AddOutfitLastLobbyParachuteRes = res
+            maybeSave("parachute", res)
+        end
+    end
 
-    end)
-
-end
-
-local function removeRoleWearBySubType(st)
-
-    if not st then return end
-
-    removeRoleWearBySubTypes({ [tonumber(st)] = true })
-
-end
-
-local function syncFashionBagRolewear()
+    local function applyGlide(res, ins)
+        res, ins = tonumber(res), tonumber(ins)
+        if not res or not ins or not F.isGlideRes(res) then return end
+        if cfgGlide and cfgGlide > 0 and not saveToConfig then
+            if res == cfgGlide then cch.gliderIns = ins end
+            return
+        end
+        if cch.gliderRes ~= res or cch.gliderIns ~= ins then
+            cch.gliderRes, cch.gliderIns = res, ins
+            _G.AddOutfitLastLobbyGliderRes = res
+            maybeSave("glider", res)
+        end
+    end
 
     pcall(function()
-
         local fbd = require("client.slua.logic.wardrobe.fashionbag.fashionbag_data")
-
-        fbd:SaveRolewearToFashionBag(fbd:GetFashionBagUseIndex())
-
+        local wd = require("client.slua.logic.wardrobe.wardrobe_data")
+        local paraIns = tonumber(fbd.GetParachute and fbd:GetParachute()) or 0
+        if paraIns > 0 then
+            local d = wd:GetValidHallDepotItemDataByInsID(paraIns) or wd:GetHallDepotItemDataByInsID(paraIns)
+            applyPara(d and tonumber(d.resID), paraIns)
+        end
+        local glideIns = tonumber(fbd.GetAircraftOrGliding and fbd:GetAircraftOrGliding()) or 0
+        if glideIns > 0 then
+            local d = wd:GetValidHallDepotItemDataByInsID(glideIns) or wd:GetHallDepotItemDataByInsID(glideIns)
+            applyGlide(d and tonumber(d.resID), glideIns)
+        end
     end)
+    pcall(function()
+        for st in pairs(GLIDER_SUBS) do
+            local ins, res = F.findWornInsBySubType(st)
+            if ins and res then applyGlide(res, ins) break end
+        end
+        local ins, res = F.findWornInsBySubType(PARACHUTE_SUB)
+        if ins and res then applyPara(res, ins) end
+    end)
+    if changed then F.persistMarkDirty() end
+end
 
+function F.syncWeaponCacheFromLobby(force)
+    if LOBBY.lobbySynced and not force then return end
+    LOBBY.lobbySynced = true
+    PERF.mappingsDirty = true
+    PERF.desiredSkins = nil
+    for k in pairs(PERF.skinTarget) do PERF.skinTarget[k] = nil end
+    local cch = F.cache()
+    pcall(function()
+        local fbd = require("client.slua.logic.wardrobe.fashionbag.fashionbag_data")
+        local bag = fbd.GetCurrentFashionBag and fbd:GetCurrentFashionBag()
+        if bag and bag.weapon_skin_list then
+            for weaponID, entry in pairs(bag.weapon_skin_list) do
+                weaponID = tonumber(weaponID)
+                local insID = tonumber(entry and (entry.skin_id or entry.skinId)) or 0
+                if weaponID and weaponID > 0 and insID > 0 then
+                    local res
+                    if F.isInjectedIns(insID) then
+                        res = tonumber(R.insToRes[insID])
+                    else
+                        local wd = require("client.slua.logic.wardrobe.wardrobe_data")
+                        local d = wd:GetValidHallDepotItemDataByInsID(insID)
+                            or wd:GetHallDepotItemDataByInsID(insID)
+                        res = d and tonumber(d.resID)
+                    end
+                    if res and res > 0 and F.isValidWeaponPersistEntry(weaponID, res) then
+                        cch.weapons[weaponID] = { resID = res, insID = insID }
+                    end
+                end
+            end
+        end
+    end)
+    pcall(function()
+        local Arm = require("client.logic.armory.logic_armory")
+        if Arm.rsp_list and Arm.rsp_list.install_list then
+            for weaponID, entry in pairs(Arm.rsp_list.install_list) do
+                weaponID = tonumber(weaponID)
+                local insID = tonumber(entry and entry.skin_id) or 0
+                if weaponID and weaponID > 0 and insID > 0 then
+                    local res
+                    if F.isInjectedIns(insID) then
+                        res = tonumber(R.insToRes[insID])
+                    else
+                        local wd = require("client.slua.logic.wardrobe.wardrobe_data")
+                        local d = wd:GetValidHallDepotItemDataByInsID(insID)
+                            or wd:GetHallDepotItemDataByInsID(insID)
+                        res = d and tonumber(d.resID)
+                    end
+                    if res and res > 0 and F.isValidWeaponPersistEntry(weaponID, res) then
+                        cch.weapons[weaponID] = { resID = res, insID = insID }
+                    end
+                end
+            end
+        end
+    end)
+    F.syncHatCacheFromLobby()
+    F.syncFaceCacheFromLobby()
+    F.syncBodyCacheFromLobby()
+end
+
+function F.getCachedWeaponSkin(weaponID)
+    weaponID = tonumber(weaponID) or 0
+    if weaponID <= 0 then return nil end
+    F.syncWeaponCacheFromLobby()
+    local w = F.cache().weapons[weaponID]
+    if w and w.resID and w.resID > 0 then return w.resID end
+    return nil
+end
+
+function F.getMatchWeaponSkin(weaponID)
+    weaponID = tonumber(weaponID) or 0
+    local fromCache = F.getCachedWeaponSkin(weaponID)
+    if fromCache then return fromCache end
+    if MATCH_CONFIG.weaponSkins then
+        local fixed = tonumber(MATCH_CONFIG.weaponSkins[weaponID])
+        if fixed and fixed > 0 then return fixed end
+    end
+    return nil
+end
+
+function F.removeRoleWearBySubType(st, filterFn)
+    st = tonumber(st)
+    if not st then return end
+    local wd = require("client.slua.logic.wardrobe.wardrobe_data")
+    local AvatarData = require("client.logic.data.AvatarData")
+    for _, ins in pairs(AvatarData.GetRoleWear()) do
+        ins = tonumber(ins)
+        if ins and ins > 0 then
+            local d = wd:GetHallDepotItemDataByInsID(ins)
+            if d and tonumber(d.itemSubType) == st then
+                local res = tonumber(d.resID)
+                if not filterFn or filterFn(res, d) then
+                    AvatarData.RemoveRoleWearDataByValue(ins)
+                end
+            end
+        end
+    end
+end
+
+function F.syncFashionBagRolewear()
+    pcall(function()
+        local fbd = require("client.slua.logic.wardrobe.fashionbag.fashionbag_data")
+        fbd:SaveRolewearToFashionBag(fbd:GetFashionBagUseIndex())
+    end)
 end
 
 local _ticker
-
 pcall(function() _ticker = require("common.time_ticker") end)
-
-local function later(sec, fn)
-
+function F.later(sec, fn)
     if _G.SetTimer then pcall(_G.SetTimer, sec, fn) return end
-
     if _ticker and _ticker.AddTimer then pcall(_ticker.AddTimer, sec, fn) end
-
 end
 
-local function getEntity()
-
-    local ok, dc = pcall(require, "client.slua.logic.wardrobe.logic_wardrobe_data_center")
-
-    if not ok or not dc then return nil end
-
-    local ok2, e = pcall(dc.GetWardrobeData)
-
-    return ok2 and e or nil
-
-end
-
-local function alreadyHave(entity, resID)
-
-    local arr = entity.ResIDToIndexArrayMap and entity.ResIDToIndexArrayMap[resID]
-
-    if not arr then return false end
-
-    for _, idx in pairs(arr) do
-
-        local d = entity._data[idx]
-
-        if d and d.count and d.count > 0 then return true end
-
+function F.getPC()
+    if slua_GameFrontendHUD then
+        local pc = slua_GameFrontendHUD:GetPlayerController()
+        if slua.isValid(pc) then return pc end
     end
-
-    return false
-
+    local ok, gd = pcall(require, "GameLua.GameCore.Data.GameplayData")
+    if ok and gd then
+        local pc = gd.GetPlayerController()
+        if slua.isValid(pc) then return pc end
+    end
+    return nil
 end
 
-local function injectOne(entity, resID, insID)
-
-    if alreadyHave(entity, resID) then
-
-        R.resToIns[resID] = R.resToIns[resID] or insID
-
-        R.insToRes[insID] = resID
-
-        return true
-
+function F.syncVehicleSlotsToDataMgr()
+    local cch = F.cache()
+    DataMgr.VehicleSlotList = DataMgr.VehicleSlotList or {}
+    for subType, slots in pairs(cch.vehicleSlots or {}) do
+        local arr = DataMgr.VehicleSlotList[subType]
+        if not arr then arr = {}; DataMgr.VehicleSlotList[subType] = arr end
+        for k in pairs(arr) do arr[k] = nil end
+        for idx, e in pairs(slots or {}) do
+            if e and tonumber(e.insID) and tonumber(e.insID) > 0 then
+                arr[tonumber(idx)] = tonumber(e.insID)
+            end
+        end
     end
+end
 
-    local row = {
+function F.mergeInjectedIntoVehicleSlotList(serverList)
+    serverList = serverList or {}
+    local cch = F.cache()
+    for subType, slots in pairs(cch.vehicleSlots or {}) do
+        subType = tonumber(subType)
+        if subType and type(slots) == "table" then
+            local arr = serverList[subType]
+            if not arr then arr = {}; serverList[subType] = arr end
+            for idx, e in pairs(slots) do
+                idx = tonumber(idx)
+                local insID = e and tonumber(e.insID)
+                if idx and insID and insID > 0 and F.isInjectedIns(insID) then
+                    arr[idx] = insID
+                end
+            end
+        end
+    end
+    local cfg = PERSIST.configVehicleSlots
+    if cfg then
+        for subType, slotMap in pairs(cfg) do
+            subType = tonumber(subType)
+            if subType and type(slotMap) == "table" then
+                local arr = serverList[subType]
+                if not arr then arr = {}; serverList[subType] = arr end
+                for idx, res in pairs(slotMap) do
+                    idx, res = tonumber(idx), tonumber(res)
+                    local ins = res and R.resToIns[res]
+                    if idx and ins and F.isInjectedIns(ins) then
+                        arr[idx] = ins
+                    end
+                end
+            end
+        end
+    end
+    return serverList
+end
 
-        instid = insID,
+function F.applyVehicleSlotsFromConfigMap(slotMap)
+    if not slotMap or not next(slotMap) then return false end
+    local cch = F.cache()
+    cch.vehicleSlots = cch.vehicleSlots or {}
+    local any = false
+    for subType, slots in pairs(slotMap) do
+        subType = tonumber(subType)
+        if subType then
+            cch.vehicleSlots[subType] = cch.vehicleSlots[subType] or {}
+            for idx, res in pairs(slots) do
+                idx, res = tonumber(idx), tonumber(res)
+                local ins = res and R.resToIns[res]
+                if idx and ins then
+                    cch.vehicleSlots[subType][idx] = { resID = res, insID = ins }
+                    any = true
+                end
+            end
+        end
+    end
+    return any
+end
 
-        res_id = resID,
-
-        count = 1,
-
-        lock_cnt = 0,
-
-        isnew = 0,
-
-        valid_hours = 0,
-
-        expire_ts = 0,
-
-    }
-
-    entity:AddData(row)
-
+function F.notifyVehicleSlotUI()
     pcall(function()
-
-        local data = entity.GetDataByInsID and entity:GetDataByInsID(insID)
-
-        if data and entity.LoadConfigForData and CDataTable.GetTableData then
-
-            entity:LoadConfigForData(data, CDataTable.GetTableData)
-
-        end
-
+        local WRH = require("client.network.Protocol.WardrobeNewHandler")
+        WRH.on_depot_modify_combat_vehicle_rsp(0, DataMgr.VehicleSlotList or {})
     end)
-
-    R.insToRes[insID] = resID
-
-    R.resToIns[resID] = insID
-
-    return true
-
 end
 
-local function injectArmory(resID, insID)
-
-    local wid = weaponIdFromSkin(resID)
-
-    if not wid then return end
-
-    local Arm = require("client.logic.armory.logic_armory")
-
-    Arm.rsp_list = Arm.rsp_list or { skin_list = {}, install_list = {} }
-
-    Arm.rsp_list.skin_list = Arm.rsp_list.skin_list or {}
-
-    Arm.rsp_list.install_list = Arm.rsp_list.install_list or {}
-
-    if not Arm.rsp_list.skin_list[wid] then Arm.rsp_list.skin_list[wid] = {} end
-
-    Arm.rsp_list.skin_list[wid][resID] = { is_open = 1 }
-
-    Arm.WardrobeInsList = Arm.WardrobeInsList or {}
-
-    Arm.WardrobeInsList[resID] = insID
-
-end
-
-local function injectAll(entity)
-
-    entity = entity or getEntity()
-
-    if not entity or not entity.bInit then return false end
-
-    local n = 0
-
-    for i, resID in ipairs(ITEMS) do
-
-        local insID = INS_BASE + i
-
-        if injectOne(entity, resID, insID) then
-
-            n = n + 1
-
-            local c = cfg(resID)
-
-            if GUN_SUB[subType(c)] or subType(c) == MELEE_ID then
-
-                injectArmory(resID, insID)
-
+function F.mergeInjectedVehicleSkinTable(serverTable)
+    serverTable = serverTable or {}
+    local cfg = PERSIST.configVehicleSlots
+    if not cfg then return serverTable end
+    for subType, slotMap in pairs(cfg) do
+        subType = tonumber(subType)
+        if subType and type(slotMap) == "table" then
+            local res = tonumber(slotMap[1] or slotMap["1"])
+            local ins = res and R.resToIns[res]
+            if ins and F.isInjectedIns(ins) then
+                serverTable[subType] = ins
             end
-
         end
-
     end
-
-    return n > 0
-
-end
-
-local function refreshWardrobe()
-
-    pcall(function()
-
-        if EventSystem and EVENTTYPE_WARDROBE then
-
-            if EVENTID_WARDROBE_UPDATE_ITEM_LIST then
-
-                EventSystem:postEvent(EVENTTYPE_WARDROBE, EVENTID_WARDROBE_UPDATE_ITEM_LIST)
-
-            end
-
-            if EVENTID_WARDROBE_UPDATE_AVATAR_LIST then
-
-                EventSystem:postEvent(EVENTTYPE_WARDROBE, EVENTID_WARDROBE_UPDATE_AVATAR_LIST)
-
-            end
-
-            if EVENTID_WARDROBE_UPDATE_GUN_LIST then
-
-                EventSystem:postEvent(EVENTTYPE_WARDROBE, EVENTID_WARDROBE_UPDATE_GUN_LIST, -1)
-
-            end
-
+    local cch = F.cache()
+    for subType, slots in pairs(cch.vehicleSlots or {}) do
+        subType = tonumber(subType)
+        local e = slots and (slots[1] or slots["1"])
+        local insID = e and tonumber(e.insID)
+        if subType and insID and insID > 0 and F.isInjectedIns(insID) then
+            serverTable[subType] = insID
         end
-
-    end)
-
+    end
+    return serverTable
 end
 
-local function putOnCloth(insID)
+function F.equipVehicleTypesFromConfig(slotMap)
+    slotMap = slotMap or PERSIST.configVehicleSlots
+    if not slotMap or not next(slotMap) then return false end
+    DataMgr.vehicleSkinInsIDTable = DataMgr.vehicleSkinInsIDTable or {}
+    local subTypes = {}
+    for st in pairs(slotMap) do
+        local n = tonumber(st)
+        if n then subTypes[#subTypes + 1] = n end
+    end
+    table.sort(subTypes)
+    local any, lobbyRes, lobbyIns = false, nil, nil
+    for _, subType in ipairs(subTypes) do
+        local slots = slotMap[subType] or slotMap[tostring(subType)]
+        if type(slots) == "table" then
+            local res = tonumber(slots[1] or slots["1"])
+            local ins = res and R.resToIns[res]
+            if ins and F.isInjectedIns(ins) then
+                DataMgr.vehicleSkinInsIDTable[subType] = ins
+                any = true
+                if not lobbyIns then
+                    lobbyRes, lobbyIns = res, ins
+                end
+            end
+        end
+    end
+    if any then
+        pcall(function()
+            local TabSurveillance = require("client.slua.logic.wardrobe.tab_surveillance")
+            TabSurveillance.VehicleChange()
+        end)
+    end
+    return any, lobbyRes, lobbyIns
+end
 
+function F.applyLobbyVehicleDisplay(resID, insID, showVehicle)
     insID = tonumber(insID)
+    resID = tonumber(resID)
+    if not insID or insID <= 0 then return end
+    _G.AddOutfitApplyingConfig = true
+    pcall(function() DataMgr.vst_skin = insID end)
+    pcall(function()
+        local HallThemeUtils = require("client.logic.lobby.hall_theme_utils")
+        HallThemeUtils.ProcPutOnVehicle({ res_id = resID, instid = insID }, showVehicle ~= false)
+    end)
+    pcall(F.applyVehicleSkinsToPC)
+    _G.AddOutfitApplyingConfig = false
+end
 
+function F.setLobbyVehicleManual(subType, resID, insID)
+    insID = tonumber(insID)
+    resID = tonumber(resID)
+    subType = tonumber(subType)
+    if not insID then return end
+    if F.isChassisLightId(resID) or subType == CHASSIS_LIGHT_SUB then return end
+    if resID and not F.isVehicleRes(resID) then return end
+    if not F.isInjectedIns(insID) and not F.isVehicleRes(resID) then return end
+    if not resID then resID = R.insToRes[insID] end
+    if not subType and resID then subType = tonumber(F.vehicleSubType(resID)) end
+    _G.AddOutfitLobbyVeh = _G.AddOutfitLobbyVeh or {}
+    _G.AddOutfitLobbyVeh.manual = true
+    _G.AddOutfitLobbyVeh.subType = subType
+    _G.AddOutfitLobbyVeh.resID = resID
+    _G.AddOutfitLobbyVeh.insID = insID
+    PERSIST.lobbyVehicleSubType = subType
+    PERSIST.lobbyVehicleIns = insID
+    PERSIST.lobbyVehicleResID = resID
+    F.persistMarkDirty()
+end
+
+function F.resolveLobbyVehicle(slotMap)
+    slotMap = slotMap or PERSIST.configVehicleSlots
+    local L = _G.AddOutfitLobbyVeh or {}
+    local st = tonumber(PERSIST.lobbyVehicleSubType) or tonumber(L.subType)
+    local res = tonumber(PERSIST.lobbyVehicleResID) or tonumber(L.resID)
+    if res and res > 0 then
+        local ins = R.resToIns[res]
+        if ins then
+            if not st then st = tonumber(F.vehicleSubType(res)) end
+            return res, ins, st
+        end
+    end
+    local ins = tonumber(PERSIST.lobbyVehicleIns) or tonumber(L.insID)
+    if ins and F.isInjectedIns(ins) then
+        res = R.insToRes[ins] or res
+        if not st and res then st = tonumber(F.vehicleSubType(res)) end
+        return res, ins, st
+    end
+    if st and slotMap then
+        local slots = slotMap[st] or slotMap[tostring(st)]
+        local res = slots and tonumber(slots[1] or slots["1"])
+        ins = res and R.resToIns[res]
+        if ins then return res, ins, st end
+    end
+    local subTypes = {}
+    for s in pairs(slotMap or {}) do
+        local n = tonumber(s)
+        if n then subTypes[#subTypes + 1] = n end
+    end
+    table.sort(subTypes)
+    if subTypes[1] then
+        st = subTypes[1]
+        local slots = slotMap[st] or slotMap[tostring(st)]
+        local res = slots and tonumber(slots[1] or slots["1"])
+        ins = res and R.resToIns[res]
+        if ins then return res, ins, st end
+    end
+    return nil, nil, nil
+end
+
+function F.syncLobbyVehicleResFromIns()
+    if PERSIST.lobbyVehicleResID and PERSIST.lobbyVehicleResID > 0 then return end
+    local ins = tonumber(PERSIST.lobbyVehicleIns)
+    if ins and R.insToRes[ins] then
+        PERSIST.lobbyVehicleResID = R.insToRes[ins]
+        F.persistMarkDirty()
+    end
+end
+
+function F.hasExplicitLobbyVehicle()
+    local res = tonumber(PERSIST.lobbyVehicleResID)
+    local st = tonumber(PERSIST.lobbyVehicleSubType)
+    if F.isChassisLightId(res) or st == CHASSIS_LIGHT_SUB then return false end
+    if res and res > 0 and not F.isVehicleRes(res) then return false end
+    if res and res > 0 then return true end
+    if (tonumber(PERSIST.lobbyVehicleIns) or 0) > 0 then return true end
+    local L = _G.AddOutfitLobbyVeh
+    if L and L.manual and ((tonumber(L.resID) or 0) > 0 or (tonumber(L.insID) or 0) > 0) then return true end
+    return false
+end
+
+function F.shouldApplyLobbyFromConfig(silent)
+    if not F.hasExplicitLobbyVehicle() then return false end
+    local _, lobbyIns = F.resolveLobbyVehicle(PERSIST.configVehicleSlots)
+    if not lobbyIns then return false end
+    local cur = tonumber(DataMgr.vst_skin)
+    if cur == lobbyIns then return false end
+    return true
+end
+
+function F.reapplyVehicleSlotsFromConfig(silent)
+    local slotMap = PERSIST.configVehicleSlots
+    if not slotMap or not next(slotMap) then return false end
+    if not F.applyVehicleSlotsFromConfigMap(slotMap) then return false end
+    F.syncVehicleSlotsToDataMgr()
+    F.notifyVehicleSlotUI()
+    F.equipVehicleTypesFromConfig(slotMap)
+    if F.shouldApplyLobbyFromConfig(silent) then
+        local lobbyRes, lobbyIns = F.resolveLobbyVehicle(slotMap)
+        if lobbyIns then
+            F.applyLobbyVehicleDisplay(lobbyRes, lobbyIns, not silent)
+        elseif not silent then
+            pcall(F.applyVehicleSkinsToPC)
+            F.perfInvalidateLobby()
+        end
+    end
+    return true
+end
+
+function F.applyHallThemeDisplay(resID, insID)
+    insID = tonumber(insID)
+    resID = tonumber(resID)
+    if not insID or not resID then return false end
+    if not F.isInjectedIns(insID) then return false end
+    if not F.isResourcesReady(resID) then
+        F.requestResourceDownload(resID)
+        return false
+    end
+    _G.AddOutfitApplyingTheme = true
+    pcall(function()
+        local HT = require("client.logic.lobby.hall_theme_utils")
+        HT.ProcPutOnHallTheme({ res_id = resID, instid = insID }, nil)
+    end)
+    _G.AddOutfitApplyingTheme = false
+    local cch = F.cache()
+    cch.hallThemeRes, cch.hallThemeIns = resID, insID
+    return true
+end
+
+function F.setHallThemeManual(resID, insID)
+    insID = tonumber(insID)
+    resID = tonumber(resID)
+    if not insID or not F.isInjectedIns(insID) then return end
+    if not resID then resID = R.insToRes[insID] end
+    _G.AddOutfitLobbyTheme = _G.AddOutfitLobbyTheme or {}
+    _G.AddOutfitLobbyTheme.manual = true
+    _G.AddOutfitLobbyTheme.resID = resID
+    _G.AddOutfitLobbyTheme.insID = insID
+    PERSIST.hallThemeResID = resID
+    PERSIST.hallThemeIns = insID
+    local cch = F.cache()
+    cch.hallThemeRes, cch.hallThemeIns = resID, insID
+    F.persistMarkDirty()
+end
+
+function F.resolveHallTheme()
+    local L = _G.AddOutfitLobbyTheme or {}
+    local res = tonumber(PERSIST.hallThemeResID) or tonumber(L.resID)
+    if res and R.resToIns[res] then return res, R.resToIns[res] end
+    local ins = tonumber(PERSIST.hallThemeIns) or tonumber(L.insID)
+    if ins and F.isInjectedIns(ins) then return R.insToRes[ins], ins end
+    return nil, nil
+end
+
+function F.shouldApplyHallThemeFromConfig(silent)
+    local _, ins = F.resolveHallTheme()
+    if not ins then return false end
+    local cur = nil
+    pcall(function()
+        local HT = require("client.logic.lobby.hall_theme_utils")
+        cur = tonumber(HT.GetThemeInstId())
+    end)
+    if cur == ins then return false end
+    if _G.AddOutfitLobbyTheme and _G.AddOutfitLobbyTheme.manual then return true end
+    if silent and cur and cur > 0 and F.isInjectedIns(cur) then return false end
+    return true
+end
+
+function F.putOnHallTheme(insID)
+    insID = tonumber(insID)
+    if not insID or not F.isInjectedIns(insID) then return false end
     local resID = R.insToRes[insID]
+    if F.applyHallThemeDisplay(resID, insID) then
+        F.setHallThemeManual(resID, insID)
+        return true
+    end
+    return false
+end
 
-    if not resID then return end
+function F.reapplyHallThemeFromConfig(silent)
+    if not F.shouldApplyHallThemeFromConfig(silent) then return false end
+    local res, ins = F.resolveHallTheme()
+    if not res or not ins then return false end
+    return F.applyHallThemeDisplay(res, ins)
+end
 
+function F.syncVehicleCacheFromDataMgr()
+    local cch = F.cache()
+    cch.vehicleSlots = cch.vehicleSlots or {}
     local wd = require("client.slua.logic.wardrobe.wardrobe_data")
+    for subType, slots in pairs(DataMgr.VehicleSlotList or {}) do
+        subType = tonumber(subType)
+        if subType and type(slots) == "table" then
+            cch.vehicleSlots[subType] = cch.vehicleSlots[subType] or {}
+            for idx, insID in pairs(slots) do
+                idx, insID = tonumber(idx), tonumber(insID)
+                if idx and insID and insID > 0 then
+                    local res = R.insToRes[insID]
+                    if not res then
+                        pcall(function()
+                            local d = wd:GetHallDepotItemDataByInsID(insID)
+                            res = d and tonumber(d.resID)
+                        end)
+                    end
+                    if res and res > 0 then
+                        cch.vehicleSlots[subType][idx] = { resID = res, insID = insID }
+                    end
+                end
+            end
+        end
+    end
+end
 
+function F.vehicleSubType(resID)
+    local c = F.cfg(resID)
+    return c and (c.ItemSubType or c.itemSubType)
+end
+
+function F.modifyInjectedVehicleSlot(insID, slotIndex, equip)
+    insID = tonumber(insID)
+    slotIndex = tonumber(slotIndex)
+    if not insID or not slotIndex then return false end
+    local resID = R.insToRes[insID]
+    if not resID and insID >= INS_BASE then
+        pcall(function()
+            local wd = require("client.slua.logic.wardrobe.wardrobe_data")
+            local d = wd:GetHallDepotItemDataByInsID(insID)
+            resID = d and tonumber(d.resID or d.res_id)
+        end)
+    end
+    if not resID then return false end
+    local st = F.vehicleSubType(resID)
+    if not st or tonumber(st) < 900 then return false end
+    local cch = F.cache()
+    cch.vehicleSlots = cch.vehicleSlots or {}
+    cch.vehicleSlots[st] = cch.vehicleSlots[st] or {}
+    if equip then
+        for _, slots in pairs(cch.vehicleSlots) do
+            for i, e in pairs(slots) do
+                if e and tonumber(e.insID) == insID then slots[i] = nil end
+            end
+        end
+        cch.vehicleSlots[st][slotIndex] = { resID = resID, insID = insID }
+        PERSIST.configVehicleSlots = PERSIST.configVehicleSlots or {}
+        PERSIST.configVehicleSlots[st] = PERSIST.configVehicleSlots[st] or {}
+        PERSIST.configVehicleSlots[st][slotIndex] = resID
+    else
+        local e = cch.vehicleSlots[st][slotIndex]
+        if e and tonumber(e.insID) == insID then
+            cch.vehicleSlots[st][slotIndex] = nil
+            if PERSIST.configVehicleSlots and PERSIST.configVehicleSlots[st] then
+                PERSIST.configVehicleSlots[st][slotIndex] = nil
+            end
+        end
+    end
+    F.syncVehicleSlotsToDataMgr()
+    if equip and slotIndex == 1 then
+        DataMgr.vehicleSkinInsIDTable = DataMgr.vehicleSkinInsIDTable or {}
+        DataMgr.vehicleSkinInsIDTable[st] = insID
+        pcall(function()
+            local TabSurveillance = require("client.slua.logic.wardrobe.tab_surveillance")
+            TabSurveillance.VehicleChange()
+        end)
+    end
+    F.persistMarkDirty()
+    F.notifyVehicleSlotUI()
+    return true
+end
+
+function F.buildVstInBattleFromSlots()
+    local vst = {}
+    local function insToRes(insID)
+        insID = tonumber(insID)
+        if not insID or insID <= 0 then return nil end
+        local res = R.insToRes[insID]
+        if res and res > 0 then return res end
+        pcall(function()
+            local wd = require("client.slua.logic.wardrobe.wardrobe_data")
+            local d = wd:GetHallDepotItemDataByInsID(insID)
+            res = d and tonumber(d.resID)
+        end)
+        if res and res > 0 then return res end
+        if insID >= 1000000 and F.cfg(insID) then return insID end
+        return nil
+    end
+    local function fillFromSlots(subType, slots)
+        subType = tonumber(subType)
+        if not subType or type(slots) ~= "table" then return end
+        local resList = {}
+        for idx = 1, 8 do
+            local val = slots[idx] or slots[tostring(idx)]
+            local res = insToRes(val)
+            if not res and type(val) == "table" then
+                res = tonumber(val.resID or val.res_id)
+            end
+            if res and res > 0 then resList[#resList + 1] = res end
+        end
+        if #resList > 0 then vst[subType] = resList end
+    end
+    for subType, slots in pairs(DataMgr.VehicleSlotList or {}) do
+        fillFromSlots(subType, slots)
+    end
+    if not next(vst) then
+        local cch = F.cache()
+        for subType, slots in pairs(cch.vehicleSlots or {}) do
+            local resList = {}
+            for idx = 1, 8 do
+                local e = slots[idx]
+                local res = e and tonumber(e.resID)
+                if res and res > 0 then resList[#resList + 1] = res end
+            end
+            if #resList > 0 then vst[tonumber(subType)] = resList end
+        end
+    end
+    if not next(vst) then
+        local bySub = {}
+        for res, _ in pairs(R.resToIns) do
+            res = tonumber(res)
+            local c = F.cfg(res)
+            local st = c and tonumber(F.subType(c))
+            if res and st and st >= 900 then
+                bySub[st] = bySub[st] or {}
+                bySub[st][#bySub[st] + 1] = res
+            end
+        end
+        for st, list in pairs(bySub) do
+            table.sort(list)
+            vst[st] = list
+        end
+    end
+    return vst
+end
+
+function F.isVehicleSkinAllowed(skinId)
+    skinId = tonumber(skinId)
+    if not skinId or skinId <= 0 then return false end
+    if F.isInjectedRes(skinId) then return true end
+    for _, list in pairs(F.buildVstInBattleFromSlots()) do
+        for _, res in ipairs(list) do
+            if tonumber(res) == skinId then return true end
+        end
+    end
+    if R.resToIns[skinId] then
+        local c = F.cfg(skinId)
+        local st = F.subType(c)
+        if st and tonumber(st) >= 900 then return true end
+    end
+    return false
+end
+
+function F.isSkinInVehiclePCList(skinId)
+    skinId = tonumber(skinId)
+    if not skinId or skinId <= 0 then return false end
+    local pc = F.getPC()
+    if not slua.isValid(pc) or not pc.VehicleAvatarSkinList then return false end
+    local UAvatarUtils = import("AvatarUtils")
+    local shape = UAvatarUtils.GetVehicleShapeBySkinID(skinId)
+    if shape and shape >= 0 then
+        local entry = pc.VehicleAvatarSkinList:Get(shape)
+        if entry and entry.SkinList then
+            for _, id in pairs(entry.SkinList) do
+                if tonumber(id) == skinId then return true end
+            end
+        end
+    end
+    return false
+end
+
+function F.shouldHandleVehicleSkinClick(resID)
+    resID = tonumber(resID)
+    if not resID or resID <= 0 then return false end
+    return F.isVehicleSkinAllowed(resID) or F.isSkinInVehiclePCList(resID)
+end
+
+function F.getMatchVehicle()
+    local found = nil
+    pcall(function()
+        local subs = SubsystemMgr:Get("VehicleControlUISubSystem")
+        if subs and subs.GetVehicleUserComponent then
+            local uuc = subs:GetVehicleUserComponent()
+            if slua.isValid(uuc) and slua.isValid(uuc.Vehicle) then found = uuc.Vehicle end
+        end
+    end)
+    if slua.isValid(found) then return found end
+    local pc = F.getPC()
+    if slua.isValid(pc) and pc.GetPlayerCharacterSafety then
+        local char = pc:GetPlayerCharacterSafety()
+        if slua.isValid(char) then
+            if char.GetCurrentVehicle then
+                local v = char:GetCurrentVehicle()
+                if slua.isValid(v) then return v end
+            end
+            if char.CurrentVehicle and slua.isValid(char.CurrentVehicle) then
+                return char.CurrentVehicle
+            end
+        end
+    end
+    return nil
+end
+
+function F.applyClientVehicleSkin(skinId, vehicle, pc)
+    skinId = tonumber(skinId)
+    if not skinId or skinId <= 0 then return false end
+    pc = pc or F.getPC()
+    vehicle = vehicle or F.getMatchVehicle()
+    if not slua.isValid(vehicle) then return false end
+
+    local UAvatarUtils = import("AvatarUtils")
+    pcall(function()
+        if slua.isValid(pc) then
+            pc.ShowVehicleSkin = skinId
+            local shapeType = UAvatarUtils.GetVehicleShapeBySkinID(skinId)
+            if shapeType and shapeType >= 0 and pc.VehicleAvatarList then
+                pc.VehicleAvatarList:Add(shapeType, skinId)
+            end
+        end
+    end)
+
+    local applied = false
+    local av = nil
+    pcall(function()
+        if vehicle.GetAvatarComponent then av = vehicle:GetAvatarComponent() end
+        if not slua.isValid(av) then av = vehicle.VehicleAvatarComponent_BP end
+    end)
+
+    if slua.isValid(av) then
+        pcall(function() if av.bIsLobbyAvatar ~= nil then av.bIsLobbyAvatar = false end end)
+        pcall(function() if av.CanChangeAvatar ~= nil then av.CanChangeAvatar = true end end)
+        pcall(function()
+            if slua.isValid(pc) and av.SetVehicleNetAvatarData then
+                av:SetVehicleNetAvatarData(pc)
+            end
+        end)
+        pcall(function()
+            if av.ChangeItemAvatar then
+                av:ChangeItemAvatar(skinId, false)
+                applied = true
+            elseif av.PreChangeVehicleAvatar then
+                av:PreChangeVehicleAvatar(skinId)
+                applied = true
+            end
+        end)
+        pcall(function()
+            if av.PostChangeItemAvatar then av:PostChangeItemAvatar(false) end
+        end)
+    end
+
+    pcall(function()
+        local battleCls = import("VehicleAvatarComponentBattleBase")
+        local battleAv = vehicle:GetComponentByClass(battleCls)
+        if slua.isValid(battleAv) then
+            if battleAv.ChangeVehicleAvatar then
+                battleAv:ChangeVehicleAvatar(skinId, false)
+                applied = true
+            end
+            pcall(function()
+                local VehiclePlateLicenseUtil = require("GameLua.Activity.Commercialize.GamePlay.Vehicle.VehiclePlateLicenseUtil")
+                local uid = pc and pc.PlayerUID or 0
+                local bTire = VehiclePlateLicenseUtil.NeedOpenHighTire(tonumber(uid), skinId)
+                if battleAv.PreChangeHighTireLight then
+                    battleAv:PreChangeHighTireLight(skinId, bTire)
+                end
+            end)
+        end
+    end)
+
+    pcall(function()
+        if vehicle.ChangeVehicleAvatar and slua.isValid(pc) then
+            vehicle:ChangeVehicleAvatar(pc)
+            applied = true
+        end
+    end)
+
+    pcall(function() if vehicle.ForceNetUpdate then vehicle:ForceNetUpdate() end end)
+    pcall(function() if slua.isValid(pc) and pc.ForceNetUpdate then pc:ForceNetUpdate() end end)
+    return applied
+end
+
+function F.getVehicleSkinIds()
+    local out, seen = {}, {}
+    local function add(res)
+        res = tonumber(res)
+        if res and res > 0 and not seen[res] then
+            seen[res] = true
+            out[#out + 1] = res
+        end
+    end
+    for _, list in pairs(F.buildVstInBattleFromSlots()) do
+        for _, res in ipairs(list) do add(res) end
+    end
+    for res in pairs(R.resToIns) do
+        local c = F.cfg(tonumber(res))
+        local st = c and tonumber(F.subType(c))
+        if st and st >= 900 then add(res) end
+    end
+    return out
+end
+
+function F.buildVehVst(skinIds)
+    local bySub = {}
+    for _, skinId in ipairs(skinIds or {}) do
+        local subType = 961
+        local ok, c = pcall(function() return CDataTable.GetTableData("Item", skinId) end)
+        if ok and c and c.ItemSubType then subType = c.ItemSubType end
+        bySub[subType] = bySub[subType] or {}
+        bySub[subType][#bySub[subType] + 1] = skinId
+    end
+    return bySub
+end
+
+function F.directInjectVehicleSkinList(pc, skinIds)
+    if not slua.isValid(pc) or not pc.VehicleAvatarSkinList then return end
+    local UAvatarUtils = import("AvatarUtils")
+    for _, skinId in ipairs(skinIds or {}) do
+        local shapeType = nil
+        pcall(function() shapeType = UAvatarUtils.GetVehicleShapeBySkinID(skinId) end)
+        if shapeType and shapeType >= 0 then
+            pcall(function() pc.VehicleAvatarList:Add(shapeType, skinId) end)
+            local entry = pc.VehicleAvatarSkinList:Get(shapeType)
+            if entry and entry.SkinList then
+                pcall(function() entry.SkinList:Add(skinId) end)
+            end
+        end
+    end
+end
+
+function F.mergeVstIntoPlayerInfo(playerInfo)
+    if not playerInfo then return end
+    F.syncVehicleCacheFromDataMgr()
+    local vst = F.buildVehVst(F.getVehicleSkinIds())
+    if not next(vst) then return end
+    playerInfo.vst_in_battle = playerInfo.vst_in_battle or {}
+    for subType, list in pairs(vst) do
+        playerInfo.vst_in_battle[subType] = list
+    end
+    local first
+    for _, list in pairs(vst) do first = list[1]; break end
+    if first and first > 0 then playerInfo.vst_skin = first end
+end
+
+function F.applyVehicleSkinsToPC(pc)
+    pc = pc or F.getPC()
+    if not slua.isValid(pc) then return false end
+    local skinIds = F.getVehicleSkinIds()
+    if #skinIds == 0 then return false end
+    local vst = F.buildVehVst(skinIds)
+    local avatarList, avatarSkinList = {}, {}
+    for _, skinList in pairs(vst) do
+        local itemArray = {}
+        for _, resid in ipairs(skinList) do
+            if resid and resid > 0 then
+                itemArray[#itemArray + 1] = { ItemTableID = resid, Count = 1 }
+                avatarList[#avatarList + 1] = { ItemTableID = resid, Count = 1 }
+            end
+        end
+        if #itemArray > 0 then
+            avatarSkinList[#avatarSkinList + 1] = { Items = itemArray }
+        end
+    end
+    pcall(function() pc.bEnableFuzzyAvatarOnClient = false end)
+    pcall(function() pc.ShowVehicleSkin = skinIds[1] end)
+    if #avatarList > 0 then
+        pcall(function()
+            pc.InitialVehicleAvatarList = avatarList
+            pc:InitVehicleAvatarList()
+        end)
+    end
+    if #avatarSkinList > 0 then
+        pcall(function()
+            pc.InitialVehicleAvatarSkinList = avatarSkinList
+            pc:InitVehicleAvatarSkinList()
+        end)
+    end
+    F.directInjectVehicleSkinList(pc, skinIds)
+    return true
+end
+
+function F.serverChangeVehicleAvatar(skinId, pc)
+    skinId = tonumber(skinId)
+    if not skinId or skinId <= 0 then return false end
+    pc = pc or F.getPC()
+    if not slua.isValid(pc) then return false end
+
+    F.applyVehicleSkinsToPC(pc)
+
+    pcall(function()
+        pc.ShowVehicleSkin = skinId
+        local UAvatarUtils = import("AvatarUtils")
+        local shapeType = UAvatarUtils.GetVehicleShapeBySkinID(skinId)
+        if shapeType and shapeType >= 0 and pc.VehicleAvatarList then
+            pc.VehicleAvatarList:Add(shapeType, skinId)
+        end
+        F.directInjectVehicleSkinList(pc, { skinId })
+    end)
+
+    local ok = false
+    pcall(function()
+        if pc.ServerChangeVehicleAvatar then
+            pc:ServerChangeVehicleAvatar(skinId)
+            ok = true
+        end
+    end)
+
+    pcall(function()
+        if pc.PlayerState and slua.isValid(pc.PlayerState) then
+            pc.PlayerState.nVst_skin = skinId
+        end
+    end)
+
+    pcall(function() pc:ForceNetUpdate() end)
+    return ok
+end
+
+_G.AddOutfitVehSel = _G.AddOutfitVehSel or { override = nil, overrideVehicle = nil, byShape = {} }
+local VEHSEL = _G.AddOutfitVehSel
+_G.AddOutfitLobbyVeh = _G.AddOutfitLobbyVeh or { manual = false, subType = nil, resID = nil, insID = nil }
+local _vehTickLastApply = 0
+local VEH_SWITCH_EFFECT_ID = 7303001
+
+function F.prepVehicleSwitchEffect(av, vehicle)
+    if not slua.isValid(av) then return end
+    if not F.isInRealMatch() then
+        pcall(function() av.curSwitchEffectId = 0 end)
+        return
+    end
+    pcall(function()
+        av.curSwitchEffectId = VEH_SWITCH_EFFECT_ID
+        local defaultId = 0
+        pcall(function() defaultId = tonumber(av:GetDefaultAvatarID()) or 0 end)
+        local curId = 0
+        if slua.isValid(vehicle) then
+            pcall(function() curId = tonumber(vehicle.GetAvatarId and vehicle:GetAvatarId()) or 0 end)
+            if curId <= 0 then
+                pcall(function() curId = tonumber(vehicle.ClientUsedAvatarID) or 0 end)
+            end
+        end
+        if curId <= 0 then curId = defaultId end
+        if not av.lastEquipedAvatarId or av.lastEquipedAvatarId <= 0 then
+            av.lastEquipedAvatarId = curId > 0 and curId or defaultId
+        end
+    end)
+end
+
+function F.isParachuteRes(resID)
+    return F.subType(F.cfg(tonumber(resID))) == PARACHUTE_SUB
+end
+
+function F.isGlideRes(resID)
+    resID = tonumber(resID)
+    if not resID then return false end
+    local st = F.subType(F.cfg(resID))
+    if GLIDER_SUBS[st] then return true end
+    local ok, r = pcall(function()
+        local MDH = require("client.logic.avatar.ModelDisplayTypeHelper")
+        if MDH.IsGlideByItemID and MDH.IsGlideByItemID(resID) then return true end
+        local wd = require("client.slua.logic.wardrobe.wardrobe_data")
+        return wd.IsGlideType(st)
+    end)
+    return ok and r == true
+end
+
+function F.isVehicleRes(resID)
+    resID = tonumber(resID)
+    if not resID or F.isChassisLightId(resID) then return false end
+    local st = tonumber(F.subType(F.cfg(resID)))
+    return st and st >= 900 and st < 7000 and st ~= CHASSIS_LIGHT_SUB
+end
+
+function F.ensureInjectedItemAlive(entity, resID, insID)
+    entity = entity or F.getEntity()
+    insID = tonumber(insID) or (resID and R.resToIns[tonumber(resID)])
+    resID = tonumber(resID) or (insID and R.insToRes[insID])
+    if not entity or not insID then return end
+    pcall(function()
+        local d = entity:GetDataByInsID(insID)
+        if d then
+            d.expire_ts = 0
+            d.expireTS = 0
+            d.valid_hours = 0
+        end
+    end)
+end
+
+function F.sanitizeAllInjectedExpire()
+    local entity = F.getEntity()
+    if not entity then return end
+    for res, ins in pairs(R.resToIns) do
+        F.ensureInjectedItemAlive(entity, res, ins)
+    end
+end
+
+function F.putOnVehicle(insID)
+    insID = tonumber(insID)
+    if not insID then return false end
+    local resID = R.insToRes[insID]
+    if not resID or not F.isVehicleRes(resID) then return false end
+    F.ensureInjectedItemAlive(nil, resID, insID)
+    if not F.isResourcesReady(resID) then
+        F.requestResourceDownload(resID)
+        return false
+    end
+    local item = {
+        res_id = resID, resID = resID,
+        instid = insID, ins_id = insID, insID = insID,
+        expire_ts = 0, expireTS = 0, count = 1,
+    }
+    local WRH = require("client.network.Protocol.WardRobeHandler")
+    WRH.on_depot_put_on_rsp(NET_OK, item, nil, 1, insID, 0)
+    F.setLobbyVehicleManual(F.vehicleSubType(resID), resID, insID)
+    pcall(function()
+        local TabSurveillance = require("client.slua.logic.wardrobe.tab_surveillance")
+        TabSurveillance.VehicleChange()
+    end)
+    pcall(function()
+        if EventSystem and EVENTTYPE_WARDROBE and EVENTID_WARDROBE_UPDATE_ITEM_LIST then
+            EventSystem:postEvent(EVENTTYPE_WARDROBE, EVENTID_WARDROBE_UPDATE_ITEM_LIST)
+        end
+    end)
+    return true
+end
+
+function F.isChassisLightId(id)
+    return CHASSIS_LIGHT_IDS[tonumber(id)] == true
+end
+
+function F.getDesiredChassisLight(vehicleSkinId)
+    vehicleSkinId = tonumber(vehicleSkinId)
+    local map = PERSIST.configChassisLightMap
+    if vehicleSkinId and map and map[vehicleSkinId] then
+        local v = tonumber(map[vehicleSkinId])
+        if F.isChassisLightId(v) then return v end
+    end
+    local def = tonumber(PERSIST.configChassisLight) or DEFAULT_CHASSIS_LIGHT
+    return F.isChassisLightId(def) and def or DEFAULT_CHASSIS_LIGHT
+end
+
+function F.saveChassisLight(vehicleSkinId, lightId)
+    vehicleSkinId = tonumber(vehicleSkinId)
+    lightId = tonumber(lightId)
+    if not F.isChassisLightId(lightId) then return end
+    PERSIST.configChassisLightMap = PERSIST.configChassisLightMap or {}
+    if vehicleSkinId and vehicleSkinId > 0 then
+        PERSIST.configChassisLightMap[vehicleSkinId] = lightId
+    else
+        PERSIST.configChassisLight = lightId
+    end
+    F.requestResourceDownload(lightId)
+    F.persistMarkDirty()
+end
+
+function F.getVehicleLicenseComp(vehicle)
+    if not slua.isValid(vehicle) then return nil end
+    local lic = nil
+    pcall(function()
+        if vehicle.GetLicenseComponent then lic = vehicle:GetLicenseComponent() end
+    end)
+    if slua.isValid(lic) then return lic end
+    pcall(function() lic = vehicle.BP_Lobby_VehicleLicenseComponent end)
+    if slua.isValid(lic) then return lic end
+    pcall(function()
+        local cls = import("VehicleLicenseNumberComponent")
+        lic = vehicle:GetComponentByClass(cls)
+    end)
+    return slua.isValid(lic) and lic or nil
+end
+
+function F.applyVehicleChassisLight(vehicle, skinId, lightId)
+    -- [FIX VIP] Nếu tắt Mod Skin thì bỏ qua không load đèn gầm
+    if _G.LexusConfig and _G.LexusConfig.ModSkin == false then return false end 
+    
+    skinId = tonumber(skinId)
+    lightId = tonumber(lightId) or F.getDesiredChassisLight(skinId)
+    if not F.isChassisLightId(lightId) then return false end
+    if not slua.isValid(vehicle) then return false end
+    if skinId and skinId > 0 then
+        F.requestResourceDownload(skinId)
+    end
+    F.requestResourceDownload(lightId)
+    local applied = false
+    pcall(function()
+        if vehicle.SetChassisLightShowData then
+            vehicle:SetChassisLightShowData(lightId)
+            applied = true
+        end
+    end)
+    local lic = F.getVehicleLicenseComp(vehicle)
+    if not slua.isValid(lic) then return applied end
+    pcall(function()
+        local vid = skinId
+        if not vid or vid <= 0 then
+            pcall(function()
+                if vehicle.GetAvatarId then vid = tonumber(vehicle:GetAvatarId()) end
+            end)
+        end
+        if not vid or vid <= 0 then
+            pcall(function() vid = tonumber(lic.LicensePlate and lic.LicensePlate.ItemID) end)
+        end
+        if vid and vid > 0 then
+            lic.curVehicleAvatarId = vid
+            if lic.ChangeNetData_ItemID then
+                lic:ChangeNetData_ItemID(vid)
+            elseif lic.LicensePlate then
+                lic.LicensePlate.ItemID = vid
+            end
+        end
+        if lic.LicensePlate then
+            lic.LicensePlate.ChassisLightId = lightId
+        end
+        if lic.SetChassisLightData and vid and vid > 0 then
+            lic:SetChassisLightData(vid, lightId)
+        elseif lic.PreChangeChassisLight then
+            lic:PreChangeChassisLight()
+        end
+        applied = true
+    end)
+    return applied
+end
+
+function F.scheduleChassisLightApply(vehicle, skinId)
+    skinId = tonumber(skinId)
+    local vref = slua.isValid(vehicle) and vehicle or nil
+    local function try()
+        local v = slua.isValid(vref) and vref or F.getCurrentVehicleForSkin()
+        if slua.isValid(v) then
+            F.applyVehicleChassisLight(v, skinId)
+        end
+    end
+    F.later(0.4, try)
+    F.later(1.1, try)
+end
+
+function F.getVehicleShape(vehicle)
+    if not slua.isValid(vehicle) then return nil end
+    local shape = vehicle.VehicleShapeType
+    if shape and tonumber(shape) >= 0 then return tonumber(shape) end
+    pcall(function()
+        local UAvatarUtils = import("AvatarUtils")
+        local defId = vehicle.AvatarDefaultCfg and vehicle.AvatarDefaultCfg.TypeSpecificID
+        if defId and tonumber(defId) > 0 then
+            shape = UAvatarUtils.GetVehicleShapeBySkinID(tonumber(defId))
+        end
+    end)
+    return shape and tonumber(shape) >= 0 and tonumber(shape) or nil
+end
+
+function F.getDesiredVehicleSkinForShape(shape)
+    shape = tonumber(shape)
+    if not shape or shape < 0 then return nil end
+    F.syncVehicleCacheFromDataMgr()
+    local UAvatarUtils = import("AvatarUtils")
+    local vst = F.buildVstInBattleFromSlots()
+    for _, list in pairs(vst) do
+        local skin = list and tonumber(list[1])
+        if skin and skin > 0 then
+            local s = UAvatarUtils.GetVehicleShapeBySkinID(skin)
+            if s == shape then return skin end
+        end
+    end
+    local pc = F.getPC()
+    if slua.isValid(pc) and pc.VehicleAvatarList then
+        local skin = tonumber(pc.VehicleAvatarList:Get(shape))
+        if skin and skin > 0 then return skin end
+    end
+    return nil
+end
+
+function F.getVehicleAvatarComp(vehicle)
+    if not slua.isValid(vehicle) then return nil end
+    local av = nil
+    pcall(function() av = vehicle.VehicleAvatar end)
+    if slua.isValid(av) then return av end
+    pcall(function() if vehicle.GetAvatarComponent then av = vehicle:GetAvatarComponent() end end)
+    if slua.isValid(av) then return av end
+    pcall(function() av = vehicle.VehicleAvatarComponent_BP end)
+    if slua.isValid(av) then return av end
+    return nil
+end
+
+function F.getCurrentVehicleForSkin()
+    local char = F.getLocalChar()
+    if char and slua.isValid(char) then
+        local v = nil
+        pcall(function() v = char.CurrentVehicle end)
+        if slua.isValid(v) then return v end
+    end
+    return F.getMatchVehicle()
+end
+
+function F.forceVehicleAvatar(skinId, vehicle)
+    skinId = tonumber(skinId)
+    if not skinId or skinId <= 0 then return false end
+    if not F.isResourcesReady(skinId) then
+        F.requestResourceDownload(skinId)
+        return false
+    end
+    vehicle = slua.isValid(vehicle) and vehicle or F.getCurrentVehicleForSkin()
+    if not slua.isValid(vehicle) then return false end
+    local av = F.getVehicleAvatarComp(vehicle)
+    if not slua.isValid(av) then return false end
+    local applied = false
+    F.prepVehicleSwitchEffect(av, vehicle)
+    pcall(function() if av.CanChangeAvatar ~= nil then av.CanChangeAvatar = true end end)
+    pcall(function()
+        av:ChangeItemAvatar(skinId, true)
+        applied = true
+        _G.CurrentEquipVehicleID = skinId
+    end)
+    if applied then F.scheduleChassisLightApply(vehicle, skinId) end
+    return applied
+end
+
+function F.vehicleAvatarTemper()
+    local vehicle = F.getCurrentVehicleForSkin()
+    if not slua.isValid(vehicle) then return end
+    local av = F.getVehicleAvatarComp(vehicle)
+    if not slua.isValid(av) then return end
+
+    local defaultId = 0
+    pcall(function() defaultId = tonumber(av:GetDefaultAvatarID()) or 0 end)
+    if defaultId <= 0 then return end
+
+    local shape = nil
+    pcall(function() shape = tonumber(import("AvatarUtils").GetVehicleShapeBySkinID(defaultId)) end)
+
+    local skinId = nil
+    if VEHSEL.override and slua.isValid(VEHSEL.overrideVehicle) and VEHSEL.overrideVehicle == vehicle then
+        skinId = VEHSEL.override
+    end
+    if not skinId and shape then skinId = VEHSEL.byShape[shape] end
+    if not skinId then skinId = F.getDesiredVehicleSkinForShape(shape) end
+    skinId = tonumber(skinId)
+    if not skinId or skinId <= 0 or skinId == defaultId then return end
+
+    local cur = 0
+    pcall(function() cur = tonumber(vehicle.GetAvatarId and vehicle:GetAvatarId()) or 0 end)
+    if cur <= 0 then
+        pcall(function() cur = tonumber(vehicle.GetVehicleSkinItemID and vehicle:GetVehicleSkinItemID()) or 0 end)
+    end
+    if cur == skinId then return end
+
+    F.forceVehicleAvatar(skinId, vehicle)
+end
+
+function F.vehicleSkinTick()
+    F.vehicleAvatarTemper()
+    
+    -- [FIX VIP] Ép hiển thị Kính & Mặt Nạ liên tục mỗi 1 giây (Bất chấp việc nhặt mũ bảo hiểm)
+    pcall(function()
+        local char = F.getLocalChar()
+        if char then F.matchApplyFaceWear(char) end
+    end)
+
+    local now = os.clock()
+    if now - _vehTickLastApply < 5.0 then return end
+    _vehTickLastApply = now
+    F.applyVehicleSkinsToPC()
+end
+
+function F.startVehicleSkinTicker()
+    pcall(function()
+        if not _ticker then return end
+        if _G.AddOutfitVehTickerId then return end
+        if _ticker.AddTimerLoop then
+            _G.AddOutfitVehTickerId = _ticker.AddTimerLoop(1.0, function()
+                local fn = _G.AddOutfit and _G.AddOutfit.vehicleSkinTick
+                if fn then pcall(fn) end
+            end, -1, 1.0)
+        end
+    end)
+end
+
+function F.matchApplyVehicleSkin(skinId)
+    skinId = tonumber(skinId)
+    if not skinId or skinId <= 0 then return false end
+
+    local vehicle = F.getCurrentVehicleForSkin()
+
+    VEHSEL.override = skinId
+    VEHSEL.overrideVehicle = slua.isValid(vehicle) and vehicle or nil
+
+    pcall(function()
+        local UAvatarUtils = import("AvatarUtils")
+        local shape = tonumber(UAvatarUtils.GetVehicleShapeBySkinID(skinId))
+        if shape and shape >= 0 then VEHSEL.byShape[shape] = skinId end
+        local av = F.getVehicleAvatarComp(vehicle)
+        if slua.isValid(av) then
+            local defaultId = tonumber(av:GetDefaultAvatarID()) or 0
+            if defaultId > 0 then
+                local defShape = tonumber(UAvatarUtils.GetVehicleShapeBySkinID(defaultId))
+                if defShape and defShape >= 0 then VEHSEL.byShape[defShape] = skinId end
+            end
+        end
+    end)
+
+    F.applyVehicleSkinsToPC(F.getPC())
+    local ok = F.forceVehicleAvatar(skinId, vehicle)
+    F.startVehicleSkinTicker()
+    return ok
+end
+
+function F.autoApplyVehicleSkinOnEnter(vehicle)
+    if not slua.isValid(vehicle) then return end
+    F.syncVehicleCacheFromDataMgr()
+    F.applyVehicleSkinsToPC(F.getPC())
+    F.startVehicleSkinTicker()
+    F.later(0.35, function() pcall(F.vehicleAvatarTemper) end)
+    F.later(0.9, function() pcall(F.vehicleAvatarTemper) end)
+    F.later(0.5, function()
+        local skinId = nil
+        pcall(function() skinId = tonumber(vehicle.GetAvatarId and vehicle:GetAvatarId()) end)
+        F.scheduleChassisLightApply(vehicle, skinId)
+    end)
+end
+
+local function GetOutfitConfigPaths(fileName)
+    local paths = {
+        "//storage/emulated/0/Android/data/com.tencent.ig/files/UE4Game/ShadowTrackerExtra/ShadowTrackerExtra/Saved/Paks/" .. fileName,
+        "//storage/emulated/0/Android/data/com.vng.pubgmobile/files/UE4Game/ShadowTrackerExtra/ShadowTrackerExtra/Saved/Paks/" .. fileName,
+        "//storage/emulated/0/Android/data/com.pubg.krmobile/files/UE4Game/ShadowTrackerExtra/ShadowTrackerExtra/Saved/Paks/" .. fileName,
+        "//storage/emulated/0/Android/data/com.rekoo.pubgm/files/UE4Game/ShadowTrackerExtra/ShadowTrackerExtra/Saved/Paks/" .. fileName,
+        "//storage/emulated/0/Android/data/com.pubg.imobile/files/UE4Game/ShadowTrackerExtra/ShadowTrackerExtra/Saved/Paks/" .. fileName,
+        "/Documents/ShadowTrackerExtra/Saved/Paks/" .. fileName,
+        "/Documents/ShadowTrackerExtra/Saved/Paks/puffer_temp/" .. fileName,
+        "ShadowTrackerExtra/Saved/Paks/" .. fileName,
+        "../../ShadowTrackerExtra/Saved/Paks/" .. fileName
+    }
+    pcall(function()
+        if os and os.getenv then
+            local homeDir = os.getenv("HOME")
+            if homeDir and homeDir ~= "" then
+                table.insert(paths, 1, homeDir .. "/Documents/ShadowTrackerExtra/Saved/Paks/" .. fileName)
+            end
+        end
+    end)
+    return paths
+end
+
+local CONFIG_PATHS = GetOutfitConfigPaths("dung0610_outfit.json")
+
+local PERSIST_SLOTS = {
+    { "outfit", "outfitRes", "outfitIns", "AddOutfitLastLobbyOutfitRes" },
+    { "tshirt", "tshirtRes", "tshirtIns", "AddOutfitLastLobbyTshirtRes" },
+    { "pants",  "pantsRes",  "pantsIns",  "AddOutfitLastLobbyPantsRes"  },
+    { "shoes",  "shoesRes",  "shoesIns",  "AddOutfitLastLobbyShoesRes"  },
+    { "hat",    "hatRes",    "hatIns",    "AddOutfitLastLobbyHatRes"    },
+    { "mask",   "maskRes",   "maskIns",   "AddOutfitLastLobbyMaskRes"   },
+    { "glass",  "glassRes",  "glassIns",  "AddOutfitLastLobbyGlassRes"  },
+    { "bag",    "bagRes",    "bagIns",    "AddOutfitLastLobbyBagRes"    },
+    { "helmet", "helmetRes", "helmetIns", "AddOutfitLastLobbyHelmetRes" },
+    { "parachute", "parachuteRes", "parachuteIns", "AddOutfitLastLobbyParachuteRes" },
+    { "glider", "gliderRes", "gliderIns", "AddOutfitLastLobbyGliderRes" },
+    { "gloves", "glovesRes", "glovesIns", "AddOutfitLastLobbyGlovesRes" },
+}
+
+function F.isPersistableWearRes(resID)
+    resID = tonumber(resID)
+    if not resID or resID <= 0 then return false end
+    if F.isInjectedRes(resID) then return true end
+    if F.isParachuteRes(resID) or F.isGlideRes(resID) then return true end
+    if PERSIST.configSlots then
+        for _, v in pairs(PERSIST.configSlots) do
+            if tonumber(v) == resID then return true end
+        end
+    end
+    return false
+end
+
+function F.persistRememberSlot(slotName, resID)
+    slotName = slotName and tostring(slotName)
+    resID = tonumber(resID)
+    if not slotName or not resID or resID <= 0 then return end
+    PERSIST.configSlots = PERSIST.configSlots or {}
+    PERSIST.configSlots[slotName] = resID
+end
+
+function F.persistForgetSlot(slotName)
+    if PERSIST.configSlots and slotName then
+        PERSIST.configSlots[tostring(slotName)] = nil
+    end
+end
+
+function F.persistLoadSlotsFromSaved(saved)
+    if type(saved) ~= "table" then return end
+    PERSIST.configSlots = PERSIST.configSlots or {}
+    for _, s in ipairs(PERSIST_SLOTS) do
+        local res = tonumber(saved[s[1]])
+        if res and res > 0 then PERSIST.configSlots[s[1]] = res end
+    end
+    F.applyPersistSlotsToCache()
+end
+
+function F.resolveInsForRes(resID)
+    resID = tonumber(resID)
+    if not resID or resID <= 0 then return nil end
+    if R.resToIns[resID] then return R.resToIns[resID] end
+    local ins
+    pcall(function()
+        local wd = require("client.slua.logic.wardrobe.wardrobe_data")
+        local list = wd.GetHallDepotItemListByResID and wd:GetHallDepotItemListByResID(resID)
+        if list then
+            for _, v in pairs(list) do
+                local id = tonumber(v.insID or v.instid or v.ins_id)
+                if id and id > 0 then ins = id break end
+            end
+        end
+        if not ins then
+            local d = wd.GetValidHallDepotItemDataByInsID and wd:GetValidHallDepotItemDataByInsID(resID)
+            if not d and wd.GetHallDepotItemDataByResID then
+                d = wd:GetHallDepotItemDataByResID(resID)
+            end
+            if d then ins = tonumber(d.insID or d.instid or d.ins_id) end
+        end
+    end)
+    return ins
+end
+
+function F.applyPersistSlotsToCache()
+    if not PERSIST.configSlots then return end
+    local cch = F.cache()
+    for _, s in ipairs(PERSIST_SLOTS) do
+        local slotName, cacheResKey, cacheInsKey, globalKey = s[1], s[2], s[3], s[4]
+        local res = tonumber(PERSIST.configSlots[slotName])
+        if res and res > 0 then
+            cch[cacheResKey] = res
+            _G[globalKey] = res
+            local ins = F.resolveInsForRes(res)
+            if ins and ins > 0 then cch[cacheInsKey] = ins end
+        end
+    end
+end
+
+function F.getDesiredGliderRes()
+    F.applyPersistSlotsToCache()
+    local r = tonumber(PERSIST.configSlots and PERSIST.configSlots.glider)
+    if r and r > 0 then return r end
+    F.syncAirborneCacheFromLobby()
+    return F.getDesiredWear("gliderRes", "gliderRes", "AddOutfitLastLobbyGliderRes")
+end
+
+function F.getDesiredParachuteRes()
+    F.applyPersistSlotsToCache()
+    local r = tonumber(PERSIST.configSlots and PERSIST.configSlots.parachute)
+    if r and r > 0 then return r end
+    F.syncAirborneCacheFromLobby()
+    return F.getDesiredWear("parachuteRes", "parachuteRes", "AddOutfitLastLobbyParachuteRes")
+end
+
+function F.getAvatarComp2(char)
+    if not char or not slua.isValid(char) then return nil end
+    local comp
+    pcall(function()
+        if char.getAvatarComponent2 then
+            comp = char:getAvatarComponent2()
+        end
+        if (not comp or not slua.isValid(comp)) and char.AvatarComponent2 then
+            comp = char.AvatarComponent2
+        end
+        if (not comp or not slua.isValid(comp)) and char.CharacterAvatarComp2_BP then
+            comp = char.CharacterAvatarComp2_BP
+        end
+    end)
+    return comp
+end
+
+function F.isCharacterAirborne(char)
+    if not char or not slua.isValid(char) then return false end
+    local ok, r = pcall(function()
+        local EParachuteState = import("EParachuteState")
+        local st = char.ParachuteState
+        return st and st ~= EParachuteState.PS_None
+    end)
+    return ok and r == true
+end
+
+function F.reapplyWeaponsFromConfig()
+    local wmap = F.sanitizeConfigWeapons(PERSIST.configWeapons)
+    local dropped = false
+    for k in pairs(PERSIST.configWeapons or {}) do
+        if not wmap[tonumber(k) or k] then dropped = true break end
+    end
+    PERSIST.configWeapons = wmap
+    if dropped then F.persistMarkDirty() end
+    if not next(wmap) then return false end
+    local cch = F.cache()
+    local any = false
+    for wid, res in pairs(wmap) do
+        wid, res = tonumber(wid), tonumber(res)
+        local ins = res and R.resToIns[res]
+        if wid and ins and F.isInjectedIns(ins) then
+            cch.weapons[wid] = { resID = res, insID = ins }
+            if F.equipWeaponSkin(wid, ins) then
+                any = true
+            else
+                F.syncWeaponArmorySilent(wid, ins)
+            end
+        end
+    end
+    return any
+end
+
+function F.persistEncode()
+    local cch = F.cache()
+    local parts = {}
+    for _, s in ipairs(PERSIST_SLOTS) do
+        local res = tonumber(PERSIST.configSlots and PERSIST.configSlots[s[1]])
+            or tonumber(cch[s[2]])
+        if res and res > 0 and F.isPersistableWearRes(res) then
+            parts[#parts + 1] = string.format('  "%s": %d', s[1], res)
+        end
+    end
+    local wparts = {}
+    local wmap = {}
+    for wid, res in pairs(F.sanitizeConfigWeapons(PERSIST.configWeapons)) do
+        wmap[wid] = res
+    end
+    for wid, w in pairs(cch.weapons or {}) do
+        local res = w and tonumber(w.resID)
+        wid = tonumber(wid)
+        if F.isValidWeaponPersistEntry(wid, res) then wmap[wid] = res end
+    end
+    for wid, res in pairs(wmap) do
+        wparts[#wparts + 1] = string.format('    "%d": %d', wid, res)
+    end
+    table.sort(wparts)
+    parts[#parts + 1] = '  "weapons": {\n' .. table.concat(wparts, ",\n") .. "\n  }"
+    local vparts = {}
+    local function appendVehicleSlots(src)
+        for subType, slots in pairs(src or {}) do
+            local sparts = {}
+            if type(slots) == "table" then
+                for idx, val in pairs(slots) do
+                    local res = type(val) == "table" and tonumber(val.resID) or tonumber(val)
+                    if res and res > 0 then
+                        sparts[#sparts + 1] = string.format('      "%d": %d', tonumber(idx), res)
+                    end
+                end
+            end
+            table.sort(sparts)
+            if #sparts > 0 then
+                vparts[#vparts + 1] = string.format('    "%d": {\n%s\n    }', tonumber(subType), table.concat(sparts, ",\n"))
+            end
+        end
+    end
+    local hasCacheSlots = false
+    for _ in pairs(cch.vehicleSlots or {}) do hasCacheSlots = true; break end
+    if hasCacheSlots then
+        appendVehicleSlots(cch.vehicleSlots)
+    elseif PERSIST.configVehicleSlots then
+        appendVehicleSlots(PERSIST.configVehicleSlots)
+    end
+    table.sort(vparts)
+    parts[#parts + 1] = '  "vehicleSlots": {\n' .. table.concat(vparts, ",\n") .. "\n  }"
+    if PERSIST.lobbyVehicleSubType and PERSIST.lobbyVehicleSubType > 0
+        and PERSIST.lobbyVehicleSubType ~= CHASSIS_LIGHT_SUB
+        and not F.isChassisLightId(PERSIST.lobbyVehicleResID)
+        and F.isVehicleRes(PERSIST.lobbyVehicleResID) then
+        parts[#parts + 1] = string.format('  "lobbyVehicleSubType": %d', PERSIST.lobbyVehicleSubType)
+    end
+    if PERSIST.lobbyVehicleResID and PERSIST.lobbyVehicleResID > 0
+        and F.isVehicleRes(PERSIST.lobbyVehicleResID) then
+        parts[#parts + 1] = string.format('  "lobbyVehicleResID": %d', PERSIST.lobbyVehicleResID)
+    end
+    if PERSIST.lobbyVehicleIns and PERSIST.lobbyVehicleIns > 0
+        and F.isVehicleRes(PERSIST.lobbyVehicleResID or R.insToRes[PERSIST.lobbyVehicleIns]) then
+        parts[#parts + 1] = string.format('  "lobbyVehicleIns": %d', PERSIST.lobbyVehicleIns)
+    end
+    local hres = tonumber(cch.hallThemeRes) or tonumber(PERSIST.hallThemeResID)
+    if hres and hres > 0 and F.isInjectedRes(hres) then
+        parts[#parts + 1] = string.format('  "hallTheme": %d', hres)
+    end
+    local cl = tonumber(PERSIST.configChassisLight)
+    if F.isChassisLightId(cl) then
+        parts[#parts + 1] = string.format('  "chassisLight": %d', cl)
+    end
+    local cmap = PERSIST.configChassisLightMap
+    if cmap and next(cmap) then
+        local cparts = {}
+        for vid, lid in pairs(cmap) do
+            vid, lid = tonumber(vid), tonumber(lid)
+            if vid and vid > 0 and F.isChassisLightId(lid) then
+                cparts[#cparts + 1] = string.format('    "%d": %d', vid, lid)
+            end
+        end
+        table.sort(cparts)
+        if #cparts > 0 then
+            parts[#parts + 1] = '  "chassisLightMap": {\n' .. table.concat(cparts, ",\n") .. "\n  }"
+        end
+    end
+    return "{\n" .. table.concat(parts, ",\n") .. "\n}\n"
+end
+
+function F.persistWrite(txt)
+    if not (io and io.open) then return false end
+    if PERSIST.path then
+        local f
+        pcall(function() f = io.open(PERSIST.path, "w") end)
+        if f then f:write(txt) f:close() return true end
+        PERSIST.path = nil
+    end
+    for _, p in ipairs(CONFIG_PATHS) do
+        local f
+        pcall(function() f = io.open(p, "w") end)
+        if not f then
+            pcall(function()
+                local dir = p:match("^(.*)/[^/]+$")
+                if dir and os and os.execute then os.execute('mkdir -p "' .. dir .. '"') end
+            end)
+            pcall(function() f = io.open(p, "w") end)
+        end
+        if f then
+            f:write(txt) f:close()
+            PERSIST.path = p
+            return true
+        end
+    end
+    return false
+end
+
+function F.persistFlush()
+    if not PERSIST.dirty then return end
+    PERSIST.dirty = false
+    pcall(function()
+        local txt = F.persistEncode()
+        if txt == PERSIST.lastWritten then return end
+        if F.persistWrite(txt) then
+            PERSIST.lastWritten = txt
+        end
+    end)
+end
+
+F.persistMarkDirty = function()
+    PERSIST.dirty = true
+    if PERSIST.scheduled then return end
+    PERSIST.scheduled = true
+    F.later(2.0, function()
+        PERSIST.scheduled = false
+        F.persistFlush()
+    end)
+end
+
+function F.persistParse(txt)
+    if not txt or #txt == 0 then return nil end
+    local out = { weapons = {}, vehicleSlots = {} }
+    local parsed = false
+    pcall(function()
+        local t = json and json.decode and json.decode(txt)
+        if type(t) == "table" then
+            for k, v in pairs(t) do
+                if k == "weapons" and type(v) == "table" then
+                    for wk, wv in pairs(v) do
+                        local wid, res = tonumber(wk), tonumber(wv)
+                        if F.isValidWeaponPersistEntry(wid, res) then out.weapons[wid] = res end
+                    end
+                elseif k == "vehicleSlots" and type(v) == "table" then
+                    for stk, slotMap in pairs(v) do
+                        local st = tonumber(stk)
+                        if st then
+                            out.vehicleSlots[st] = out.vehicleSlots[st] or {}
+                            for idxStr, res in pairs(slotMap) do
+                                local idx, r = tonumber(idxStr), tonumber(res)
+                                if idx and r and r > 0 then out.vehicleSlots[st][idx] = r end
+                            end
+                        end
+                    end
+                elseif k == "chassisLightMap" and type(v) == "table" then
+                    out.chassisLightMap = {}
+                    for vk, lv in pairs(v) do
+                        local vid, lid = tonumber(vk), tonumber(lv)
+                        if vid and lid and F.isChassisLightId(lid) then
+                            out.chassisLightMap[vid] = lid
+                        end
+                    end
+                else
+                    local n = tonumber(v)
+                    if n and n > 0 then out[k] = n end
+                end
+            end
+            parsed = true
+        end
+    end)
+    if not parsed then
+        for k, v in txt:gmatch('"([%w_]+)"%s*:%s*(%d+)') do
+            local n = tonumber(v)
+            if n and n > 0 then
+                local wid = tonumber(k)
+                if wid and F.isValidWeaponPersistEntry(wid, n) then
+                    out.weapons[wid] = n
+                elseif not wid then
+                    out[k] = n
+                end
+            end
+        end
+    end
+    return out
+end
+
+function F.persistLoadFromDisk()
+    if not (io and io.open) then return end
+    pcall(function()
+        for _, p in ipairs(CONFIG_PATHS) do
+            local f
+            pcall(function() f = io.open(p, "r") end)
+            if f then
+                local txt = f:read("*a")
+                f:close()
+                PERSIST.path = p
+                PERSIST.lastWritten = txt
+                PERSIST.loaded = F.persistParse(txt)
+                F.persistLoadSlotsFromSaved(PERSIST.loaded)
+                if PERSIST.loaded and PERSIST.loaded.vehicleSlots then
+                    PERSIST.configVehicleSlots = PERSIST.loaded.vehicleSlots
+                end
+                if PERSIST.loaded and PERSIST.loaded.weapons then
+                    local raw = PERSIST.loaded.weapons
+                    PERSIST.configWeapons = F.sanitizeConfigWeapons(raw)
+                    if next(raw) and not next(PERSIST.configWeapons) then
+                        F.persistMarkDirty()
+                    elseif next(raw) then
+                        for wid, res in pairs(raw) do
+                            if not F.isValidWeaponPersistEntry(tonumber(wid), tonumber(res)) then
+                                F.persistMarkDirty()
+                                break
+                            end
+                        end
+                    end
+                end
+                PERSIST.lobbyVehicleSubType = tonumber(PERSIST.loaded and PERSIST.loaded.lobbyVehicleSubType)
+                PERSIST.lobbyVehicleResID = tonumber(PERSIST.loaded and PERSIST.loaded.lobbyVehicleResID)
+                PERSIST.lobbyVehicleIns = tonumber(PERSIST.loaded and PERSIST.loaded.lobbyVehicleIns)
+                if PERSIST.lobbyVehicleSubType or PERSIST.lobbyVehicleIns or PERSIST.lobbyVehicleResID then
+                    if F.isChassisLightId(PERSIST.lobbyVehicleResID)
+                        or PERSIST.lobbyVehicleSubType == CHASSIS_LIGHT_SUB
+                        or not F.isVehicleRes(PERSIST.lobbyVehicleResID) then
+                        PERSIST.lobbyVehicleSubType = nil
+                        PERSIST.lobbyVehicleResID = nil
+                        PERSIST.lobbyVehicleIns = nil
+                    else
+                        _G.AddOutfitLobbyVeh = _G.AddOutfitLobbyVeh or {}
+                        _G.AddOutfitLobbyVeh.manual = true
+                        _G.AddOutfitLobbyVeh.subType = PERSIST.lobbyVehicleSubType
+                        _G.AddOutfitLobbyVeh.resID = PERSIST.lobbyVehicleResID
+                        _G.AddOutfitLobbyVeh.insID = PERSIST.lobbyVehicleIns
+                    end
+                end
+                PERSIST.hallThemeResID = tonumber(PERSIST.loaded and PERSIST.loaded.hallTheme)
+                PERSIST.hallThemeIns = nil
+                if PERSIST.hallThemeResID then
+                    _G.AddOutfitLobbyTheme = _G.AddOutfitLobbyTheme or {}
+                    _G.AddOutfitLobbyTheme.manual = true
+                    _G.AddOutfitLobbyTheme.resID = PERSIST.hallThemeResID
+                end
+                PERSIST.configChassisLight = tonumber(PERSIST.loaded and PERSIST.loaded.chassisLight)
+                if PERSIST.loaded and PERSIST.loaded.chassisLightMap then
+                    PERSIST.configChassisLightMap = PERSIST.loaded.chassisLightMap
+                end
+                return
+            end
+        end
+    end)
+end
+
+function F.persistApplyLoaded()
+    local saved = PERSIST.loaded
+    if not saved then return end
+    PERSIST.loaded = nil
+    local cch = F.cache()
+    local any = false
+    for _, s in ipairs(PERSIST_SLOTS) do
+        local res = tonumber(saved[s[1]]) or tonumber(PERSIST.configSlots and PERSIST.configSlots[s[1]])
+        if res and res > 0 and not cch[s[2]] then
+            local ins = R.resToIns[res]
+            if ins then
+                cch[s[2]], cch[s[3]] = res, ins
+                _G[s[4]] = res
+                any = true
+            end
+        end
+    end
+    PERSIST.configWeapons = F.sanitizeConfigWeapons(saved.weapons or PERSIST.configWeapons)
+    if saved.weapons and F.reapplyWeaponsFromConfig() then
+        any = true
+    end
+    if saved.vehicleSlots then
+        PERSIST.configVehicleSlots = saved.vehicleSlots
+        if F.reapplyVehicleSlotsFromConfig(true) then
+            any = true
+        end
+    end
+    if saved.hallTheme then
+        PERSIST.hallThemeResID = tonumber(saved.hallTheme)
+        if PERSIST.hallThemeResID and F.reapplyHallThemeFromConfig(true) then
+            any = true
+        end
+    end
+    if saved.chassisLight then
+        PERSIST.configChassisLight = tonumber(saved.chassisLight)
+    end
+    if saved.chassisLightMap then
+        PERSIST.configChassisLightMap = saved.chassisLightMap
+    end
+    if any then
+        _matchApplied = false
+        F.perfInvalidateLobby()
+    end
+end
+
+function F.getEntity()
+    local ok, dc = pcall(require, "client.slua.logic.wardrobe.logic_wardrobe_data_center")
+    if not ok or not dc then return nil end
+    local ok2, e = pcall(dc.GetWardrobeData)
+    return ok2 and e or nil
+end
+
+function F.firstInsForRes(entity, resID)
+    local arr = entity.ResIDToIndexArrayMap and entity.ResIDToIndexArrayMap[resID]
+    if not arr then return nil end
+    for _, idx in pairs(arr) do
+        local d = entity._data[idx]
+        if d and d.count and d.count > 0 then return d.insID end
+    end
+    return nil
+end
+
+function F.injectOne(entity, resID, insID)
+    local ownedIns = F.firstInsForRes(entity, resID)
+    if ownedIns then
+        F.ensureInjectedItemAlive(entity, resID, ownedIns)
+        R.resToIns[resID] = ownedIns
+        R.insToRes[ownedIns] = resID
+        F.indexWeaponSkin(resID, ownedIns)
+        return true
+    end
+    local row = {
+        instid = insID,
+        res_id = resID,
+        count = 1,
+        lock_cnt = 0,
+        isnew = 0,
+        valid_hours = 0,
+        expire_ts = 0,
+    }
+    entity:AddData(row)
+    pcall(function()
+        if entity.LoadConfigForData and CDataTable and CDataTable.GetTableData then
+            local idx = entity._DataCount
+            if idx and entity._data[idx] then
+                entity:LoadConfigForData(entity._data[idx], CDataTable.GetTableData)
+            end
+        end
+    end)
+    R.insToRes[insID] = resID
+    R.resToIns[resID] = insID
+    F.indexWeaponSkin(resID, insID)
+    return true
+end
+
+function F.reviveExpiredOwned(entity)
+    entity = entity or F.getEntity()
+    if not entity or not entity.bInit or not entity._data then return end
+    local now = 0
+    pcall(function()
+        local TimeUtil = require("client.common.time_util")
+        now = tonumber(TimeUtil.GetServerTimeInSec()) or 0
+    end)
+    if now <= 0 then return end
+    _G.AddOutfitRevived = _G.AddOutfitRevived or {}
+    local n = 0
+    for i = 1, (entity._DataCount or #entity._data) do
+        local d = entity._data[i]
+        if d then
+            local exp = tonumber(d.expire_ts or d.expireTS) or 0
+            local res = tonumber(d.res_id or d.resID)
+            local ins = tonumber(d.instid or d.insID)
+            if exp > 0 and exp <= now and res and ins and (tonumber(d.count) or 0) > 0 then
+                d.expire_ts = 0
+                if d.expireTS ~= nil then d.expireTS = 0 end
+                if d.valid_hours ~= nil then d.valid_hours = 0 end
+                _G.AddOutfitRevived[res] = ins
+                n = n + 1
+            end
+        end
+    end
+end
+
+function F.mergeRevivedIntoMaps()
+    for res, ins in pairs(_G.AddOutfitRevived or {}) do
+        if not R.resToIns[res] then
+            R.resToIns[res] = ins
+            R.insToRes[ins] = res
+            F.indexWeaponSkin(res, ins)
+        end
+    end
+end
+
+function F.injectArmory(resID, insID)
+    local wid = F.weaponIdFromSkin(resID)
+    if not wid then return end
+    local Arm = require("client.logic.armory.logic_armory")
+    Arm.rsp_list = Arm.rsp_list or { skin_list = {}, install_list = {} }
+    Arm.rsp_list.skin_list = Arm.rsp_list.skin_list or {}
+    Arm.rsp_list.install_list = Arm.rsp_list.install_list or {}
+    if not Arm.rsp_list.skin_list[wid] then Arm.rsp_list.skin_list[wid] = {} end
+    Arm.rsp_list.skin_list[wid][resID] = { is_open = 1 }
+    Arm.WardrobeInsList = Arm.WardrobeInsList or {}
+    Arm.WardrobeInsList[resID] = insID
+end
+
+function F.mergeInjectedArmorySkins()
+    for _, skins in pairs(R.byWeapon) do
+        for resID, insID in pairs(skins) do
+            F.injectArmory(resID, insID)
+        end
+    end
+end
+
+function F.injectAll(entity)
+    if _G.LexusConfig and _G.LexusConfig.ModSkin == false then return false end -- Bỏ qua nếu tắt Mod Skin
+    entity = entity or F.getEntity()
+    if not entity or not entity.bInit then return false end
+    local n, nNew = 0, 0
+    for i, resID in ipairs(ITEMS) do
+        local insID = INS_BASE + i
+        local had = R.resToIns[resID] ~= nil
+        if F.injectOne(entity, resID, insID) then
+            n = n + 1
+            if not had then nNew = nNew + 1 end
+            local c = F.cfg(resID)
+            if GUN_SUB[F.subType(c)] or F.subType(c) == MELEE_ID then
+                F.injectArmory(resID, insID)
+            end
+        end
+    end
+    if not _G.AddOutfitUnexpireDone then
+        _G.AddOutfitUnexpireDone = true
+        pcall(F.reviveExpiredOwned, entity)
+    end
+    F.mergeRevivedIntoMaps()
+    F.sanitizeAllInjectedExpire()
+    F.ensureInjectedResources()
+    return n > 0
+end
+
+function F.refreshWardrobe()
+    pcall(function()
+        if EventSystem and EVENTTYPE_WARDROBE then
+            if EVENTID_WARDROBE_UPDATE_ITEM_LIST then
+                EventSystem:postEvent(EVENTTYPE_WARDROBE, EVENTID_WARDROBE_UPDATE_ITEM_LIST)
+            end
+            if EVENTID_WARDROBE_UPDATE_AVATAR_LIST then
+                EventSystem:postEvent(EVENTTYPE_WARDROBE, EVENTID_WARDROBE_UPDATE_AVATAR_LIST)
+            end
+            if EVENTID_WARDROBE_UPDATE_GUN_LIST then
+                EventSystem:postEvent(EVENTTYPE_WARDROBE, EVENTID_WARDROBE_UPDATE_GUN_LIST, -1)
+            end
+        end
+    end)
+end
+
+function F.refreshWardrobeOnce()
+    if LOBBY.wardrobeRefreshed then return end
+    LOBBY.wardrobeRefreshed = true
+    F.refreshWardrobe()
+end
+
+function F.scheduleInjectRefresh()
+    LOBBY.injectRefreshGen = (LOBBY.injectRefreshGen or 0) + 1
+    local gen = LOBBY.injectRefreshGen
+    F.later(0.4, function()
+        if gen ~= LOBBY.injectRefreshGen then return end
+        F.refreshWardrobe()
+    end)
+end
+
+function F.putOnOutfit(insID)
+    insID = tonumber(insID)
+    local resID = R.insToRes[insID]
+    if not resID then
+        local wd = require("client.slua.logic.wardrobe.wardrobe_data")
+        local d0 = wd:GetValidHallDepotItemDataByInsID(insID) or wd:GetHallDepotItemDataByInsID(insID)
+        resID = d0 and tonumber(d0.resID or d0.res_id)
+    end
+    if not resID or resID <= 0 then return end
+    if not R.insToRes[insID] then R.insToRes[insID] = resID; R.resToIns[resID] = insID end
+    F.ensureDepotItemValid(insID, resID)
+    if not F.isResourcesReady(resID) then
+        F.requestResourceDownload(resID)
+        return
+    end
+    if not F.isSuitRes(resID) then
+        if F.isTshirtRes(resID) then return F.putOnRoleWear(insID) end
+        return
+    end
+    local wd = require("client.slua.logic.wardrobe.wardrobe_data")
     local d = wd:GetHallDepotItemDataByInsID(insID)
-
     if not d then return end
 
-    local kind = getClothKind(resID, d)
-
-    if not kind then return end
-
-    local clearMap = subTypesToClearForKind(kind)
-
-    if not clearMap then return end
-
-    local itemSt = subType(cfg(resID)) or ST_TOP
-
-    local oldIns, oldRes = findWornInsBySubType(itemSt)
-
-    removeRoleWearBySubTypes(clearMap)
-
-    clearFashionBagSlots(clearMap)
-
-    saveEquip(resID, insID)
+    local suitFilter = function(r) return F.isSuitRes(r) end
+    local oldIns, oldRes = F.findWornInsBySubType(OUTFIT_SUB, suitFilter)
+    F.removeRoleWearBySubType(OUTFIT_SUB, suitFilter)
+    F.saveEquip(resID, insID)
 
     local slot = PKG_SLOT
-
     pcall(function()
-
         local wfu = require("client.slua.logic.wardrobe.fashionbag.wardrobe_fashion_utils")
-
-        local idx = wfu.GetRoleWearIndexBySubType and wfu:GetRoleWearIndexBySubType(itemSt)
-
+        local idx = wfu.GetRoleWearIndexBySubType and wfu:GetRoleWearIndexBySubType(OUTFIT_SUB)
         if idx then slot = idx end
-
     end)
 
     local olditem
-
     if oldIns and oldIns ~= insID then
-
         olditem = { res_id = oldRes or R.insToRes[oldIns], count = 1, instid = oldIns }
-
     end
 
     local WRH = require("client.network.Protocol.WardRobeHandler")
-
     local item = { res_id = resID, count = 1, instid = insID }
-
     WRH.on_depot_put_on_rsp(NET_OK, item, olditem, slot, insID, oldIns or 0)
 
     pcall(function()
-
         local av = require("client.slua.logic.wardrobe.logic_wardrobe_avatar")
+        av:AddToWearInfo(OUTFIT_SUB, insID, resID, 0, 0)
+        F.syncFashionBagRolewear()
+    end)
+end
 
-        av:AddToWearInfo(itemSt, insID, resID, 0, 0)
+function F.putOnHat(insID)
+    insID = tonumber(insID)
+    local resID = R.insToRes[insID]
+    if not resID then
+        local wd = require("client.slua.logic.wardrobe.wardrobe_data")
+        local d0 = wd:GetValidHallDepotItemDataByInsID(insID) or wd:GetHallDepotItemDataByInsID(insID)
+        resID = d0 and tonumber(d0.resID or d0.res_id)
+    end
+    if not resID or resID <= 0 then return end
+    if not R.insToRes[insID] then R.insToRes[insID] = resID; R.resToIns[resID] = insID end
+    F.ensureDepotItemValid(insID, resID)
+    if not F.isResourcesReady(resID) then
+        F.requestResourceDownload(resID)
+        return
+    end
+    local wd = require("client.slua.logic.wardrobe.wardrobe_data")
+    local d = wd:GetHallDepotItemDataByInsID(insID)
+    if not d then return end
+    local st = F.subType(F.cfg(resID)) or HAT_SUB
 
-        local displayResID = resID
+    local oldIns, oldRes = F.findWornInsBySubType(st)
+    if not oldIns and st ~= HAT_SUB then
+        oldIns, oldRes = F.findWornInsBySubType(HAT_SUB)
+    end
+    F.removeRoleWearBySubType(st)
+    if st ~= HAT_SUB then F.removeRoleWearBySubType(HAT_SUB) end
+    F.saveEquip(resID, insID)
 
-        local LogicXSuit = require("client.slua.logic.XSuit.logic_xsuit")
-
-        if LogicXSuit.IsXSuit(displayResID) then
-
-            displayResID = LogicXSuit.GetItemShowID(insID) or displayResID
-
-        end
-
-        av:AvatarChange(displayResID, true, 0, 0)
-
-        av:ProcessTakeOff()
-
-        syncFashionBagRolewear()
-
+    local slot = 1
+    pcall(function()
+        local wfu = require("client.slua.logic.wardrobe.fashionbag.wardrobe_fashion_utils")
+        local idx = wfu.GetRoleWearIndexBySubType and wfu:GetRoleWearIndexBySubType(st)
+        if idx then slot = idx end
     end)
 
+    local olditem
+    if oldIns and oldIns ~= insID then
+        olditem = { res_id = oldRes or R.insToRes[oldIns], count = 1, instid = oldIns }
+    end
+
+    local WRH = require("client.network.Protocol.WardRobeHandler")
+    local item = { res_id = resID, count = 1, instid = insID, color = d.color, pattern = d.pattern }
+    WRH.on_depot_put_on_rsp(NET_OK, item, olditem, slot, insID, oldIns or 0)
+
+    pcall(function()
+        local fbd = require("client.slua.logic.wardrobe.fashionbag.fashionbag_data")
+        fbd:SetHeadShow(insID)
+        F.syncFashionBagRolewear()
+    end)
+    F.invalidateSocialWearCache()
 end
 
-local function putOnOutfit(insID)
-
-    putOnCloth(insID)
-
-end
-
-local function equipWeaponSkin(weaponID, insID)
-
-    weaponID, insID = tonumber(weaponID), tonumber(insID)
-
-    if not weaponID or not insID or not isInjectedIns(insID) then return end
-
+function F.putOnFaceAccessory(insID)
+    insID = tonumber(insID)
     local resID = R.insToRes[insID]
+    if not resID then
+        local wd = require("client.slua.logic.wardrobe.wardrobe_data")
+        local d0 = wd:GetValidHallDepotItemDataByInsID(insID) or wd:GetHallDepotItemDataByInsID(insID)
+        resID = d0 and tonumber(d0.resID or d0.res_id)
+    end
+    if not resID or resID <= 0 then return end
+    if not R.insToRes[insID] then R.insToRes[insID] = resID; R.resToIns[resID] = insID end
+    F.ensureDepotItemValid(insID, resID)
+    if not F.isResourcesReady(resID) then
+        F.requestResourceDownload(resID)
+        return
+    end
+    local wd = require("client.slua.logic.wardrobe.wardrobe_data")
+    local d = wd:GetHallDepotItemDataByInsID(insID)
+    if not d then return end
+    local st = F.subType(F.cfg(resID)) or tonumber(d.itemSubType)
+    if not FACE_SUBS[st] then return end
 
-    _weaponSkinCache[weaponID] = { resID = resID, insID = insID }
+    local oldIns, oldRes = F.findWornInsBySubType(st)
+    F.removeRoleWearBySubType(st)
+    F.saveEquip(resID, insID)
 
-    saveEquip(resID, insID)
+    local slot = (st == MASK_SUB) and 2 or 6
+    pcall(function()
+        local wfu = require("client.slua.logic.wardrobe.fashionbag.wardrobe_fashion_utils")
+        local idx = wfu.GetRoleWearIndexBySubType and wfu:GetRoleWearIndexBySubType(st)
+        if idx then slot = idx end
+    end)
+
+    local olditem
+    if oldIns and oldIns ~= insID then
+        olditem = { res_id = oldRes or R.insToRes[oldIns], count = 1, instid = oldIns }
+    end
+
+    local WRH = require("client.network.Protocol.WardRobeHandler")
+    local item = { res_id = resID, count = 1, instid = insID, color = d.color, pattern = d.pattern }
+    WRH.on_depot_put_on_rsp(NET_OK, item, olditem, slot, insID, oldIns or 0)
+
+    pcall(function() F.syncFashionBagRolewear() end)
+    F.invalidateSocialWearCache()
+end
+
+function F.canRoleWear(resID, st)
+    st = st or F.subType(F.cfg(resID))
+    if FACE_SUBS[st] or BODY_SUBS[st] then return true end
+    if st == GLOVES_SUB then return true end
+    if st == OUTFIT_SUB and F.wardrobeTab(resID) == TAB_CLOTHES then return true end
+    return false
+end
+
+F.putOnRoleWear = function(insID)
+    insID = tonumber(insID)
+    local resID = R.insToRes[insID]
+    if not resID then
+        local wd = require("client.slua.logic.wardrobe.wardrobe_data")
+        local d0 = wd:GetValidHallDepotItemDataByInsID(insID) or wd:GetHallDepotItemDataByInsID(insID)
+        resID = d0 and tonumber(d0.resID or d0.res_id)
+    end
+    if not resID or resID <= 0 then return end
+    if not R.insToRes[insID] then R.insToRes[insID] = resID; R.resToIns[resID] = insID end
+    F.ensureDepotItemValid(insID, resID)
+    if not F.isResourcesReady(resID) then
+        F.requestResourceDownload(resID)
+        return
+    end
+    local wd = require("client.slua.logic.wardrobe.wardrobe_data")
+    local d = wd:GetHallDepotItemDataByInsID(insID)
+    if not d then return end
+    local st = F.subType(F.cfg(resID)) or tonumber(d.itemSubType)
+    if not F.canRoleWear(resID, st) then return end
+
+    local filterFn
+    if st == OUTFIT_SUB then
+        filterFn = function(r) return F.wardrobeTab(r) == TAB_CLOTHES end
+    end
+    local oldIns, oldRes = F.findWornInsBySubType(st, filterFn)
+    F.removeRoleWearBySubType(st, filterFn)
+    F.saveEquip(resID, insID)
+
+    local slot = PKG_SLOT
+    pcall(function()
+        local wfu = require("client.slua.logic.wardrobe.fashionbag.wardrobe_fashion_utils")
+        local idx = wfu.GetRoleWearIndexBySubType and wfu:GetRoleWearIndexBySubType(st)
+        if idx then slot = idx end
+    end)
+
+    local olditem
+    if oldIns and oldIns ~= insID then
+        olditem = { res_id = oldRes or R.insToRes[oldIns], count = 1, instid = oldIns }
+    end
+
+    local WRH = require("client.network.Protocol.WardRobeHandler")
+    local item = { res_id = resID, count = 1, instid = insID, color = d.color, pattern = d.pattern }
+    WRH.on_depot_put_on_rsp(NET_OK, item, olditem, slot, insID, oldIns or 0)
+
+    if BAG_SUBS[st] or HELMET_SUBS[st] then
+        pcall(function()
+            DataMgr.equipmentSkinInsIDTable = DataMgr.equipmentSkinInsIDTable or {}
+            DataMgr.equipmentSkinInsIDTable[st] = insID
+            local fbd = require("client.slua.logic.wardrobe.fashionbag.fashionbag_data")
+            local bag = fbd.GetCurrentFashionBag and fbd:GetCurrentFashionBag()
+            if bag then
+                if st == 504 or st == 501 then
+                    DataMgr.equipmentSkinInsIDTable[504] = insID
+                    bag.bag_skin = insID
+                elseif st == 505 or st == 502 then
+                    DataMgr.equipmentSkinInsIDTable[505] = insID
+                    bag.helmet_skin = insID
+                end
+            end
+        end)
+    end
+
+    pcall(function() F.syncFashionBagRolewear() end)
+    F.invalidateSocialWearCache()
+end
+
+function F.putOnGloves(insID)
+    insID = tonumber(insID)
+    local resID = R.insToRes[insID]
+    if not resID then
+        local wd = require("client.slua.logic.wardrobe.wardrobe_data")
+        local d0 = wd:GetValidHallDepotItemDataByInsID(insID) or wd:GetHallDepotItemDataByInsID(insID)
+        resID = d0 and tonumber(d0.resID or d0.res_id)
+    end
+    if not resID or resID <= 0 then return end
+    if not R.insToRes[insID] then R.insToRes[insID] = resID; R.resToIns[resID] = insID end
+    F.ensureDepotItemValid(insID, resID)
+    if not F.isResourcesReady(resID) then
+        F.requestResourceDownload(resID)
+        return
+    end
+    local wd = require("client.slua.logic.wardrobe.wardrobe_data")
+    local d = wd:GetHallDepotItemDataByInsID(insID)
+    if not d then return end
+
+    local oldIns, oldRes = F.findWornInsBySubType(GLOVES_SUB)
+    F.removeRoleWearBySubType(GLOVES_SUB)
+    F.saveEquip(resID, insID)
+
+    local slot = 8
+    pcall(function()
+        local wfu = require("client.slua.logic.wardrobe.fashionbag.wardrobe_fashion_utils")
+        local idx = wfu.GetRoleWearIndexBySubType and wfu:GetRoleWearIndexBySubType(GLOVES_SUB)
+        if idx then slot = idx end
+    end)
+
+    local olditem
+    if oldIns and oldIns ~= insID then
+        olditem = { res_id = oldRes or R.insToRes[oldIns], count = 1, instid = oldIns }
+    end
+
+    local WRH = require("client.network.Protocol.WardRobeHandler")
+    local item = { res_id = resID, count = 1, instid = insID, color = d.color, pattern = d.pattern, expire_ts = 0 }
+    WRH.on_depot_put_on_rsp(NET_OK, item, olditem, slot, insID, oldIns or 0)
+
+    pcall(function()
+        local logic_wardrobe_avatar = require("client.slua.logic.wardrobe.logic_wardrobe_avatar")
+        logic_wardrobe_avatar:AddToWearInfo(GLOVES_SUB, insID, resID, d.color or 0, d.pattern or 0)
+        DataMgr.UpdateRoleWearData(insID, oldIns or 0)
+        logic_wardrobe_avatar:AvatarChange(resID, true, d.color, d.pattern)
+    end)
+    pcall(function()
+        local wl = require("client.slua.logic.wardrobe.logic_wardrobe_new")
+        if wl.SetClickItemInsId then wl:SetClickItemInsId(insID) end
+    end)
+    pcall(function()
+        if EventSystem and EVENTTYPE_WARDROBE then
+            if EVENTID_WARDROBE_UPDATE_ITEM_LIST then
+                EventSystem:postEvent(EVENTTYPE_WARDROBE, EVENTID_WARDROBE_UPDATE_ITEM_LIST)
+            end
+            if EVENTID_WARDROBE_UPDATE_AVATAR_LIST then
+                EventSystem:postEvent(EVENTTYPE_WARDROBE, EVENTID_WARDROBE_UPDATE_AVATAR_LIST)
+            end
+        end
+    end)
+    F.invalidateSocialWearCache()
+end
+
+function F.ensureDepotItemValid(insID, resID)
+    insID = tonumber(insID)
+    if not insID then return end
+    pcall(function()
+        local entity = F.getEntity()
+        if entity and entity.GetDataByInsID then
+            local d = entity:GetDataByInsID(insID)
+            if d then
+                d.expire_ts = 0
+                if d.expireTS ~= nil then d.expireTS = 0 end
+                if d.valid_hours ~= nil then d.valid_hours = 0 end
+            end
+        end
+        local wd = require("client.slua.logic.wardrobe.wardrobe_data")
+        local hd = wd:GetHallDepotItemDataByInsID(insID)
+        if hd then
+            hd.expire_ts = 0
+            if hd.expireTS ~= nil then hd.expireTS = 0 end
+            if hd.valid_hours ~= nil then hd.valid_hours = 0 end
+        end
+    end)
+end
+
+function F.clearItemExpire(itemData, insID, resID)
+    F.ensureDepotItemValid(insID, resID)
+    if type(itemData) == "table" then
+        itemData.expireTS = 0
+        itemData.expire_ts = 0
+        itemData.expireTs = 0
+    end
+end
+
+function F.onGlideClick(self, itemData)
+    if not itemData then return end
+    local insID = tonumber(itemData.ins_id)
+    local resID = tonumber(itemData.res_id)
+    F.clearItemExpire(itemData, insID, resID)
+    local isGlide = resID and F.isGlideRes(resID)
+    if not isGlide and itemData.itemSubType then
+        isGlide = GLIDER_SUBS[tonumber(itemData.itemSubType)] == true
+    end
+    if insID and resID and isGlide then
+        F.saveEquip(resID, insID)
+        if F.putOnGlider(insID) then
+            pcall(function()
+                if self.ShowGlide then self:ShowGlide(resID) end
+                if self.ChangeItemStatus then self:ChangeItemStatus(insID, true) end
+            end)
+            return
+        end
+    end
+    if _G.AddOutfitGlideClickOrig then
+        F.clearItemExpire(itemData, insID, resID)
+        return _G.AddOutfitGlideClickOrig(self, itemData)
+    end
+end
+
+function F.onParachuteClick(self, itemData)
+    if not itemData then return end
+    local insID = tonumber(itemData.ins_id)
+    local resID = tonumber(itemData.res_id)
+    F.clearItemExpire(itemData, insID, resID)
+    if insID and resID and F.isParachuteRes(resID) then
+        F.saveEquip(resID, insID)
+        if F.putOnParachute(insID) then
+            pcall(function()
+                if self.ChangeItemStatus then self:ChangeItemStatus(insID, true) end
+            end)
+            return
+        end
+    end
+    if _G.AddOutfitParaClickOrig then
+        return _G.AddOutfitParaClickOrig(self, itemData)
+    end
+end
+
+function F.hookAirborneClick()
+    pcall(function()
+        local WG = require("client.slua.umg.Wardrobe.subtab_gliding")
+        if WG then
+            if not WG._AddOutfitGlideWrapped then
+                WG._AddOutfitGlideWrapped = true
+                _G.AddOutfitGlideClickOrig = WG.ClickItem
+            end
+            WG.ClickItem = function(self, itemData)
+                return F.onGlideClick(self, itemData)
+            end
+        end
+        local WP = require("client.slua.umg.Wardrobe.subtab_parachute")
+        if WP then
+            if not WP._AddOutfitParaWrapped then
+                WP._AddOutfitParaWrapped = true
+                _G.AddOutfitParaClickOrig = WP.ClickItem
+            end
+            WP.ClickItem = function(self, itemData)
+                return F.onParachuteClick(self, itemData)
+            end
+        end
+    end)
+    pcall(function()
+        local fbd = require("client.slua.logic.wardrobe.fashionbag.fashionbag_data")
+        if fbd and not fbd._AddOutfitAirborneFBHooked then
+            fbd._AddOutfitAirborneFBHooked = true
+            local oG = fbd.UpdateAircraftOrGliding
+            fbd.UpdateAircraftOrGliding = function(self, putOnID, bAircraft)
+                local r = oG(self, putOnID, bAircraft)
+                local ins = tonumber(putOnID)
+                if ins and ins > 0 then
+                    local wd = require("client.slua.logic.wardrobe.wardrobe_data")
+                    local d = wd:GetValidHallDepotItemDataByInsID(ins) or wd:GetHallDepotItemDataByInsID(ins)
+                    local res = d and tonumber(d.resID)
+                    if res and F.isGlideRes(res) then F.saveEquip(res, ins) end
+                end
+                return r
+            end
+            local oP = fbd.UpdateParachute
+            if oP then
+                fbd.UpdateParachute = function(self, insID)
+                    local r = oP(self, insID)
+                    local ins = tonumber(insID)
+                    if ins and ins > 0 then
+                        local wd = require("client.slua.logic.wardrobe.wardrobe_data")
+                        local d = wd:GetValidHallDepotItemDataByInsID(ins) or wd:GetHallDepotItemDataByInsID(ins)
+                        local res = d and tonumber(d.resID)
+                        if res and F.isParachuteRes(res) then F.saveEquip(res, ins) end
+                    end
+                    return r
+                end
+            end
+        end
+    end)
+    pcall(function()
+        if not ModuleManager or not ModuleManager.GetModule then return end
+        local FB = ModuleManager.GetModule(ModuleManager.LobbyModuleConfig.FashionBagEditUtils)
+        if FB and not FB._AddOutfitFBBagHooked then
+            FB._AddOutfitFBBagHooked = true
+            local o = FB.PutOnFashionBagItem
+            FB.PutOnFashionBagItem = function(self, itemData)
+                if itemData then
+                    F.clearItemExpire(itemData, itemData.ins_id, itemData.res_id)
+                end
+                local r = o(self, itemData)
+                if itemData then
+                    local res = tonumber(itemData.res_id)
+                    local ins = tonumber(itemData.ins_id)
+                    if res and ins and (F.isGlideRes(res) or F.isParachuteRes(res)) then
+                        F.saveEquip(res, ins)
+                    end
+                end
+                return r
+            end
+        end
+    end)
+end
+
+function F.putOnParachute(insID)
+    insID = tonumber(insID)
+    local resID = R.insToRes[insID]
+    if not resID then
+        local wd = require("client.slua.logic.wardrobe.wardrobe_data")
+        local d = wd:GetValidHallDepotItemDataByInsID(insID) or wd:GetHallDepotItemDataByInsID(insID)
+        resID = d and tonumber(d.resID)
+    end
+    if not resID or not F.isParachuteRes(resID) then return false end
+    if not R.insToRes[insID] then R.insToRes[insID] = resID end
+    F.ensureDepotItemValid(insID, resID)
+    F.saveEquip(resID, insID)
+    F.ensureInjectedItemAlive(nil, resID, insID)
+    local ready = F.isResourcesReady(resID)
+    if not ready then F.requestResourceDownload(resID) end
+    pcall(function()
+        local fbd = require("client.slua.logic.wardrobe.fashionbag.fashionbag_data")
+        if fbd.SetParachute then fbd:SetParachute(insID) end
+        if fbd.UpdateParachute then fbd:UpdateParachute(insID) end
+    end)
+    if ready then
+        local item = {
+            res_id = resID, resID = resID,
+            instid = insID, ins_id = insID, insID = insID,
+            expire_ts = 0, expireTS = 0, count = 1,
+        }
+        local WRH = require("client.network.Protocol.WardRobeHandler")
+        WRH.on_depot_put_on_rsp(NET_OK, item, nil, 1, insID, 0)
+    end
+    return true
+end
+
+function F.putOnGlider(insID)
+    insID = tonumber(insID)
+    local resID = R.insToRes[insID]
+    if not resID then
+        local wd = require("client.slua.logic.wardrobe.wardrobe_data")
+        local d = wd:GetValidHallDepotItemDataByInsID(insID) or wd:GetHallDepotItemDataByInsID(insID)
+        resID = d and tonumber(d.resID)
+    end
+    if not resID or resID <= 0 then return false end
+    local st = F.depotSubType(insID, resID)
+    if not F.isGlideRes(resID) and not GLIDER_SUBS[st] then return false end
+    if not R.insToRes[insID] then R.insToRes[insID] = resID end
+    F.ensureDepotItemValid(insID, resID)
+    F.saveEquip(resID, insID)
+    F.ensureInjectedItemAlive(nil, resID, insID)
+    local ready = F.isResourcesReady(resID)
+    if not ready then F.requestResourceDownload(resID) end
+    local bAircraft = false
+    pcall(function()
+        local ModelDisplayTypeHelper = require("client.logic.avatar.ModelDisplayTypeHelper")
+        local st = F.subType(F.cfg(resID))
+        bAircraft = ModelDisplayTypeHelper.IsGlideSmoke(st)
+    end)
+    pcall(function()
+        local fbd = require("client.slua.logic.wardrobe.fashionbag.fashionbag_data")
+        if fbd.UpdateAircraftOrGliding then
+            fbd:UpdateAircraftOrGliding(insID, bAircraft)
+        elseif fbd.SetGliding then
+            fbd:SetGliding(insID)
+            if DataMgr.UpdateEffect then DataMgr.UpdateEffect(insID) end
+        end
+    end)
+    if ready then
+        local item = {
+            res_id = resID, resID = resID,
+            instid = insID, ins_id = insID, insID = insID,
+            expire_ts = 0, expireTS = 0, count = 1,
+        }
+        local WRH = require("client.network.Protocol.WardRobeHandler")
+        WRH.on_depot_put_on_rsp(NET_OK, item, nil, 1, insID, 0)
+    end
+    return true
+end
+
+function F.syncAirborneToDataMgr()
+    F.applyPersistSlotsToCache()
+    local cch = F.cache()
+    local paraRes = F.getDesiredParachuteRes()
+    local gliderRes = F.getDesiredGliderRes()
+    if paraRes and paraRes > 0 and not cch.parachuteIns then
+        cch.parachuteIns = F.resolveInsForRes(paraRes)
+        cch.parachuteRes = paraRes
+    end
+    if gliderRes and gliderRes > 0 and not cch.gliderIns then
+        cch.gliderIns = F.resolveInsForRes(gliderRes)
+        cch.gliderRes = gliderRes
+    end
+    pcall(function()
+        local fbd = require("client.slua.logic.wardrobe.fashionbag.fashionbag_data")
+        if cch.parachuteIns and tonumber(cch.parachuteIns) > 0 then
+            if fbd.SetParachute then fbd:SetParachute(cch.parachuteIns) end
+            if DataMgr.roleData then DataMgr.roleData.parachute = tostring(cch.parachuteIns) end
+        end
+        if cch.gliderIns and tonumber(cch.gliderIns) > 0 then
+            local bAircraft = false
+            if cch.gliderRes then
+                pcall(function()
+                    local MDH = require("client.logic.avatar.ModelDisplayTypeHelper")
+                    bAircraft = not MDH.IsGlideSmoke(F.subType(F.cfg(cch.gliderRes)))
+                end)
+            end
+            if fbd.UpdateAircraftOrGliding then
+                fbd:UpdateAircraftOrGliding(cch.gliderIns, bAircraft)
+            elseif fbd.SetGliding then
+                fbd:SetGliding(cch.gliderIns)
+                if DataMgr.UpdateEffect then DataMgr.UpdateEffect(cch.gliderIns) end
+            end
+            if DataMgr.roleData then
+                if bAircraft then
+                    DataMgr.roleData.aircraft_put_id = tostring(cch.gliderIns)
+                    DataMgr.gliding = cch.gliderIns
+                else
+                    DataMgr.roleData.gliding = tostring(cch.gliderIns)
+                end
+            end
+        end
+    end)
+end
+
+function F.putOnGenericInjected(insID)
+    insID = tonumber(insID)
+    local resID = R.insToRes[insID]
+    if not resID then return end
+    if not F.isResourcesReady(resID) then
+        F.requestResourceDownload(resID)
+        return
+    end
+    F.saveEquip(resID, insID)
+    local WRH = require("client.network.Protocol.WardRobeHandler")
+    WRH.on_depot_put_on_rsp(NET_OK, { res_id = resID, count = 1, instid = insID }, nil, 1, insID, 0)
+end
+
+function F.clearEquipCache(resID)
+    local st = F.subType(F.cfg(resID))
+    local cch = F.cache()
+    if st == OUTFIT_SUB then
+        if F.wardrobeTab(resID) == TAB_CLOTHES then
+            cch.tshirtRes, cch.tshirtIns = nil, nil
+            _G.AddOutfitLastLobbyTshirtRes = nil
+            F.persistForgetSlot("tshirt")
+        else
+            cch.outfitRes, cch.outfitIns = nil, nil
+            _G.AddOutfitLastLobbyOutfitRes = nil
+            F.persistForgetSlot("outfit")
+        end
+    elseif st == HAT_SUB or HEAD_SUBS[st] then
+        cch.hatRes, cch.hatIns = nil, nil
+        _G.AddOutfitLastLobbyHatRes = nil
+        F.persistForgetSlot("hat")
+    elseif st == MASK_SUB then
+        cch.maskRes, cch.maskIns = nil, nil
+        _G.AddOutfitLastLobbyMaskRes = nil
+        F.persistForgetSlot("mask")
+    elseif st == GLASS_SUB then
+        cch.glassRes, cch.glassIns = nil, nil
+        _G.AddOutfitLastLobbyGlassRes = nil
+        F.persistForgetSlot("glass")
+    elseif st == PANTS_SUB then
+        cch.pantsRes, cch.pantsIns = nil, nil
+        _G.AddOutfitLastLobbyPantsRes = nil
+        F.persistForgetSlot("pants")
+    elseif st == SHOES_SUB then
+        cch.shoesRes, cch.shoesIns = nil, nil
+        _G.AddOutfitLastLobbyShoesRes = nil
+        F.persistForgetSlot("shoes")
+    elseif BAG_SUBS[st] then
+        cch.bagRes, cch.bagIns = nil, nil
+        _G.AddOutfitLastLobbyBagRes = nil
+        F.persistForgetSlot("bag")
+    elseif HELMET_SUBS[st] then
+        cch.helmetRes, cch.helmetIns = nil, nil
+        _G.AddOutfitLastLobbyHelmetRes = nil
+        F.persistForgetSlot("helmet")
+    elseif st == PARACHUTE_SUB then
+        cch.parachuteRes, cch.parachuteIns = nil, nil
+        _G.AddOutfitLastLobbyParachuteRes = nil
+        F.persistForgetSlot("parachute")
+    elseif F.isGlideRes(resID) then
+        cch.gliderRes, cch.gliderIns = nil, nil
+        _G.AddOutfitLastLobbyGliderRes = nil
+        F.persistForgetSlot("glider")
+    elseif st == GLOVES_SUB then
+        cch.glovesRes, cch.glovesIns = nil, nil
+        _G.AddOutfitLastLobbyGlovesRes = nil
+        F.persistForgetSlot("gloves")
+    end
+    _matchApplied = false
+    F.invalidateSocialWearCache()
+    F.perfInvalidateLobby()
+    F.persistMarkDirty()
+end
+
+function F.takeOffInjected(insID)
+    insID = tonumber(insID)
+    local resID = R.insToRes[insID]
+    if not resID then return end
+    local st = F.subType(F.cfg(resID))
+
+    pcall(function()
+        local WRH = require("client.network.Protocol.WardRobeHandler")
+        WRH.on_depot_put_down_rsp(NET_OK, { res_id = resID, count = 1 }, insID)
+    end)
+
+    pcall(function()
+        local AvatarData = require("client.logic.data.AvatarData")
+        AvatarData.RemoveRoleWearDataByValue(insID)
+    end)
+    if st == HAT_SUB or HEAD_SUBS[st] then
+        pcall(function()
+            local fbd = require("client.slua.logic.wardrobe.fashionbag.fashionbag_data")
+            local bag = fbd.GetCurrentFashionBag and fbd:GetCurrentFashionBag()
+            if bag and tonumber(bag.head_show) == insID then fbd:SetHeadShow(0) end
+        end)
+    end
+    if BAG_SUBS[st] or HELMET_SUBS[st] then
+        pcall(function()
+            local t = DataMgr.equipmentSkinInsIDTable
+            if t then
+                for _, k in ipairs({ st, 504, 505 }) do
+                    if tonumber(t[k]) == insID then t[k] = 0 end
+                end
+            end
+            local fbd = require("client.slua.logic.wardrobe.fashionbag.fashionbag_data")
+            local bag = fbd.GetCurrentFashionBag and fbd:GetCurrentFashionBag()
+            if bag then
+                if tonumber(bag.bag_skin) == insID then bag.bag_skin = 0 end
+                if tonumber(bag.helmet_skin) == insID then bag.helmet_skin = 0 end
+            end
+        end)
+    end
+
+    F.clearEquipCache(resID)
+    pcall(function() F.syncFashionBagRolewear() end)
+end
+
+function F.syncWeaponArmorySilent(weaponID, insID)
+    weaponID, insID = tonumber(weaponID), tonumber(insID)
+    if not weaponID or not insID or not F.isInjectedIns(insID) then return end
+    local resID = R.insToRes[insID]
+    if not resID then return end
+    local Arm = require("client.logic.armory.logic_armory")
+    Arm.rsp_list = Arm.rsp_list or { skin_list = {}, install_list = {} }
+    Arm.rsp_list.install_list = Arm.rsp_list.install_list or {}
+    F.injectArmory(resID, insID)
+    Arm.rsp_list.install_list[weaponID] = { skin_id = insID }
+    pcall(function()
+        local fbd = require("client.slua.logic.wardrobe.fashionbag.fashionbag_data")
+        if fbd.UpdateCurrentFashionBagWeaponSkin then
+            fbd:UpdateCurrentFashionBagWeaponSkin(weaponID, insID)
+        end
+    end)
+end
+
+function F.equipWeaponSkin(weaponID, insID, forceVisual)
+    weaponID, insID = tonumber(weaponID), tonumber(insID)
+    if not weaponID or not insID or not F.isInjectedIns(insID) then return false end
+    local resID = R.insToRes[insID]
+    if not resID then return false end
+
+    _G.AddOutfitWeaponEquipped = _G.AddOutfitWeaponEquipped or {}
+    if not forceVisual and F.isWeaponVisuallyEquipped(weaponID, insID) then
+        F.syncWeaponArmorySilent(weaponID, insID)
+        return false
+    end
+    F.saveEquip(resID, insID)
 
     local Arm = require("client.logic.armory.logic_armory")
-
     local fbd = require("client.slua.logic.wardrobe.fashionbag.fashionbag_data")
-
     local HT = require("client.logic.lobby.hall_theme_utils")
-
     local wgl = require("client.slua.logic.wardrobe.logic_wardrobe_gun")
 
-    injectArmory(resID, insID)
-
+    F.injectArmory(resID, insID)
     Arm.rsp_list.install_list[weaponID] = { skin_id = insID }
-
     if fbd.UpdateCurrentFashionBagWeaponSkin then
-
         fbd:UpdateCurrentFashionBagWeaponSkin(weaponID, insID)
-
     end
 
     local bagIdx = fbd:GetFashionBagUseIndex()
-
     HT.proc_skin_list_chg("weapon_skin", weaponID, insID, bagIdx, {})
 
     wgl:SetGunID(weaponID)
-
     wgl:UpdateCurrentGunAvatar(weaponID, insID)
 
     if EventSystem and EVENTTYPE_ARMORY and EVENTID_ARMORY_EQUIP_STAT_CHANGE then
-
         EventSystem:postEvent(EVENTTYPE_ARMORY, EVENTID_ARMORY_EQUIP_STAT_CHANGE, resID)
-
     end
-
     if EventSystem and EVENTTYPE_WARDROBE and EVENTID_WARDROBE_UPDATE_CURRENT_PUT_ON_GUN then
-
         EventSystem:postEvent(EVENTTYPE_WARDROBE, EVENTID_WARDROBE_UPDATE_CURRENT_PUT_ON_GUN, resID)
-
     end
-
+    _G.AddOutfitWeaponEquipped[weaponID] = insID
+    return true
 end
 
 local SOCIAL = _G.AddOutfitSocialState or {}
-
 _G.AddOutfitSocialState = SOCIAL
-
 SOCIAL.debGen = SOCIAL.debGen or 0
-
 SOCIAL.wearPatchKey = SOCIAL.wearPatchKey or nil
-
 SOCIAL.snapshotKey = SOCIAL.snapshotKey or nil
-
 SOCIAL.fullSnapshot = SOCIAL.fullSnapshot or nil
 
-local function socialDebounce(sec, fn)
-
+function F.socialDebounce(sec, fn)
     SOCIAL.debGen = (SOCIAL.debGen or 0) + 1
-
     local gen = SOCIAL.debGen
-
-    later(sec, function()
-
+    F.later(sec, function()
         if gen ~= SOCIAL.debGen then return end
-
         pcall(fn)
-
     end)
-
 end
 
-local function getLobbyCurPage()
-
+function F.getLobbyCurPage()
     local p = nil
-
     pcall(function()
-
         local LMC = require("client.slua.logic.lobby.Main.Lobby_Main_Control")
-
         if LMC.GetCurPage then p = LMC.GetCurPage() end
-
     end)
-
     return p
-
 end
 
-local function getWeaponSkinResFast()
+function F.isLobbyLeftPage()
+    return ENUM_LobbyPageType and F.getLobbyCurPage() == ENUM_LobbyPageType.Left
+end
 
-    local cch = cache()
-
+function F.getWeaponSkinResFast()
+    local cch = F.cache()
     local wid = tonumber(DataMgr.Weapon_ID) or 0
-
     local w = wid > 0 and cch.weapons[wid] or nil
-
     if w and w.resID and w.resID > 0 then return w.resID end
-
     for _, ww in pairs(cch.weapons) do
-
         if ww.resID and ww.resID > 0 then return ww.resID end
-
     end
-
     return nil
-
 end
 
-local function resolveLobbyWeaponSkinRes()
-
-    if not _G.LobbyCosmeticEnabled then return nil end
-
+function F.resolveLobbyWeaponSkinRes()
+    if LOBBY.skinResolved then return LOBBY.cachedSkin end
     local wid = tonumber(DataMgr.Weapon_ID) or 0
-
-    local skin = getWeaponSkinResFast()
-
+    local skin = F.getWeaponSkinResFast()
     if skin and skin > 0 then return skin end
 
     if wid > 0 then
-
-        local fromMatch = getMatchWeaponSkin(wid)
-
+        local fromMatch = F.getMatchWeaponSkin(wid)
         if fromMatch and fromMatch > 0 then return fromMatch end
-
     end
-
     if MATCH_CONFIG.weaponSkins then
-
         for _, s in pairs(MATCH_CONFIG.weaponSkins) do
-
             s = tonumber(s)
-
             if s and s > 0 then return s end
-
         end
-
     end
 
     pcall(function()
-
         local Arm = require("client.logic.armory.logic_armory")
-
         local entry = Arm.rsp_list and Arm.rsp_list.install_list
-
             and Arm.rsp_list.install_list[wid > 0 and wid or 101004]
-
         local insID = tonumber(entry and entry.skin_id) or 0
-
-        if insID > 0 and isInjectedIns(insID) then
-
+        if insID > 0 and F.isInjectedIns(insID) then
             skin = tonumber(R.insToRes[insID])
-
         elseif insID > 0 then
-
             local wd = require("client.slua.logic.wardrobe.wardrobe_data")
-
             local d = wd:GetHallDepotItemDataByInsID(insID)
-
             if d and d.resID then skin = tonumber(d.resID) end
-
         end
-
     end)
-
     if skin and skin > 0 then return skin end
 
     pcall(function()
-
         local wgl = require("client.slua.logic.wardrobe.logic_wardrobe_gun")
-
         if wgl.GetSkinIdByWeaponID and wid > 0 then
-
             local insID = tonumber(wgl:GetSkinIdByWeaponID(wid)) or 0
-
-            if insID > 0 and isInjectedIns(insID) then
-
+            if insID > 0 and F.isInjectedIns(insID) then
                 skin = tonumber(R.insToRes[insID])
-
             end
-
         end
-
     end)
-
-    return (skin and skin > 0) and skin or nil
-
+    LOBBY.skinResolved = true
+    LOBBY.cachedSkin = (skin and skin > 0) and skin or nil
+    return LOBBY.cachedSkin
 end
 
-local function rememberLobbyOutfitRes(resID)
-
-    resID = tonumber(resID)
-
-    if not resID or resID <= 0 or not isFullSuitRes(resID) then return end
-
-    _G.AddOutfitLastLobbyOutfitRes = resID
-
-    local cch = cache()
-
-    if not cch.outfitRes or cch.outfitRes <= 0 then
-
-        cch.outfitRes = resID
-
-        if isInjectedRes(resID) then cch.outfitIns = R.resToIns[resID] end
-
-    end
-
-end
-
-local function resolveLobbyOutfitRes()
-
-    if not _G.LobbyCosmeticEnabled then return nil end
-
-    local cch = cache()
-
+function F.resolveLobbyOutfitRes()
+    if LOBBY.outfitResolved then return LOBBY.cachedOutfit end
+    local cch = F.cache()
     local outfitRes = tonumber(cch.outfitRes) or 0
-
-    if outfitRes > 0 then return outfitRes end
-
+    if outfitRes > 0 then
+        LOBBY.outfitResolved = true
+        LOBBY.cachedOutfit = outfitRes
+        return outfitRes
+    end
     outfitRes = tonumber(_G.AddOutfitLastLobbyOutfitRes) or 0
-
-    if outfitRes > 0 then return outfitRes end
-
+    if outfitRes > 0 then
+        LOBBY.outfitResolved = true
+        LOBBY.cachedOutfit = outfitRes
+        return outfitRes
+    end
     if MATCH_CONFIG.outfitRes and tonumber(MATCH_CONFIG.outfitRes) > 0 then
-
-        return tonumber(MATCH_CONFIG.outfitRes)
-
+        LOBBY.outfitResolved = true
+        LOBBY.cachedOutfit = tonumber(MATCH_CONFIG.outfitRes)
+        return LOBBY.cachedOutfit
     end
 
     local injectedRes, anyRes
-
     pcall(function()
-
         local AvatarData = require("client.logic.data.AvatarData")
-
         local wd = require("client.slua.logic.wardrobe.wardrobe_data")
-
         local function resFromIns(ins)
-
             ins = tonumber(ins)
-
             if not ins or ins <= 0 then return nil end
-
-            if isInjectedIns(ins) then return tonumber(R.insToRes[ins]) end
-
+            if F.isInjectedIns(ins) then return tonumber(R.insToRes[ins]) end
             local d = wd:GetHallDepotItemDataByInsID(ins)
-
             return d and tonumber(d.resID) or nil
-
         end
-
         for _, ins in pairs(AvatarData.GetRoleWear()) do
-
             local res = resFromIns(ins)
-
-            if res and isFullSuitRes(res) then
-
-                if isInjectedRes(res) then injectedRes = res end
-
+            if res and F.isSuitRes(res) then
+                if F.isInjectedRes(res) then injectedRes = res end
                 anyRes = anyRes or res
-
             end
-
         end
-
         local fbd = require("client.slua.logic.wardrobe.fashionbag.fashionbag_data")
-
         local bag = fbd.GetCurrentFashionBag and fbd:GetCurrentFashionBag()
-
         if bag and bag.rolewear_list then
-
             for _, ins in pairs(bag.rolewear_list) do
-
                 local res = resFromIns(ins)
-
-                if res and isFullSuitRes(res) then
-
-                    if isInjectedRes(res) then injectedRes = res end
-
+                if res and F.isSuitRes(res) then
+                    if F.isInjectedRes(res) then injectedRes = res end
                     anyRes = anyRes or res
-
                 end
-
             end
-
         end
-
     end)
-
-    if injectedRes and injectedRes > 0 then return injectedRes end
-
-    if anyRes and anyRes > 0 then return anyRes end
-
+    if injectedRes and injectedRes > 0 then
+        LOBBY.outfitResolved = true
+        LOBBY.cachedOutfit = injectedRes
+        return injectedRes
+    end
+    if anyRes and anyRes > 0 then
+        LOBBY.outfitResolved = true
+        LOBBY.cachedOutfit = anyRes
+        return anyRes
+    end
+    LOBBY.outfitResolved = true
+    LOBBY.cachedOutfit = nil
     return nil
-
 end
 
-local function wearPatchKey()
+function F.rememberLobbyOutfitRes(resID)
+    resID = tonumber(resID)
+    if not resID or resID <= 0 or not F.isSuitRes(resID) then return end
+    _G.AddOutfitLastLobbyOutfitRes = resID
+    F.invalidateLobbyResolved()
+    local cch = F.cache()
+    if not cch.outfitRes or cch.outfitRes <= 0 then
+        cch.outfitRes = resID
+        if F.isInjectedRes(resID) then cch.outfitIns = R.resToIns[resID] end
+    end
+end
 
-    local outfit = resolveLobbyOutfitRes() or 0
-
-    local skin = resolveLobbyWeaponSkinRes() or 0
-
+function F.wearPatchKey()
+    local outfit = F.resolveLobbyOutfitRes() or 0
+    local skin = F.resolveLobbyWeaponSkinRes() or 0
     local openGun = 1
-
     pcall(function()
-
         local lds = require("client.slua.logic.wardrobe.logic_display_setting")
-
         if lds.data and lds.data.OpenGun ~= nil then openGun = lds.data.OpenGun and 1 or 0 end
-
     end)
-
     return outfit .. "_" .. skin .. "_" .. openGun
-
 end
 
-local function syncDepotShowWeaponFlags(depot)
-
+function F.syncDepotShowWeaponFlags(depot)
     depot = depot or {}
-
-    depot.vehicle = true
-
-    depot.helmet = true
-
-    depot.bag = true
-
-    depot.pet = true
-
-    depot.idle = true
-
-    depot.hand = true
-
     pcall(function()
-
         local lds = require("client.slua.logic.wardrobe.logic_display_setting")
-
         if lds.data then
-
             if lds.data.OpenGun ~= nil then depot.weapon = lds.data.OpenGun end
-
             if lds.data.OpenSocialWeapon ~= nil then depot.social_weapon = lds.data.OpenSocialWeapon end
-
         end
-
     end)
-
     return depot
-
 end
 
-local function applyInjectedPspace(roleData)
-
-    if not _G.LobbyCosmeticEnabled then return end
-
+function F.applyInjectedPspace(roleData)
     if not roleData then return end
-
     roleData.bshow = true
-
     roleData.pspace_wear_ext = roleData.pspace_wear_ext or {}
-
-    local outfitRes = resolveLobbyOutfitRes()
-
+    local outfitRes = F.resolveLobbyOutfitRes()
     if outfitRes and outfitRes > 0 then
-
         roleData.pspace_wear_ext[ENUM_AVATAR_SHOW_TYPE.SHOW_POS_CLOTH] = { outfitRes, 0, 0 }
-
     end
-
-    local skinRes = resolveLobbyWeaponSkinRes()
-
+    local skinRes = F.resolveLobbyWeaponSkinRes()
     if skinRes and skinRes > 0 then
-
         roleData.pspace_wear_ext[ENUM_AVATAR_SHOW_TYPE.SHOW_POS_WEAPON] = { 0, 0, 0 }
-
         roleData.pspace_wear_ext[ENUM_AVATAR_SHOW_TYPE.SHOW_POS_WEAPONSKIN] = { skinRes, 0, 0 }
-
         roleData.depot_show_info = roleData.depot_show_info or {}
-
         if roleData.depot_show_info.weapon == nil then
-
             roleData.depot_show_info.weapon = true
-
         end
-
     end
-
-    roleData.depot_show_info = syncDepotShowWeaponFlags(roleData.depot_show_info)
-
+    roleData.depot_show_info = F.syncDepotShowWeaponFlags(roleData.depot_show_info)
 end
 
-local function patchSelfWearCache(force)
-
-    local key = wearPatchKey()
-
+function F.patchSelfWearCache(force)
+    local key = F.wearPatchKey()
     if not force and SOCIAL.wearPatchKey == key then return false end
-
     SOCIAL.wearPatchKey = key
-
     SOCIAL.snapshotKey = nil
-
     SOCIAL.fullSnapshot = nil
 
     local myUid = tonumber(DataMgr.roleData.uid)
-
     if not myUid then return false end
 
     local changed = false
-
     pcall(function()
-
         local BD = ModuleManager.GetModule(ModuleManager.DataModuleConfig.BasicDataAvatarWearInfo)
-
         local d = BD:GetCacheData(myUid)
-
         if not d then
-
-            BD:OnHandleMsgDataAndCallback(myUid, buildLocalRoleDataForCoupleAvatar())
-
+            BD:OnHandleMsgDataAndCallback(myUid, F.buildLocalRoleDataForCoupleAvatar())
             return true
-
         end
-
         local oldCloth = d.pspace_wear_ext and d.pspace_wear_ext[ENUM_AVATAR_SHOW_TYPE.SHOW_POS_CLOTH]
-
         local oldSkin = d.pspace_wear_ext and d.pspace_wear_ext[ENUM_AVATAR_SHOW_TYPE.SHOW_POS_WEAPONSKIN]
-
-        applyInjectedPspace(d)
-
+        F.applyInjectedPspace(d)
         local nc = d.pspace_wear_ext[ENUM_AVATAR_SHOW_TYPE.SHOW_POS_CLOTH]
-
         local ns = d.pspace_wear_ext[ENUM_AVATAR_SHOW_TYPE.SHOW_POS_WEAPONSKIN]
-
         if oldCloth ~= nc or oldSkin ~= ns or not d.bshow then changed = true end
-
     end)
-
     return force or changed
-
 end
 
-local function requestSocialAvatarRefresh()
-
+function F.requestSocialAvatarRefresh()
     pcall(function()
-
         if EventSystem and EVENTTYPE_LOBBY_SOCIAL and EVENTID_SOCIAL_LOBBY_REFRESH_AVATAR then
-
             EventSystem:postEvent(EVENTTYPE_LOBBY_SOCIAL, EVENTID_SOCIAL_LOBBY_REFRESH_AVATAR)
-
         end
-
     end)
-
 end
 
-local function onSocialWearDirty(forceRefresh)
-
+function F.onSocialWearDirty(forceRefresh)
     SOCIAL.lastHandSkin = nil
-
-    if patchSelfWearCache(forceRefresh) then
-
-        requestSocialAvatarRefresh()
-
+    if F.patchSelfWearCache(forceRefresh) then
+        F.requestSocialAvatarRefresh()
     end
-
 end
 
-local function buildLocalRoleDataForCoupleAvatar()
-
-    if not _G.LobbyCosmeticEnabled then return nil end
-
-    local key = wearPatchKey()
-
+function F.buildLocalRoleDataForCoupleAvatar()
+    local key = F.wearPatchKey()
     if SOCIAL.fullSnapshot and SOCIAL.snapshotKey == key then
-
         return SOCIAL.fullSnapshot
-
     end
-
-    syncWeaponCacheFromLobby()
-
-    local cch = cache()
-
+    F.syncWeaponCacheFromLobby()
+    local cch = F.cache()
     local ad = DataMgr.avatarData or {}
-
     local gender = tonumber(ad.gamegender) or 2
-
     if gender < 1 then gender = 2 end
 
     local data = {
-
         uid = DataMgr.roleData.uid,
-
         gender = gender,
-
         bshow = true,
-
         pspace_wear_ext = {
-
             [ENUM_AVATAR_SHOW_TYPE.SHOW_POS_HEAD] = { tonumber(ad.headid) or 401993, 0, 0 },
-
             [ENUM_AVATAR_SHOW_TYPE.SHOW_POS_HAIR] = { tonumber(ad.hairid) or 40601001, 0, 0 },
-
             [ENUM_AVATAR_SHOW_TYPE.SHOW_POS_WEAPON] = { 0, 0, 0 },
-
             [ENUM_AVATAR_SHOW_TYPE.SHOW_POS_WEAPONSKIN] = { 0, 0, 0 },
-
         },
-
         depot_show_info = {
-
             weapon = true, social_weapon = true, idle = true,
-
-            helmet = true, bag = true, vehicle = true, hand = true, pet = true
-
+            helmet = true, bag = true, vehicle = true, hand = true,
         },
-
     }
 
-    local outfitRes = resolveLobbyOutfitRes()
-
+    local outfitRes = F.resolveLobbyOutfitRes()
     if outfitRes and outfitRes > 0 then
-
         data.pspace_wear_ext[ENUM_AVATAR_SHOW_TYPE.SHOW_POS_CLOTH] = { outfitRes, 0, 0 }
-
     end
 
-    local skinRes = resolveLobbyWeaponSkinRes()
-
+    local skinRes = F.resolveLobbyWeaponSkinRes()
     if skinRes and skinRes > 0 then
-
         data.pspace_wear_ext[ENUM_AVATAR_SHOW_TYPE.SHOW_POS_WEAPON][1] = 0
-
         data.pspace_wear_ext[ENUM_AVATAR_SHOW_TYPE.SHOW_POS_WEAPONSKIN][1] = skinRes
-
     end
-
-    data.depot_show_info = syncDepotShowWeaponFlags(data.depot_show_info)
-
+    data.depot_show_info = F.syncDepotShowWeaponFlags(data.depot_show_info)
     SOCIAL.fullSnapshot = data
-
-    SOCIAL.snapshotKey = wearPatchKey()
-
+    SOCIAL.snapshotKey = F.wearPatchKey()
     return data
-
 end
 
 local _myUidCached
-
-local function isMyWearData(wearData)
-
+function F.isMyWearData(wearData)
     if not wearData then return false end
-
     if not _myUidCached then
-
         pcall(function() _myUidCached = tonumber(DataMgr.roleData.uid) end)
-
     end
-
     return _myUidCached and tonumber(wearData.uid) == _myUidCached
-
 end
 
-local function mergeInjectedWeaponIntoWearData(wearData)
-
-    if not _G.LobbyCosmeticEnabled then return end
-
-    if not isMyWearData(wearData) then return end
-
-    local skinRes = resolveLobbyWeaponSkinRes()
-
-    wearData.depot_show_info = syncDepotShowWeaponFlags(wearData.depot_show_info)
-
+function F.mergeInjectedWeaponIntoWearData(wearData)
+    if not F.isMyWearData(wearData) then return end
+    local skinRes = F.resolveLobbyWeaponSkinRes()
+    wearData.depot_show_info = F.syncDepotShowWeaponFlags(wearData.depot_show_info)
     if not skinRes or skinRes <= 0 then return end
-
     wearData.mainWeaponInfo = wearData.mainWeaponInfo or {
-
         weaponResId = 0, weaponSkinId = 0,
-
         diyInfo = { diyWeaponId = 0, diyDefaultScheme = false, diyScheme = nil },
-
     }
-
     if wearData.mainWeaponInfo.weaponSkinId == skinRes
-
         and (tonumber(wearData.mainWeaponInfo.weaponResId) or 0) == 0 then
-
         return
-
     end
-
     wearData.mainWeaponInfo.weaponSkinId = skinRes
-
     wearData.mainWeaponInfo.weaponResId = 0
-
 end
 
-local function equipSocialHandWeapon(avatar, skinRes)
-
+function F.equipSocialHandWeapon(avatar, skinRes)
     if not avatar or not skinRes or skinRes <= 0 then return end
-
     if SOCIAL.lastHandSkin == skinRes then return end
-
     SOCIAL.lastHandSkin = skinRes
-
     pcall(function()
-
         avatar:PutonEquipment(skinRes, nil, { bIsUse = true })
-
     end)
-
 end
 
-local function shouldShowHandWeapon()
-
+function F.shouldShowHandWeapon()
     local show = true
-
     pcall(function()
-
         local lds = require("client.slua.logic.wardrobe.logic_display_setting")
-
         if lds.data and lds.data.OpenGun ~= nil then
-
             show = lds.data.OpenGun ~= false
-
         end
-
     end)
-
     return show
-
 end
 
-local function mergeInjectedOutfitIntoWearData(wearData)
-
-    if not _G.LobbyCosmeticEnabled then return end
-
-    if not isMyWearData(wearData) then return end
-
-    local outfitRes = resolveLobbyOutfitRes()
-
-    if not outfitRes or outfitRes <= 0 or not isFullSuitRes(outfitRes) then return end
-
-    rememberLobbyOutfitRes(outfitRes)
-
+function F.mergeInjectedOutfitIntoWearData(wearData)
+    if not F.isMyWearData(wearData) then return end
+    local outfitRes = F.resolveLobbyOutfitRes()
+    if not outfitRes or outfitRes <= 0 then return end
+    F.rememberLobbyOutfitRes(outfitRes)
     local AvatarData = require("client.logic.data.AvatarData")
-
     local converted = AvatarData.ConvertToAvatarCustom({ outfitRes, 0, 0 })
-
     if not converted then return end
-
-    local newList = {}
-
-    for _, e in ipairs(wearData.WearInfoList or {}) do
-
-        if e and e.ItemID and isBodyClothSubType(subType(cfg(e.ItemID))) then
-
-        else
-
-            newList[#newList + 1] = e
-
+    wearData.WearInfoList = wearData.WearInfoList or {}
+    local replaced = false
+    for i, e in ipairs(wearData.WearInfoList) do
+        if e and e.ItemID and F.isSuitRes(e.ItemID) then
+            wearData.WearInfoList[i] = converted
+            replaced = true
+            break
         end
-
     end
-
-    newList[#newList + 1] = converted
-
-    wearData.WearInfoList = newList
-
+    if not replaced then
+        table.insert(wearData.WearInfoList, converted)
+    end
 end
 
-local function mergeInjectedIntoWearData(wearData)
-
+function F.mergeInjectedIntoWearData(wearData)
     if not wearData then return end
-
-    mergeInjectedWeaponIntoWearData(wearData)
-
-    mergeInjectedOutfitIntoWearData(wearData)
-
+    F.mergeInjectedWeaponIntoWearData(wearData)
+    F.mergeInjectedOutfitIntoWearData(wearData)
 end
 
-local function reapplyLobbyEquipped()
-
-    if not _G.LobbyCosmeticEnabled then return end
-
+function F.reapplyLobbyEquipped()
     if not GameStatus or not GameStatus.IsInLobbyOrMainCity or not GameStatus.IsInLobbyOrMainCity() then
-
         return
-
     end
-
-    syncWeaponCacheFromLobby()
-
-    local curPage = getLobbyCurPage()
+    F.syncWeaponCacheFromLobby()
+    F.applyPersistSlotsToCache()
+    local curPage = F.getLobbyCurPage()
 
     if ENUM_LobbyPageType and curPage == ENUM_LobbyPageType.Left then
-
-        onSocialWearDirty(true)
-
+        F.onSocialWearDirty(true)
         return
-
     end
 
-    local cch = cache()
-
-    if cch.outfitIns and isInjectedIns(cch.outfitIns) then
-
-        putOnOutfit(cch.outfitIns)
-
+    local cch = F.cache()
+    if cch.outfitIns and F.isInjectedIns(cch.outfitIns) then
+        F.putOnOutfit(cch.outfitIns)
+    end
+    if cch.hatIns and F.isInjectedIns(cch.hatIns) then
+        F.putOnHat(cch.hatIns)
+    end
+    if cch.maskIns and F.isInjectedIns(cch.maskIns) then
+        F.putOnRoleWear(cch.maskIns)
+    end
+    if cch.glassIns and F.isInjectedIns(cch.glassIns) then
+        F.putOnRoleWear(cch.glassIns)
+    end
+    if cch.tshirtIns and F.isInjectedIns(cch.tshirtIns) then
+        F.putOnRoleWear(cch.tshirtIns)
+    end
+    if cch.pantsIns and F.isInjectedIns(cch.pantsIns) then
+        F.putOnRoleWear(cch.pantsIns)
+    end
+    if cch.shoesIns and F.isInjectedIns(cch.shoesIns) then
+        F.putOnRoleWear(cch.shoesIns)
+    end
+    if cch.bagIns and F.isInjectedIns(cch.bagIns) then
+        F.putOnRoleWear(cch.bagIns)
+    end
+    if cch.helmetIns and F.isInjectedIns(cch.helmetIns) then
+        F.putOnRoleWear(cch.helmetIns)
+    end
+    if cch.parachuteIns then
+        F.putOnParachute(cch.parachuteIns)
+    end
+    if cch.gliderIns then
+        F.putOnGlider(cch.gliderIns)
+    end
+    if cch.glovesIns and F.isInjectedIns(cch.glovesIns) then
+        F.putOnGloves(cch.glovesIns)
     end
 
-    for wid, w in pairs(cch.weapons) do
-
-        wid = tonumber(wid)
-
-        if wid and w and w.resID and w.resID > 0 then
-
-            if w.insID and isInjectedIns(w.insID) then
-
-                equipWeaponSkin(wid, w.insID)
-
-            else
-
-                pcall(function() DataMgr.InitWeaponData(wid, w.resID, w.insID or 0) end)
-
-            end
-
+    local mainWid = tonumber(DataMgr.Weapon_ID) or 0
+    local w = mainWid > 0 and cch.weapons[mainWid] or nil
+    if w and w.resID and w.resID > 0 then
+        if w.insID and F.isInjectedIns(w.insID) then
+            F.equipWeaponSkin(mainWid, w.insID)
+        else
+            pcall(function() DataMgr.InitWeaponData(mainWid, w.resID, w.insID or 0) end)
         end
-
     end
 
     pcall(function()
-
         local uid = tostring(DataMgr.roleData.uid)
-
         local LAM = require("client.logic.avatar.LobbyAvatarManager")
-
         local TAM = require("client.logic.avatar.logic_team_avatar_manager")
-
-        local mainWid = tonumber(DataMgr.Weapon_ID) or 0
-
-        local mw = mainWid > 0 and cch.weapons[mainWid] or nil
-
-        if mw and mw.resID and mw.resID > 0 and TAM.GetAvatarByUid(uid) then
-
-            LAM.EquipWeapon(uid, { weaponId = mainWid, skinId = mw.resID }, nil, true)
-
+        if w and w.resID and w.resID > 0 and TAM.GetAvatarByUid(uid) then
+            LAM.EquipWeapon(uid, { weaponId = mainWid, skinId = w.resID }, nil, true)
         end
-
     end)
 
-    pcall(function()
-
-        if EventSystem and EVENTTYPE_WARDROBE and EVENTID_WARDROBE_UPDATE_AVATAR_LIST then
-
-            EventSystem:postEvent(EVENTTYPE_WARDROBE, EVENTID_WARDROBE_UPDATE_AVATAR_LIST)
-
-        end
-
-    end)
-
+    F.reapplyVehicleSlotsFromConfig(true)
+    F.reapplyHallThemeFromConfig(true)
+    F.reapplyWeaponsFromConfig()
+    pcall(F.applyVehicleSkinsToPC)
 end
 
-local function hookLobbySwipePersistence()
+F.scheduleLobbyReapplyOnce = function()
+    if LOBBY.reapplyDone or LOBBY.reapplyScheduled then return end
+    LOBBY.reapplyScheduled = true
+    F.later(2.0, function()
+        LOBBY.reapplyScheduled = false
+        if LOBBY.reapplyDone then return end
+        LOBBY.reapplyDone = true
+        F.reapplyLobbyEquipped()
+    end)
+end
 
+function F.hookLobbySwipePersistence()
+    if _G.AddOutfitLobbySwipeHooked then return end
+    _G.AddOutfitLobbySwipeHooked = true
     pcall(function()
-
         local BD = ModuleManager.GetModule(ModuleManager.DataModuleConfig.BasicDataAvatarWearInfo)
-
         local oRsp = BD.on_get_avatar_show_rsp
-
         BD.on_get_avatar_show_rsp = function(self, res, target_uid, data)
-
             oRsp(self, res, target_uid, data)
-
-            if not _G.LobbyCosmeticEnabled then return end
-
                 if tonumber(target_uid) == tonumber(DataMgr.roleData.uid) then
-
-                patchSelfWearCache(true)
-
+                F.patchSelfWearCache(true)
                 SOCIAL.forceAvatarRedraw = true
-
                 SOCIAL.lastHandSkin = nil
-
-                if ENUM_LobbyPageType and getLobbyCurPage() == ENUM_LobbyPageType.Left then
-
-                    requestSocialAvatarRefresh()
-
+                if ENUM_LobbyPageType and F.getLobbyCurPage() == ENUM_LobbyPageType.Left then
+                    F.requestSocialAvatarRefresh()
                 end
-
             end
-
         end
-
     end)
 
     pcall(function()
-
         local AC = require("client.slua.logic.avatar.avatar_common")
-
         local oGetWear = AC.GetWearDataFromRoleData
-
         AC.GetWearDataFromRoleData = function(roleData)
-
             local wearData = oGetWear(roleData)
-
-            if wearData and roleData and tonumber(roleData.uid) == tonumber(DataMgr.roleData.uid) then
-
-                mergeInjectedIntoWearData(wearData)
-
+            if wearData and roleData and tonumber(roleData.uid) == tonumber(DataMgr.roleData.uid)
+                and F.isLobbyLeftPage() then
+                F.mergeInjectedIntoWearData(wearData)
             end
-
             return wearData
-
         end
-
         local oUp = AC.UpdateAvatar
-
         AC.UpdateAvatar = function(avatar, wearData, isShowWeapon, isShowHelmet, isShowBag)
-
-            if not _G.LobbyCosmeticEnabled then
-
-                return oUp(avatar, wearData, isShowWeapon, isShowHelmet, isShowBag)
-
+            if F.isMyWearData(wearData) and F.isLobbyLeftPage() then
+                F.mergeInjectedIntoWearData(wearData)
             end
-
-            if isMyWearData(wearData) then
-
-                mergeInjectedIntoWearData(wearData)
-
-            end
-
-            local showGun = isShowWeapon and shouldShowHandWeapon()
-
+            local showGun = isShowWeapon and F.shouldShowHandWeapon()
             if wearData and wearData.depot_show_info then
-
                 showGun = showGun and wearData.depot_show_info.weapon ~= false
-
             end
-
-            if isMyWearData(wearData) then
-
+            if F.isMyWearData(wearData) and F.isLobbyLeftPage() then
                 for _, e in ipairs(wearData.WearInfoList or {}) do
-
-                    if e and e.ItemID and isInjectedRes(e.ItemID) and isFullSuitRes(e.ItemID) then
-
-                        rememberLobbyOutfitRes(e.ItemID)
-
+                    if e and e.ItemID and F.isInjectedRes(e.ItemID) and F.isSuitRes(e.ItemID) then
+                        F.rememberLobbyOutfitRes(e.ItemID)
                         break
-
                     end
-
                 end
-
             end
-
             local ret = oUp(avatar, wearData, showGun, isShowHelmet, isShowBag)
-
-            if showGun and isMyWearData(wearData) and avatar
-
-                and ENUM_LobbyPageType and getLobbyCurPage() == ENUM_LobbyPageType.Left then
-
+            if showGun and F.isMyWearData(wearData) and avatar and F.isLobbyLeftPage() then
                 local skin = tonumber(wearData.mainWeaponInfo and wearData.mainWeaponInfo.weaponSkinId) or 0
-
-                if skin <= 0 then skin = resolveLobbyWeaponSkinRes() or 0 end
-
-                if skin > 0 then equipSocialHandWeapon(avatar, skin) end
-
+                if skin <= 0 then skin = F.resolveLobbyWeaponSkinRes() or 0 end
+                if skin > 0 then F.equipSocialHandWeapon(avatar, skin) end
             end
-
             return ret
-
         end
-
     end)
 
     pcall(function()
-
         local CA = require("client.logic.avatar.CoupleAvatar")
-
         local Cfg = require("client.slua.logic.lobby.Left.CoupleAvatarConfig")
-
         local oMulti = CA._UpdateMultiAvatar
-
         if oMulti then
-
             CA._UpdateMultiAvatar = function(self, avatar, avatarType)
-
-                if not _G.LobbyCosmeticEnabled then
-
-                    return oMulti(self, avatar, avatarType)
-
-                end
-
                 local isSelf = avatarType == Cfg.AvatarType.Self
-
                     and self.SelfUID and tostring(self.SelfUID) == tostring(DataMgr.roleData.uid)
-
-                if isSelf then
-
+                if isSelf and F.isLobbyLeftPage() then
                     pcall(function()
-
                         local BD = ModuleManager.GetModule(ModuleManager.DataModuleConfig.BasicDataAvatarWearInfo)
-
                         local d = BD:GetCacheData(tonumber(self.SelfUID))
-
-                        if d then applyInjectedPspace(d) end
-
+                        if d then F.applyInjectedPspace(d) end
                     end)
-
                     if SOCIAL.forceAvatarRedraw then
-
                         self.CompareDataCache[avatarType] = nil
-
                         SOCIAL.forceAvatarRedraw = nil
-
                     end
-
                 end
-
                 oMulti(self, avatar, avatarType)
-
-                if isSelf and self.isShowWeapon ~= false and shouldShowHandWeapon()
-
-                    and ENUM_LobbyPageType and getLobbyCurPage() == ENUM_LobbyPageType.Left then
-
-                    local skin = resolveLobbyWeaponSkinRes()
-
-                    if skin and skin > 0 then equipSocialHandWeapon(avatar, skin) end
-
+                if isSelf and F.isLobbyLeftPage() and self.isShowWeapon ~= false and F.shouldShowHandWeapon() then
+                    local skin = F.resolveLobbyWeaponSkinRes()
+                    if skin and skin > 0 then F.equipSocialHandWeapon(avatar, skin) end
                 end
-
             end
-
         end
-
         local oHideCheck = CA.CheckSelfIsHideAvatar
-
         CA.CheckSelfIsHideAvatar = function(self, nSelfUId, tRoleData)
-
-            if not _G.LobbyCosmeticEnabled then
-
-                return oHideCheck(self, nSelfUId, tRoleData)
-
-            end
-
-            if tostring(nSelfUId) == tostring(DataMgr.roleData.uid) then
-
+            if F.isLobbyLeftPage() and tostring(nSelfUId) == tostring(DataMgr.roleData.uid) then
                 return false
-
             end
-
             return oHideCheck(self, nSelfUId, tRoleData)
-
         end
 
         local oUpdate = CA.Update
-
         CA.Update = function(self)
-
-            if not _G.LobbyCosmeticEnabled then return oUpdate(self) end
-
-            local isSelf = self.SelfUID and tostring(self.SelfUID) == tostring(DataMgr.roleData.uid)
-
-            local oHide = CA.HideAvatars
-
-            if isSelf then
-
-                CA.HideAvatars = function() end
-
+            if not F.isLobbyLeftPage() then
+                return oUpdate(self)
             end
-
+            local isSelf = self.SelfUID and tostring(self.SelfUID) == tostring(DataMgr.roleData.uid)
+            local oHide = CA.HideAvatars
+            if isSelf then
+                CA.HideAvatars = function() end
+            end
             local ok, err = pcall(oUpdate, self)
-
             CA.HideAvatars = oHide
-
         end
 
         local oRecv = CA.OnReceiveData
-
         CA.OnReceiveData = function(self, uid, data)
-
-            if not _G.LobbyCosmeticEnabled then
-
-                return oRecv(self, uid, data)
-
-            end
-
-            if uid == self.SelfUID and tostring(uid) == tostring(DataMgr.roleData.uid) then
-
+            if F.isLobbyLeftPage() and uid == self.SelfUID and tostring(uid) == tostring(DataMgr.roleData.uid) then
                 if data then
-
-                    applyInjectedPspace(data)
-
+                    F.applyInjectedPspace(data)
                 else
-
-                    data = buildLocalRoleDataForCoupleAvatar()
-
+                    data = F.buildLocalRoleDataForCoupleAvatar()
                 end
-
             end
-
             return oRecv(self, uid, data)
-
         end
-
     end)
 
     pcall(function()
-
         if not EventSystem or not EventSystem.registEvent then return end
-
         if EVENTTYPE_LOBBY and EVENTID_SWITCHTO_PAGE_START then
-
             EventSystem:registEvent(EVENTTYPE_LOBBY, EVENTID_SWITCHTO_PAGE_START, function(_, _, toPage)
-
-                if not _G.LobbyCosmeticEnabled then return end
-
                 if ENUM_LobbyPageType and toPage == ENUM_LobbyPageType.Left then
-
-                    syncWeaponCacheFromLobby()
-
+                    F.syncWeaponCacheFromLobby()
                     SOCIAL.lastHandSkin = nil
-
-                    local o = resolveLobbyOutfitRes()
-
-                    if o then rememberLobbyOutfitRes(o) end
-
-                    patchSelfWearCache(true)
-
+                    local o = F.resolveLobbyOutfitRes()
+                    if o then F.rememberLobbyOutfitRes(o) end
+                    F.patchSelfWearCache(true)
                     SOCIAL.forceAvatarRedraw = true
-
                 end
-
             end)
-
         end
-
         if EVENTTYPE_LOBBY and EVENTID_SWITCHTO_PAGE_END then
-
             EventSystem:registEvent(EVENTTYPE_LOBBY, EVENTID_SWITCHTO_PAGE_END, function(_, _, _, toPage)
-
-                if not _G.LobbyCosmeticEnabled then return end
-
                 if ENUM_LobbyPageType and toPage == ENUM_LobbyPageType.Left then
-
-                    syncWeaponCacheFromLobby()
-
+                    F.syncWeaponCacheFromLobby()
                     SOCIAL.lastHandSkin = nil
-
-                    socialDebounce(0.45, function()
-
-                        onSocialWearDirty(true)
-
+                    F.socialDebounce(0.45, function()
+                        F.onSocialWearDirty(true)
                     end)
-
                 elseif ENUM_LobbyPageType and toPage == ENUM_LobbyPageType.Mid then
-
                     SOCIAL.wearPatchKey = nil
-
-                    socialDebounce(0.35, reapplyLobbyEquipped)
-
+                    F.invalidateLobbyResolved()
+                    if not LOBBY.reapplyDone then
+                        F.socialDebounce(0.5, F.scheduleLobbyReapplyOnce)
+                    end
                 end
-
             end)
-
         end
-
         if EVENTTYPE_LOBBY_SOCIAL and EVENTID_GOT_SOCIAL_LOBBY_SHOW_DATA then
-
             EventSystem:registEvent(EVENTTYPE_LOBBY_SOCIAL, EVENTID_GOT_SOCIAL_LOBBY_SHOW_DATA, function(_, _, nUId)
-
-                if not _G.LobbyCosmeticEnabled then return end
-
                 if tonumber(nUId) == tonumber(DataMgr.roleData.uid) then
-
-                    socialDebounce(0.2, function() patchSelfWearCache(false) end)
-
+                    F.socialDebounce(0.2, function() F.patchSelfWearCache(false) end)
                 end
-
             end)
-
         end
-
         if EVENTTYPE_WARDROBE and EVENTID_WARDROBE_UPDATE_CURRENT_PUT_ON_GUN then
-
             EventSystem:registEvent(EVENTTYPE_WARDROBE, EVENTID_WARDROBE_UPDATE_CURRENT_PUT_ON_GUN, function()
-
-                if not _G.LobbyCosmeticEnabled then return end
-
                 SOCIAL.wearPatchKey = nil
-
                 SOCIAL.snapshotKey = nil
-
-                syncWeaponCacheFromLobby()
-
-                if ENUM_LobbyPageType and getLobbyCurPage() == ENUM_LobbyPageType.Left then
-
-                    socialDebounce(0.25, function() onSocialWearDirty(true) end)
-
+                F.syncWeaponCacheFromLobby()
+                
+                local curPage = ENUM_LobbyPageType and F.getLobbyCurPage()
+                if curPage == ENUM_LobbyPageType.Left then
+                    F.socialDebounce(0.25, function() F.onSocialWearDirty(true) end)
                 end
-
+                
+                -- [FIX LỖI VIP] Tự động đắp lại Skin Mod khi game có dấu hiệu update súng ở sảnh
+                F.socialDebounce(0.3, function()
+                    if F.reapplyLobbyEquipped then F.reapplyLobbyEquipped() end
+                end)
             end)
-
         end
-
     end)
 
     pcall(function()
-
         local lds = require("client.slua.logic.wardrobe.logic_display_setting")
-
         local oSwitch = lds.SwitchGun
-
         lds.SwitchGun = function(...)
-
             local r = oSwitch(...)
-
             SOCIAL.wearPatchKey = nil
-
-            if ENUM_LobbyPageType and getLobbyCurPage() == ENUM_LobbyPageType.Left then
-
-                socialDebounce(0.2, function() onSocialWearDirty(true) end)
-
+            
+            local curPage = ENUM_LobbyPageType and F.getLobbyCurPage()
+            if curPage == ENUM_LobbyPageType.Left then
+                F.socialDebounce(0.2, function() F.onSocialWearDirty(true) end)
             end
-
+            
+            -- [FIX LỖI VIP] Khi Click vào ô vũ khí ở Sảnh, đợi game đổi súng gốc xong thì 0.3s sau đắp skin Mod lên lại
+            F.socialDebounce(0.3, function()
+                if F.reapplyLobbyEquipped then F.reapplyLobbyEquipped() end
+            end)
+            
             return r
-
         end
-
     end)
-
 end
 
-local function hookDepotInit()
-
+function F.hookDepotInit()
     pcall(function()
-
         local WDE = require("client.slua.logic.wardrobe.WardrobeDataEntity")
-
+        if WDE._AddOutfitInitHooked then return end
+        WDE._AddOutfitInitHooked = true
         local orig = WDE.InitData
-
         WDE.InitData = function(self, pkg)
-
             orig(self, pkg)
-
-            injectAll(self)
-
-            refreshWardrobe()
-
+            _G.AddOutfitUnexpireDone = false
+            pcall(function()
+                if F.injectAll(self) then
+                    F.scheduleInjectRefresh()
+                    LOBBY.reapplyDone = false
+                    LOBBY.reapplyScheduled = false
+                    F.scheduleLobbyReapplyOnce()
+                end
+            end)
         end
-
     end)
-
 end
 
-local function hookWardrobeData()
-
+function F.hookWardrobeData()
     pcall(function()
-
         local wd = require("client.slua.logic.wardrobe.wardrobe_data")
-
+        if wd._AddOutfitDataHooked then return end
+        wd._AddOutfitDataHooked = true
         local function wrapGet(name)
-
             local o = wd[name]
-
             if not o then return end
-
             wd[name] = function(self, insID, ...)
-
                 insID = tonumber(insID)
-
-                if isInjectedIns(insID) then
-
-                    local e = getEntity()
-
-                    if e then return e:GetDataByInsID(insID) end
-
+                local r
+                if F.isInjectedIns(insID) then
+                    local e = F.getEntity()
+                    if e then r = e:GetDataByInsID(insID) end
+                else
+                    r = o(self, insID, ...)
                 end
-
-                return o(self, insID, ...)
-
+                if r and (F.isInjectedIns(insID) or F.isInjectedRes(r.resID or r.res_id)) then
+                    r.expire_ts = 0
+                    r.expireTS = 0
+                    r.valid_hours = 0
+                end
+                return r
             end
-
         end
-
         wrapGet("GetHallDepotItemDataByInsID")
-
         wrapGet("GetValidHallDepotItemDataByInsID")
-
-        if wd.GetItemIDByInsID then
-
-            local o_gii = wd.GetItemIDByInsID
-
-            wd.GetItemIDByInsID = function(self, insID)
-
-                insID = tonumber(insID)
-
-                if isInjectedIns(insID) then return R.insToRes[insID] end
-
-                return o_gii(self, insID)
-
-            end
-
-        end
-
-        if wd.GetItemSource then
-
-            local o_gs = wd.GetItemSource
-
-            wd.GetItemSource = function(self, insID)
-
-                insID = tonumber(insID)
-
-                if isInjectedIns(insID) then return EWardrobeDataSource.Wardrobe end
-
-                return o_gs(self, insID)
-
-            end
-
-        end
-
         local function wrapBool(name)
-
             local o = wd[name]
-
             if not o then return end
-
             wd[name] = function(self, id, ...)
-
-                if isInjectedRes(tonumber(id)) or isInjectedIns(tonumber(id)) then return true end
-
+                if F.isInjectedRes(tonumber(id)) or F.isInjectedIns(tonumber(id)) then return true end
                 return o(self, id, ...)
-
             end
-
         end
-
         wrapBool("HasItem")
-
         wrapBool("HasValidItem")
-
         wrapBool("CheckHasPermanentItem")
-
     end)
-
 end
 
-local function hookPageFilter()
-
+function F.hookPageFilter()
     pcall(function()
-
         local wl = require("client.slua.logic.wardrobe.logic_wardrobe_new")
-
+        if wl._AddOutfitPageFilterHooked then return end
+        wl._AddOutfitPageFilterHooked = true
         local o1 = wl.IsValidCurrentPageItem
-
         wl.IsValidCurrentPageItem = function(self, mainTab, subTab, v, t)
-
-            if v and isInjectedRes(v.resID) and mainTab == 1 then
-
-                if v.expireTS == 0 or not t or t < v.expireTS then
-
-                    local st = v.itemSubType or subType(cfg(v.resID))
-
-                    if st == ST_TOP then
-
-                        local full = isFullSuitRes(v.resID, v)
-
-                        if subTab == WARDROBE_TAB_SUIT and full then return true end
-
-                        if subTab == WARDROBE_TAB_CLOTHES and not full then return true end
-
-                    end
-
-                    if v.subTabType == subTab then return true end
-
+            if v and F.isInjectedRes(v.resID) then
+                local itemTab = tonumber(v.subTabType) or F.wardrobeTab(v.resID)
+                if itemTab and itemTab == subTab then
+                    if mainTab == PAGE_AVATAR or mainTab == PAGE_VEHICLE then return true end
+                    if mainTab == PAGE_PARACHUTE and F.isHallThemeRes(v.resID) then return true end
                 end
-
             end
-
             return o1(self, mainTab, subTab, v, t)
-
         end
-
         local o2 = wl.IsCanUse
-
         wl.IsCanUse = function(self, resId)
-
-            if isInjectedRes(resId) then return true end
-
+            if F.isInjectedRes(resId) then return true end
             return o2(self, resId)
-
         end
-
         local o3 = wl.IsCharacterUse
-
         wl.IsCharacterUse = function(self, resId)
-
-            if isInjectedRes(resId) then return true end
-
+            if F.isInjectedRes(resId) then return true end
             return o3(self, resId)
-
         end
-
         local o4 = wl.GetWardrobeInsIdByResId
-
         wl.GetWardrobeInsIdByResId = function(self, resid)
-
             resid = tonumber(resid)
-
-            if isInjectedRes(resid) then return R.resToIns[resid] end
-
+            if F.isInjectedRes(resid) then return R.resToIns[resid] end
             return o4(self, resid)
-
         end
-
     end)
-
 end
 
-local function hookArmory()
-
+function F.hookArmory()
     pcall(function()
-
         local Arm = require("client.logic.armory.logic_armory")
-
-        local og = Arm.GetSkinListByWeaponID
-
-        Arm.GetSkinListByWeaponID = function(wid)
-
-            local t = og(wid) or {}
-
-            for resID, _ in pairs(R.resToIns) do
-
-                if tonumber(weaponIdFromSkin(resID)) == tonumber(wid) then
-
-                    t[resID] = t[resID] or { is_open = 1 }
-
-                end
-
-            end
-
-            return t
-
-        end
-
+        if Arm._AddOutfitArmoryHooked then return end
+        Arm._AddOutfitArmoryHooked = true
         local oa = Arm.get_weapon_skin_list_rsp
-
         Arm.get_weapon_skin_list_rsp = function(a, b, c, d)
-
             oa(a, b, c, d)
-
-            for resID, insID in pairs(R.resToIns) do injectArmory(resID, insID) end
-
+            F.mergeInjectedArmorySkins()
         end
-
         local oi = Arm.install_weapon_skin
-
         Arm.install_weapon_skin = function(cd, wid, ins)
-
             ins = tonumber(ins)
-
-            if isInjectedIns(ins) then
-
-                wid = tonumber(weaponIdFromSkin(R.insToRes[ins]) or wid)
-
-                equipWeaponSkin(wid, ins)
-
+            if F.isWeaponSkinIns(ins) then
+                wid = tonumber(F.weaponIdFromSkin(R.insToRes[ins]) or wid)
+                F.equipWeaponSkin(wid, ins)
                 return
-
             end
-
             return oi(cd, wid, ins)
-
         end
-
     end)
-
     pcall(function()
-
         local AH = require("client.network.Protocol.ArmoryHandler")
-
+        if AH._AddOutfitArmorySendHooked then return end
+        AH._AddOutfitArmorySendHooked = true
         local o = AH.send_install_weapon_skin
-
         AH.send_install_weapon_skin = function(cd, wid, ins)
-
             ins = tonumber(ins)
-
-            if isInjectedIns(ins) then
-
-                wid = tonumber(weaponIdFromSkin(R.insToRes[ins]) or wid)
-
-                equipWeaponSkin(wid, ins)
-
+            if F.isWeaponSkinIns(ins) then
+                wid = tonumber(F.weaponIdFromSkin(R.insToRes[ins]) or wid)
+                F.equipWeaponSkin(wid, ins)
                 return
-
             end
-
             return o(cd, wid, ins)
-
         end
-
     end)
-
 end
 
-local function hookGunSkinId()
-
+function F.hookGunSkinId()
     pcall(function()
-
         local wgl = require("client.slua.logic.wardrobe.logic_wardrobe_gun")
-
+        if wgl._AddOutfitGunSkinHooked then return end
+        wgl._AddOutfitGunSkinHooked = true
         local o = wgl.GetSkinIdByWeaponID
-
         wgl.GetSkinIdByWeaponID = function(self, wid)
-
-            local c = cache()
-
+            local c = F.cache()
             local w = c.weapons[wid]
-
-            if w and isInjectedIns(w.insID) then return w.insID end
-
+            if w and F.isWeaponSkinIns(w.insID) then return w.insID end
             local Arm = require("client.logic.armory.logic_armory")
-
             if Arm.rsp_list and Arm.rsp_list.install_list and Arm.rsp_list.install_list[wid] then
-
                 local sid = Arm.rsp_list.install_list[wid].skin_id
-
-                if sid and isInjectedIns(sid) then return sid end
-
+                if sid and F.isWeaponSkinIns(sid) then return sid end
             end
-
             return o(self, wid)
-
         end
-
     end)
-
 end
 
-local function hookPutOn()
-
+function F.hookPutOn()
     pcall(function()
-
         local WRH = require("client.network.Protocol.WardRobeHandler")
-
+        if WRH._AddOutfitPutOnHooked then return end
+        WRH._AddOutfitPutOnHooked = true
         local o = WRH.send_depot_put_on_req
-
         WRH.send_depot_put_on_req = function(insID, extra)
-
             insID = tonumber(insID)
-
-            if isInjectedIns(insID) then
-
-                local resID = R.insToRes[insID]
-
-                local c = cfg(resID)
-
-                local st = subType(c)
-
-                local kind = getClothKind(resID)
-
-                if kind then
-
-                    putOnCloth(insID)
-
-                    return
-
-                end
-
-                if GUN_SUB[st] then
-
-                    local wid = weaponIdFromSkin(resID)
-
-                    if wid then equipWeaponSkin(wid, insID) end
-
-                    return
-
-                end
-
-                if st == MELEE_ID then
-
-                    equipWeaponSkin(MELEE_ID, insID)
-
-                    return
-
-                end
-
-                local wd = require("client.slua.logic.wardrobe.wardrobe_data")
-
-                local d = wd:GetHallDepotItemDataByInsID(insID)
-
-                if d then
-
-                    saveEquip(resID, insID)
-                                        WRH.on_depot_put_on_rsp(NET_OK, { res_id = resID, count = 1, instid = insID }, nil, 1, insID, 0, extra)
-
-                end
-
-                return
-
-            end
-
+            if F.tryLocalWearByIns(insID) then return end
             return o(insID, extra)
-
         end
-
     end)
-
 end
 
-local function hookWeaponWear()
-
+function F.hookPutDown()
     pcall(function()
-
-        local HT = require("client.logic.lobby.hall_theme_utils")
-
-        local o = HT.IsWeaponWear
-
-        HT.IsWeaponWear = function(insId)
-
-            insId = tonumber(insId)
-
-            if isInjectedIns(insId) then
-
-                local c = cache()
-
-                local Arm = require("client.logic.armory.logic_armory")
-
-                for wid, w in pairs(c.weapons) do
-
-                    if tonumber(w.insID) == insId then
-
-                        if Arm.rsp_list and Arm.rsp_list.install_list and Arm.rsp_list.install_list[wid] then
-
-                            return tonumber(Arm.rsp_list.install_list[wid].skin_id) == insId
-
-                        end
-
-                        return true
-
-                    end
-
+        local WRH = require("client.network.Protocol.WardRobeHandler")
+        if WRH._AddOutfitPutDownHooked then return end
+        WRH._AddOutfitPutDownHooked = true
+        local o = WRH.send_depot_put_down_req
+        WRH.send_depot_put_down_req = function(insID)
+            if F.isInjectedIns(tonumber(insID)) then
+                F.takeOffInjected(insID)
+                return
+            end
+            return o(insID)
+        end
+        local ob = WRH.send_depot_batch_put_down_req
+        WRH.send_depot_batch_put_down_req = function(instid_list)
+            local rest = {}
+            for _, id in ipairs(instid_list or {}) do
+                if F.isInjectedIns(tonumber(id)) then
+                    F.takeOffInjected(id)
+                else
+                    rest[#rest + 1] = id
                 end
-
             end
-
-            return o(insId)
-
+            if #rest > 0 then return ob(rest) end
         end
-
     end)
-
 end
 
-local function hookAvatarValid()
-
+function F.hookVehicleSwitchEffect()
+    if _G.AddOutfitVehSwitchHooked then return end
     pcall(function()
+        local VAC = require("GameLua.GameCore.Module.Vehicle.Component.VehicleAvatarComponent")
+        local impl = VAC and VAC.__inner_impl
+        if not impl or impl._AddOutfitVehSwitchHooked then return end
+        impl._AddOutfitVehSwitchHooked = true
 
-        local path = "GameLua.Mod.Library.GamePlay.Avatar.Component.CharacterAvatarComponent"
-
-        local comp = require(path)
-
-        if comp and comp.CheckItemValid then
-
-            local o = comp.CheckItemValid
-
-            comp.CheckItemValid = function(self, resID)
-
-                if isInjectedRes(resID) then return true end
-
-                return o(self, resID)
-
-            end
-
+        if not _G.AddOutfitVehOrigCanSwitch then
+            _G.AddOutfitVehOrigCanSwitch = impl.CheckCanPlaySkinSwitchEffect
+        end
+        impl.CheckCanPlaySkinSwitchEffect = function(self, curVehicleId, lastVehicleId)
+            if self.IsLobbyActor and self:IsLobbyActor() then return false end
+            if not F.isInRealMatch() then return false end
+            return true
         end
 
+        if not _G.AddOutfitVehOrigShowSwitch then
+            _G.AddOutfitVehOrigShowSwitch = impl.ShowVehicleSwitchEffect
+        end
+        impl.ShowVehicleSwitchEffect = function(self)
+            if self.IsLobbyActor and self:IsLobbyActor() then return false end
+            if not F.isInRealMatch() then return false end
+            if not self.curSwitchEffectId or self.curSwitchEffectId <= 0 then
+                self.curSwitchEffectId = VEH_SWITCH_EFFECT_ID
+            end
+            local vehicleActor = self:GetOwner()
+            if not slua.isValid(vehicleActor) then return false end
+            if self.uSwitchEffectActor then
+                self:StopSkinSwitchEffect()
+                pcall(function() self.uSwitchEffectActor:K2_DestroyActor() end)
+                self.uSwitchEffectActor = nil
+            end
+            if not self.lastEquipedAvatarId or self.lastEquipedAvatarId <= 0 then
+                local defId = 0
+                pcall(function() defId = self:GetDefaultAvatarID() or 0 end)
+                self.lastEquipedAvatarId = vehicleActor.ClientUsedAvatarID or defId or 0
+            end
+            local currentAvatarID = vehicleActor.ClientUsedAvatarID or self.lastEquipedAvatarId or 0
+            local bIsLobbyActor = self:IsLobbyActor()
+            local world = slua_GameFrontendHUD:GetWorld()
+            local VehiclePlateLicenseUtil = require("GameLua.Activity.Commercialize.GamePlay.Vehicle.VehiclePlateLicenseUtil")
+            local SkinSwitchEffectActorPath = VehiclePlateLicenseUtil.GetSwitchEffectActorPath()
+            local BP_DissolveVehicleClass = import(SkinSwitchEffectActorPath)
+            self.uSwitchEffectActor = world:SpawnActor(BP_DissolveVehicleClass, nil, nil, nil)
+            if not slua.isValid(self.uSwitchEffectActor) then
+                self.uSwitchEffectActor = nil
+                return false
+            end
+            self.uSwitchEffectActor:K2_AttachToActor(vehicleActor, "None", 1, 1, 1, false)
+            self.uSwitchEffectActor:K2_SetActorRelativeLocation(FVector(0, 0, 0), false, nil, false)
+            self.uSwitchEffectActor:K2_SetActorRelativeRotation(FRotator(0, 0, 0), false, nil, false)
+            pcall(function() self:HideParticles() end)
+            self:ChangeFakeSwitchVehicleAvatar(self.uSwitchEffectActor.Mesh, self.lastEquipedAvatarId)
+            self.uSwitchEffectActor:SetAnimInsAndAnimState(self.uOldVehicleMeshAnimClass, vehicleActor)
+            self.uSwitchEffectActor:StartVehicleSwitchEffect(
+                vehicleActor, self.curSwitchEffectId, self.lastEquipedAvatarId, currentAvatarID, bIsLobbyActor)
+            self.uOldVehicleMeshAnimClass = nil
+            return true
+        end
+
+        if not _G.AddOutfitVehOrigBeginPlay then
+            _G.AddOutfitVehOrigBeginPlay = impl.ReceiveBeginPlay
+        end
+        local oBegin = _G.AddOutfitVehOrigBeginPlay
+        impl.ReceiveBeginPlay = function(self)
+            oBegin(self)
+            pcall(function()
+                if self.uSwitchEffectActor then
+                    self:StopSkinSwitchEffect()
+                    pcall(function() self.uSwitchEffectActor:K2_DestroyActor() end)
+                    self.uSwitchEffectActor = nil
+                end
+                self.lastEquipedAvatarId = 0
+                if self.IsLobbyActor and self:IsLobbyActor() then
+                    self.curSwitchEffectId = 0
+                elseif F.isInRealMatch() then
+                    self.curSwitchEffectId = VEH_SWITCH_EFFECT_ID
+                else
+                    self.curSwitchEffectId = 0
+                end
+            end)
+        end
+
+        if impl.LuaIsAssetsAlreadyAvailable and not _G.AddOutfitVehOrigAssets then
+            _G.AddOutfitVehOrigAssets = impl.LuaIsAssetsAlreadyAvailable
+            impl.LuaIsAssetsAlreadyAvailable = function(self, avatarId)
+                if F.isVehicleSkinAllowed(tonumber(avatarId)) then return true end
+                return _G.AddOutfitVehOrigAssets(self, avatarId)
+            end
+        end
+
+        _G.AddOutfitVehSwitchHooked = true
     end)
-
 end
 
-local function getWAC(char)
+function F.hookVehicleChassisLight()
+    if _G.AddOutfitVehChassisHooked then return end
+    pcall(function()
+        local LIC = require("GameLua.Activity.Commercialize.Actor.ActorComponent.BP_VehicleLicenseComponentBase")
+        if LIC and LIC.CheckHasVehicleDownloaded and not _G.AddOutfitVehOrigLicDownload then
+            _G.AddOutfitVehOrigLicDownload = LIC.CheckHasVehicleDownloaded
+            LIC.CheckHasVehicleDownloaded = function(self, itemID)
+                local id = tonumber(itemID)
+                if F.isVehicleSkinAllowed(id) or F.isChassisLightId(id) then return true end
+                return _G.AddOutfitVehOrigLicDownload(self, itemID)
+            end
+        end
+    end)
+    pcall(function()
+        local LVF = ModuleManager.GetModule(ModuleManager.LobbyModuleConfig.LogicVehicleExtendedFeature)
+        if not LVF or LVF._AddOutfitChassisHooked then return end
+        LVF._AddOutfitChassisHooked = true
 
-    local w = char and char.GetCurrentWeapon and char:GetCurrentWeapon()
+        if not _G.AddOutfitVehOrigGetFeature then
+            _G.AddOutfitVehOrigGetFeature = LVF.CheckHasGetFeatureItem
+        end
+        LVF.CheckHasGetFeatureItem = function(self, featureId)
+            if F.isChassisLightId(featureId) then return true end
+            return _G.AddOutfitVehOrigGetFeature(self, featureId)
+        end
 
-    if slua.isValid(w) and slua.isValid(w.WeaponAvatarComponent) then
+        if not _G.AddOutfitVehOrigEquippedFeature then
+            _G.AddOutfitVehOrigEquippedFeature = LVF.CheckHasEquippedItem
+        end
+        LVF.CheckHasEquippedItem = function(self, featureId, vehicleId)
+            -- [FIX VIP] Bổ sung check điều kiện ModSkin
+            if _G.LexusConfig and _G.LexusConfig.ModSkin ~= false then
+                if F.isChassisLightId(featureId) then
+                    return F.getDesiredChassisLight(vehicleId) == tonumber(featureId)
+                end
+            end
+            return _G.AddOutfitVehOrigEquippedFeature(self, featureId, vehicleId)
+        end
 
-        return w.WeaponAvatarComponent
+        if not _G.AddOutfitVehOrigEquipChassisData then
+            _G.AddOutfitVehOrigEquipChassisData = LVF.GetEquipedChassisLightData
+        end
+        LVF.GetEquipedChassisLightData = function(self, vehicleId, source)
+            -- [FIX VIP] Bổ sung check điều kiện ModSkin
+            if _G.LexusConfig and _G.LexusConfig.ModSkin ~= false then
+                local our = F.getDesiredChassisLight(vehicleId)
+                if our then return our end
+            end
+            return _G.AddOutfitVehOrigEquipChassisData(self, vehicleId, source)
+        end
 
+        if not _G.AddOutfitVehOrigChassisLightData then
+            _G.AddOutfitVehOrigChassisLightData = LVF.GetVehicleChassisLightData
+        end
+        LVF.GetVehicleChassisLightData = function(self, uid, vehicleId, position, source)
+            -- [FIX VIP] Bổ sung check điều kiện ModSkin
+            if _G.LexusConfig and _G.LexusConfig.ModSkin ~= false then
+                if uid and DataMgr and DataMgr.roleData and tonumber(uid) == tonumber(DataMgr.roleData.uid) then
+                    local our = F.getDesiredChassisLight(vehicleId)
+                    if our then return our end
+                end
+            end
+            return _G.AddOutfitVehOrigChassisLightData(self, uid, vehicleId, position, source)
+        end
+
+        if not _G.AddOutfitVehOrigPutOnFeature then
+            _G.AddOutfitVehOrigPutOnFeature = LVF.PutOnVehicleFeature
+        end
+        LVF.PutOnVehicleFeature = function(self, featureId, vehicleId)
+            featureId = tonumber(featureId)
+            vehicleId = tonumber(vehicleId)
+            if F.isChassisLightId(featureId) then
+                F.saveChassisLight(vehicleId, featureId)
+                self.equip_chassis_light = self.equip_chassis_light or {}
+                if vehicleId and vehicleId > 0 then
+                    self.equip_chassis_light[vehicleId] = featureId
+                end
+                return
+            end
+            return _G.AddOutfitVehOrigPutOnFeature(self, featureId, vehicleId)
+        end
+
+        if not _G.AddOutfitVehOrigPutOffFeature then
+            _G.AddOutfitVehOrigPutOffFeature = LVF.PutOffVehicleFeature
+        end
+        LVF.PutOffVehicleFeature = function(self, featureId, vehicleId)
+            featureId = tonumber(featureId)
+            vehicleId = tonumber(vehicleId)
+            if F.isChassisLightId(featureId) then
+                PERSIST.configChassisLightMap = PERSIST.configChassisLightMap or {}
+                if vehicleId and vehicleId > 0 then
+                    PERSIST.configChassisLightMap[vehicleId] = nil
+                end
+                if self.equip_chassis_light and vehicleId then
+                    self.equip_chassis_light[vehicleId] = nil
+                end
+                F.persistMarkDirty()
+                return
+            end
+            return _G.AddOutfitVehOrigPutOffFeature(self, featureId, vehicleId)
+        end
+    end)
+    _G.AddOutfitVehChassisHooked = true
+end
+
+function F.hookVehicles()
+    F.hookVehicleSwitchEffect()
+    F.hookVehicleChassisLight()
+    pcall(function()
+        local WV = require("client.slua.umg.Wardrobe.subtab_vehicles")
+        if not WV or WV._AddOutfitVehClickHooked then return end
+        WV._AddOutfitVehClickHooked = true
+        local oClick = WV.ClickItem
+        WV.ClickItem = function(self, vehicleSkin, bForceUsing)
+            if vehicleSkin and F.isInjectedRes(vehicleSkin.res_id) then
+                vehicleSkin.expireTS = 0
+                vehicleSkin.expire_ts = 0
+            end
+            return oClick(self, vehicleSkin, bForceUsing)
+        end
+        local oDrop = WV.OnVehicleSlotDrop
+        if oDrop then
+            WV.OnVehicleSlotDrop = function(self, DragWidget, Index, DragDropData)
+                pcall(function()
+                    local ins = DragDropData and DragDropData.ins_id
+                    if F.isInjectedIns(tonumber(ins)) then
+                        F.ensureInjectedItemAlive(nil, nil, ins)
+                    end
+                end)
+                return oDrop(self, DragWidget, Index, DragDropData)
+            end
+        end
+    end)
+    pcall(function()
+        local WNH = require("client.network.Protocol.WardrobeNewHandler")
+        if WNH._AddOutfitVehicleHooked then return end
+        WNH._AddOutfitVehicleHooked = true
+        local oMod = WNH.send_depot_modify_combat_vehicle_req
+        WNH.send_depot_modify_combat_vehicle_req = function(instid, slot_index, ope_type)
+            if F.modifyInjectedVehicleSlot(instid, slot_index, ope_type == true) then return end
+            return oMod(instid, slot_index, ope_type)
+        end
+        local oRsp = WNH.on_depot_modify_combat_vehicle_rsp
+        WNH.on_depot_modify_combat_vehicle_rsp = function(err_code, knapsack_vst)
+            if err_code == 0 or err_code == NET_OK then
+                knapsack_vst = F.mergeInjectedIntoVehicleSlotList(knapsack_vst)
+            end
+            oRsp(err_code, knapsack_vst)
+            if err_code == 0 or err_code == NET_OK then
+                F.syncVehicleSlotsToDataMgr()
+                F.equipVehicleTypesFromConfig(PERSIST.configVehicleSlots)
+                if not (_G.AddOutfitLobbyVeh and _G.AddOutfitLobbyVeh.manual) then
+                    pcall(F.applyVehicleSkinsToPC)
+                end
+                F.persistMarkDirty()
+            end
+        end
+    end)
+    pcall(function()
+        local gsm = ModuleManager.GetModule(ModuleManager.LobbyModuleConfig.golden_suit_module)
+        if gsm and gsm.VehicleNeedClothes and not gsm._AddOutfitVehClothesHooked then
+            gsm._AddOutfitVehClothesHooked = true
+            local o = gsm.VehicleNeedClothes
+            gsm.VehicleNeedClothes = function(self, vehicleId)
+                vehicleId = tonumber(vehicleId)
+                if vehicleId and F.isInjectedRes(vehicleId) then return 0 end
+                return o(self, vehicleId)
+            end
+        end
+    end)
+    pcall(function()
+        local mod = require("GameLua.Activity.Commercialize.GamePlay.CommerAvatarDataUtil")
+        if mod._FillVehicleSkinList then
+            if not _G.AddOutfitVehFillOrig then
+                _G.AddOutfitVehFillOrig = mod._FillVehicleSkinList
+            end
+            local o = _G.AddOutfitVehFillOrig
+            mod._FillVehicleSkinList = function(self, playerInfo, uPlayerController)
+                F.mergeVstIntoPlayerInfo(playerInfo)
+                return o(self, playerInfo, uPlayerController)
+            end
+            mod._AddOutfitFillVehHooked = true
+        end
+    end)
+    pcall(function()
+        local classMod = require("GameLua.Mod.BaseMod.Client.InGameUI.VehicleControl.VehicleSkinItem")
+        if not classMod or not classMod.__inner_impl then return end
+        local impl = classMod.__inner_impl
+        if not _G.AddOutfitVehOrigClick then
+            _G.AddOutfitVehOrigClick = impl.OnClickSkinButton
+        end
+        local oClick = _G.AddOutfitVehOrigClick
+        impl.OnClickSkinButton = function(self)
+            local resID = tonumber(self.resID)
+            if resID and resID > 0 then
+                if F.matchApplyVehicleSkin(resID) then
+                    pcall(function()
+                        if EVENTYPE_INGAME_VEHICLE_CONTROL_PANEL and EVENTID_CHANGE_VEHICLESKIN_BUTTON_CLICK then
+                            EventSystem:postEvent(EVENTYPE_INGAME_VEHICLE_CONTROL_PANEL, EVENTID_CHANGE_VEHICLESKIN_BUTTON_CLICK)
+                        end
+                    end)
+                end
+                return
+            end
+            return oClick(self)
+        end
+        if not _G.AddOutfitVehOrigRefresh then
+            _G.AddOutfitVehOrigRefresh = impl.OnRefresh
+        end
+        local oRefresh = _G.AddOutfitVehOrigRefresh
+        impl.OnRefresh = function(self, resID, selectIndex)
+            oRefresh(self, resID, selectIndex)
+            if self.resID and tonumber(self.resID) and tonumber(self.resID) > 0 then
+                if F.isResourcesReady(self.resID) then
+                    pcall(function()
+                        local PufferConst = require("client.slua.logic.download.puffer_const")
+                        self.dowloadState = PufferConst.ENUM_DownloadState.Done
+                        self.UIRoot.Image_Download:SetWidgetVisibility(UEnums.ESlateVisibility.Collapsed)
+                        self:SetWidgetVisible(self.UIRoot.Image_Mask, false)
+                    end)
+                else
+                    F.requestResourceDownload(self.resID)
+                end
+            end
+        end
+        classMod._AddOutfitSkinClickHooked = true
+    end)
+    pcall(function()
+        local utilMod = require("GameLua.Activity.Commercialize.GamePlay.Vehicle.VehiclePlateLicenseUtil")
+        if utilMod.CheckHasUnLockFeature and not utilMod._AddOutfitVehPlateHooked then
+            utilMod._AddOutfitVehPlateHooked = true
+            local orig = utilMod.CheckHasUnLockFeature
+            utilMod.CheckHasUnLockFeature = function(ft, uid, itemId)
+                local id = tonumber(itemId)
+                if F.isVehicleSkinAllowed(id) or F.isChassisLightId(id) then return true end
+                return orig(ft, uid, itemId)
+            end
+        end
+    end)
+    pcall(function()
+        local panelMod = require("GameLua.Mod.BaseMod.Client.InGameUI.VehicleControl.VehicleSkinAndMusicPanel")
+        if panelMod and panelMod.__inner_impl and not panelMod._AddOutfitInitSkinHooked then
+            panelMod._AddOutfitInitSkinHooked = true
+            local o = panelMod.__inner_impl.InitSkinList
+            panelMod.__inner_impl.InitSkinList = function(self)
+                F.applyVehicleSkinsToPC(F.getPC())
+                return o(self)
+            end
+        end
+    end)
+    pcall(function()
+        local VUC = require("GameLua.GameCore.Module.Vehicle.Component.VehicleUserComponent")
+        if not VUC then return end
+        if not _G.AddOutfitVehOrigEnter then
+            _G.AddOutfitVehOrigEnter = VUC.SendUIMsgWhenEnterVehicleCompleted
+        end
+        local oEnter = _G.AddOutfitVehOrigEnter
+        VUC.SendUIMsgWhenEnterVehicleCompleted = function(self)
+            oEnter(self)
+            pcall(function()
+                if slua.isValid(self.Vehicle) then
+                    F.autoApplyVehicleSkinOnEnter(self.Vehicle)
+                end
+            end)
+        end
+        VUC._AddOutfitEnterVehHooked = true
+    end)
+end
+
+function F.hookWeaponWear()
+    pcall(function()
+        local HT = require("client.logic.lobby.hall_theme_utils")
+        local o = HT.IsWeaponWear
+        HT.IsWeaponWear = function(insId)
+            insId = tonumber(insId)
+            if F.isInjectedIns(insId) then
+                local c = F.cache()
+                local Arm = require("client.logic.armory.logic_armory")
+                for wid, w in pairs(c.weapons) do
+                    if tonumber(w.insID) == insId then
+                        if Arm.rsp_list and Arm.rsp_list.install_list and Arm.rsp_list.install_list[wid] then
+                            return tonumber(Arm.rsp_list.install_list[wid].skin_id) == insId
+                        end
+                        return true
+                    end
+                end
+            end
+            return o(insId)
+        end
+    end)
+end
+
+function F.hookNotice()
+    pcall(function()
+        if DataMgr and not DataMgr._AddOutfitExpireHooked then
+            DataMgr._AddOutfitExpireHooked = true
+            local oValid = DataMgr.IsValidTime
+            DataMgr.IsValidTime = function(expireTS)
+                if expireTS == nil or tonumber(expireTS) == 0 then return true end
+                if oValid and oValid(expireTS) then return true end
+                local inMatch = false
+                pcall(function()
+                    inMatch = GameStatus and GameStatus.IsInFightingStatus and GameStatus.IsInFightingStatus()
+                end)
+                if not inMatch then return true end
+                return false
+            end
+        end
+    end)
+end
+
+function F.wrapWardrobeClick(classMod, key)
+    if not classMod or not classMod[key] or classMod["_AddOutfitWrap_" .. key] then return end
+    classMod["_AddOutfitWrap_" .. key] = true
+    local orig = classMod[key]
+    classMod[key] = function(self, widget, index)
+        local itemData = self.LoopScrollGrid_Normal and self.LoopScrollGrid_Normal:GetItemData(index)
+        if itemData then
+            F.clearItemExpire(itemData, itemData.ins_id, itemData.res_id)
+            F.ensureDepotItemValid(itemData.ins_id, itemData.res_id)
+        end
+        return orig(self, widget, index)
     end
+end
 
+function F.hookWardrobeWearClicks()
+    if _G.AddOutfitWearClickHooked then return end
+    _G.AddOutfitWearClickHooked = true
+    F.hookNotice()
+    pcall(function()
+        local avatarClass = require("client.slua.umg.Wardrobe.subtab_avatar")
+        F.wrapWardrobeClick(avatarClass, "OnClickItem")
+        F.wrapWardrobeClick(avatarClass, "ClickAvatarItem")
+    end)
+    pcall(function()
+        local suitClass = require("client.slua.umg.Wardrobe.subtab_suit")
+        F.wrapWardrobeClick(suitClass, "OnClickItem")
+    end)
+    pcall(function()
+        local bagClass = require("client.slua.umg.Wardrobe.subtab_bag")
+        F.wrapWardrobeClick(bagClass, "OnClickItem")
+    end)
+end
+
+function F.hookAvatarValid()
+    pcall(function()
+        local path = "GameLua.Mod.Library.GamePlay.Avatar.Component.CharacterAvatarComponent"
+        local comp = require(path)
+        if comp and comp.CheckItemValid then
+            local o = comp.CheckItemValid
+            comp.CheckItemValid = function(self, resID)
+                if F.isInjectedRes(resID) then return true end
+                return o(self, resID)
+            end
+        end
+    end)
+end
+
+function F.isInRealMatch()
+    local ok, r = pcall(function()
+        return GameStatus and GameStatus.IsInFightingStatus and GameStatus.IsInFightingStatus()
+    end)
+    return ok and r == true
+end
+
+function F.getLocalChar()
+    local ok, GD = pcall(require, "GameLua.GameCore.Data.GameplayData")
+    if not ok or not GD then return nil end
+    local char = GD.GetPlayerCharacter()
+    if char and slua.isValid(char) then return char end
     return nil
-
 end
 
-local function getDesiredOutfit()
+function F.getWAC(char)
+    local w = char and char.GetCurrentWeapon and char:GetCurrentWeapon()
+    if slua.isValid(w) and slua.isValid(w.WeaponAvatarComponent) then
+        return w.WeaponAvatarComponent
+    end
+    return nil
+end
 
+function F.notify(msg)
+    if not DEBUG then return end
+    pcall(function() if ShowNotice then ShowNotice("[AddOutfit] " .. tostring(msg)) end end)
+end
+
+function F.getDesiredOutfit()
     if MATCH_CONFIG.outfitRes and MATCH_CONFIG.outfitRes > 0 then
-
         return MATCH_CONFIG.outfitRes
-
     end
-
-    local c = cache()
-
+    local wornSuitRes
+    pcall(function()
+        local _, res = F.findWornInsBySubType(OUTFIT_SUB, function(r) return F.isSuitRes(r) end)
+        wornSuitRes = tonumber(res)
+    end)
+    if wornSuitRes and wornSuitRes > 0 then return wornSuitRes end
+    local tshirtWorn = false
+    pcall(function()
+        local ins = F.findWornInsBySubType(OUTFIT_SUB, function(r) return F.isTshirtRes(r) end)
+        tshirtWorn = ins ~= nil
+    end)
+    if tshirtWorn then return nil end
+    F.syncBodyCacheFromLobby()
+    local c = F.cache()
     return c.outfitRes
-
 end
 
-local function matchApplyOutfit(char)
-
-    local outfitRes = getDesiredOutfit()
-
-    if not outfitRes then return false end
-
-    local comp = char.CharacterAvatarComp2_BP
-
-    if not slua.isValid(comp) then
-
+function F.matchApplyOutfit(char)
+    local outfitRes = F.getDesiredOutfit()
+    if not outfitRes then return true end
+    if not F.isResourcesReady(outfitRes) then
+        F.requestResourceDownload(outfitRes)
         return false
-
     end
+    local comp = F.getAvatarComp2(char)
+    if not comp then return false end
+    local ok = F.setMakeSkin(comp, outfitRes, F.CUST_SLOT.ClothesEquipemtSlot, { allowPutOn = true })
+    return ok
+end
+
+function F.getDesiredHat()
+    if MATCH_CONFIG.hatRes and tonumber(MATCH_CONFIG.hatRes) > 0 then
+        return tonumber(MATCH_CONFIG.hatRes)
+    end
+    F.syncHatCacheFromLobby()
+    local h = F.cache().hatRes
+    if h and tonumber(h) > 0 then return tonumber(h) end
+    return tonumber(_G.AddOutfitLastLobbyHatRes) or nil
+end
+
+function F.ensureSkinDownload(resID)
+    resID = tonumber(resID)
+    if not resID or resID <= 0 then return end
+    _G.skinIdCache = _G.skinIdCache or {}
+    if not _G.skinIdCache[resID] then
+        F.requestResourceDownload(resID)
+        _G.skinIdCache[resID] = true
+    end
+end
+
+function F.syncGlobalWearSkins()
+    _G.CustSlotType = F.CUST_SLOT
+    _G.skinIdCache = _G.skinIdCache or {}
+    _G.HatSkin = tonumber(F.getDesiredHat()) or 0
+    local outfit = F.getDesiredOutfit()
+    _G.SuitSkin = tonumber(outfit)
+        or tonumber(F.getDesiredWear("tshirtRes", "tshirtRes", "AddOutfitLastLobbyTshirtRes", F.syncBodyCacheFromLobby))
+        or 0
+    _G.PantsSkin = tonumber(F.getDesiredWear("pantsRes", "pantsRes", "AddOutfitLastLobbyPantsRes", F.syncBodyCacheFromLobby)) or 0
+    _G.ShoesSkin = tonumber(F.getDesiredWear("shoesRes", "shoesRes", "AddOutfitLastLobbyShoesRes", F.syncBodyCacheFromLobby)) or 0
+    _G.GlovesSkin = tonumber(F.getDesiredWear("glovesRes", "glovesRes", "AddOutfitLastLobbyGlovesRes", F.syncBodyCacheFromLobby)) or 0
+    _G.MaskSkin = tonumber(F.getDesiredMask()) or 0
+    _G.GlassSkin = tonumber(F.getDesiredGlass()) or 0
+    _G.GliderSkin = tonumber(F.getDesiredGliderRes()) or 0
+    _G.ParachuteSkin = tonumber(F.getDesiredParachuteRes()) or 0
+end
+
+function F.setMakeSkinAtIndex(comp, applyIdx, resID, slotID)
+    resID = tonumber(resID)
+    slotID = tonumber(slotID)
+    applyIdx = tonumber(applyIdx)
+    if not comp or not slua.isValid(comp) or not resID or resID <= 0 or not slotID or applyIdx == nil then
+        return false
+    end
+    local changed = false
+    pcall(function()
+        local net = comp.NetAvatarData
+        if not net then return end
+        local applyData = net.SlotSyncData
+        if not applyData or not slua.isValid(applyData) then return end
+        local equipment = applyData:Get(applyIdx)
+        if equipment and equipment.SlotID == slotID then
+            local cur = tonumber(equipment.ItemId) or tonumber(equipment.ItemID) or 0
+            if cur ~= resID then
+                F.ensureSkinDownload(resID)
+                equipment.ItemId = resID
+                if equipment.ItemID ~= nil then equipment.ItemID = resID end
+                applyData:Set(applyIdx, equipment)
+                changed = true
+            end
+        end
+    end)
+    return changed
+end
+
+function F.applySlotSkinBatch(comp, entries, opts)
+    opts = opts or {}
+    if not comp or not slua.isValid(comp) or not entries then return false end
+    local changed, anyOk = false, false
+    pcall(function()
+        local net = comp.NetAvatarData
+        if not net then return end
+        local applyData = net.SlotSyncData
+        if not applyData or not slua.isValid(applyData) then return end
+        local num = applyData:Num()
+        for _, e in ipairs(entries) do
+            local itemId, slotId = tonumber(e[1]), tonumber(e[2])
+            if itemId and itemId > 0 and slotId then
+                F.ensureSkinDownload(itemId)
+                for i = 0, num - 1 do
+                    local equipment = applyData:Get(i)
+                    if equipment and equipment.SlotID == slotId then
+                        local cur = tonumber(equipment.ItemId) or tonumber(equipment.ItemID) or 0
+                        if cur == itemId then
+                            anyOk = true
+                        elseif cur ~= itemId then
+                            equipment.ItemId = itemId
+                            if equipment.ItemID ~= nil then equipment.ItemID = itemId end
+                            applyData:Set(i, equipment)
+                            changed = true
+                            anyOk = true
+                        end
+                        break
+                    end
+                end
+            end
+        end
+        if (changed or opts.forceRep) and comp.OnRep_BodySlotStateChanged then
+            comp:OnRep_BodySlotStateChanged()
+        end
+    end)
+    return anyOk or changed
+end
+
+function F.setMakeSkin(comp, resID, slotID, opts)
+    opts = opts or {}
+    slotID, resID = tonumber(slotID), tonumber(resID)
+    if not comp or not slua.isValid(comp) or not slotID or not resID or resID <= 0 then return false end
+    local changed = false
+    local already = false
+    pcall(function()
+        local net = comp.NetAvatarData
+        if not net then return end
+        local applyData = net.SlotSyncData
+        if not applyData or not slua.isValid(applyData) then return end
+        local num = applyData:Num()
+        for i = 0, num - 1 do
+            local equipment = applyData:Get(i)
+            if equipment and equipment.SlotID == slotID then
+                local cur = tonumber(equipment.ItemId) or tonumber(equipment.ItemID) or 0
+                if cur == resID then
+                    already = true
+                elseif cur ~= resID then
+                    F.ensureSkinDownload(resID)
+                    equipment.ItemId = resID
+                    if equipment.ItemID ~= nil then equipment.ItemID = resID end
+                    applyData:Set(i, equipment)
+                    changed = true
+                end
+                break
+            end
+        end
+        if changed and not opts.skipRep and comp.OnRep_BodySlotStateChanged then
+            comp:OnRep_BodySlotStateChanged()
+        end
+        if opts.inAir and comp.PutOnCustomEquipmentByID then
+            comp:PutOnCustomEquipmentByID(resID)
+        end
+    end)
+    if already or changed then return true end
+    if opts.allowPutOn and comp.PutOnCustomEquipmentByID then
+        pcall(function() comp:PutOnCustomEquipmentByID(resID) end)
+        return true
+    end
+    return false
+end
+F.setSlotSkin = F.setMakeSkin
+
+_G.setMakeSkin = function(applyIdx, itemId, applyEquipSlot)
+    local char = F.getLocalChar()
+    if not char then return end
+    local comp = F.getAvatarComp2(char)
+    if not comp then return end
+    if F.setMakeSkinAtIndex(comp, applyIdx, itemId, applyEquipSlot) then
+        pcall(function()
+            if comp.OnRep_BodySlotStateChanged then comp:OnRep_BodySlotStateChanged() end
+        end)
+    end
+end
+
+function F.patchWearNetAvatar(comp, resID, slotName, noForceShow)
+    if not comp or not slua.isValid(comp) or not resID or resID <= 0 or not slotName then return false end
+    local ok = false
+    pcall(function()
+        local EAvatarSlotType = import("EAvatarSlotType")
+        local ESyncOperation = import("ESyncOperation")
+        local slot = EAvatarSlotType[slotName]
+        if not slot then return end
+        local sync = comp.GetSlotSyncData and comp:GetSlotSyncData(slot)
+        if sync then
+            sync.ItemID = resID
+            if sync.FakeItemID ~= nil then sync.FakeItemID = resID end
+            sync.OperationType = ESyncOperation.PutOn
+            if comp.ChangeSlotSyncData then
+                comp:ChangeSlotSyncData(sync)
+                ok = true
+            end
+        end
+        if not noForceShow and comp.SetAvatarVisibility then
+            comp:SetAvatarVisibility(slot, true, true)
+        end
+    end)
+    return ok
+end
+
+function F.patchHatNetAvatar(comp, hatRes)
+    return F.patchWearNetAvatar(comp, hatRes, "EAvatarSlotType_HatEquipemtSlot")
+end
+
+function F.matchApplyWearItem(char, resID, slotID, label, opts)
+    if not resID or resID <= 0 then return true end
+    slotID = slotID or F.resToCustSlot(resID)
+    if not slotID then return false end
+    local comp = F.getAvatarComp2(char)
+    if not comp then return false end
+    opts = opts or {}
+    opts.allowPutOn = true
+    local ok = F.setMakeSkin(comp, resID, slotID, opts)
+    return ok
+end
+
+function F.getDesiredMask()
+    if MATCH_CONFIG.maskRes and tonumber(MATCH_CONFIG.maskRes) > 0 then
+        return tonumber(MATCH_CONFIG.maskRes)
+    end
+    F.syncFaceCacheFromLobby()
+    local m = F.cache().maskRes
+    if m and tonumber(m) > 0 then return tonumber(m) end
+    return tonumber(_G.AddOutfitLastLobbyMaskRes) or nil
+end
+
+function F.getDesiredGlass()
+    if MATCH_CONFIG.glassRes and tonumber(MATCH_CONFIG.glassRes) > 0 then
+        return tonumber(MATCH_CONFIG.glassRes)
+    end
+    F.syncFaceCacheFromLobby()
+    local g = F.cache().glassRes
+    if g and tonumber(g) > 0 then return tonumber(g) end
+    return tonumber(_G.AddOutfitLastLobbyGlassRes) or nil
+end
+
+function F.matchApplyFaceWear(char)
+    local maskRes = F.getDesiredMask()
+    local glassRes = F.getDesiredGlass()
+    if (not maskRes or maskRes <= 0) and (not glassRes or glassRes <= 0) then
+        return true
+    end
+    char = char or F.getLocalChar()
+    if not char then return false end
+    local comp = F.getAvatarComp2(char)
+    if not comp then return false end
 
     local ok = false
-
     pcall(function()
+        local EAvatarSlotType = import("EAvatarSlotType")
+        local ESyncOperation = import("ESyncOperation")
+        local net = comp.NetAvatarData
+        local applyData = net and net.SlotSyncData
 
-        comp:PutOnCustomEquipmentByID(outfitRes)
+        local function forceApplySlot(resID, slotID, slotNameStr)
+            if not resID or resID <= 0 then return end
+            
+            local slotEnum = EAvatarSlotType and EAvatarSlotType[slotNameStr]
+            local needRep = false
+            
+            -- 1. GHI ĐÈ DATA MẠNG (Chống lỗi không đồng bộ)
+            if applyData and slua.isValid(applyData) then
+                local found = false
+                for i = 0, applyData:Num() - 1 do
+                    local equipment = applyData:Get(i)
+                    if equipment and equipment.SlotID == slotID then
+                        found = true
+                        local cur = tonumber(equipment.ItemId) or tonumber(equipment.ItemID) or 0
+                        if cur ~= resID then
+                            F.ensureSkinDownload(resID)
+                            equipment.ItemId = resID
+                            if equipment.ItemID ~= nil then equipment.ItemID = resID end
+                            if equipment.FakeItemID ~= nil then equipment.FakeItemID = resID end
+                            applyData:Set(i, equipment)
+                            needRep = true
+                        end
+                        break
+                    end
+                end
+                
+                if not found then
+                    F.ensureSkinDownload(resID)
+                    local entry = import("AvatarSyncData")()
+                    entry.SlotID = slotID
+                    entry.ItemId = resID
+                    entry.ItemID = resID
+                    entry.FakeItemID = resID
+                    entry.OperationType = ESyncOperation.PutOn
+                    applyData:Add(entry)
+                    needRep = true
+                end
+            end
 
-        ok = true
+            -- [LOGIC NGỦ ĐÔNG] - TỐI ƯU FPS TUYỆT ĐỐI
+            _G.FaceWearStateCache = _G.FaceWearStateCache or {}
+            -- Tạo ID định danh riêng biệt cho nhân vật hiện tại tránh trùng lặp
+            local cacheKey = tostring(comp) .. "_" .. tostring(slotID)
 
+            if needRep or _G.FaceWearStateCache[cacheKey] ~= resID then
+                -- Lần đầu tiên ép hiển thị / Hoặc ID Skin bị thay đổi -> Chạy Full C++
+                if slotEnum then
+                    if comp.CancelHideAvatarBySlot then comp:CancelHideAvatarBySlot(slotEnum) end
+                    if comp.SetAvatarVisibility then comp:SetAvatarVisibility(slotEnum, true, true) end
+                end
+                if comp.PutOnCustomEquipmentByID then
+                    comp:PutOnCustomEquipmentByID(resID)
+                end
+                
+                -- Cập nhật Cache để vòng lặp sau đi vào Ngủ Đông
+                _G.FaceWearStateCache[cacheKey] = resID
+                ok = true -- Bật cờ để gọi OnRep_BodySlotStateChanged (vẽ lại Mesh)
+            else
+                -- TRẠNG THÁI NGỦ ĐÔNG: Data đã đúng, Mesh 3D đã được render.
+                -- Chỉ chạy hàm cực nhẹ CancelHide để chống Game tự ẩn khi nhặt Mũ bảo hiểm (1,2,3).
+                -- BỎ QUA việc Render lại Mesh để tránh Drop FPS.
+                if slotEnum and comp.CancelHideAvatarBySlot then 
+                    comp:CancelHideAvatarBySlot(slotEnum) 
+                end
+            end
+        end
+
+        -- Gọi lệnh ép cho Mặt nạ (Mask)
+        forceApplySlot(maskRes, F.CUST_SLOT.FaceEquipemtSlot, "EAvatarSlotType_FaceEquipemtSlot")
+        -- Gọi lệnh ép cho Mắt kính (Glass)
+        forceApplySlot(glassRes, F.CUST_SLOT.GlassEquipemtSlot, "EAvatarSlotType_GlassEquipemtSlot")
+        
+        -- Cập nhật hình ảnh 3D CHỈ KHI THOÁT KHỎI NGỦ ĐÔNG (Khi cần thiết)
+        if ok and comp.OnRep_BodySlotStateChanged then
+            comp:OnRep_BodySlotStateChanged()
+        end
     end)
+    return ok
+end
 
-    if not ok then
+function F.getDesiredWear(configKey, cacheResKey, globalKey, syncFn)
+    local fixed = MATCH_CONFIG[configKey] and tonumber(MATCH_CONFIG[configKey])
+    if fixed and fixed > 0 then return fixed end
+    local persistKey = cacheResKey and cacheResKey:gsub("Res$", "")
+    if persistKey and PERSIST.configSlots then
+        local pr = tonumber(PERSIST.configSlots[persistKey])
+        if pr and pr > 0 then return pr end
+    end
+    if syncFn then syncFn() end
+    local v = F.cache()[cacheResKey]
+    if v and tonumber(v) > 0 then return tonumber(v) end
+    return tonumber(_G[globalKey]) or nil
+end
 
+local EQUIP_APPLY = { lastBagWrite = 0, lastHelmetWrite = 0 }
+
+function F.levelSkinID(baseSkin, level)
+    level = tonumber(level) or 1
+    if level < 1 then level = 1 end
+    local mapped = 0
+    pcall(function()
+        local t = CDataTable.GetTableData("BackpackMapping", baseSkin)
+        if t then
+            if level <= 1 then mapped = tonumber(t.SkinItemIDLv1) or 0
+            elseif level == 2 then mapped = tonumber(t.SkinItemIDLv2) or 0
+            else mapped = tonumber(t.SkinItemIDLv3) or 0 end
+        end
+    end)
+    if mapped > 0 then return mapped end
+    return baseSkin + (level - 1) * 1000
+end
+
+function F.applyEquipSkinToComp(comp, bagRes, helmetRes)
+    local applied, found = false, false
+    pcall(function()
+        local EAvatarSlotType = import("EAvatarSlotType")
+        local BackpackUtils = import("BackpackUtils")
+        local function doSlot(slotEnum, res, levelFn, lastKey)
+            res = tonumber(res) or 0
+            if res <= 0 or not slotEnum then return end
+            local sync = comp.GetSlotSyncData and comp:GetSlotSyncData(slotEnum)
+            if not sync then return end
+            local cur = tonumber(sync.ItemID) or 0
+            local addID = tonumber(sync.AdditionalItemID) or 0
+            if cur <= 0 and addID <= 0 then return end
+            found = true
+            local lvl = 1
+            pcall(function()
+                if levelFn then lvl = levelFn(addID > 0 and addID or cur) or 1 end
+            end)
+            if lvl < 1 then lvl = 1 end
+            local target = F.levelSkinID(res, lvl)
+            if target > 0 and cur ~= target then
+                sync.ItemID = target
+                comp:ChangeSlotSyncData(sync)
+                applied = true
+                EQUIP_APPLY[lastKey] = target
+            end
+        end
+        doSlot(EAvatarSlotType.EAvatarSlotType_BackpackEquipemtSlot, bagRes,
+               BackpackUtils.GetEquipmentBagLevel, "lastBagWrite")
+        doSlot(EAvatarSlotType.EAvatarSlotType_HelmetEquipemtSlot, helmetRes,
+               BackpackUtils.GetEquipmentHelmetLevel, "lastHelmetWrite")
+    end)
+    return applied, found
+end
+
+function F.matchApplyEquipmentSkin(char, bagRes, helmetRes)
+    bagRes = tonumber(bagRes) or 0
+    helmetRes = tonumber(helmetRes) or 0
+    if bagRes <= 0 and helmetRes <= 0 then return true end
+    local comp = char.CharacterAvatarComp2_BP
+    if not slua.isValid(comp) then return false end
+
+    local applied, found = F.applyEquipSkinToComp(comp, bagRes, helmetRes)
+
+    if applied then
         pcall(function()
-
-            comp:HandleEquipItem(FItemDefineID(4, outfitRes), FAvatarCustomDefault())
-
-            ok = true
-
+            if comp.OnRep_BodySlotStateChanged then comp:OnRep_BodySlotStateChanged() end
         end)
+        return true
+    end
+    return found
+end
 
+function F.hookEquipmentRectify()
+    _G.AddOutfitEquipRectifyFn = function(self)
+        pcall(function()
+            if self.IsLobbyActor and self:IsLobbyActor() then return end
+            if not (self.IsSelf and self:IsSelf()) then return end
+            local bagRes = F.getDesiredWear("bagRes", "bagRes", "AddOutfitLastLobbyBagRes", F.syncBodyCacheFromLobby)
+            local helmetRes = F.getDesiredWear("helmetRes", "helmetRes", "AddOutfitLastLobbyHelmetRes", F.syncBodyCacheFromLobby)
+            if (tonumber(bagRes) or 0) <= 0 and (tonumber(helmetRes) or 0) <= 0 then return end
+            F.applyEquipSkinToComp(self, bagRes, helmetRes)
+        end)
+    end
+    pcall(function()
+        local MCAC = require("GameLua.Mod.TPlan.Component.MetroCharacterAvatarComponent")
+        if MCAC._AddOutfitRectifyHooked then return end
+        MCAC._AddOutfitRectifyHooked = true
+        local o = MCAC.ProcessClientAvatarRectify
+        MCAC.ProcessClientAvatarRectify = function(self)
+            o(self)
+            if _G.AddOutfitEquipRectifyFn then _G.AddOutfitEquipRectifyFn(self) end
+        end
+    end)
+end
+
+function F.applyAirborneSlots(char, forceInAir)
+    local comp = F.getAvatarComp2(char)
+    if not comp or not slua.isValid(comp) then return false end
+    pcall(function() F.syncAirborneToDataMgr() end)
+    local inAir = forceInAir == true or F.isCharacterAirborne(char)
+    local any = false
+    local paraRes = F.getDesiredParachuteRes()
+    if paraRes and paraRes > 0 then
+        any = true
+        if not F.isResourcesReady(paraRes) then F.requestResourceDownload(paraRes) end
+        F.setMakeSkin(comp, paraRes, F.CUST_SLOT.ParachuteEquipemtSlot, { inAir = inAir })
+    end
+    local gliderRes = F.getDesiredGliderRes()
+    if gliderRes and gliderRes > 0 then
+        any = true
+        if not F.isResourcesReady(gliderRes) then F.requestResourceDownload(gliderRes) end
+        F.setMakeSkin(comp, gliderRes, F.CUST_SLOT.GlideEquipemtSlot, { inAir = inAir })
+    end
+    return any
+end
+
+function F.matchApplyBodyWear(char)
+    local pieces = {}
+    if not F.getDesiredOutfit() then
+        pieces[#pieces + 1] = {
+            F.getDesiredWear("tshirtRes", "tshirtRes", "AddOutfitLastLobbyTshirtRes", F.syncBodyCacheFromLobby),
+            F.CUST_SLOT.ClothesEquipemtSlot, "تيشرت",
+        }
+    end
+    pieces[#pieces + 1] = { F.getDesiredWear("pantsRes", "pantsRes", "AddOutfitLastLobbyPantsRes", F.syncBodyCacheFromLobby), F.CUST_SLOT.PantsEquipemtSlot, "سروال" }
+    pieces[#pieces + 1] = { F.getDesiredWear("shoesRes", "shoesRes", "AddOutfitLastLobbyShoesRes", F.syncBodyCacheFromLobby), F.CUST_SLOT.ShoesEquipemtSlot, "حذاء" }
+    pieces[#pieces + 1] = { F.getDesiredWear("glovesRes", "glovesRes", "AddOutfitLastLobbyGlovesRes", F.syncBodyCacheFromLobby), F.CUST_SLOT.HandEffectEquipemtSlot, "قفازات" }
+    local any, okAll = false, true
+    for _, p in ipairs(pieces) do
+        local res, slot, label = p[1], p[2], p[3]
+        if res and res > 0 then
+            any = true
+            okAll = F.matchApplyWearItem(char, res, slot, label) and okAll
+        end
+    end
+    local anyAir = F.applyAirborneSlots(char, false)
+    if anyAir then any = true end
+    local bagRes = F.getDesiredWear("bagRes", "bagRes", "AddOutfitLastLobbyBagRes", F.syncBodyCacheFromLobby)
+    local helmetRes = F.getDesiredWear("helmetRes", "helmetRes", "AddOutfitLastLobbyHelmetRes", F.syncBodyCacheFromLobby)
+    if (tonumber(bagRes) or 0) > 0 or (tonumber(helmetRes) or 0) > 0 then
+        any = true
+        okAll = F.matchApplyEquipmentSkin(char, bagRes, helmetRes) and okAll
+    end
+    return not any or okAll
+end
+
+function F.matchApplyAllSlots(char)
+    if not char then return false end
+    F.syncGlobalWearSkins()
+    local comp = F.getAvatarComp2(char)
+    if not comp then return false end
+
+    local entries = {}
+    local function add(skin, slot)
+        skin = tonumber(skin)
+        if skin and skin > 0 and slot then entries[#entries + 1] = { skin, slot } end
+    end
+    add(_G.HatSkin, F.CUST_SLOT.HatEquipemtSlot)
+    add(_G.SuitSkin, F.CUST_SLOT.ClothesEquipemtSlot)
+    add(_G.PantsSkin, F.CUST_SLOT.PantsEquipemtSlot)
+    add(_G.ShoesSkin, F.CUST_SLOT.ShoesEquipemtSlot)
+    add(_G.GlovesSkin, F.CUST_SLOT.HandEffectEquipemtSlot)
+    add(_G.MaskSkin, F.CUST_SLOT.FaceEquipemtSlot)
+    add(_G.GlassSkin, F.CUST_SLOT.GlassEquipemtSlot)
+
+    local ok = false
+    if #entries > 0 then
+        ok = F.applySlotSkinBatch(comp, entries, { forceRep = true })
+        if not ok then
+            for _, e in ipairs(entries) do
+                if F.setMakeSkin(comp, e[1], e[2], { allowPutOn = true }) then ok = true end
+            end
+        end
     end
 
-    if ok then notify("Outfit OK " .. tostring(outfitRes)) end
+    F.applyAirborneSlots(char, false)
 
+    local bagRes = F.getDesiredWear("bagRes", "bagRes", "AddOutfitLastLobbyBagRes", F.syncBodyCacheFromLobby)
+    local helmetRes = F.getDesiredWear("helmetRes", "helmetRes", "AddOutfitLastLobbyHelmetRes", F.syncBodyCacheFromLobby)
+    if (tonumber(bagRes) or 0) > 0 or (tonumber(helmetRes) or 0) > 0 then
+        ok = F.matchApplyEquipmentSkin(char, bagRes, helmetRes) or ok
+    end
+
+    return ok or #entries == 0
+end
+
+function F.matchApplyHat(char)
+    local hatRes = tonumber(F.getDesiredHat())
+    if not hatRes or hatRes <= 0 then return true end
+    char = char or F.getLocalChar()
+    if not char then return false end
+    local comp = F.getAvatarComp2(char)
+    if not comp then return false end
+    local slotID = F.CUST_SLOT.HatEquipemtSlot
+    local ok = false
+    pcall(function()
+        local net = comp.NetAvatarData
+        if not net then return end
+        local applyData = net.SlotSyncData
+        if not applyData or not slua.isValid(applyData) then return end
+        local found = false
+        for i = 0, applyData:Num() - 1 do
+            local equipment = applyData:Get(i)
+            if equipment and equipment.SlotID == slotID then
+                found = true
+                local cur = tonumber(equipment.ItemId) or tonumber(equipment.ItemID) or 0
+                if cur ~= hatRes then
+                    F.ensureSkinDownload(hatRes)
+                    equipment.ItemId = hatRes
+                    if equipment.ItemID ~= nil then equipment.ItemID = hatRes end
+                    if equipment.FakeItemID ~= nil then equipment.FakeItemID = hatRes end
+                    applyData:Set(i, equipment)
+                end
+                ok = true
+                break
+            end
+        end
+        if not found then
+            F.ensureSkinDownload(hatRes)
+            local ESyncOperation = import("ESyncOperation")
+            local entry = import("AvatarSyncData")()
+            entry.SlotID = slotID
+            entry.ItemId = hatRes
+            entry.ItemID = hatRes
+            entry.FakeItemID = hatRes
+            entry.OperationType = ESyncOperation.PutOn
+            applyData:Add(entry)
+            ok = true
+        end
+        
+    end)
     return ok
-
 end
 
 local _avatarItemsRegistered = false
 
-local function getDesiredWeaponSkins()
-
-    syncWeaponCacheFromLobby()
-
+function F.getDesiredWeaponSkins()
+    if PERF.desiredSkins then return PERF.desiredSkins end
+    F.syncWeaponCacheFromLobby()
     local out, seen = {}, {}
-
     local function add(res)
-
         res = tonumber(res)
-
         if res and res > 0 and not seen[res] then seen[res] = true; out[#out+1] = res end
-
     end
-
-    for wid, w in pairs(cache().weapons) do
-
+    for wid, w in pairs(F.cache().weapons) do
         if wid ~= MELEE_ID and w.resID then add(w.resID) end
-
     end
-
     if MATCH_CONFIG.weaponSkins then
-
         for _, res in pairs(MATCH_CONFIG.weaponSkins) do add(res) end
-
     end
-
+    PERF.desiredSkins = out
     return out
+end
 
+function F._cacheSkinTarget(weaponResID, skin)
+    if skin and skin > 0 then PERF.skinTarget[weaponResID] = skin else PERF.skinTarget[weaponResID] = 0 end
+    return skin
 end
 
 local GUN_MASTER_SYN_SLOT = 7
 
-local function findSkinSlotInSynData(weapon)
-
+function F.findSkinSlotInSynData(weapon)
     if not slua.isValid(weapon) then return GUN_MASTER_SYN_SLOT, 0 end
-
     local arr = weapon.synData
-
     if not arr or not slua.isValid(arr) then return GUN_MASTER_SYN_SLOT, 0 end
-
     local count = 0
-
     pcall(function() count = arr:Num() end)
-
     for i = 0, math.min(count - 1, 15) do
-
         local ok2, att = pcall(function() return arr:Get(i) end)
-
         if ok2 and att then
-
             local ok3, defRef = pcall(slua.IndexReference, att, "defineID")
-
             if ok3 and defRef then
-
                 local tid = 0
-
                 pcall(function() tid = tonumber(defRef.TypeSpecificID) or 0 end)
-
                 if tid >= 1000000 then
-
                     return i, tid
-
                 end
-
             end
-
         end
-
     end
-
     return GUN_MASTER_SYN_SLOT, 0
-
 end
 
-local function resolveWeaponTypeID(weaponResID)
-
+function F.resolveWeaponTypeID(weaponResID)
     weaponResID = tonumber(weaponResID) or 0
-
     if weaponResID <= 0 then return 0 end
-
     local found = 0
-
     pcall(function()
-
         local wc = CDataTable.GetTableData("WeaponConfig", weaponResID)
-
         if wc then found = tonumber(wc.WeaponID or wc.WeaponId or wc.weaponID or 0) end
-
     end)
-
     if found > 0 then return found end
-
     pcall(function()
-
         local ic = CDataTable.GetTableData("Item", weaponResID)
-
         if ic then found = tonumber(ic.WeaponID or ic.weaponId or 0) end
-
     end)
-
     return found > 0 and found or weaponResID
-
 end
 
-local function findTargetSkinForWeaponRes(weaponResID)
-
+function F.findTargetSkinForWeaponRes(weaponResID)
     weaponResID = tonumber(weaponResID) or 0
-
     if weaponResID <= 0 then return nil end
+    local cached = PERF.skinTarget[weaponResID]
+    if cached ~= nil then return cached == 0 and nil or cached end
 
-    local memSkin = getMatchWeaponSkin(weaponResID)
-
-    if memSkin then return memSkin end
-
-    local typeID = resolveWeaponTypeID(weaponResID)
-
+    local memSkin = F.getMatchWeaponSkin(weaponResID)
+    if memSkin then return F._cacheSkinTarget(weaponResID, memSkin) end
+    local typeID = F.resolveWeaponTypeID(weaponResID)
     if typeID > 0 and typeID ~= weaponResID then
-
-        memSkin = getMatchWeaponSkin(typeID)
-
-        if memSkin then return memSkin end
-
+        memSkin = F.getMatchWeaponSkin(typeID)
+        if memSkin then return F._cacheSkinTarget(weaponResID, memSkin) end
     end
 
     if MATCH_CONFIG.weaponSkins and MATCH_CONFIG.weaponSkins[weaponResID] then
-
         local fixed = tonumber(MATCH_CONFIG.weaponSkins[weaponResID])
-
-        if fixed and fixed > 0 then return fixed end
-
+        if fixed and fixed > 0 then return F._cacheSkinTarget(weaponResID, fixed) end
     end
 
-    for _, skinRes in ipairs(getDesiredWeaponSkins()) do
-
-        local wid = weaponIdFromSkin(skinRes)
-
-        if wid and tonumber(wid) == weaponResID then return skinRes end
-
+    for _, skinRes in ipairs(F.getDesiredWeaponSkins()) do
+        local wid = F.weaponIdFromSkin(skinRes)
+        if wid and tonumber(wid) == weaponResID then return F._cacheSkinTarget(weaponResID, skinRes) end
     end
 
-    local typeID = resolveWeaponTypeID(weaponResID)
-
+    local typeID = F.resolveWeaponTypeID(weaponResID)
     if typeID > 0 and typeID ~= weaponResID then
-
         if MATCH_CONFIG.weaponSkins and MATCH_CONFIG.weaponSkins[typeID] then
-
             local fixed = tonumber(MATCH_CONFIG.weaponSkins[typeID])
-
-            if fixed and fixed > 0 then return fixed end
-
+            if fixed and fixed > 0 then return F._cacheSkinTarget(weaponResID, fixed) end
         end
-
-        for _, skinRes in ipairs(getDesiredWeaponSkins()) do
-
-            local wid = weaponIdFromSkin(skinRes)
-
-            if wid and tonumber(wid) == typeID then return skinRes end
-
+        for _, skinRes in ipairs(F.getDesiredWeaponSkins()) do
+            local wid = F.weaponIdFromSkin(skinRes)
+            if wid and tonumber(wid) == typeID then return F._cacheSkinTarget(weaponResID, skinRes) end
         end
-
     end
 
     local avatarMatch = nil
-
     pcall(function()
-
         local AU = import("AvatarUtils")
-
         local weaponBase = AU.GetWeaponAvatarParentID(AU.GetBPIDByResID(weaponResID), false)
-
         if not weaponBase or weaponBase <= 0 then return end
-
-        for _, skinRes in ipairs(getDesiredWeaponSkins()) do
-
+        for _, skinRes in ipairs(F.getDesiredWeaponSkins()) do
             local skinBase = AU.GetWeaponAvatarParentID(AU.GetBPIDByResID(skinRes), false)
-
             if skinBase and skinBase > 0 and skinBase == weaponBase then
-
                 avatarMatch = skinRes
-
                 return
-
             end
-
         end
-
     end)
+    if avatarMatch then return F._cacheSkinTarget(weaponResID, avatarMatch) end
 
-    if avatarMatch then return avatarMatch end
-
-    local c = cfg(weaponResID)
-
-    local st = subType(c)
-
+    local c = F.cfg(weaponResID)
+    local st = F.subType(c)
     if st and GUN_SUB[st] and MATCH_CONFIG.weaponSkins then
-
         for _, skinRes in pairs(MATCH_CONFIG.weaponSkins) do
-
-            local skinWid = weaponIdFromSkin(skinRes)
-
+            local skinWid = F.weaponIdFromSkin(skinRes)
             if skinWid then
-
-                local sc = cfg(tonumber(skinWid))
-
-                if sc and subType(sc) == st then return skinRes end
-
+                local sc = F.cfg(tonumber(skinWid))
+                if sc and F.subType(sc) == st then return F._cacheSkinTarget(weaponResID, skinRes) end
             end
-
-            local sc = cfg(skinRes)
-
-            if sc and GUN_SUB[subType(sc)] and subType(sc) == st then return skinRes end
-
+            local sc = F.cfg(skinRes)
+            if sc and GUN_SUB[F.subType(sc)] and F.subType(sc) == st then return F._cacheSkinTarget(weaponResID, skinRes) end
         end
-
     end
 
+    PERF.skinTarget[weaponResID] = 0
     return nil
-
 end
 
-local function getSynMasterSkinID(weapon)
-
+function F.getSynMasterSkinID(weapon)
     if not slua.isValid(weapon) then return 0 end
-
     local id = 0
-
     pcall(function()
-
-        local slot, tid = findSkinSlotInSynData(weapon)
-
+        local slot, tid = F.findSkinSlotInSynData(weapon)
         id = tid
-
         if id == 0 then
-
             local arr = weapon.synData
-
             if not arr or not slua.isValid(arr) then return end
-
             local att = arr:Get(GUN_MASTER_SYN_SLOT)
-
             if not att then return end
-
             id = slua.IndexReference(att, "defineID").TypeSpecificID or 0
-
         end
-
     end)
-
     return id
-
 end
 
 _G.AddOutfitSkinIdMappings = _G.AddOutfitSkinIdMappings or {}
-
 _G.AddOutfitLastAppliedSkin = _G.AddOutfitLastAppliedSkin or {}
 
-local function buildSkinMappings()
-
-    syncWeaponCacheFromLobby()
-
+function F.buildSkinMappings()
+    if not PERF.mappingsDirty then return end
+    F.syncWeaponCacheFromLobby()
+    PERF.mappingsDirty = false
     local m = _G.AddOutfitSkinIdMappings
-
     for k in pairs(m) do m[k] = nil end
-
-    for wid, w in pairs(cache().weapons) do
-
+    for wid, w in pairs(F.cache().weapons) do
         wid = tonumber(wid)
-
         if wid and w.resID and w.resID > 0 then
-
             m[wid] = { tonumber(w.resID) }
-
         end
-
     end
-
     if MATCH_CONFIG.weaponSkins then
-
         for weaponKey, skinRes in pairs(MATCH_CONFIG.weaponSkins) do
-
             weaponKey = tonumber(weaponKey)
-
             skinRes = tonumber(skinRes)
-
             if weaponKey and skinRes and skinRes > 0 and not m[weaponKey] then
-
                 m[weaponKey] = { skinRes }
-
             end
-
         end
-
     end
-
 end
 
-local function get_skin_id(currentGunId, maxIt)
-
+function F.get_skin_id(currentGunId, maxIt)
     currentGunId = tonumber(currentGunId) or 0
-
     maxIt = tonumber(maxIt) or 0
-
     if currentGunId <= 0 and maxIt <= 0 then return 0 end
-
-    buildSkinMappings()
-
+    F.buildSkinMappings()
     if maxIt > 0 then
-
-        local fromMem = getMatchWeaponSkin(maxIt)
-
+        local fromMem = F.getMatchWeaponSkin(maxIt)
         if fromMem then return fromMem end
-
     end
-
-    local fromMem2 = getMatchWeaponSkin(resolveWeaponTypeID(currentGunId))
-
+    local fromMem2 = F.getMatchWeaponSkin(F.resolveWeaponTypeID(currentGunId))
     if fromMem2 then return fromMem2 end
-
     local m = _G.AddOutfitSkinIdMappings
-
     if maxIt > 0 and m[maxIt] and m[maxIt][1] then return tonumber(m[maxIt][1]) end
-
     local list = m[currentGunId]
-
     if list and list[1] then return tonumber(list[1]) end
-
-    local typeId = resolveWeaponTypeID(currentGunId)
-
+    local typeId = F.resolveWeaponTypeID(currentGunId)
     if typeId > 0 and m[typeId] and m[typeId][1] then return tonumber(m[typeId][1]) end
-
-    local target = findTargetSkinForWeaponRes(maxIt > 0 and maxIt or currentGunId)
-
+    local target = F.findTargetSkinForWeaponRes(maxIt > 0 and maxIt or currentGunId)
     if target then return target end
-
     return currentGunId
-
 end
 
-local function applySkinToWeaponRef(CurWeapon)
-
-    if not _G.LobbyCosmeticEnabled then return false end
-
+function F.applySkinToWeaponRef(CurWeapon)
     if not slua.isValid(CurWeapon) then return false end
-
     local AttachmentArray = CurWeapon.synData
-
     if not AttachmentArray or not slua.isValid(AttachmentArray) then return false end
 
     local AttachmentData = AttachmentArray:Get(GUN_MASTER_SYN_SLOT)
-
     if not AttachmentData then return false end
 
     local current_gunid = 0
-
-    pcall(function()
-
-        current_gunid = slua.IndexReference(AttachmentData, "defineID").TypeSpecificID or 0
-
-    end)
-
+    pcall(function() current_gunid = slua.IndexReference(AttachmentData, "defineID").TypeSpecificID or 0 end)
     if not current_gunid or current_gunid <= 0 then return false end
 
     local MaxIt = 0
-
     pcall(function()
-
-        if CurWeapon.GetWeaponID then
-
-            MaxIt = CurWeapon:GetWeaponID()
-
-        end
-
-        if MaxIt <= 0 then
-
-            MaxIt = CurWeapon:GetItemDefineID().TypeSpecificID
-
-        end
-
+        if CurWeapon.GetWeaponID then MaxIt = CurWeapon:GetWeaponID() end
+        if MaxIt <= 0 then MaxIt = CurWeapon:GetItemDefineID().TypeSpecificID end
     end)
-
     MaxIt = tonumber(MaxIt) or 0
-
-    local tmp_id = get_skin_id(current_gunid, MaxIt)
-
+    local tmp_id = F.get_skin_id(current_gunid, MaxIt)
     tmp_id = tonumber(tmp_id) or 0
-
     if tmp_id <= 0 or MaxIt <= 0 then return false end
+    
+    local changedAny = false
 
-    if tmp_id == MaxIt and tmp_id == current_gunid then return true end
+    -- LOGIC 1: LẤY ID HÌNH ẢNH ĐANG HIỂN THỊ THỰC TẾ
+    local wac = CurWeapon.WeaponAvatarComponent
+    local currentVisualID = 0
+    if slua.isValid(wac) then currentVisualID = wac.CachedLoadedID or 0 end
 
-    local vWriteVals = _G.AddOutfitSkinIdMappings[MaxIt] or {}
-
-    local isSkinValid = false
-
-    local lastSkin = _G.AddOutfitLastAppliedSkin[MaxIt]
-
-    if lastSkin then
-
-        for _, writeVal in ipairs(vWriteVals) do
-
-            if tonumber(writeVal) == lastSkin then
-
-                isSkinValid = true
-
-                break
-
-            end
-
-        end
-
-    else
-
-        for _, writeVal in ipairs(vWriteVals) do
-
-            if tonumber(writeVal) == tmp_id then
-
-                isSkinValid = true
-
-                break
-
-            end
-
-        end
-
-    end
-
-    if not isSkinValid then
-
-        local scopeID = 0
-
+    -- NẾU SÚNG CHÍNH CHƯA PHẢI LÀ SKIN VIP -> THAY ĐỔI DATA
+    if currentVisualID ~= tmp_id then
+        changedAny = true
         pcall(function()
-
-            if CurWeapon.GetScopeID then scopeID = CurWeapon:GetScopeID(false) or 0 end
-
-        end)
-
-        if scopeID > 0 then
-
-            pcall(function()
-
-                local scopeData = AttachmentArray:Get(4)
-
-                if scopeData then
-
-                    slua.IndexReference(scopeData, "defineID").TypeSpecificID = scopeID
-
-                    AttachmentArray:Set(4, scopeData)
-
-                end
-
-            end)
-
-        end
-
-    end
-
-    _G.AddOutfitLastAppliedSkin[current_gunid] = tmp_id
-
-    if tmp_id ~= current_gunid then
-
-        pcall(function()
-
             local defRef = slua.IndexReference(AttachmentData, "defineID")
-
             defRef.TypeSpecificID = tmp_id
-
-            local c0 = cfg(tmp_id)
-
-            if c0 and c0.ItemType and defRef.Type ~= nil then
-
-                defRef.Type = c0.ItemType
-
-            end
-
+            local c0 = F.cfg(tmp_id)
+            if c0 and c0.ItemType and defRef.Type ~= nil then defRef.Type = c0.ItemType end
             AttachmentData.operationType = 0
-
             AttachmentArray:Set(GUN_MASTER_SYN_SLOT, AttachmentData)
-
         end)
-
-        if CurWeapon.DelayHandleAvatarMeshChanged then
-
-            CurWeapon:DelayHandleAvatarMeshChanged()
-
-        end
-
-        _G.AddOutfitLastAppliedSkin[MaxIt] = tmp_id
-
-        return true
-
     end
 
-    return false
+    -- LOGIC 2: XỬ LÝ PHỤ KIỆN (ATTACHMENTS)
+    if _G.LexusConfig.SkinAttachment and tmp_id >= 1000000 and _G.VIP_Attachments and _G.VIP_Attachments[tmp_id] then
+        local attachSkinConfig = _G.VIP_Attachments[tmp_id]
+        local baseAttachMap = _G.BaseAttachToIndex
+        
+        if attachSkinConfig and baseAttachMap then
+            for AttachIdx = 0, 5 do 
+                pcall(function()
+                    local attachData = AttachmentArray:Get(AttachIdx)
+                    if attachData then
+                        local defineIDRef = slua.IndexReference(attachData, "defineID")
+                        if defineIDRef then
+                            local attachmentId = defineIDRef.TypeSpecificID
+                            if attachmentId and attachmentId > 0 then
+                                local baseAttId = attachmentId
+                                if baseAttId > 1000000 then
+                                    local strId = tostring(baseAttId)
+                                    if #strId >= 9 then baseAttId = tonumber(string.sub(strId, 2, 7)) or baseAttId end
+                                end
 
+                                local mapIndex = baseAttachMap[baseAttId]
+                                if mapIndex then
+                                    local targetAttachId = attachSkinConfig[mapIndex]
+                                    if targetAttachId and targetAttachId > 0 and targetAttachId ~= attachmentId then
+                                        defineIDRef.TypeSpecificID = targetAttachId
+                                        attachData.defineID = defineIDRef
+                                        AttachmentArray:Set(AttachIdx, attachData)
+                                        changedAny = true
+                                        
+                                        -- Xóa cache Phụ kiện cũ để game Load phụ kiện VIP
+                                        if slua.isValid(wac) then
+                                            if wac.ClearMeshPathCacheBySlot then wac:ClearMeshPathCacheBySlot(AttachIdx) end
+                                            if wac.ClearMeshBySlot then wac:ClearMeshBySlot(AttachIdx, true, true) end
+                                        end
+                                    end
+                                end
+                            end
+                        end
+                    end
+                end)
+            end
+        end
+    end
+
+    -- LOGIC 3: LỆNH THẦN THÁNH ÉP GAME VẼ LẠI MESH NGAY TRÊN TAY
+    if changedAny then
+        pcall(function()
+            if slua.isValid(wac) then
+                -- Nếu là súng mới nhặt, xóa cái vỏ súng cũ kĩ đi
+                if currentVisualID ~= tmp_id then
+                    if wac.ClearMeshPathCacheBySlot then wac:ClearMeshPathCacheBySlot(0) end
+                    if wac.ClearMeshBySlot then wac:ClearMeshBySlot(0, true, true) end
+                end
+                
+                if CurWeapon.DelayHandleAvatarMeshChanged then
+                    CurWeapon:DelayHandleAvatarMeshChanged()
+                end
+                if wac.ReloadAllEquippedAvatar then
+                    wac:ReloadAllEquippedAvatar(1) 
+                end
+            end
+        end)
+        _G.AddOutfitLastAppliedSkin[MaxIt] = tmp_id
+        return true
+    end
+    
+    return false
 end
 
 function _G.equip_weapon_avatar(uCharacter)
-
-    if not _G.LobbyCosmeticEnabled then return false end
-
     if not uCharacter or not slua.isValid(uCharacter) then return false end
-
-    buildSkinMappings()
-
+    F.buildSkinMappings()
     local WeaponManager = uCharacter:GetWeaponManager()
-
     if not WeaponManager or not slua.isValid(WeaponManager) then return false end
-
     local uWeaponList = WeaponManager:GetAllInventoryWeaponList(false)
-
     if not uWeaponList or not slua.isValid(uWeaponList) then return false end
 
     local appliedAny = false
-
     for i = 0, uWeaponList:Num() - 1 do
-
         local CurWeapon = uWeaponList:Get(i)
-
-        if slua.isValid(CurWeapon) and applySkinToWeaponRef(CurWeapon) then
-
+        if slua.isValid(CurWeapon) and F.applySkinToWeaponRef(CurWeapon) then
             appliedAny = true
-
         end
-
     end
-
     return appliedAny
-
 end
 
-local function equipWeaponAvatarSynData(char)
-
+function F.equipWeaponAvatarSynData(char)
     return _G.equip_weapon_avatar(char)
-
 end
 
-local applySkinToWeapon = applySkinToWeaponRef
+F.applySkinToWeapon = F.applySkinToWeaponRef
 
-local function registerWeaponAvatarItems(char)
-
+function F.registerWeaponAvatarItems(char)
     local pc = char.GetPlayerControllerSafety and char:GetPlayerControllerSafety()
-
-    if not slua.isValid(pc) then
-
-        return false
-
-    end
-
+    if not slua.isValid(pc) then return false end
     local AU = import("AvatarUtils")
-
     local BU = import("BackpackUtils")
-
     local addedCount = 0
 
-    for _, resID in ipairs(getDesiredWeaponSkins()) do
-
+    for _, resID in ipairs(F.getDesiredWeaponSkins()) do
         local doneDirect = false
-
         pcall(function()
-
             if pc.AddWeaponAvatarItem then
-
                 pc:AddWeaponAvatarItem(tonumber(resID))
-
                 doneDirect = true
-
                 addedCount = addedCount + 1
-
             end
-
         end)
-
         if not doneDirect then
-
             pcall(function()
-
                 local skinBPID = BU.GetBPIDByResID(tonumber(resID))
-
                 local arr = slua.Array(UEnums.EPropertyClass.Int)
-
                 local parents = AU.GetWeaponAvatarParentIDList(skinBPID, arr, false)
-
                 if parents and parents.Num and parents:Num() > 0 and pc.WeaponAvatarItemList then
-
                     for _, parentID in pairs(parents) do
-
                         pc.WeaponAvatarItemList:Add(parentID, skinBPID)
-
                     end
-
                     addedCount = addedCount + 1
-
                 end
-
             end)
-
         end
-
     end
 
-    if addedCount == 0 then
-
-        return false
-
-    end
+    if addedCount == 0 then return false end
 
     pcall(function() if pc.InitWeaponAvatarItems then pc:InitWeaponAvatarItems() end end)
-
     pcall(function() if pc.OnWeaponAvatarUpdate then pc:OnWeaponAvatarUpdate() end end)
-
     return true
-
 end
 
-local function reloadCurrentWeaponAvatar(char)
-
+function F.reloadCurrentWeaponAvatar(char)
     pcall(function()
-
         local weapon = char.GetCurrentWeapon and char:GetCurrentWeapon()
-
         if not slua.isValid(weapon) then return end
-
         local wac = weapon.WeaponAvatarComponent
-
         if slua.isValid(wac) then
-
             local ES = import("EWeaponAttachmentSocketType")
-
             pcall(function() wac:ClearMeshPathCacheBySlot(ES.MasterGun) end)
-
             pcall(function() wac:ClearMeshBySlot(ES.MasterGun, true, true) end)
-
         end
-
         if weapon.DelayHandleAvatarMeshChanged then
-
             weapon:DelayHandleAvatarMeshChanged()
-
         elseif slua.isValid(wac) and wac.ReloadAllEquippedAvatar then
-
             local ESlotDescDiff = import("ESlotDescDiff")
-
             wac:ReloadAllEquippedAvatar(ESlotDescDiff.MeshDiff)
-
         end
-
     end)
-
 end
 
 local _weaponDiagDone = false
-
 local _weaponApplied = false
-
 local _lastWeaponResID = 0
-
 local _weaponSpawnHooked = false
 
-local function onWeaponLuaInit(_, _, weapon)
-
+function F.onWeaponLuaInit(_, _, weapon)
     if not weapon or not slua.isValid(weapon) then return end
-
-    local char = getLocalChar()
-
+    local char = F.getLocalChar()
     if not char then return end
-
     local owner = nil
-
     pcall(function()
-
         if weapon.GetOwnerPawn then owner = weapon:GetOwnerPawn() end
-
     end)
-
     if not slua.isValid(owner) or owner ~= char then return end
-
     pcall(function()
-
         char:AddGameTimer(0.15, false, function()
-
-            local c = getLocalChar()
-
+            local c = F.getLocalChar()
             if c and slua.isValid(weapon) then
-
-                applySkinToWeapon(weapon)
-
+                F.applySkinToWeapon(weapon)
                 _weaponApplied = false
-
             end
-
         end)
-
     end)
-
 end
 
-local function hookWeaponSpawn()
-
+function F.hookWeaponSpawn()
     if _weaponSpawnHooked then return end
-
     pcall(function()
-
         if EventSystem and EventSystem.registEvent and EVENTTYPE_PLAYEREVENT_WEAPON and EVENTID_PLAYEREVENT_WEAPON_LUA_INIT then
-
             EventSystem:registEvent(EVENTTYPE_PLAYEREVENT_WEAPON, EVENTID_PLAYEREVENT_WEAPON_LUA_INIT, onWeaponLuaInit)
-
             _weaponSpawnHooked = true
-
         end
-
     end)
-
 end
 
-local function matchApplyWeaponSkin(char)
-
+function F.matchApplyWeaponSkin(char)
     if not _avatarItemsRegistered then
-
-        _avatarItemsRegistered = registerWeaponAvatarItems(char)
-
+        _avatarItemsRegistered = F.registerWeaponAvatarItems(char)
     end
 
     local curWeapon = char.GetCurrentWeapon and char:GetCurrentWeapon()
-
     if not slua.isValid(curWeapon) then return false end
 
-    local curWeaponResID = 0
-
-    pcall(function() curWeaponResID = curWeapon:GetItemDefineID().TypeSpecificID end)
-
-    if curWeaponResID ~= _lastWeaponResID then
-
-        _lastWeaponResID = curWeaponResID
-
-        _weaponApplied = false
-
-        _weaponDiagDone = false
-
-    end
-
-    if _weaponApplied then return true end
-
-    local targetSkin = findTargetSkinForWeaponRes(curWeaponResID)
-
-    local loadedSkin = 0
-
+    local currentVisualID = 0
     pcall(function()
-
-        local wac = getWAC(char)
-
-        if wac then
-
-            loadedSkin = wac.CachedLoadedID or 0
-
-            if loadedSkin <= 0 then
-
-                local ES = import("EWeaponAttachmentSocketType")
-
-                loadedSkin = wac:GetEquippedItemDefineID(ES.MasterGun).TypeSpecificID or 0
-
-            end
-
-        end
-
+        local wac = curWeapon.WeaponAvatarComponent
+        if slua.isValid(wac) then currentVisualID = wac.CachedLoadedID or 0 end
     end)
 
-    local synSkin = getSynMasterSkinID(curWeapon)
+    local curWeaponResID = 0
+    pcall(function() curWeaponResID = curWeapon:GetItemDefineID().TypeSpecificID end)
+    local targetSkin = F.findTargetSkinForWeaponRes(curWeaponResID) or curWeaponResID
 
-    if targetSkin and (loadedSkin == targetSkin or synSkin == targetSkin) then
-
-        _weaponApplied = true
-
-        return true
-
+    local isVisualMatched = false
+    if currentVisualID > 0 and currentVisualID == targetSkin then
+        isVisualMatched = true
     end
 
-    buildSkinMappings()
-
-    local okSyn = applySkinToWeapon(curWeapon) or equipWeaponAvatarSynData(char)
-
-    if not _weaponDiagDone then
-
-        _weaponDiagDone = true
-
-        local list = table.concat(getDesiredWeaponSkins(), ",")
-
-        notify("Weapon: res=" .. tostring(curWeaponResID)
-
-            .. " type=" .. tostring(resolveWeaponTypeID(curWeaponResID))
-
-            .. " target=" .. tostring(targetSkin)
-
-            .. " syn=" .. tostring(synSkin)
-
-            .. " loaded=" .. tostring(loadedSkin)
-
-            .. " ctrl=" .. tostring(_avatarItemsRegistered)
-
-            .. " skins=[" .. list .. "]")
-
-    end
-
-    if okSyn and char.AddGameTimer then
-
+    -- [HỆ THỐNG SMART WATCHER V3] Quét toàn bộ Súng trên tay & Súng trong Balo
+    if not _G.SmartWeaponWatcherActive then
+        _G.SmartWeaponWatcherActive = true
         pcall(function()
-
-            char:AddGameTimer(1.0, false, function()
-
-                local c = getLocalChar()
-
-                if not c then return end
-
-                local w = c.GetCurrentWeapon and c:GetCurrentWeapon()
-
-                if not slua.isValid(w) then return end
-
-                local wac2 = w.WeaponAvatarComponent
-
-                if not slua.isValid(wac2) then return end
-
-                local cid = wac2.CachedLoadedID or 0
-
-                local synId = getSynMasterSkinID(w)
-
-                notify("Verify: syn=" .. tostring(synId) .. " cached=" .. tostring(cid) .. " target=" .. tostring(targetSkin))
-
-                if targetSkin and (synId == targetSkin or cid == targetSkin) then
-
-                    _weaponApplied = true
-
-                end
-
-            end)
-
+            local ticker = require("common.time_ticker")
+            if ticker and ticker.AddTimerLoop then
+                ticker.AddTimerLoop(0, function()
+                    if not _G.LexusConfig.ModSkin then return end
+                    
+                    -- [CỜ NGỦ ĐÔNG IN-GAME]: Nếu đã ra Sảnh -> Ngủ luôn, không chạy gì hết!
+                    if _G.AddOutfit and not _G.AddOutfit.isInRealMatch() then return end
+                    
+                    local pController = slua_GameFrontendHUD and slua_GameFrontendHUD:GetPlayerController()
+                    if not pController or not slua.isValid(pController) then return end
+                    local pChar = pController:GetPlayerCharacterSafety()
+                    if not pChar or not slua.isValid(pChar) then return end
+                    
+                    -- Thay vì chỉ lấy súng trên tay, lấy luôn KHO VŨ KHÍ (Weapon Manager)
+                    local WeaponManager = pChar:GetWeaponManager()
+                    if not WeaponManager or not slua.isValid(WeaponManager) then return end
+                    local uWeaponList = WeaponManager:GetAllInventoryWeaponList(false)
+                    if not uWeaponList or not slua.isValid(uWeaponList) then return end
+                    
+                    local count = uWeaponList:Num()
+                    -- Lặp qua từng khẩu súng bạn đang sở hữu (Súng 1, Súng 2, Lục, Dao)
+                    for i = 0, count - 1 do
+                        local wep = uWeaponList:Get(i)
+                        if slua.isValid(wep) then
+                            -- Kiểm tra data (synData) của súng xem đã là Data VIP chưa
+                            local synSkinID = F.getSynMasterSkinID(wep)
+                            local baseID = 0
+                            pcall(function() baseID = wep:GetItemDefineID().TypeSpecificID end)
+                            local tSkin = F.findTargetSkinForWeaponRes(baseID) or baseID
+                            
+                            -- NẾU DATA CHƯA PHẢI LÀ VIP -> Vừa lụm thẳng vào Balo -> Bắn lệnh Load ngầm!
+                            -- HOẶC bật Skin Phụ Kiện -> Kiểm tra phụ kiện
+                            if synSkinID ~= tSkin or _G.LexusConfig.SkinAttachment then
+                                if _G.AddOutfit and _G.AddOutfit.applySkinToWeapon then
+                                    _G.AddOutfit.applySkinToWeapon(wep)
+                                end
+                            end
+                        end
+                    end
+                end, -1, 0.4) 
+            end
         end)
-
     end
+
+    -- BÁO CÁO HOÀN THÀNH: Nếu súng cầm trên tay đã xong xuôi thì khóa luồng gốc của Engine
+    if isVisualMatched and not _G.LexusConfig.SkinAttachment then
+        _weaponApplied = true
+        return true
+    end
+
+    F.buildSkinMappings()
+    local okSyn = F.applySkinToWeapon(curWeapon)
 
     return okSyn
-
 end
 
 local _matchTimer = nil
+local _matchWearDone = false
 
-local _matchOutfitDone = false
-
-local function startMatchWatcher(char)
-
-    if _matchTimer then return end
-
-    _matchOutfitDone = false
-
+function F.startMatchWatcher(char)
+    if _matchTimer or PERF.matchActive then return end
+    PERF.matchActive = true
+    local skipWear = PERF.wearDoneThisMatch
+    _matchWearDone = skipWear
     _avatarItemsRegistered = false
-
     _weaponDiagDone = false
-
     _weaponApplied = false
-
     _lastWeaponResID = 0
-
     local elapsed = 0
 
-        _matchTimer = char:AddGameTimer(1.5, true, function()
-
-        _G.LobbyCosmeticEnabled = (_G.HK_GetVal("UnlockWardrobe") == 1)
-
-        elapsed = elapsed + 1.5
-
-        local cur = getLocalChar()
-
+    _matchTimer = char:AddGameTimer(MATCH_TICK_SEC, true, function()
+        elapsed = elapsed + MATCH_TICK_SEC
+        local cur = F.getLocalChar()
         if not cur or not slua.isValid(cur) then return end
 
-        if not _matchOutfitDone then
-
-            _matchOutfitDone = matchApplyOutfit(cur)
-
+        if not _matchWearDone then
+            _matchWearDone = F.matchApplyAllSlots(cur)
+        end
+        F.matchApplyHat(cur)
+        F.matchApplyFaceWear(cur) -- [FIX VIP] Bổ sung lệnh gọi ép Kính & Mặt Nạ chạy liên tục giống Mũ
+        if not _weaponApplied then
+            F.matchApplyWeaponSkin(cur)
+        end
+        if F.isCharacterAirborne(cur) then
+            F.applyAirborneSlots(cur, true)
         end
 
-        matchApplyWeaponSkin(cur)
-
-        if elapsed >= 120 then
-
+        if (_matchWearDone and _weaponApplied) or elapsed >= MATCH_MAX_SEC then
+            if _matchWearDone then
+                PERF.wearDoneThisMatch = true
+            end
             if _matchTimer and cur.RemoveGameTimer then
-
                 pcall(function() cur:RemoveGameTimer(_matchTimer) end)
-
             end
-
             _matchTimer = nil
-
+            PERF.matchActive = false
         end
-
     end)
-
 end
 
-local function stopMatchWatcher()
-
+function F.stopMatchWatcher()
     if _matchTimer then
-
         pcall(function()
-
-            local char = getLocalChar()
-
+            local char = F.getLocalChar()
             if char and char.RemoveGameTimer then char:RemoveGameTimer(_matchTimer) end
-
         end)
-
         _matchTimer = nil
-
     end
-
-    _matchOutfitDone = false
-
+    PERF.matchActive = false
+    PERF.wearDoneThisMatch = false
+    _matchWearDone = false
     _avatarItemsRegistered = false
-
     _weaponApplied = false
-
     _weaponDiagDone = false
-
     _lastWeaponResID = 0
-
 end
 
-local function hookPutOnRsp()
-
+function F.hookAirborneCache()
+    if _G.AddOutfitAirborneHooked then return end
+    _G.AddOutfitAirborneHooked = true
     pcall(function()
-
-        local wl = require("client.slua.logic.wardrobe.logic_wardrobe_new")
-
-        local o = wl.on_puton_rsp
-
-        wl.on_puton_rsp = function(self, res, item, olditem, index, extra)
-
-            o(self, res, item, olditem, index, extra)
-
-            if not item or not item.instid then return end
-
-            local resID = tonumber(item.res_id)
-
-            local insID = tonumber(item.instid)
-
-            if not resID or not insID then return end
-
-            local c = cfg(resID)
-
-            local st = subType(c)
-
-            if getClothKind(resID) == "full_suit" and isInjectedIns(insID) then
-
-                saveEquip(resID, insID)
-
-            elseif GUN_SUB[st] then
-
-                local wid = weaponIdFromSkin(resID)
-
-                if wid then cacheWeaponSkinFromIns(wid, insID) end
-
-            elseif st == MELEE_ID then
-
-                cacheWeaponSkinFromIns(MELEE_ID, insID)
-
-            elseif isInjectedIns(insID) then
-
-                saveEquip(resID, insID)
-
-            end
-
-        end
-
-    end)
-
-end
-
-local function hookLobbyWeaponCache()
-
-    pcall(function()
-
-        local Arm = require("client.logic.armory.logic_armory")
-
-        local oRsp = Arm.install_weapon_skin_rsp
-
-        Arm.install_weapon_skin_rsp = function(client_data, errorCode, weapon_id, instanceID)
-
-            oRsp(client_data, errorCode, weapon_id, instanceID)
-
-            if not _G.LobbyCosmeticEnabled then return end
-
-            if errorCode == 0 or errorCode == NET_OK then
-
-                cacheWeaponSkinFromIns(weapon_id, instanceID)
-
-            end
-
-        end
-
-        local oH = Arm.HandleWeaponSkinChange
-
-        Arm.HandleWeaponSkinChange = function(client_data, weapon_id, instanceID)
-
-            oH(client_data, weapon_id, instanceID)
-
-            if not _G.LobbyCosmeticEnabled then return end
-
-            cacheWeaponSkinFromIns(weapon_id, instanceID)
-
-        end
-
-    end)
-
-    pcall(function()
-
-        local wgl = require("client.slua.logic.wardrobe.logic_wardrobe_gun")
-
-        local o = wgl.on_put_on_weapon_wear_rsp
-
-        wgl.on_put_on_weapon_wear_rsp = function(self, client_data, res, weapon_id, new_skin_id, extra_weapon_list)
-
-            o(self, client_data, res, weapon_id, new_skin_id, extra_weapon_list)
-
-            if not _G.LobbyCosmeticEnabled then return end
-
-            if res == 0 or res == NET_OK then
-
-                cacheWeaponSkinFromIns(weapon_id, new_skin_id)
-
-            end
-
-        end
-
-    end)
-
-    pcall(function()
-
         if not EventSystem or not EventSystem.registEvent then return end
-
-        if EVENTTYPE_WARDROBE and EVENTID_WARDROBE_UPDATE_CURRENT_PUT_ON_GUN then
-
-            EventSystem:registEvent(EVENTTYPE_WARDROBE, EVENTID_WARDROBE_UPDATE_CURRENT_PUT_ON_GUN, function(_, _, resOrFlag, weapon_id)
-
-                if not _G.LobbyCosmeticEnabled then return end
-
-                weapon_id = tonumber(weapon_id)
-
-                if weapon_id and weapon_id > 0 then
-
-                    pcall(function()
-
-                        local wgl = require("client.slua.logic.wardrobe.logic_wardrobe_gun")
-
-                        local insID = tonumber(wgl:GetSkinIdByWeaponID(weapon_id)) or 0
-
-                        if insID > 0 then cacheWeaponSkinFromIns(weapon_id, insID) end
-
-                    end)
-
-                elseif tonumber(resOrFlag) and tonumber(resOrFlag) > 100000 then
-
-                    pcall(function()
-
-                        local wid = weaponIdFromSkin(resOrFlag)
-
-                        if wid then
-
-                            local wd = require("client.slua.logic.wardrobe.wardrobe_data")
-
-                            local ins = wd.GetWardrobeInsIdByResId and wd:GetWardrobeInsIdByResId(resOrFlag)
-
-                            if ins and ins > 0 then cacheWeaponSkinFromIns(wid, ins) end
-
-                        end
-
-                    end)
-
-                end
-
+        if EVENTTYPE_WARDROBE and EVENTID_WARDROBE_UPDATE_ITEM_LIST then
+            EventSystem:registEvent(EVENTTYPE_WARDROBE, EVENTID_WARDROBE_UPDATE_ITEM_LIST, function()
+                F.syncAirborneCacheFromLobby()
             end)
-
         end
-
     end)
-
 end
 
-local function hookWardrobePutOnReq()
-
+function F.hookPutOnRsp()
     pcall(function()
-
         local wl = require("client.slua.logic.wardrobe.logic_wardrobe_new")
-
-        local o = wl.wardrobe_puton_req
-
-        wl.wardrobe_puton_req = function(self, insID, extra)
-
-            insID = tonumber(insID)
-
-            if isInjectedIns(insID) then
-
-                local resID = R.insToRes[insID]
-
-                local itemCfg = cfg(resID)
-
-                if getClothKind(resID) then
-
-                    putOnCloth(insID)
-
-                    return
-
-                end
-
-                local item = { res_id = resID, count = 1, instid = insID }
-
-                if itemCfg and itemCfg.WardrobeMainTab == 6
-
-                    and itemCfg.WardrobeTab ~= 7
-
-                    and itemCfg.WardrobeTab ~= 11
-
-                then
-
-                    local WRH = require("client.network.Protocol.WardRobeHandler")
-
-                    WRH.on_depot_put_on_rsp("ok", item, nil, 0, insID, 0)
-
-                    return
-
-                end
-
-                local WRH = require("client.network.Protocol.WardRobeHandler")
-
-                WRH.on_depot_put_on_rsp("ok", item, nil, 0, insID, 0)
-
-                return
-
+        local o = wl.on_puton_rsp
+        wl.on_puton_rsp = function(self, res, item, olditem, index, extra)
+            o(self, res, item, olditem, index, extra)
+            if not item or not item.instid then return end
+            local resID = tonumber(item.res_id)
+            local insID = tonumber(item.instid)
+            if not resID or not insID then return end
+            local c = F.cfg(resID)
+            local st = F.subType(c)
+            if st == OUTFIT_SUB then
+                F.saveEquip(resID, insID)
+            elseif st == HAT_SUB or FACE_SUBS[st] or BODY_SUBS[st] or HELMET_SUBS[st]
+                or st == PARACHUTE_SUB or F.isGlideRes(resID) or st == GLOVES_SUB then
+                F.saveEquip(resID, insID)
+            elseif F.isParachuteRes(resID) or F.isGlideRes(resID) then
+                F.saveEquip(resID, insID)
+            elseif HEAD_SUBS[st] then
+                F.saveEquip(resID, insID)
+            elseif GUN_SUB[st] then
+                local wid = F.weaponIdFromSkin(resID)
+                if wid then F.cacheWeaponSkinFromIns(wid, insID) end
+            elseif st == MELEE_ID then
+                F.cacheWeaponSkinFromIns(MELEE_ID, insID)
+            elseif F.isInjectedIns(insID) then
+                F.saveEquip(resID, insID)
             end
-
-            return o(self, insID, extra)
-
         end
-
     end)
-
 end
 
-local function hookWardrobePutDownReq()
-
+function F.hookLobbyWeaponCache()
+    if _G.AddOutfitLobbyWeaponCacheHooked then return end
+    _G.AddOutfitLobbyWeaponCacheHooked = true
     pcall(function()
-
-        local wl = require("client.slua.logic.wardrobe.logic_wardrobe_new")
-
-        local o = wl.wardrobe_put_down_req
-
-        wl.wardrobe_put_down_req = function(self, insID)
-
-            insID = tonumber(insID)
-
-            if isInjectedIns(insID) then
-
-                local resID = R.insToRes[insID]
-
-                local itemCfg = cfg(resID)
-
-                if itemCfg and itemCfg.WardrobeMainTab == 6 then
-
-                    DataMgr.vst_skin = 0
-
-                    local HallThemeUtils = require("client.logic.lobby.hall_theme_utils")
-
-                    HallThemeUtils.UpdateThemeVehicleShow()
-
-                    HallThemeUtils.ShowThemeVehicle()
-
-                    return
-
-                end
-
-                local wd = require("client.slua.logic.wardrobe.wardrobe_data")
-
-                local d = wd:GetHallDepotItemDataByInsID(insID)
-
-                local item = d and { res_id = resID, count = d.count or 1, instid = insID }
-
-                local WRH = require("client.network.Protocol.WardRobeHandler")
-
-                WRH.on_depot_put_down_rsp("ok", item, insID)
-
-                return
-
+        local Arm = require("client.logic.armory.logic_armory")
+        local oRsp = Arm.install_weapon_skin_rsp
+        Arm.install_weapon_skin_rsp = function(client_data, errorCode, weapon_id, instanceID)
+            oRsp(client_data, errorCode, weapon_id, instanceID)
+            if (errorCode == 0 or errorCode == NET_OK) and F.isWeaponSkinIns(instanceID) then
+                F.cacheWeaponSkinFromIns(weapon_id, instanceID)
             end
-
-            return o(self, insID)
-
         end
-
+        local oH = Arm.HandleWeaponSkinChange
+        Arm.HandleWeaponSkinChange = function(client_data, weapon_id, instanceID)
+            oH(client_data, weapon_id, instanceID)
+            if F.isWeaponSkinIns(instanceID) then
+                F.cacheWeaponSkinFromIns(weapon_id, instanceID)
+            end
+        end
     end)
-
-end
-
-local function hookWeaponSkinPersist()
-
     pcall(function()
-
+        local wgl = require("client.slua.logic.wardrobe.logic_wardrobe_gun")
+        local o = wgl.on_put_on_weapon_wear_rsp
+        wgl.on_put_on_weapon_wear_rsp = function(self, client_data, res, weapon_id, new_skin_id, extra_weapon_list)
+            o(self, client_data, res, weapon_id, new_skin_id, extra_weapon_list)
+            if res == 0 or res == NET_OK then
+                F.cacheWeaponSkinFromIns(weapon_id, new_skin_id)
+            end
+        end
+    end)
+    pcall(function()
+        if not EventSystem or not EventSystem.registEvent then return end
+        if EVENTTYPE_WARDROBE and EVENTID_WARDROBE_UPDATE_CURRENT_PUT_ON_GUN then
+            EventSystem:registEvent(EVENTTYPE_WARDROBE, EVENTID_WARDROBE_UPDATE_CURRENT_PUT_ON_GUN, function(_, _, resOrFlag, weapon_id)
+                weapon_id = tonumber(weapon_id)
+                if weapon_id and weapon_id > 0 then
+                    pcall(function()
+                        local wgl = require("client.slua.logic.wardrobe.logic_wardrobe_gun")
+                        local insID = tonumber(wgl:GetSkinIdByWeaponID(weapon_id)) or 0
+                        if insID > 0 then F.cacheWeaponSkinFromIns(weapon_id, insID) end
+                    end)
+                elseif tonumber(resOrFlag) and tonumber(resOrFlag) > 100000 then
+                    pcall(function()
+                        local wid = F.weaponIdFromSkin(resOrFlag)
+                        if wid then
+                            local wd = require("client.slua.logic.wardrobe.wardrobe_data")
+                            local ins = wd.GetWardrobeInsIdByResId and wd:GetWardrobeInsIdByResId(resOrFlag)
+                            if ins and ins > 0 then F.cacheWeaponSkinFromIns(wid, ins) end
+                        end
+                    end)
+                end
+            end)
+        end
+    end)
+    pcall(function()
         local WRH = require("client.network.Protocol.WardRobeHandler")
-
-        local o_send_wear = WRH.send_put_on_weapon_wear
-
-        WRH.send_put_on_weapon_wear = function(client_data, weapon_id, extra_weapon_id_list)
-
-            if weapon_id and weapon_id > 0 and _weaponSkinCache[weapon_id] then
-
-                local cached = _weaponSkinCache[weapon_id]
-
-                if isInjectedIns(cached.insID) then
-
-                    local gunLogic = require("client.slua.logic.wardrobe.logic_wardrobe_gun")
-
-                    gunLogic:on_put_on_weapon_wear_rsp(client_data, 0, weapon_id, cached.insID, extra_weapon_id_list)
-
-                    return
-
+        local oHeadReq = WRH.send_depot_set_head_show_req
+        WRH.send_depot_set_head_show_req = function(insID)
+            insID = tonumber(insID) or 0
+            if insID > 0 and F.isInjectedIns(insID) then
+                local wd = require("client.slua.logic.wardrobe.wardrobe_data")
+                local d = wd:GetHallDepotItemDataByInsID(insID)
+                if d and d.resID then
+                    F.saveEquip(tonumber(d.resID), insID)
                 end
-
+                local fbd = require("client.slua.logic.wardrobe.fashionbag.fashionbag_data")
+                fbd:SetHeadShow(insID)
+                WRH.on_depot_set_head_show_rsp(NET_OK, insID)
+                return
             end
-
-            return o_send_wear(client_data, weapon_id, extra_weapon_id_list)
-
+            return oHeadReq(insID)
         end
-
+        local oHead = WRH.on_depot_set_head_show_rsp
+        WRH.on_depot_set_head_show_rsp = function(err_code, id)
+            oHead(err_code, id)
+            if err_code ~= 0 and err_code ~= NET_OK then return end
+            id = tonumber(id) or 0
+            if id <= 0 then return end
+            local wd = require("client.slua.logic.wardrobe.wardrobe_data")
+            local d = wd:GetHallDepotItemDataByInsID(id)
+            if d and d.resID then
+                local st = tonumber(d.itemSubType or F.subType(F.cfg(d.resID)))
+                if st == HAT_SUB or HELMET_SUBS[st] then
+                    F.saveEquip(tonumber(d.resID), id)
+                end
+            end
+        end
     end)
+end
 
+function F.hookWardrobePutOnReq()
+    pcall(function()
+        local wl = require("client.slua.logic.wardrobe.logic_wardrobe_new")
+        if wl._AddOutfitPutOnReqHooked then return end
+        wl._AddOutfitPutOnReqHooked = true
+        local oReq = wl.wardrobe_puton_req
+        wl.wardrobe_puton_req = function(self, insID, extra)
+            insID = tonumber(insID)
+            F.ensureDepotItemValid(insID)
+            if F.tryLocalWearByIns(insID) then return end
+            return oReq(self, insID, extra)
+        end
+        if not wl._AddOutfitPutOnDataHooked then
+            wl._AddOutfitPutOnDataHooked = true
+            local oData = wl.wardrobe_puton_data_req
+            wl.wardrobe_puton_data_req = function(self, itemData)
+                if itemData then
+                    local insID = tonumber(itemData.ins_id or itemData.insID)
+                    local resID = tonumber(itemData.res_id or itemData.resID)
+                    F.clearItemExpire(itemData, insID, resID)
+                    F.ensureDepotItemValid(insID, resID)
+                end
+                return oData(self, itemData)
+            end
+        end
+    end)
 end
 
 local _bootstrapNotified = false
 
-local function bootstrapMatch(char)
-
-    char = char or getLocalChar()
-
+function F.bootstrapMatch(char)
+    char = char or F.getLocalChar()
     if not char or not slua.isValid(char) then return false end
-
-    syncWeaponCacheFromLobby()
-
+    if PERF.matchActive then return true end
+    local now = os.clock()
+    if (now - PERF.lastBootstrapAt) < BOOTSTRAP_COOLDOWN then return false end
+    PERF.lastBootstrapAt = now
+    F.syncWeaponCacheFromLobby(true)
+    F.applyPersistSlotsToCache()
+    F.cleanArmoryPollution()
+    F.syncGlobalWearSkins()
+    F.syncAirborneToDataMgr()
+    pcall(function() F.applyAirborneSlots(char, F.isCharacterAirborne(char)) end)
+    F.syncVehicleCacheFromDataMgr()
+    F.syncVehicleSlotsToDataMgr()
+    pcall(function() F.applyVehicleSkinsToPC(F.getPC()) end)
+    F.startVehicleSkinTicker()
+    pcall(function()
+        local v = F.getMatchVehicle()
+        if slua.isValid(v) then F.autoApplyVehicleSkinOnEnter(v) end
+    end)
     _weaponApplied = false
-
     _weaponDiagDone = false
-
     _matchApplied = false
-
     if not _bootstrapNotified then
-
         _bootstrapNotified = true
-
-        local cch = cache()
-
-        local w = cch.weapons[101004]
-
     end
-
-    startMatchWatcher(char)
-
+    F.startMatchWatcher(char)
     return true
-
 end
 
-local function hookMatchAvatar()
-
+function F.hookMatchAvatar()
     pcall(function()
-
         local CAC = require("GameLua.Mod.Library.GamePlay.Avatar.Component.CharacterAvatarComponent")
-
         local o = CAC.OnAvatarAllMeshLoadedLua
-
         CAC.OnAvatarAllMeshLoadedLua = function(self)
-
             o(self)
-
             pcall(function()
-
                 if self.IsLobbyActor and self:IsLobbyActor() then return end
-
                 local isSelf = self.IsSelf and self:IsSelf()
-
                 if not isSelf then return end
-
-                local char = getLocalChar()
-
+                if PERF.wearDoneThisMatch or PERF.matchActive then return end
+                local char = F.getLocalChar()
                 if char and char.AddGameTimer then
-
-                    char:AddGameTimer(0.5, false, function() bootstrapMatch(char) end)
-
+                    char:AddGameTimer(0.5, false, function() F.bootstrapMatch(char) end)
                 end
-
             end)
-
         end
-
     end)
-
     pcall(function()
-
         local WAC = require("GameLua.Mod.Library.GamePlay.Avatar.Component.WeaponAvatarComponent")
-
         local oLoad = WAC.OnWeaponAvatarLoadedLua
-
         WAC.OnWeaponAvatarLoadedLua = function(self, slotID, definedID)
-
             oLoad(self, slotID, definedID)
-
             pcall(function()
-
                 if self.IsLobbyActor and self:IsLobbyActor() then return end
-
                 local isSelf = self.IsSelf and self:IsSelf()
-
                 if not isSelf then return end
-
-                local char = getLocalChar()
-
+                local char = F.getLocalChar()
                 if not char then return end
-
-                bootstrapMatch(char)
-
                 _weaponApplied = false
-
-                if char.AddGameTimer then
-
-                    char:AddGameTimer(0.2, false, function()
-
-                        local c = getLocalChar()
-
-                        if c then matchApplyWeaponSkin(c) end
-
+                if not PERF.matchActive then F.bootstrapMatch(char)
+                elseif char.AddGameTimer then
+                    char:AddGameTimer(0.25, false, function()
+                        local c = F.getLocalChar()
+                        if c then F.matchApplyWeaponSkin(c) end
                     end)
-
                 end
-
             end)
-
         end
-
     end)
-
 end
 
-local function hookEnterGame()
-
+function F.hookVehicleInfoInit()
     pcall(function()
+        if DataMgr._AddOutfitVehInfoHooked then return end
+        DataMgr._AddOutfitVehInfoHooked = true
+        local orig = DataMgr.InitVehicleInfo
+        DataMgr.InitVehicleInfo = function(vehicle_info, vst_skin)
+            vehicle_info = F.mergeInjectedIntoVehicleSlotList(vehicle_info)
+            orig(vehicle_info, vst_skin)
+            F.later(0.15, function()
+                F.reapplyVehicleSlotsFromConfig()
+                F.reapplyHallThemeFromConfig()
+                LOBBY.reapplyDone = false
+                LOBBY.reapplyScheduled = false
+                F.scheduleLobbyReapplyOnce()
+            end)
+        end
+    end)
+end
 
+function F.hookVehicleSkinDataInit()
+    pcall(function()
+        if DataMgr._AddOutfitVehSkinDataHooked then return end
+        DataMgr._AddOutfitVehSkinDataHooked = true
+        local origInit = DataMgr.InitVehicleSkinData
+        DataMgr.InitVehicleSkinData = function(data)
+            data = F.mergeInjectedVehicleSkinTable(data)
+            origInit(data)
+            F.later(0.1, function()
+                F.equipVehicleTypesFromConfig(PERSIST.configVehicleSlots)
+            end)
+        end
+        local origUpd = DataMgr.UpdateVehicleSkin
+        DataMgr.UpdateVehicleSkin = function(itemSubType, putOnId)
+            origUpd(itemSubType, putOnId)
+            if not _G.AddOutfitApplyingConfig and F.isInjectedIns(putOnId) then
+                F.setLobbyVehicleManual(itemSubType, R.insToRes[putOnId], putOnId)
+            end
+        end
+    end)
+    pcall(function()
+        local HallThemeUtils = require("client.logic.lobby.hall_theme_utils")
+        if HallThemeUtils._AddOutfitLobbyVehHooked then return end
+        HallThemeUtils._AddOutfitLobbyVehHooked = true
+        local orig = HallThemeUtils.ProcPutOnVehicle
+        HallThemeUtils.ProcPutOnVehicle = function(putOnItem, bShowVehicle)
+            orig(putOnItem, bShowVehicle)
+            if not _G.AddOutfitApplyingConfig and putOnItem then
+                local ins = tonumber(putOnItem.instid)
+                local res = tonumber(putOnItem.res_id)
+                if ins and F.isInjectedIns(ins) then
+                    F.setLobbyVehicleManual(F.vehicleSubType(res or R.insToRes[ins]), res or R.insToRes[ins], ins)
+                end
+            end
+        end
+    end)
+end
+
+function F.hookHallTheme()
+    pcall(function()
+        local HT = require("client.logic.lobby.hall_theme_utils")
+        if HT._AddOutfitHallThemeHooked then return end
+        HT._AddOutfitHallThemeHooked = true
+        local orig = HT.ProcPutOnHallTheme
+        HT.ProcPutOnHallTheme = function(putOnItem, putOffItem)
+            orig(putOnItem, putOffItem)
+            if not _G.AddOutfitApplyingTheme and putOnItem then
+                local ins = tonumber(putOnItem.instid)
+                local res = tonumber(putOnItem.res_id)
+                if ins and F.isInjectedIns(ins) then
+                    F.setHallThemeManual(res or R.insToRes[ins], ins)
+                end
+            end
+        end
+    end)
+end
+
+function F.hookEnterGame()
+    if _G.AddOutfitEnterGameHooked then return end
+    _G.AddOutfitEnterGameHooked = true
+    pcall(function()
         if EventSystem and EventSystem.registEvent and EVENTTYPE_LOBBY and EVENTID_ENTER_GAME_BEGIN then
-
             EventSystem:registEvent(EVENTTYPE_LOBBY, EVENTID_ENTER_GAME_BEGIN, function()
-
-                syncWeaponCacheFromLobby()
-
-                stopMatchWatcher()
-
+                F.perfInvalidateLobby()
+                F.syncWeaponCacheFromLobby(true)
+                F.reapplyVehicleSlotsFromConfig(true)
+                F.reapplyHallThemeFromConfig(true)
+                pcall(F.applyVehicleSkinsToPC)
+                F.stopMatchWatcher()
                 _bootstrapNotified = false
-
             end)
-
         end
-
     end)
-
 end
 
-local function start()
+function F.afterInjectApply(firstTime)
+    F.mergeInjectedArmorySkins()
+    F.cleanArmoryPollution()
+    if firstTime then
+        F.refreshWardrobeOnce()
+        F.persistApplyLoaded()
+        F.syncLobbyVehicleResFromIns()
+        F.reapplyVehicleSlotsFromConfig(true)
+        F.reapplyHallThemeFromConfig(true)
+        F.reapplyWeaponsFromConfig()
+        F.scheduleLobbyReapplyOnce()
+    else
+        F.reapplyWeaponsFromConfig()
+    end
+end
 
-    _G.LobbyCosmeticEnabled = (_G.HK_GetVal("UnlockWardrobe") == 1)
 
-    if _G.LoadLobbyWardrobe then _G.LoadLobbyWardrobe() end
 
-    buildSkinMappings()
-
-    _G.get_skin_id = get_skin_id
-
-    _G.get_skin_id2 = get_skin_id
-
+function F.start()
+    F.restorePufferHooks()
+    F.buildSkinMappings()
+    if not _G.AddOutfitPersistLoaded then
+        _G.AddOutfitPersistLoaded = true
+        F.persistLoadFromDisk()
+    end
+    F.applyPersistSlotsToCache()
+    F.syncGlobalWearSkins()
+    
+    _G.apply_vehicle_skin = F.matchApplyVehicleSkin
     _G.skinIdMappings = _G.AddOutfitSkinIdMappings
+    
+    F.hookDepotInit()
+    F.hookWardrobeData()
+    F.hookPageFilter()
+    F.hookArmory()
+    F.hookGunSkinId()
+    F.hookPutOn()
+    F.hookPutDown()
+    F.hookVehicles()
+    F.hookAirborneClick()
+    F.hookVehicleInfoInit()
+    F.hookVehicleSkinDataInit()
+    F.hookHallTheme()
+    F.hookWeaponWear()
+    F.hookNotice()
+    F.hookAvatarValid()
+    F.hookPutOnRsp()
+    F.hookAirborneCache()
+    F.hookLobbyWeaponCache()
+    F.hookLobbySwipePersistence()
+    F.hookWardrobePutOnReq()
+    F.hookWardrobeWearClicks()
+    F.hookMatchAvatar()
+    F.hookEquipmentRectify()
+    F.hookWeaponSpawn()
+    F.hookEnterGame()
 
-    hookDepotInit()
+-- ==============================================================================
+-- [THÊM MỚI] LOGIC KILL MESSENGER, DEADBOX, BỘ ĐẾM KILL & ICON TỪ CODE MẪU
+-- ==============================================================================
+local function decodeExpand(expandContent)
+    local ok, exp = pcall(function() return slua.LuaArchiverDecode(LuaStateWrapper, expandContent) or {} end)
+    return ok and exp or {}
+end
 
-    hookWardrobeData()
+local function encodeExpand(exp)
+    return slua.LuaArchiverEncode(LuaStateWrapper, exp or {})
+end
 
-    hookPageFilter()
+local _cachedMyName = nil
+local function isMyKill(data)
+    if not data then return false end
+    if data.bIamCauser then return true end
+    -- Tối ưu: Chỉ lấy tên 1 lần duy nhất, tránh gọi C++ SLUA hàng ngàn lần
+    if not _cachedMyName then
+        local hud = slua_GameFrontendHUD
+        if hud then
+            local pc = hud:GetPlayerController()
+            if slua.isValid(pc) then
+                local ch = pc:GetPlayerCharacterSafety()
+                if slua.isValid(ch) then _cachedMyName = ch:GetPlayerNameSafety() end
+            end
+        end
+    end
+    if not _cachedMyName or _cachedMyName == "" then return false end
+    return data.Causer == _cachedMyName or data.CauserRealPlayerName == _cachedMyName or data.CauserPlayerName == _cachedMyName
+end
 
-    hookArmory()
+local function getCurrentWeaponSkinID()
+    -- [ĐÃ FIX] Lấy chính xác Skin ID của cây súng ĐANG CẦM TRÊN TAY để tránh hiện nhầm Kill Message
+    local hud = slua_GameFrontendHUD
+    if not hud then return 0 end
+    local pc = hud:GetPlayerController()
+    if not slua.isValid(pc) then return 0 end
+    local ch = pc:GetPlayerCharacterSafety()
+    if not slua.isValid(ch) then return 0 end
+    
+    local currWeapon = ch:GetCurrentWeapon()
+    if slua.isValid(currWeapon) and currWeapon.synData then
+        local currentSkinID = 0
+        pcall(function()
+            local synDataRef = slua.IndexReference(currWeapon.synData:Get(7), "defineID")
+            local skinID = synDataRef and slua.isValid(synDataRef) and synDataRef.TypeSpecificID or 0
+            
+            -- Chỉ xuất Kill Message nếu súng trên tay thực sự là súng VIP (ID > 1000000)
+            if skinID > 1000000 then 
+                currentSkinID = skinID
+            end
+        end)
+        return currentSkinID
+    end
+    return 0
+end
 
-    hookGunSkinId()
-
-    hookPutOn()
-
-    hookWeaponWear()
-
-    hookAvatarValid()
-
-    hookPutOnRsp()
-
-    hookLobbyWeaponCache()
-
-    hookLobbySwipePersistence()
-
-    hookWardrobePutOnReq()
-
-    hookWardrobePutDownReq()
-
-    hookWeaponSkinPersist()
-
-    hookMatchAvatar()
-
-    hookWeaponSpawn()
-
-    hookEnterGame()
+local _downloadedAssetsCache = {}
+local function downloadTeamAssets(skinID)
+    if not skinID or skinID == 0 or skinID == 69 then return end
+    -- Tối ưu: Chỉ tải 1 lần duy nhất mỗi skin, tránh spam băng thông và CPU
+    if _downloadedAssetsCache[skinID] then return end
+    _downloadedAssetsCache[skinID] = true
 
     pcall(function()
-
-        if isInRealMatch() then
-
-            local char = getLocalChar()
-
-            if char then
-
-                notify("Script injected in match - Starting application")
-
-                bootstrapMatch(char)
-
+        local PufferManager = require("client.slua.logic.download.puffer.puffer_manager")
+        local PufferConst = require("client.slua.logic.download.puffer_const")
+        PufferManager.Download(PufferConst.ENUM_DownloadType.ODPAK, {skinID})
+        
+        local cfg = CDataTable.GetTableData("TeamKillBroadcast", skinID)
+        if cfg then
+            if cfg.EffectPath and cfg.EffectPath ~= "" then
+                PufferManager.Download(PufferConst.ENUM_DownloadType.ODPAK, {cfg.EffectPath})
             end
-
+            if cfg.BgPath and cfg.BgPath ~= "" then
+                PufferManager.Download(PufferConst.ENUM_DownloadType.ODPAK, {cfg.BgPath})
+            end
         end
-
     end)
-
-    if injectAll() then
-
-        refreshWardrobe()
-
-        later(1.0, reapplyLobbyEquipped)
-
-        return
-
-    end
-
-    local tries = 0
-
-    local function retry()
-
-        tries = tries + 1
-
-        if injectAll() then
-
-            refreshWardrobe()
-
-            later(1.0, reapplyLobbyEquipped)
-
-            return
-
-        end
-
-        if tries < 40 then later(1.5, retry) end
-
-    end
-
-    later(1.5, retry)
-
 end
 
-pcall(function()
-
-    local ModuleManager = require("client.module_framework.ModuleManager")
-
-    local logic_profile = ModuleManager.GetModule(ModuleManager.LobbyModuleConfig.logic_profile)
-
-    logic_profile.IsPlayerBanned = function(uid) return _G.BanClubEnabled end
-
-    logic_profile.IsPlayerBannedOver30day = function(uid) return _G.BanClubEnabled end
-
-    logic_profile.IsPlayerChatBanned = function(uid) return _G.BanClubEnabled end
-
-    if _G.BanClubEnabled ~= nil then
-
-        local ui = require("client.slua_ui_framework.manager").GetUI(require("client.slua_ui_framework.manager").UI_Config.Lobby_Main_UIBP)
-
-        if ui and ui.Common_Avatar_BP then
-
-            ui.Common_Avatar_BP:SetPlayerBanned(_G.BanClubEnabled)
-
-        end
-
-    end
-
-    require("client.slua.event.EventSystem"):postEvent(2, 10001)
-
-end)
-
-function _G.ApplyPlayerLevel()
-
+local function patchTeamKill(messageData)
+    if not _G.LexusConfig.KillMessage then return messageData end -- [CHẶN NẾU TẮT CÔNG TẮC]
+    if not messageData or not isMyKill(messageData) then return messageData end
+    local currentSkinID = getCurrentWeaponSkinID()
+    if not currentSkinID or currentSkinID == 0 or currentSkinID == 69 then return messageData end
+    local broadcastCfg = CDataTable.GetTableData("TeamKillBroadcast", currentSkinID)
+    if not broadcastCfg or (not broadcastCfg.BgPath and not broadcastCfg.EffectPath) then return messageData end
     pcall(function()
-
-        DataMgr.roleData.level = _G.PlayerLevel
-
-        require("client.slua.event.EventSystem"):postEvent(1, 10501)
-
+        local exp = decodeExpand(messageData.ExpandDataContent)
+        exp.CauserWeaponAvatarID = currentSkinID
+        messageData.ExpandDataContent = encodeExpand(exp)
+        messageData.bShowBottomBothSidesKillInfo = true
+        messageData.bIamCauser = true
+        downloadTeamAssets(currentSkinID)
     end)
-
+    return messageData
 end
 
-if _G.PlayerLevel then _G.ApplyPlayerLevel() end
-
-function _G.ApplyCollectLevel()
-
-    pcall(function()
-
-        if not _G.CollectLevel or not _G.CollectScore then return end
-
-        local collect_module = ModuleManager.GetModule(ModuleManager.LobbyModuleConfig.collect_module)
-
-        if not collect_module then return end
-
-        local FAKE_LEVEL = _G.CollectLevel
-
-        local FAKE_SCORE = _G.CollectScore
-
-        if not collect_module._hooked_collect then
-
-            collect_module._hooked_collect = true
-
-            local collect_cfg = require("GameLua.Mod.Lobby.Base.Collect.logic.collect_cfg")
-
-            collect_module.GetLevelByScore = function(self, score)
-
-                return FAKE_LEVEL, 6, FAKE_LEVEL, 0, 0
-
-            end
-
-            collect_module.GetCollectTotalScore = function(self)
-
-                return FAKE_SCORE, FAKE_LEVEL
-
-            end
-
-            collect_module.GetLevelDataByScore = function(self, score, isSeason)
-
-                return FAKE_LEVEL, "LV." .. FAKE_LEVEL, 6
-
-            end
-
-            collect_module.GetCollectScoreByCollectData = function(self, collectData)
-
-                return FAKE_SCORE, 0
-
-            end
-
-            collect_module.GetCollectScoreByProfile = function(self, profile)
-
-                return FAKE_SCORE, 0
-
-            end
-
-            collect_module.GetSeasonLevelByScore = function(self, score, seasonId)
-
-                return FAKE_LEVEL, true, ""
-
-            end
-
-            collect_module.curLevels[collect_cfg.Sys2Index.Level] = FAKE_LEVEL
-
-            local _raw_cd = collect_module.collect_data
-
-            if _raw_cd then _raw_cd.total_score = FAKE_SCORE end
-
-            rawset(collect_module, "_x_cd", _raw_cd)
-
-            rawset(collect_module, "collect_data", nil)
-
-            local _mt = getmetatable(collect_module) or {}
-
-            local _orig_idx = _mt.__index
-
-            local _orig_nidx = _mt.__newindex
-
-            _mt.__index = function(t, k)
-
-                if k == "collect_data" then
-
-                    local d = rawget(t, "_x_cd")
-
-                    if d then d.total_score = FAKE_SCORE end
-
-                    return d
-
-                end
-
-                if type(_orig_idx) == "function" then return _orig_idx(t, k)
-
-                elseif type(_orig_idx) == "table" then return _orig_idx[k] end
-
-            end
-
-            _mt.__newindex = function(t, k, v)
-
-                if k == "collect_data" then
-
-                    rawset(t, "_x_cd", v)
-
-                    if v then v.total_score = FAKE_SCORE end
-
-                elseif type(_orig_nidx) == "function" then _orig_nidx(t, k, v)
-
-                else rawset(t, k, v) end
-
-            end
-
-            setmetatable(collect_module, _mt)
-
-            local EventSystem = require("client.slua.event.EventSystem")
-
-            EventSystem:postEvent(EVENTTYPE_COLLECT, EVENTID_COLLECT_DATA_NOTIFY)
-
-            EventSystem:postEvent(EVENTTYPE_COLLECT, EVENTID_COLLECT_MAIN_DATA)
-
-            EventSystem:postEvent(EVENTTYPE_COLLECT, EVENTID_COLLECT_PRIVILEGE_DATA_REFRESH)
-
+local function installTeamBroadcastHooks()
+    local function wrapCopy(mod, tag)
+        if not mod then return end
+        local impl2 = mod.__inner_impl or mod
+        if not impl2 or not impl2.CopyKillOrPutDownMessageDataUserDataToLuaTable then return end
+        local key = "__teamKillCopy_" .. tag
+        if not impl2[key] then impl2[key] = impl2.CopyKillOrPutDownMessageDataUserDataToLuaTable end
+        local O_Copy = impl2[key]
+        impl2.CopyKillOrPutDownMessageDataUserDataToLuaTable = function(self, messageData)
+            local copied = O_Copy(self, messageData)
+            
+            -- [TỐI ƯU TUYỆT ĐỐI] Nếu tắt Kill Message -> Bỏ qua toàn bộ logic bên dưới, trả về nguyên bản của game luôn.
+            if not _G.LexusConfig.KillMessage then return copied end
+            
+            local ok2, result = pcall(function() return patchTeamKill(copied) end)
+            if ok2 then return result end
+            return copied
         end
-
-    end)
-
+    end
+    pcall(function() wrapCopy(require("GameLua.Mod.BaseMod.Client.BattleKillBroadcast.BattleKillBroadcastSubSystem"), "base") end)
+    pcall(function() wrapCopy(require("GameLua.Mod.SingleTraining.Client.BattleKillBroadcast.BattleKillBroadcastSubSystem"), "training") end)
 end
 
-local IngamePhoneStateUI = require("GameLua.Mod.Library.Client.UI.IngamePhoneStateUI")
-
-local Lobby_Main_Wifi_UIBP = require("client.slua.umg.lobby.Main.Lobby_Main_Wifi_UIBP")
-
-local o_UpdateQuality = Lobby_Main_Wifi_UIBP.__inner_impl.UpdateQuality
-
-Lobby_Main_Wifi_UIBP.__inner_impl.UpdateQuality = function(self)
-
-    self.UIRoot.WidgetSwitcher_Quality:SetActiveWidgetIndex(0)
-
-    self.UIRoot.TextBlock_High:SetText("DX-MODS")
-
-    self.UIRoot.TextBlock_High:SetColorAndOpacity(FSlateColor(FLinearColor(1, 0.85, 0.8, 1)))
-
-end
-
-local InGameUITools
-
-local o_UpdateArtQualityUI = IngamePhoneStateUI.__inner_impl.UpdateArtQualityUI
-
-IngamePhoneStateUI.__inner_impl.UpdateArtQualityUI = function(self, _, _)
-
-    self.UIRoot.TextBlock_quality:SetText("DX-MODS")
-
-    pcall(function()
-
-        if not InGameUITools then
-
-            InGameUITools = require("GameLua.Mod.BaseMod.Common.UI.InGameUITools")
-
-        end
-
-        local Main = InGameUITools.GetMainControlBaseUI()
-
-        if Main then
-
-            Main.TextBlock_BID:SetText("Đây là mod của DX")
-
-            Main.TextBlock_BID:SetColorAndOpacity(FSlateColor(FLinearColor(1, 0.75, 0.8, 1)))
-
-            Main.TextBlock_Hour:SetWidgetVisibility(UEnums.ESlateVisibility.Collapsed)
-
-        end
-
-    end)
-
-end
-
-local o_OnInitialize = IngamePhoneStateUI.__inner_impl.OnInitialize
-
-IngamePhoneStateUI.__inner_impl.OnInitialize = function(self)
-
-    o_OnInitialize(self)
-
-    if self.UIRoot.TextBlock_quality then
-
-        self.UIRoot.TextBlock_quality:SetColorAndOpacity(FSlateColor(FLinearColor(1, 0.6, 0.2, 1)))
-
-    end
-
-end
-
-start()
-
-function _G.GetKillCounterPath()
-
-    local possiblePaths = {
-
-        '/storage/emulated/0/Android/data/com.pubg.imobile/files/Kong.ini',
-
-        '/storage/emulated/0/Android/data/com.pubg.krmobile/files/Kong.ini',
-
-        '/storage/emulated/0/Android/data/com.vng.pubgmobile/files/Kong.ini',
-
-        '/storage/emulated/0/Android/data/com.rekoo.pubgm/files/Kong.ini'
-
-    }
-
-    for _, path in ipairs(possiblePaths) do
-
-        local file = io.open(path, 'r')
-
-        if file then
-
-            file:close()
-
-            return path
-
-        end
-
-    end
-
-    for _, path in ipairs(possiblePaths) do
-
-        local dir = path:match("(.*)/Kong.ini")
-
-        local f = io.open(dir .. "/config.ini", 'r')
-
-        if f then
-
-            f:close()
-
-            return path
-
-        end
-
-    end
-
-    return '/storage/emulated/0/Android/data/com.pubg.imobile/files/Kong.ini'
-
-end
-
-_G.ActiveKillCounterPath = nil
-
-local function saveKillCountToFile()
-
-    local content = '{\n'
-
-    for weaponID, count in pairs(_G.killCountInfo) do
-
-        content = content .. string.format('    [%d] = %d,\n', weaponID, count)
-
-    end
-
-    content = content .. '}'
-
-    local possiblePaths = {
-
-        '/storage/emulated/0/Android/data/com.pubg.imobile/files/Kong.ini',
-
-        '/storage/emulated/0/Android/data/com.pubg.krmobile/files/Kong.ini',
-
-        '/storage/emulated/0/Android/data/com.vng.pubgmobile/files/Kong.ini',
-
-        '/storage/emulated/0/Android/data/com.rekoo.pubgm/files/Kong.ini'
-
-    }
-
-    if _G.ActiveKillCounterPath then
-
-        local file = io.open(_G.ActiveKillCounterPath, 'w+')
-
-        if file then
-
-            file:write(content)
-
-            file:close()
-
-            _G.lastFileContent = content
-
-            return
-
-        end
-
-        _G.ActiveKillCounterPath = nil
-
-    end
-
-    for _, path in ipairs(possiblePaths) do
-
-        local file = io.open(path, 'w+')
-
-        if file then
-
-            file:write(content)
-
-            file:close()
-
-            _G.ActiveKillCounterPath = path
-
-            _G.lastFileContent = content
-
-            return
-
-        end
-
-    end
-
+-- Khởi tạo hệ thống Kill Count
+_G.killCountInfo = {
+    [101001] = 0000, [101004] = 0000, [101003] = 0000, [103001] = 0000,
+    [102001] = 0000, [105001] = 0000, [102002] = 0000, [103002] = 0000
+}
+
+function _G.saveKillCountToFile()
+    -- Đã làm rỗng hàm lưu file để chống Drop FPS
 end
 
 function _G.loadKillCountFromFile()
-
-    if not _G.ActiveKillCounterPath then _G.ActiveKillCounterPath = _G.GetKillCounterPath() end
-
-    local path = _G.ActiveKillCounterPath
-
-    local file = io.open(path, 'r')
-
-    if file then
-
-        local content = file:read('*a')
-
-        file:close()
-
-        _G.lastFileContent = content
-
-        if content ~= '' then
-
-            content = content:gsub('\239\187\191', ''):gsub('^%s+', '')
-
-            local tempTable = {}
-
-            for weaponID, count in content:gmatch('%[(%d+)%]%s*=%s*(%d+)') do
-
-                tempTable[tonumber(weaponID)] = tonumber(count)
-
-            end
-
-            if next(tempTable) then
-
-                _G.killCountInfo = tempTable
-
-            end
-
-        end
-
-    end
-
-end
-
-function _G.getKills(weaponID)
-
-    return weaponID and _G.killCountInfo[weaponID] or 0
-
-end
-
-function _G.UpdateCurrentWeaponSkinID()
-
-    pcall(function()
-
-        local PlayerController = slua_GameFrontendHUD and slua_GameFrontendHUD:GetPlayerController()
-
-        if not PlayerController then return end
-
-        local uCharacter = PlayerController:GetPlayerCharacterSafety()
-
-        if not uCharacter then
-
-            _G.CurrentWeaponAvatarSkinID = nil
-
-            return
-
-        end
-
-        local currweapon = uCharacter:GetCurrentWeapon()
-
-        if not slua.isValid(currweapon) then
-
-            _G.CurrentWeaponAvatarSkinID = nil
-
-            return
-
-        end
-
-        local wac = currweapon.WeaponAvatarComponent
-
-        if slua.isValid(wac) and wac.GetEquippedItemDefineID then
-
-            local ES = import("EWeaponAttachmentSocketType")
-
-            local defineID = wac:GetEquippedItemDefineID(ES.MasterGun)
-
-            if defineID and defineID.TypeSpecificID and defineID.TypeSpecificID > 0 then
-
-                _G.CurrentWeaponAvatarSkinID = defineID.TypeSpecificID
-
-                return
-
-            end
-
-        end
-
-        local skinRes = getCachedWeaponSkin(currweapon:GetWeaponID())
-
-        if skinRes and skinRes > 0 then
-
-            _G.CurrentWeaponAvatarSkinID = skinRes
-
-        else
-
-            _G.CurrentWeaponAvatarSkinID = nil
-
-        end
-
-    end)
-
-end
-
-function _G.UpdateCurrentClothAvatarID()
-
-    pcall(function()
-
-        local PlayerController = slua_GameFrontendHUD and slua_GameFrontendHUD:GetPlayerController()
-
-        if not PlayerController then return end
-
-        local uCharacter = PlayerController:GetPlayerCharacterSafety()
-
-        if not uCharacter then
-
-            _G.CurrentClothAvatarID = nil
-
-            return
-
-        end
-
-        local AvatarComponent = uCharacter:getAvatarComponent2()
-
-        if slua.isValid(AvatarComponent) then
-
-            local DefienID = AvatarComponent:GetEquippedItemDefineID(5)  -- EAvatarSlotType::EAvatarSlotType_ClothesEquipemtSlot = 5
-
-            if DefienID and DefienID.TypeSpecificID and DefienID.TypeSpecificID > 0 then
-
-                _G.CurrentClothAvatarID = DefienID.TypeSpecificID
-
-                return
-
-            end
-
-        end
-
-        _G.CurrentClothAvatarID = nil
-
-    end)
-
+    -- Đã làm rỗng hàm đọc file để chống Drop FPS
 end
 
 function _G.addKill(weaponID, count)
-
     if not weaponID or not count then return end
-
-    local currentTime = os.clock()
-
-    if _G.LastKillTime[weaponID] and (currentTime - _G.LastKillTime[weaponID]) < 0.5 then
-
-        return
-
-    end
-
-    _G.LastKillTime[weaponID] = currentTime
-
     _G.killCountInfo[weaponID] = (_G.killCountInfo[weaponID] or 0) + count
-
-    pcall(saveKillCountToFile)
-
-    pcall(function()
-
-        _G.UpdateCurrentWeaponSkinID()
-
-        local PlayerController = slua_GameFrontendHUD and slua_GameFrontendHUD:GetPlayerController()
-
-        if PlayerController then
-
-            local uCharacter = PlayerController:GetPlayerCharacterSafety()
-
-            if uCharacter then
-
-                local currweapon = uCharacter:GetCurrentWeapon()
-
-                if currweapon and _G.OurkillCountSystem and _G.CurrentWeaponAvatarSkinID and _G.CurrentWeaponAvatarSkinID > 10000000 then
-
-                    _G.OurkillCountSystem:UpdateMainKillCounterUI(true, weaponID, _G.CurrentWeaponAvatarSkinID)
-
-                end
-
-            end
-
-        end
-
-    end)
-
+    _G.saveKillCountToFile()
 end
 
-_G._CustomNameCache = nil
+function _G.getKills(weaponID) return weaponID and _G.killCountInfo[weaponID] or 0 end
 
-_G._CustomNameContentCache = nil
+-- Hook Deadbox (Tạo Hòm Xác) và KillInfo
+pcall(function()
+    local SKillInfo = require("GameLua.Mod.BaseMod.Client.KillInfoTips.KillInfo")
+    local SKillInfoModuleManager = require("client.module_framework.ModuleManager")
+    local UEnums = _ENV.UEnums
+    local ECharacterHealthStatus = import("ECharacterHealthStatus")
+    
+    if SKillInfo and SKillInfo.__inner_impl and SKillInfo.__inner_impl.FileItem then
+        local O_FileItem = SKillInfo.__inner_impl.FileItem
+        SKillInfo.__inner_impl.FileItem = function(self, DamageRecordData)
+            if not self or not DamageRecordData then return end
 
-function _G.GetCustomNamePath()
+            -- [TỐI ƯU TUYỆT ĐỐI] Tắt cả 3 chức năng -> Trả về game gốc ngay lập tức, siêu nhẹ
+            if not _G.LexusConfig.SkinDeadBox and not _G.LexusConfig.KillCountUI and not _G.LexusConfig.KillMessage then
+                return O_FileItem(self, DamageRecordData)
+            end
 
-    local possiblePaths = {
+            local LogicKillCounter = SKillInfoModuleManager.GetModule(SKillInfoModuleManager.CommonModuleConfig.LogicKillCounter)
+            if not LogicKillCounter then return O_FileItem(self, DamageRecordData) end
 
-        '/storage/emulated/0/Android/data/com.pubg.imobile/files/cahce.txt',
+            local uCharacter = slua_GameFrontendHUD and slua_GameFrontendHUD:GetPlayerController() and slua_GameFrontendHUD:GetPlayerController():GetPlayerCharacterSafety()
+            if not uCharacter or not slua.isValid(uCharacter) then return O_FileItem(self, DamageRecordData) end
 
-        '/storage/emulated/0/Android/data/com.pubg.krmobile/files/cahce.txt',
+            local SelfName = uCharacter:GetPlayerNameSafety()
+            local bIsCauser = DamageRecordData.Causer == SelfName
 
-        '/storage/emulated/0/Android/data/com.vng.pubgmobile/files/cahce.txt',
+            if bIsCauser then
+                if DamageRecordData.DamageType == UEnums.DamageType.VehicleDamage then
+                    if _G.LexusConfig.SkinDeadBox or _G.LexusConfig.KillMessage then 
+                        local carSkinID = _G.CurrentEquipVehicleID or 0
+                        if carSkinID ~= 0 then
+                            local ExpandData = slua.LuaArchiverDecode(LuaStateWrapper, DamageRecordData.ExpandDataContent) or {}
+                            ExpandData.CauserVehicleSkinID = carSkinID
+                            if _G.LexusConfig.KillMessage then -- CHỈ BẬT MỚI ÉP SKIN LÊN KILL FEED
+                                self:ChangeInfoBgByWeaponAvatarIDLua(carSkinID)
+                                DamageRecordData.CauserWeaponAvatarID = carSkinID
+                                DamageRecordData.CauserClothAvatarID = _G.SuitSkin or 0
+                            end
+                            DamageRecordData.ExpandDataContent = slua.LuaArchiverEncode(LuaStateWrapper, ExpandData)
+                        end
+                    end
+                elseif DamageRecordData.CauserWeaponAvatarID ~= 69 and DamageRecordData.CauserClothAvatarID ~= 69 then
+                    local currWeapon = uCharacter:GetCurrentWeapon()
+                    if currWeapon and slua.isValid(currWeapon) then
+                        local defineID = currWeapon:GetItemDefineID()
+                        local DefineID = defineID and slua.isValid(defineID) and defineID.TypeSpecificID or 0
+                        if DefineID ~= 0 then
+                            local ExpandData = slua.LuaArchiverDecode(LuaStateWrapper, DamageRecordData.ExpandDataContent) or {}
+                            local hasChanged = false
 
-        '/storage/emulated/0/Android/data/com.rekoo.pubgm/files/cahce.txt'
+                            local SupportKillCounter = LogicKillCounter:GetBaseKillCounterIdByWeaponId(DefineID)
+                            if SupportKillCounter and DamageRecordData.ResultHealthStatus == ECharacterHealthStatus.FinishedLastBreath then
+                                local synDataRef = slua.IndexReference(currWeapon.synData:Get(7), "defineID")
+                                local SkinID = synDataRef and slua.isValid(synDataRef) and synDataRef.TypeSpecificID or 0
+                                
+                                -- [TỐI ƯU FPS] Súng Mod luôn có ID lớn hơn 1.000.000 (Ví dụ M4 Băng: 1101004046)
+                                if SkinID > 1000000 then 
+                                    if _G.LexusConfig.KillCountUI then 
+                                        ExpandData.KillCounterItemId = DefineID
+                                        ExpandData.KillCounterNum = (ExpandData.KillCounterNum or 0) + 1
+                                        _G.addKill(DefineID, 1)
+                                        hasChanged = true
+                                    end
+                                    if _G.LexusConfig.SkinDeadBox then 
+                                        _G.NeedCheckDeadBoxTimer = 5 
+                                        hasChanged = true
+                                    end
+                                end
+                            end
 
+                            if hasChanged or _G.LexusConfig.KillMessage then
+                                _G.UpdateMyKillCounter = true
+                                if _G.LexusConfig.KillMessage then -- CHỈ BẬT MỚI THAY ĐỔI GÓI TIN ĐỂ HIỆN TRÊN TOP
+                                    local synData = currWeapon.synData
+                                    if synData and slua.isValid(synData) then
+                                        local weaponDefineID = slua.IndexReference(synData:Get(7), "defineID")
+                                        if weaponDefineID and slua.isValid(weaponDefineID) then
+                                            DamageRecordData.CauserWeaponAvatarID = weaponDefineID.TypeSpecificID
+                                        end
+                                    end
+                                    DamageRecordData.CauserClothAvatarID = _G.SuitSkin or 0
+                                end
+                                DamageRecordData.ExpandDataContent = slua.LuaArchiverEncode(LuaStateWrapper, ExpandData)
+                            end
+                        end
+                    end
+                end
+            end
+            O_FileItem(self, DamageRecordData)
+        end
+    end
+end)
+
+-- Hook UI Kill Counter (Cập nhật số đếm & Icon trên màn hình)
+pcall(function()
+    local MyMainKillCounter = require("GameLua.Mod.BaseMod.Client.KillCounter.MainKillCounter")
+    local MyKillCountSubSystem = require("GameLua.Mod.BaseMod.Client.KillCounter.KillCounterUISubsystem")
+    local MyMainWeaponInfoItemUI = require("GameLua.Mod.BaseMod.Client.Backpack.MainWeaponInfoItemUI")
+    local MyMainWeaponKillCounter = require("GameLua.Mod.BaseMod.Client.KillCounter.MainWeaponKillCounter")
+    local SlotBase = require("GameLua.Mod.BaseMod.Client.MainControlUI.SwitchWeaponSlotMode2")
+    local SubsystemMgr = require("GameLua.GameCore.Module.Subsystem.SubsystemMgr")
+    local UIManager = require("client.slua_ui_framework.manager")
+    local ModuleManager = require("client.module_framework.ModuleManager")
+
+    if MyKillCountSubSystem and MyKillCountSubSystem.__inner_impl then
+        _G.OurkillCountSystem = MyKillCountSubSystem.__inner_impl
+        
+        local o_OnRefreshUI = MyMainKillCounter.__inner_impl.OnRefreshUI
+        MyMainKillCounter.__inner_impl.OnRefreshUI = function(self, _, _, UID)
+            if not _G.LexusConfig.KillCountUI then return end -- CHẶN KHI TẮT
+            local LogicKillCounter = ModuleManager.GetModule(ModuleManager.CommonModuleConfig.LogicKillCounter)
+            local curEquipedKillCounter = LogicKillCounter:GetEquipedKillCounterId(6114302174, self.WeaponID)
+            local uCharacter = slua_GameFrontendHUD:GetPlayerController():GetPlayerCharacterSafety()
+            local currweapon = uCharacter:GetCurrentWeapon()
+            if currweapon ~= nil then
+                local defineID = currweapon:GetItemDefineID()
+                local DefineID = defineID and slua.isValid(defineID) and defineID.TypeSpecificID or 0
+                local synDataRef = slua.IndexReference(currweapon.synData:Get(7), "defineID")
+                local SkinID = synDataRef and slua.isValid(synDataRef) and synDataRef.TypeSpecificID or 0
+                self.KillCounterItem:SetKillCounterItemShowWithNum(curEquipedKillCounter, _G.getKills(DefineID), SkinID)
+            end
+        end
+
+        MyKillCountSubSystem.__inner_impl.CheckSupportKCUI = function(self) return _G.LexusConfig.KillCountUI end
+
+        local o_UpdateMainKillCounterUI = MyKillCountSubSystem.__inner_impl.UpdateMainKillCounterUI
+        MyKillCountSubSystem.__inner_impl.UpdateMainKillCounterUI = function(self, bShow, WeaponID, AvatarID)
+            -- [TỐI ƯU TUYỆT ĐỐI] Bóp nghẹt ngay lệnh gọi UI của Game nếu đang tắt, CHỐNG CHỚP (FLASH)
+            if not _G.LexusConfig.KillCountUI then
+                o_UpdateMainKillCounterUI(self, false, WeaponID, AvatarID) -- Ép tham số False
+                local MainKillCounter = UIManager.GetUI(UIManager.UI_Config_InGame.MainKillCounter)
+                if MainKillCounter then UIManager.CloseUI(UIManager.UI_Config_InGame.MainKillCounter) end
+                return
+            end
+
+            o_UpdateMainKillCounterUI(self, bShow, WeaponID, AvatarID)
+            local MainKillCounter = UIManager.GetUI(UIManager.UI_Config_InGame.MainKillCounter)
+            local uCharacter = slua_GameFrontendHUD:GetPlayerController():GetPlayerCharacterSafety()
+            local currweapon = uCharacter:GetCurrentWeapon()
+         
+            if not bShow and MainKillCounter then
+                UIManager.CloseUI(UIManager.UI_Config_InGame.MainKillCounter)
+            elseif bShow and currweapon ~= nil then
+                local DefineID = currweapon:GetItemDefineID().TypeSpecificID
+                local currentEquipAvatrid = slua.IndexReference(currweapon.synData:Get(7), "defineID").TypeSpecificID
+                local LogicKillCounter = ModuleManager.GetModule(ModuleManager.CommonModuleConfig.LogicKillCounter)
+                local SupportKillCounter = LogicKillCounter:GetBaseKillCounterIdByWeaponId(DefineID)
+                
+                local curEquipedKillCounter = LogicKillCounter:GetEquipedKillCounterId(6114302174, currentEquipAvatrid)
+                
+                -- [TỐI ƯU FPS] NHẬN DIỆN SÚNG MOD: Súng thường ID < 1.000.000, Súng Mod ID > 1.000.000
+                local isModdedSkin = (currentEquipAvatrid and currentEquipAvatrid > 1000000)
+                
+                -- Đóng UI nếu là súng lục, dao, CHẢO hoặc SÚNG THƯỜNG KHÔNG CÓ SKIN
+                if (SupportKillCounter == nil or not isModdedSkin) then
+                    if MainKillCounter then
+                        UIManager.CloseUI(UIManager.UI_Config_InGame.MainKillCounter)
+                    end
+                else
+                    -- Hiện UI nếu là súng Mod (Dù curEquipedKillCounter có trả về nil do server không nhận diện được)
+                    if not MainKillCounter then
+                        UIManager.ShowUI(UIManager.UI_Config_InGame.MainKillCounter, DefineID, currentEquipAvatrid)
+                        MainKillCounter = UIManager.GetUI(UIManager.UI_Config_InGame.MainKillCounter)
+                        if MainKillCounter then
+                            MainKillCounter:SetKillCounterItemShowWithNum(curEquipedKillCounter, _G.getKills(DefineID), currentEquipAvatrid)
+                        end
+                    else
+                        MainKillCounter:UpdateWeaponID(DefineID, currentEquipAvatrid)
+                        MainKillCounter:SetKillCounterItemShowWithNum(curEquipedKillCounter, _G.getKills(DefineID), currentEquipAvatrid)
+                    end
+                end
+            end
+        end
+
+        local o_CheckNeedMainKillCounterUI = MyKillCountSubSystem.__inner_impl.CheckNeedMainKillCounterUI
+        MyKillCountSubSystem.__inner_impl.CheckNeedMainKillCounterUI = function(self, Weapon, PlayerID)
+            if not _G.LexusConfig.KillCountUI then return end -- CHẶN KHI TẮT
+            local uCharacter = slua_GameFrontendHUD:GetPlayerController():GetPlayerCharacterSafety()
+            local currweapon = uCharacter:GetCurrentWeapon()
+            if currweapon ~= nil then
+                local defineID = currweapon:GetItemDefineID()
+                local DefineID = defineID and slua.isValid(defineID) and defineID.TypeSpecificID or 0
+                local synDataRef = slua.IndexReference(currweapon.synData:Get(7), "defineID")
+                local SkinID = synDataRef and slua.isValid(synDataRef) and synDataRef.TypeSpecificID or 0
+                self:UpdateMainKillCounterUI(true, DefineID, SkinID)
+            end
+        end
+    end
+end)
+
+-- Vòng lặp Updater (Đã tối ưu Cache: Chỉ Update UI khi đổi súng hoặc có mạng Kill)
+local _lastKCWeaponID = 0
+local _lastKCSkinID = 0
+
+_G.GameAvatarHandlerkillcounter = function()
+    local UIManager = require("client.slua_ui_framework.manager")
+    
+    if not _G.LexusConfig.KillCountUI then
+        local MainKillCounter = UIManager.GetUI(UIManager.UI_Config_InGame.MainKillCounter)
+        if MainKillCounter then UIManager.CloseUI(UIManager.UI_Config_InGame.MainKillCounter) end
+        return 
+    end
+
+    local PlayerController = slua_GameFrontendHUD and slua_GameFrontendHUD:GetPlayerController()
+    if not PlayerController or not slua.isValid(PlayerController) then return end
+    
+    local uCharacter = PlayerController:GetPlayerCharacterSafety()
+    if not uCharacter or not slua.isValid(uCharacter) then return end
+    
+    local currweapon = uCharacter:GetCurrentWeapon()
+    if currweapon and slua.isValid(currweapon) then
+        -- Lấy DefineID an toàn, không tạo rác RAM
+        local defineIDObj = currweapon:GetItemDefineID()
+        local currentWeaponID = (defineIDObj and slua.isValid(defineIDObj)) and defineIDObj.TypeSpecificID or 0
+        
+        -- Lấy Skin ID từ Cache của hệ thống Skin V7.5 (Cực nhẹ, không gọi SLUA)
+        local currentSkinID = 0
+        if _G.AddOutfitLastAppliedSkin and _G.AddOutfitLastAppliedSkin[currentWeaponID] then
+            currentSkinID = _G.AddOutfitLastAppliedSkin[currentWeaponID]
+        end
+
+        -- TỐI ƯU CỰC ĐỘ: Chỉ gửi lệnh cập nhật UI nếu MỚI ĐỔI SÚNG hoặc MỚI GIẾT NGƯỜI
+        if _G.UpdateMyKillCounter or currentWeaponID ~= _lastKCWeaponID or currentSkinID ~= _lastKCSkinID then
+            _lastKCWeaponID = currentWeaponID
+            _lastKCSkinID = currentSkinID
+            _G.UpdateMyKillCounter = false
+            
+            if _G.OurkillCountSystem then
+                _G.OurkillCountSystem:UpdateMainKillCounterUI(true, currentWeaponID, currentSkinID)
+            end
+        end
+    else
+        _lastKCWeaponID = 0
+        _lastKCSkinID = 0
+        local MainKillCounter = UIManager.GetUI(UIManager.UI_Config_InGame.MainKillCounter)
+        if MainKillCounter then UIManager.CloseUI(UIManager.UI_Config_InGame.MainKillCounter) end
+    end
+end
+
+local function LobbyTickSetup()
+    if not _G.CounterUpdated then
+        _G.CounterUpdated = true
+        _G.loadKillCountFromFile()
+    end
+    -- ĐÃ XÓA LOGIC QUÉT FILE translateec.conf LIÊN TỤC GÂY LAG
+end
+
+-- Kích hoạt Hooks và Loop
+pcall(function()
+    installTeamBroadcastHooks()
+    LobbyTickSetup() -- Chỉ gọi đọc file 1 lần duy nhất khi vào game, không lặp lại nữa
+    
+    local ticker = require("common.time_ticker")
+    if ticker and ticker.AddTimerLoop then
+        ticker.AddTimerLoop(0, _G.GameAvatarHandlerkillcounter, -1, 0.5)
+        -- ĐÃ XÓA VÒNG LẶP ĐỌC FILE 0.4 GIÂY ĐỂ TRÁNH DROP FPS
+    end
+end)
+-- ==============================================================================
+
+    F.startVehicleSkinTicker()
+    if not _G.AddOutfitVehInitTimers then
+        _G.AddOutfitVehInitTimers = true
+        F.later(1.5, function() pcall(F.applyVehicleSkinsToPC) end)
+        F.later(4.0, function() pcall(F.applyVehicleSkinsToPC) end)
+    end
+
+    pcall(function()
+        if F.isInRealMatch() then
+            local char = F.getLocalChar()
+            if char then
+                F.bootstrapMatch(char)
+            end
+        end
+    end)
+
+    local firstLobby = not _G.AddOutfitLobbyInitDone
+    if F.injectAll() then
+        if firstLobby then _G.AddOutfitLobbyInitDone = true end
+        F.afterInjectApply(firstLobby)
+        return
+    end
+    local tries = 0
+    local function retry()
+        tries = tries + 1
+        if F.injectAll() then
+            local ft = not _G.AddOutfitLobbyInitDone
+            if ft then _G.AddOutfitLobbyInitDone = true end
+            F.afterInjectApply(ft)
+            return
+        end
+        if tries < INJECT_RETRY_MAX then F.later(INJECT_RETRY_SEC, retry) end
+    end
+    F.later(INJECT_RETRY_SEC, retry)
+end
+
+_G.AddOutfit = F
+F.start()
+
+-- [FIX VIP] HỆ THỐNG TỰ ĐỘNG KHÔI PHỤC SKIN Ở SẢNH KHI VỪA MỞ GAME
+_G.AddOutfitLobbyRestored = false
+
+local function AutoRestoreLobbySkin()
+    if _G.AddOutfitLobbyRestored then return end
+    
+    -- [CỜ NGỦ ĐÔNG LOBBY]: Nếu đã leo lên máy bay vào trận -> Ngủ luôn, không đọc file Sảnh nữa!
+    if _G.AddOutfit and _G.AddOutfit.isInRealMatch() then return end
+    
+    pcall(function()
+        if GameStatus and GameStatus.IsInLobbyOrMainCity and GameStatus.IsInLobbyOrMainCity() then
+            -- Chờ DataMgr tải xong UID của nhân vật (Tránh lỗi load sớm quá bị tịt)
+            if DataMgr and DataMgr.roleData and DataMgr.roleData.uid then
+                local LMC = require("client.slua.logic.lobby.Main.Lobby_Main_Control")
+                if LMC and LMC.GetCurPage then
+                    if _G.AddOutfit and _G.AddOutfit.reapplyLobbyEquipped then
+                        -- Bắn liên hoàn lệnh: Đọc File -> Gán Data -> Vẽ lên nhân vật
+                        _G.AddOutfit.persistLoadFromDisk() 
+                        _G.AddOutfit.persistApplyLoaded() 
+                        _G.AddOutfit.reapplyLobbyEquipped() 
+                        
+                        -- Chốt cờ đã hoàn thành
+                        _G.AddOutfitLobbyRestored = true
+                    end
+                end
+            end
+        end
+    end)
+end
+
+-- Chạy ngầm 1 giây / lần lúc vừa vô game, load xong là tự động ngưng
+pcall(function()
+    local ticker = require("common.time_ticker")
+    if ticker and ticker.AddTimerLoop then
+        ticker.AddTimerLoop(0, AutoRestoreLobbySkin, -1, 1.0)
+    end
+end)
+-- ==============================================================================
+-- ================= KẾT THÚC CORE ADD-OUTFIT V7.5 (HỆ THỐNG SKIN) ==============
+-- ==============================================================================
+
+-- ==============================================================================
+-- ================= KẾT THÚC CORE ADD-OUTFIT V7.5 (HỆ THỐNG SKIN) ==============
+-- ==============================================================================
+
+-- ==============================================================================
+-- ================= BẮT ĐẦU LOGIC MOD EMOTE (CHỈ INGAME - 0% DROP FPS) =========
+-- ==============================================================================
+pcall(function()
+    local QuickExpressionUtils = require("GameLua.Mod.BaseMod.Client.Emote.QuickExpressionUtils")
+
+    -- Danh sách ID Hành Động VIP
+    local EXTRA_EMOTES = {
+          -- [ HÀNH ĐỘNG ]
+    12201301, -- Hành động Sát thủ Gothic
+    12216101, -- Hành động Võ sĩ Huyết Ưng
+    12212201, -- Hành động Sát thủ Cực Ám
+    12219207, -- Hành động Đại tướng Thiên Ngưu
+    12209001, -- Hành động Võ sĩ (Samurai)
+    12219561, -- Hành động Áo choàng Đỏ thẫm
+    12210001, -- Hành động Cái chạm của Tử thần
+    12219022, -- Hành động Thiết vệ Gai góc
+    12208801, -- Hành động Dũng sĩ Bán thần
+    12210801, -- Hành động Thợ săn Vỏ bạc
+    12200701, -- Hành động Du hành Không thời gian
+    12219242, -- Hành động Dạo bước Bầu trời
+    12206001, -- Hành động Hoa linh Đồng xanh
+    12205401, -- Hành động Vua của muôn thú
+    12205201, -- Hành động Trái tim Cự thú
+    12212601, -- Hành động Sát lục Thần bí
+    12205601, -- Hành động Linh hồn Cự thú
+    12219208, -- Hành động Hầu vương Cyber
+    12212001, -- Hành động Võ thánh
+    12206801, -- Hành động Hải long Thần bí
+    12209801, -- Hành động Ngự linh sư
+    12211401, -- Hành động Nữ phù thủy Băng tuyết
+    12207001, -- Hành động Du hành Biển sao
+    12211801, -- Hành động Chúa tể Trật tự
+    12207901, -- Hành động Hải vương Quyến rũ
+    12203401, -- Hành động Kỷ niệm Ảo ảnh
+    12204001, -- Hành động Chú hề (Ngày Cá tháng Tư)
+    12201801, -- Hành động Người bảo vệ Vùng tuyết
+    12215601, -- Hành động Siêu nhân Hằng tinh
+    12215532, -- Hành động Lãnh chúa Ngọn lửa
+    12213201, -- Hành động Kế hoạch Ngày mai
+    12215529, -- Hành động Kỵ sĩ Đua xe
+    12219053, -- Hành động Nữ hoàng Trân bảo
+    12204601, -- Hành động Thiên hạ Bố võ
+    12215701, -- Hành động Hành tinh Vượn người
+    12219003, -- Hành động Bóng tối Thần linh
+    12219004, -- Hành động Ngân hồn Rực lửa
+    12219009, -- Hành động Mê hoặc Rực lửa
+    12219216, -- Hành động Tế tư Héo úa
     }
 
-    for _, path in ipairs(possiblePaths) do
+    -- TỐI ƯU CỰC ĐỘ: Cache dữ liệu trên RAM để game không phải tạo bảng mới mỗi lần bấm nút
+    local CachedInGameEmotes = nil
+    local LastBaseCount = -1
+    local LastEmoteSwitchState = nil
 
-        local file = io.open(path, 'r')
+    -- Hàm trộn Emote 1 lần duy nhất
+    local function GetOptimizedEmoteList(baseList)
+        local baseCount = baseList and #baseList or 0
+        local isEmoteModEnabled = _G.LexusConfig.ModEmote == true
 
-        if file then
-
-            file:close()
-
-            return path
-
+        -- Nếu đã trộn rồi, số lượng Emote gốc không đổi, VÀ trạng thái nút Bật/Tắt không đổi -> Lấy luôn từ Cache ra xài
+        if CachedInGameEmotes and LastBaseCount == baseCount and LastEmoteSwitchState == isEmoteModEnabled then
+            return CachedInGameEmotes
         end
 
-    end
-
-    return nil
-
-end
-
-function _G.GetCustomName()
-
-    if not _G._CustomNameCache then
-
-        _G._CustomNameCache = _G.GetCustomNamePath()
-
-    end
-
-    if not _G._CustomNameCache then return nil end
-
-    pcall(function()
-
-        local file = io.open(_G._CustomNameCache, 'r')
-
-        if not file then
-
-            _G._CustomNameCache = nil
-
-            return
-
-        end
-
-        local content = file:read('*a') or ""
-
-        file:close()
-
-        content = content:gsub('^%s+', ''):gsub('%s+$', '')
-
-        if content == "" then return end
-
-        if content == _G._CustomNameContentCache then return end
-
-        _G._CustomNameContentCache = content
-
-    end)
-
-    return _G._CustomNameContentCache
-
-end
-
-function _G.ForceUpdateKillCounterUI()
-
-    pcall(function()
-
-        local PlayerController = slua_GameFrontendHUD and slua_GameFrontendHUD:GetPlayerController()
-
-        if not PlayerController or not slua.isValid(PlayerController) then return end
-
-        local uCharacter = PlayerController:GetPlayerCharacterSafety()
-
-        if not uCharacter or not slua.isValid(uCharacter) then return end
-
-        local currweapon = uCharacter:GetCurrentWeapon()
-
-        if not slua.isValid(currweapon) then return end
-
-        local DefineID = currweapon:GetItemDefineID() and currweapon:GetItemDefineID().TypeSpecificID or 0
-
-        if DefineID == 0 then return end
-
-        local currentEquipAvatarID = _G.CurrentWeaponAvatarSkinID
-
-        if not currentEquipAvatarID or currentEquipAvatarID <= 10000000 then return end
-
-        local UIManager = require("client.slua_ui_framework.manager")
-
-        local MainKillCounter = UIManager.GetUI(UIManager.UI_Config_InGame.MainKillCounter)
-
-        if MainKillCounter and slua.isValid(MainKillCounter) then
-
-            local ModuleManager = require("client.module_framework.ModuleManager")
-
-            local LogicKillCounter = ModuleManager.GetModule(ModuleManager.CommonModuleConfig.LogicKillCounter)
-
-            local curEquipedKillCounter = LogicKillCounter:GetEquipedKillCounterId(6114302174, currentEquipAvatarID)
-
-            if not curEquipedKillCounter or curEquipedKillCounter == 0 then
-
-                curEquipedKillCounter = LogicKillCounter:GetBaseKillCounterIdByWeaponId(DefineID)
-
-            end
-
-            local kills = _G.getKills(DefineID)
-
-            MainKillCounter:SetKillCounterItemShowWithNum(
-
-                curEquipedKillCounter,
-
-                kills,
-
-                currentEquipAvatarID
-
-            )
-
-            if MainKillCounter.KillCounterItem and MainKillCounter.KillCounterItem.SetVisibility then
-
-                local ESlateVisibility = import("ESlateVisibility")
-
-                MainKillCounter.KillCounterItem:SetVisibility(ESlateVisibility.Collapsed)
-
-                MainKillCounter.KillCounterItem:SetVisibility(ESlateVisibility.SelfHitTestInvisible)
-
-            end
-
-        end
-
-    end)
-
-end
-
-function _G.FileWatcher()
-
-    if not _G.isFileWatcherActive then return end
-
-    pcall(function()
-
-        if not _G.ActiveKillCounterPath then _G.ActiveKillCounterPath = _G.GetKillCounterPath() end
-
-        local path = _G.ActiveKillCounterPath
-
-        local file = io.open(path, 'r')
-
-        if not file then return end
-
-        local currentContent = file:read('*a') or ""
-
-        file:close()
-
-        currentContent = currentContent:gsub('\239\187\191', ''):gsub('^%s+', ''):gsub('%s+$', '')
-
-        if currentContent == "" or currentContent == _G.lastFileContent then return end
-
-        _G.lastFileContent = currentContent
-
-        local tempTable = {}
-
-        for weaponID, count in currentContent:gmatch('%[(%d+)%]%s*=%s*(%d+)') do
-
-            tempTable[tonumber(weaponID)] = tonumber(count)
-
-        end
-
-        if not next(tempTable) then return end
-
-        _G.killCountInfo = tempTable
-
-        _G.ForceUpdateKillCounterUI()
-
-    end)
-
-end
-
-function _G.CheckAndRefreshKillUI()
-
-    pcall(function()
-
-        local PlayerController = slua_GameFrontendHUD and slua_GameFrontendHUD:GetPlayerController()
-
-        if not PlayerController then return end
-
-        local uCharacter = PlayerController:GetPlayerCharacterSafety()
-
-        if not uCharacter then return end
-
-        local currweapon = uCharacter:GetCurrentWeapon()
-
-        if not currweapon then return end
-
-        local DefineID = currweapon:GetItemDefineID().TypeSpecificID
-
-        if DefineID == 0 then return end
-
-        local realKills = _G.getKills(DefineID)
-
-        local lastShown = _G.lastDisplayedKills[DefineID] or -1
-
-        if realKills ~= lastShown then
-
-            local UIManager = require("client.slua_ui_framework.manager")
-
-            local MainKillCounter = UIManager.GetUI(UIManager.UI_Config_InGame.MainKillCounter)
-
-            if MainKillCounter and slua.isValid(MainKillCounter) then
-
-                local currentEquipAvatarID = _G.CurrentWeaponAvatarSkinID
-
-                if currentEquipAvatarID and currentEquipAvatarID > 10000000 then
-
-                    local ModuleManager = require("client.module_framework.ModuleManager")
-
-                    local LogicKillCounter = ModuleManager.GetModule(ModuleManager.CommonModuleConfig.LogicKillCounter)
-
-                    local curEquipedKillCounter = LogicKillCounter:GetEquipedKillCounterId(6114302174, currentEquipAvatarID)
-
-                    if not curEquipedKillCounter or curEquipedKillCounter == 0 then
-
-                        curEquipedKillCounter = LogicKillCounter:GetBaseKillCounterIdByWeaponId(DefineID)
-
-                    end
-
-                    MainKillCounter:SetKillCounterItemShowWithNum(
-
-                        curEquipedKillCounter,
-
-                        realKills,
-
-                        currentEquipAvatarID
-
-                    )
-
-                    _G.lastDisplayedKills[DefineID] = realKills
-
+        local compact = {}
+        local seen = {}
+        
+        -- 1. Thêm Emote mặc định của người chơi
+        if baseList then
+            for _, data in pairs(baseList) do
+                if data and data.DefineID and data.DefineID.TypeSpecificID then
+                    table.insert(compact, data)
+                    seen[data.DefineID.TypeSpecificID] = true
                 end
-
             end
-
         end
 
-    end)
-
-end
-
-pcall(function()
-
-    local SKillInfo = require("GameLua.Mod.BaseMod.Client.KillInfoTips.KillInfo")
-
-    if not SKillInfo or not SKillInfo.__inner_impl then return end
-
-    local ECharacterHealthStatus = import("ECharacterHealthStatus")
-
-    local SKillInfoModuleManager = require("client.module_framework.ModuleManager")
-
-    local O_FileItem = SKillInfo.__inner_impl.FileItem
-
-    SKillInfo.__inner_impl.FileItem = function(self, DamageRecordData)
-
-        self.bSelfKill = false
-
-        if not self or not DamageRecordData then
-
-            return O_FileItem(self, DamageRecordData)
-
-        end
-
-        local LogicKillCounter = SKillInfoModuleManager.GetModule(SKillInfoModuleManager.CommonModuleConfig.LogicKillCounter)
-
-        if not LogicKillCounter then
-
-            return O_FileItem(self, DamageRecordData)
-
-        end
-
-        local uCharacter = slua_GameFrontendHUD
-
-            and slua_GameFrontendHUD:GetPlayerController()
-
-            and slua_GameFrontendHUD:GetPlayerController():GetPlayerCharacterSafety()
-
-        if not uCharacter or not slua.isValid(uCharacter) then
-
-            return O_FileItem(self, DamageRecordData)
-
-        end
-
-        local SelfName = uCharacter:GetPlayerNameSafety()
-
-        if DamageRecordData.Causer == SelfName then
-
-            self.bSelfKill = true
-
-            local currWeapon = uCharacter:GetCurrentWeapon()
-
-            if currWeapon and slua.isValid(currWeapon) then
-
-                local DefineID = currWeapon:GetItemDefineID() and currWeapon:GetItemDefineID().TypeSpecificID or 0
-
-                if DefineID ~= 0 then
-
-                    local ExpandData = slua.LuaArchiverDecode(LuaStateWrapper, DamageRecordData.ExpandDataContent) or {}
-
-                    local SupportKillCounter = LogicKillCounter:GetBaseKillCounterIdByWeaponId(DefineID)
-
-                    if SupportKillCounter and DamageRecordData.ResultHealthStatus == ECharacterHealthStatus.FinishedLastBreath then
-
-                        ExpandData.KillCounterItemId = DefineID
-
-                        ExpandData.KillCounterNum = (ExpandData.KillCounterNum or 0) + 1
-
-                        _G.addKill(DefineID, 1)
-
-                    end
-
-                    DamageRecordData.CauserWeaponAvatarID = _G.CurrentWeaponAvatarSkinID
-
-                    DamageRecordData.CauserClothAvatarID = _G.CurrentClothAvatarID
-
-                    DamageRecordData.CauserNation = ""
-
-                    DamageRecordData.VictimNation = ""
-
-                    local customName = _G.GetCustomName()
-
-                    if customName then
-
-                        DamageRecordData.Causer = customName
-
-                    end
-
-                    DamageRecordData.ExpandDataContent = slua.LuaArchiverEncode(LuaStateWrapper, ExpandData)
-
+        -- 2. CHỈ Thêm Emote VIP NẾU ĐANG BẬT CÔNG TẮC
+        if isEmoteModEnabled then
+            for _, nEmoteID in ipairs(EXTRA_EMOTES) do
+                if not seen[nEmoteID] then
+                    table.insert(compact, {
+                        DefineID = {TypeSpecificID = nEmoteID},
+                        Name = tostring(nEmoteID)
+                    })
+                    seen[nEmoteID] = true
                 end
-
             end
-
         end
 
-        O_FileItem(self, DamageRecordData)
-
+        CachedInGameEmotes = compact
+        LastBaseCount = baseCount
+        LastEmoteSwitchState = isEmoteModEnabled
+        return CachedInGameEmotes
     end
 
-    local o_UpdateColorLua = SKillInfo.__inner_impl.UpdateColorLua
-
-    SKillInfo.__inner_impl.UpdateColorLua = function(self, RelationShip, WeaponAvatarID, IsUseColor, UseColor)
-
-        if o_UpdateColorLua then
-
-            o_UpdateColorLua(self, RelationShip, WeaponAvatarID, IsUseColor, UseColor)
-
+    -- Hook vào hàm Load danh sách của In-game
+    if QuickExpressionUtils and not _G.__EMOTE_INGAME_HOOKED then
+        _G.__EMOTE_INGAME_HOOKED = true
+        _G.__EMOTE_ORIG_GET_LIST = QuickExpressionUtils.GetShowExpressionList
+        
+        QuickExpressionUtils.GetShowExpressionList = function()
+            local baseList, nWeaponShowEmoteID = _G.__EMOTE_ORIG_GET_LIST()
+            return GetOptimizedEmoteList(baseList), nWeaponShowEmoteID
         end
-
-        local FinalColor = nil
-
-        if self.bSelfKill then
-
-            FinalColor = FLinearColor(1, 0.8, 0, 1)
-
-        end
-
-        if FinalColor then
-
-            self.Image_KillType:SetColorAndOpacity(FinalColor)
-
-            self.Image_WeaponIcon:SetColorAndOpacity(FinalColor)
-
-            self.TextBlock_PlayerName01:SetColorAndOpacity(FSlateColor(FinalColor))
-
-            self.TextBlock_PlayerName02:SetColorAndOpacity(FSlateColor(FinalColor))
-
-        end
-
     end
 
-end)
-
-pcall(function()
-
-    local BBKT = require("GameLua.Mod.BaseMod.Client.BattlePopTipsUI.BattlePopBottomKillTips")
-
-    if BBKT and BBKT.__inner_impl and BBKT.__inner_impl.RefreshTillTopsInfo then
-
-        local O_RTTI = BBKT.__inner_impl.RefreshTillTopsInfo
-
-        BBKT.__inner_impl.RefreshTillTopsInfo = function(self, messageData)
-
-            local ExpandData = slua.LuaArchiverDecode(LuaStateWrapper, messageData.ExpandDataContent) or {}
-
-            if _G.CurrentWeaponAvatarSkinID and R.resToIns[tonumber(_G.CurrentWeaponAvatarSkinID)] then
-
-                ExpandData.CauserWeaponAvatarID = _G.CurrentWeaponAvatarSkinID
-
-                messageData.ExpandDataContent = slua.LuaArchiverEncode(LuaStateWrapper, ExpandData)
-
-            end
-
-            if messageData.bIamCauser then
-
-                local customName = _G.GetCustomName()
-
-                if customName then
-
-                    messageData.CauserPlayerName = customName
-
-                end
-
-            end
-
-            return O_RTTI(self, messageData)
-
-        end
-
-    end
-
-end)
-
-pcall(function()
-
-    local MyMainKillCounter = require("GameLua.Mod.BaseMod.Client.KillCounter.MainKillCounter")
-
-    local MyKillCountSubSystem = require("GameLua.Mod.BaseMod.Client.KillCounter.KillCounterUISubsystem")
-
-    local MyMainWeaponInfoItemUI = require("GameLua.Mod.BaseMod.Client.Backpack.MainWeaponInfoItemUI")
-
-    local MyMainWeaponKillCounter = require("GameLua.Mod.BaseMod.Client.KillCounter.MainWeaponKillCounter")
-
-    local SubsystemMgr = require("GameLua.GameCore.Module.Subsystem.SubsystemMgr")
-
-    local SlotBase = require("GameLua.Mod.BaseMod.Client.MainControlUI.SwitchWeaponSlotMode2")
-
-    _G.WeaponEvents = _G.WeaponEvents or { onWeaponChanged = function() end }
-
-    _G.OurkillCountSystem = MyKillCountSubSystem.__inner_impl
-
-    MyKillCountSubSystem.__inner_impl.UpdateMainKillCounterUI = function(self, bShow, WeaponID, AvatarID)
-
-        pcall(function()
-
-            local UIManager = require("client.slua_ui_framework.manager")
-
-            local MainKillCounter = UIManager.GetUI(UIManager.UI_Config_InGame.MainKillCounter)
-
-            local uCharacter = slua_GameFrontendHUD:GetPlayerController():GetPlayerCharacterSafety()
-
-            if not uCharacter then
-
-                if MainKillCounter then UIManager.CloseUI(UIManager.UI_Config_InGame.MainKillCounter) end
-
-                return
-
-            end
-
-            local currweapon = uCharacter:GetCurrentWeapon()
-
-            if not slua.isValid(currweapon) then
-
-                if MainKillCounter then UIManager.CloseUI(UIManager.UI_Config_InGame.MainKillCounter) end
-
-                return
-
-            end
-
-            if not AvatarID or AvatarID <= 10000000 then
-
-                _G.UpdateCurrentWeaponSkinID()
-
-                AvatarID = _G.CurrentWeaponAvatarSkinID
-
-            end
-
-            if not AvatarID or AvatarID <= 10000000 then
-
-                if MainKillCounter then UIManager.CloseUI(UIManager.UI_Config_InGame.MainKillCounter) end
-
-                return
-
-            end
-
-            local DefineID = currweapon:GetItemDefineID().TypeSpecificID
-
-            local ModuleManager = require("client.module_framework.ModuleManager")
-
-            local LogicKillCounter = ModuleManager.GetModule(ModuleManager.CommonModuleConfig.LogicKillCounter)
-
-            local SupportKillCounter = LogicKillCounter:GetBaseKillCounterIdByWeaponId(DefineID)
-
-            if not bShow or not SupportKillCounter then
-
-                if MainKillCounter then UIManager.CloseUI(UIManager.UI_Config_InGame.MainKillCounter) end
-
-                return
-
-            end
-
-            local kills = _G.getKills(DefineID)
-
-            local curEquipedKillCounter = LogicKillCounter:GetEquipedKillCounterId(6114302174, AvatarID)
-
-            if not MainKillCounter then
-
-                UIManager.ShowUI(UIManager.UI_Config_InGame.MainKillCounter, DefineID, AvatarID)
-
-                MainKillCounter = UIManager.GetUI(UIManager.UI_Config_InGame.MainKillCounter)
-
-                if MainKillCounter then
-
-                    MainKillCounter:SetKillCounterItemShowWithNum(curEquipedKillCounter, kills, AvatarID)
-
-                end
-
-            else
-
-                if MainKillCounter.UpdateWeaponID then
-
-                    MainKillCounter:UpdateWeaponID(DefineID, AvatarID)
-
-                end
-
-                MainKillCounter:SetKillCounterItemShowWithNum(curEquipedKillCounter, kills, AvatarID)
-
-            end
-
-        end)
-
-    end
-
-    MyMainKillCounter.__inner_impl.OnRefreshUI = function(self, _, _, UID)
-
-        pcall(function()
-
-            local ModuleManager = require("client.module_framework.ModuleManager")
-
-            local LogicKillCounter = ModuleManager.GetModule(ModuleManager.CommonModuleConfig.LogicKillCounter)
-
-            local uCharacter = slua_GameFrontendHUD:GetPlayerController():GetPlayerCharacterSafety()
-
-            if not uCharacter then return end
-
-            local currweapon = uCharacter:GetCurrentWeapon()
-
-            if currweapon then
-
-                local DefineID = currweapon:GetItemDefineID().TypeSpecificID
-
-                local currentEquipAvatarID = _G.CurrentWeaponAvatarSkinID
-
-                if currentEquipAvatarID and currentEquipAvatarID > 10000000 then
-
-                    local curEquipedKillCounter = LogicKillCounter:GetEquipedKillCounterId(6114302174, currentEquipAvatarID)
-
-                    self.KillCounterItem:SetKillCounterItemShowWithNum(
-
-                        curEquipedKillCounter,
-
-                        _G.getKills(DefineID),
-
-                        currentEquipAvatarID
-
-                    )
-
-                end
-
-            end
-
-        end)
-
-    end
-
-    MyKillCountSubSystem.__inner_impl.CheckSupportKCUI = function(self)
-
-        return true
-
-    end
-
-    local o_CheckNeedMainKillCounterUI = MyKillCountSubSystem.__inner_impl.CheckNeedMainKillCounterUI
-
-    MyKillCountSubSystem.__inner_impl.CheckNeedMainKillCounterUI = function(self, Weapon, PlayerID)
-
-        pcall(function()
-
-            local uCharacter = slua_GameFrontendHUD:GetPlayerController():GetPlayerCharacterSafety()
-
-            if not uCharacter then return end
-
-            local currweapon = uCharacter:GetCurrentWeapon()
-
-            if currweapon then
-
-                local DefineID = currweapon:GetItemDefineID().TypeSpecificID
-
-                _G.WeaponEvents.onWeaponChanged(DefineID)
-
-            end
-
-        end)
-
-    end
-
-    MyMainWeaponKillCounter.__inner_impl.OnRefresh = function(self, SelfUID)
-
-        pcall(function()
-
-            local ModuleManager = require("client.module_framework.ModuleManager")
-
-            local LogicKillCounter = ModuleManager.GetModule(ModuleManager.CommonModuleConfig.LogicKillCounter)
-
-            local curEquipedKillCounter = LogicKillCounter:GetMyEquipedKillCounterId(_G.CurrentWeaponAvatarSkinID)
-
-            if _G.CurrentWeaponAvatarSkinID and _G.CurrentWeaponAvatarSkinID > 10000000 then
-
-                self.KillCounterItem:SetKillCounterItemShowWithNum(
-
-                    curEquipedKillCounter,
-
-                    _G.getKills(self.WeaponID),
-
-                    _G.CurrentWeaponAvatarSkinID
-
-                )
-
-            end
-
-        end)
-
-    end
-
-    local o_DUpdateWeaponAppearanceInfo = MyMainWeaponInfoItemUI.__inner_impl.UpdateWeaponAppearanceInfo
-
-    MyMainWeaponInfoItemUI.__inner_impl.UpdateWeaponAppearanceInfo = function(self, TypeSpecificID, BattleData, DragOrigin)
-
-        pcall(function()
-
-            o_DUpdateWeaponAppearanceInfo(self, TypeSpecificID, BattleData, DragOrigin)
-
-            self:UpdateKillCounter(true)
-
-        end)
-
-    end
-
-    local o_DUpdateKillCounter = MyMainWeaponInfoItemUI.__inner_impl.UpdateKillCounter
-
-    MyMainWeaponInfoItemUI.__inner_impl.UpdateKillCounter = function(self, bShow)
-
-        pcall(function()
-
-            local KillCounterUISubsystem = SubsystemMgr:Get("KillCounterUISubsystem")
-
-            if not KillCounterUISubsystem then bShow = false end
-
-            if bShow then
-
-                local ModuleManager = require("client.module_framework.ModuleManager")
-
-                local LogicKillCounter = ModuleManager.GetModule(ModuleManager.CommonModuleConfig.LogicKillCounter)
-
-                local curEquipedKillCounter = LogicKillCounter:GetBaseKillCounterIdByWeaponId(self.ItemID)
-
-                if self.ItemID == self.WeaponIDOrAvatarID then
-
-                    self.UIRoot.CanvasPanel_KillCounter:SetVisibility(UEnums.GSlateVisibility.Collapsed)
-
-                    return
-
-                end
-
-                if not curEquipedKillCounter then
-
-                    self.UIRoot.CanvasPanel_KillCounter:SetVisibility(UEnums.GSlateVisibility.Collapsed)
-
-                    return
-
-                end
+    -- Hook vào sự kiện bấm nút Emote trong game để ép UI vẽ ra
+    if not _G.__EMOTE_MENU_EVENT_HOOKED and EventSystem and EventSystem.registEvent then
+        _G.__EMOTE_MENU_EVENT_HOOKED = true
+        EventSystem:registEvent(EVENTTYPE_INGAME, EVENTID_INGAME_QUICK_EXPRESSION_DECAL_CLICK, function()
+            pcall(function()
+                -- NẾU ĐANG TẮT MOD EMOTE -> Trả về giao diện mặc định của Game để khỏi lỗi UI
+                if not _G.LexusConfig.ModEmote then return end 
 
                 local UIManager = require("client.slua_ui_framework.manager")
-
-                if not self.KillCounterUI then
-
-                    self.KillCounterUI = UIManager.ShowUI(UIManager.UI_Config_InGame.MainWeaponKillCounter,
-
-                        self.ItemID, self.WeaponIDOrAvatarID, self)
-
-                    self.UIRoot.CanvasPanel_KillCounter.Slot:SetLayer(1)
-
-                else
-
-                    self.KillCounterUI:UpdateWeaponID(self.ItemID, self.WeaponIDOrAvatarID)
-
-                    self.UIRoot.CanvasPanel_KillCounter:SetVisibility(UEnums.GSlateVisibility.SelfHitTestInvisible)
-
-                end
-
-            end
-
-        end)
-
-    end
-
-    local o_CheckShowKCIcon = SlotBase.__inner_impl.CheckShowKCIcon
-
-    SlotBase.__inner_impl.CheckShowKCIcon = function(self)
-
-        pcall(function()
-
-            o_CheckShowKCIcon(self)
-
-            local ESlateVisibility = import("ESlateVisibility")
-
-            local ModuleManager = require("client.module_framework.ModuleManager")
-
-            local LogicKillCounter = ModuleManager.GetModule(ModuleManager.CommonModuleConfig.LogicKillCounter)
-
-            local CurWeapon = self:GetCurrentWeapon()
-
-            if not slua.isValid(CurWeapon) then
-
-                self.KillCounterImg:SetVisibility(ESlateVisibility.Collapsed)
-
-                return
-
-            end
-
-            local WeaponID = CurWeapon:GetWeaponID()
-
-            local SupportKillCounter = LogicKillCounter:GetBaseKillCounterIdByWeaponId(WeaponID)
-
-            if SupportKillCounter then
-
-                self.KillCounterImg:SetVisibility(ESlateVisibility.SelfHitTestInvisible)
-
-            end
-
-        end)
-
-    end
-
-    _G.WeaponEvents.onWeaponChanged = function(weaponId)
-
-        pcall(function()
-
-            local retryCount = 0
-
-            local function applySkinAndUpdate()
-
-                _G.UpdateCurrentWeaponSkinID()
-
-                _G.UpdateCurrentClothAvatarID()
-
-                local skinID = _G.CurrentWeaponAvatarSkinID
-
-                local PlayerController = slua_GameFrontendHUD and slua_GameFrontendHUD:GetPlayerController()
-
-                if not PlayerController then return false end
-
-                local uCharacter = PlayerController:GetPlayerCharacterSafety()
-
-                if not uCharacter or not _G.OurkillCountSystem then return false end
-
-                local currweapon = uCharacter:GetCurrentWeapon()
-
-                if not currweapon then
-
-                    _G.OurkillCountSystem:UpdateMainKillCounterUI(false, 0, nil)
-
-                    return true
-
-                end
-
-                local DefineID = currweapon:GetItemDefineID().TypeSpecificID
-
-                if (not skinID or skinID <= 10000000) and retryCount < 5 then
-
-                    return false
-
-                end
-
-                if skinID and skinID > 10000000 then
-
-                    _G.OurkillCountSystem:UpdateMainKillCounterUI(true, DefineID, skinID)
-
-                else
-
-                    _G.OurkillCountSystem:UpdateMainKillCounterUI(false, 0, nil)
-
-                end
-
-                return true
-
-            end
-
-            local function tryApply()
-
-                if applySkinAndUpdate() then return end
-
-                retryCount = retryCount + 1
-
-                if retryCount <= 5 then
-
-                    local uCharacter = slua_GameFrontendHUD and slua_GameFrontendHUD:GetPlayerController():GetPlayerCharacterSafety()
-
-                    if uCharacter and uCharacter.AddGameTimer then
-
-                        uCharacter:AddGameTimer(0.1, false, tryApply)
-
+                if not UIManager or not UIManager.UI_Config_InGame then return end
+                local subPanel = UIManager.GetUI(UIManager.UI_Config_InGame.QuickExpressionDecalSubPanel)
+                
+                if subPanel and subPanel.GetQuickExpressionDecalItemByIndex and CachedInGameEmotes then
+                    local showCount = 0
+                    for _, data in ipairs(CachedInGameEmotes) do
+                        local nEmoteID = data.DefineID and data.DefineID.TypeSpecificID
+                        if nEmoteID and nEmoteID > 0 then
+                            showCount = showCount + 1
+                            local item = subPanel:GetQuickExpressionDecalItemByIndex(showCount)
+                            if item then
+                                -- Tắt các hiệu ứng thừa làm nặng máy
+                                if item.UIRoot.WidgetSwitcher_Effect then item.UIRoot.WidgetSwitcher_Effect:SetWidgetVisibility(UEnums.ESlateVisibility.Collapsed) end
+                                if item.UIRoot.Image_Weapon then item.UIRoot.Image_Weapon:SetWidgetVisibility(UEnums.ESlateVisibility.Collapsed) end
+                                
+                                item:Show()
+                                item:RefreshData(nEmoteID, -1)
+                            end
+                        end
                     end
-
-                end
-
-            end
-
-            tryApply()
-
-        end)
-
-    end
-
-end)
-
-_G.loadKillCountFromFile()
-
-_G.isFileWatcherActive = true
-
-if _G.Mytimer_ticker then
-
-    pcall(function()
-
-        _G.Mytimer_ticker.AddTimerLoop(0, _G.FileWatcher, -1, 0.5)
-
-        _G.Mytimer_ticker.AddTimerLoop(0, function()
-
-            pcall(function()
-
-                local PlayerController = slua_GameFrontendHUD and slua_GameFrontendHUD:GetPlayerController()
-
-                if not PlayerController then return end
-
-                local uCharacter = PlayerController:GetPlayerCharacterSafety()
-
-                if not uCharacter then return end
-
-                local currweapon = uCharacter:GetCurrentWeapon()
-
-                if not slua.isValid(currweapon) then
-
-                    if _G.OurkillCountSystem then
-
-                        _G.OurkillCountSystem:UpdateMainKillCounterUI(false, 0, nil)
-
+                    if subPanel.HideRestBlocks then subPanel:HideRestBlocks(showCount) end
+                    if subPanel.UIRoot then
+                        subPanel.UIRoot.WrapBox_List:SetWidgetVisibility(UEnums.ESlateVisibility.Visible)
+                        subPanel.UIRoot.VerticalBox_Empty:SetWidgetVisibility(UEnums.ESlateVisibility.Collapsed)
                     end
-
-                    return
-
                 end
-
-                _G.UpdateCurrentWeaponSkinID()
-
-                _G.UpdateCurrentClothAvatarID()
-
-                local skinID = _G.CurrentWeaponAvatarSkinID
-
-                if skinID and skinID > 10000000 then
-
-                    local DefineID = currweapon:GetItemDefineID().TypeSpecificID
-
-                    if _G.OurkillCountSystem then
-
-                        _G.OurkillCountSystem:UpdateMainKillCounterUI(true, DefineID, skinID)
-
-                    end
-
-                else
-
-                    if _G.OurkillCountSystem then
-
-                        _G.OurkillCountSystem:UpdateMainKillCounterUI(false, 0, nil)
-
-                    end
-
-                end
-
             end)
-
-        end, -1, 0.3)
-
-    end)
-
-end
-
-pcall(function()
-
-    local o_UpdateCurGameTime = Lobby_Main_Wifi_UIBP.__inner_impl.UpdateCurGameTime
-
-    Lobby_Main_Wifi_UIBP.__inner_impl.UpdateCurGameTime = function(self)
-
-        o_UpdateCurGameTime(self)
-
-        pcall(function()
-
-            self.UIRoot.TextBlock_CurTime:SetText("Dev lỏ DX")
-
-            self.UIRoot.TextBlock_CurTime:SetColorAndOpacity(FSlateColor(FLinearColor(0.85, 0.7, 1, 1)))
-
         end)
-
     end
-
 end)
+-- ==============================================================================
+-- ================= KẾT THÚC LOGIC MOD EMOTE ===================================
+-- ==============================================================================
 
-pcall(function()
-
-    local WRH = require("client.network.Protocol.WardRobeHandler")
-
-    if WRH.send_equip_motion_req then
-
-        local o_equip = WRH.send_equip_motion_req
-
-        WRH.send_equip_motion_req = function(instid, dst_slot)
-
-            if isInjectedIns(tonumber(instid)) then
-
-                DataMgr.MotionSlotList[dst_slot] = tonumber(instid)
-
-                EventSystem:postEvent(EVENTTYPE_MOTION, EVENTID_MOTION_UPDATE_SLOT_LIST)
-
-                return
-
-            end
-
-            return o_equip(instid, dst_slot)
-
-        end
-
-    end
-
-    if WRH.send_exchange_motion_req then
-
-        local o_exchange = WRH.send_exchange_motion_req
-
-        WRH.send_exchange_motion_req = function(src_slot, dst_slot)
-
-            local srcIns = DataMgr.MotionSlotList[src_slot]
-
-            local dstIns = DataMgr.MotionSlotList[dst_slot]
-
-            local srcInjected = isInjectedIns(tonumber(srcIns))
-
-            local dstInjected = isInjectedIns(tonumber(dstIns))
-
-            if srcInjected or dstInjected then
-
-                DataMgr.MotionSlotList[src_slot] = dstIns or 0
-
-                DataMgr.MotionSlotList[dst_slot] = srcIns or 0
-
-                EventSystem:postEvent(EVENTTYPE_MOTION, EVENTID_MOTION_UPDATE_SLOT_LIST)
-
-                return
-
-            end
-
-            return o_exchange(src_slot, dst_slot)
-
-        end
-
-    end
-
-    if WRH.send_unequip_motion_req then
-
-        local o_unequip = WRH.send_unequip_motion_req
-
-        WRH.send_unequip_motion_req = function(instid, slot)
-
-            if isInjectedIns(tonumber(instid)) then
-
-                DataMgr.MotionSlotList[slot] = 0
-
-                EventSystem:postEvent(EVENTTYPE_MOTION, EVENTID_MOTION_UPDATE_SLOT_LIST)
-
-                return
-
-            end
-
-            return o_unequip(instid, slot)
-
-        end
-
-    end
-
-end)
-
--- ============================================================================
-
--- GARAGE VEHICLE SLOT SYSTEM - Force equip any vehicle to garage slots
-
--- ============================================================================
-
-pcall(function()
-
-    local TeamupHandler = require("client.network.Protocol.TeamupHandler")
-
-    -- Hook: Single vehicle slot update
-
-    local o_send_update = TeamupHandler.send_update_car_main_page_slot_req
-
-    if o_send_update then
-
-        TeamupHandler.send_update_car_main_page_slot_req = function(slot_id, item_inst_id)
-
-            -- Bypass: If injected vehicle, force equip without server validation
-
-            if isInjectedIns(tonumber(item_inst_id)) then
-
-                local resID = R.insToRes[tonumber(item_inst_id)]
-
-                local GarageThemeSystem = ModuleManager.GetModule(ModuleManager.LobbyModuleConfig.GarageThemeSystem)
-
-                if not GarageThemeSystem then return end
-
-                -- Force set vehicle in garage slot
-
-                GarageThemeSystem.GarageVehicleInfo[slot_id] = {
-
-                    inst_id = tonumber(item_inst_id),
-
-                    res_id = resID
-
-                }
-
-                -- Remove duplicate slot entries
-
-                for k, v in pairs(GarageThemeSystem.GarageVehicleInfo) do
-
-                    if k ~= slot_id and v.inst_id == tonumber(item_inst_id) then
-
-                        GarageThemeSystem.GarageVehicleInfo[k] = nil
-
-                    end
-
-                end
-
-                -- Trigger UI updates
-
-                GarageThemeSystem:ReportSpecialEffectTlog()
-
-                EventSystem:postEvent(EVENTTYPE_LOBBY_THEME, EVENTID_GARAGE_VEHICLE_DATA_CHANGE)
-
-                -- Update vehicle skin display
-
-                local itemCfg = cfg(resID)
-
-                if itemCfg then
-
-                    DataMgr.UpdateVehicleSkin(itemCfg.ItemSubType, tonumber(item_inst_id))
-                end
-                if _G.saveVehicleEquip then _G.saveVehicleEquip(resID, item_inst_id) end
-
-                DataMgr.vst_skin = tonumber(item_inst_id)
-
-                local HallThemeUtils = require("client.logic.lobby.hall_theme_utils")
-
-                HallThemeUtils.UpdateThemeVehicleShow()
-
-                HallThemeUtils.ShowThemeVehicle()
-
-                return
-
-            end
-
-            return o_send_update(slot_id, item_inst_id)
-
-        end
-
-    end
-
-    -- Hook: Batch vehicle slot update
-
-    local o_send_batch = TeamupHandler.send_batch_put_on_sportscar_req
-
-    if o_send_batch then
-
-        TeamupHandler.send_batch_put_on_sportscar_req = function(instid_list)
-
-            if type(instid_list) ~= "table" then
-
-                return o_send_batch(instid_list)
-
-            end
-
-            -- Check if any injected vehicles in batch
-
-            local hasInjected = false
-
-            for slot_id, item_inst_id in pairs(instid_list) do
-
-                if isInjectedIns(tonumber(item_inst_id)) then
-
-                    hasInjected = true
-
-                    break
-
-                end
-
-            end
-
-            if not hasInjected then
-
-                return o_send_batch(instid_list)
-
-            end
-
-            local GarageThemeSystem = ModuleManager.GetModule(ModuleManager.LobbyModuleConfig.GarageThemeSystem)
-
-            if not GarageThemeSystem then return end
-
-            -- Process all injected vehicle slots
-
-            for slot_id, item_inst_id in pairs(instid_list) do
-
-                local insID = tonumber(item_inst_id)
-
-                if isInjectedIns(insID) then
-
-                    local resID = R.insToRes[insID]
-
-                    if insID ~= 0 and resID then
-
-                        GarageThemeSystem.GarageVehicleInfo[slot_id] = {
-                            inst_id = insID,
-                            res_id = resID
-                        }
-                        if _G.saveVehicleEquip then _G.saveVehicleEquip(resID, insID) end
-                    else
-
-                        GarageThemeSystem.GarageVehicleInfo[slot_id] = nil
-
-                    end
-
-                end
-
-            end
-
-            -- Trigger UI updates
-
-            GarageThemeSystem:ReportSpecialEffectTlog()
-
-            EventSystem:postEvent(EVENTTYPE_LOBBY_THEME, EVENTID_GARAGE_VEHICLE_DATA_CHANGE)
-
-            -- Forward non-injected items to original handler
-
-            local nonInjected = {}
-
-            for slot_id, item_inst_id in pairs(instid_list) do
-
-                if not isInjectedIns(tonumber(item_inst_id)) then
-
-                    nonInjected[slot_id] = item_inst_id
-
-                end
-
-            end
-
-            if next(nonInjected) then
-
-                return o_send_batch(nonInjected)
-
-            end
-
-        end
-
-    end
-
-end)
-
--- ============================================================================
-
--- WEAPON ICON SYSTEM - Custom weapon skin icons in backpack UI
-
--- ============================================================================
-
-pcall(function()
-
-    local WeaponInfoItemBase = require("GameLua.Mod.BaseMod.Client.Backpack.WeaponInfoItemBase")
-
-    local ESurviveWeaponPropSlot = import("ESurviveWeaponPropSlot")
-
-    -- Resolve skin icon path from resource ID
-
-    local function resolveSkinIcon(skinID)
-
-        skinID = tonumber(skinID) or 0
-
-        if skinID <= 0 then return nil end
-
-        local skinCfg = CDataTable.GetTableData("Item", skinID)
-
-        if skinCfg and skinCfg.ItemBigIcon then
-
-            return skinCfg.ItemBigIcon
-
-        end
-
-        return nil
-
-    end
-
-    -- Hook: Override weapon icon display in backpack
-
-    local o_UpdateWeaponAppearanceInfo = WeaponInfoItemBase.__inner_impl.UpdateWeaponAppearanceInfo
-
-    WeaponInfoItemBase.__inner_impl.UpdateWeaponAppearanceInfo = function(self, TypeSpecificID, BattleData, DragOrigin)
-
-        o_UpdateWeaponAppearanceInfo(self, TypeSpecificID, BattleData, DragOrigin)
-
-        if self.UIRoot and self.UIRoot.Image_WeaponIcon then
-
-            local skinID = nil
-
-            -- Get custom skin ID for main weapon slots
-
-            if self.WeaponPropSlot == ESurviveWeaponPropSlot.SWPS_MainShootWeapon1 then
-
-                skinID = _G._S1
-
-            elseif self.WeaponPropSlot == ESurviveWeaponPropSlot.SWPS_MainShootWeapon2 then
-
-                skinID = _G._S2
-
-            end
-
-            local skinIcon = resolveSkinIcon(skinID)
-
-            if skinIcon then
-
-                self.UIRoot.Image_WeaponIcon:SetBrushFromPathAsync(skinIcon, false)
-
-            end
-
-        end
-
-    end
-
-end)
-
-end
-
-initFullskin()
 
 _G.ReadLiveConfig = function()
 
