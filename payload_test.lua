@@ -10671,13 +10671,11 @@ function F.hookPageFilter()
         end
         local o2 = wl.IsCanUse
         wl.IsCanUse = function(self, resId)
-            if F.isInjectedRes(resId) then return true end
-            return o2(self, resId)
+            return true
         end
         local o3 = wl.IsCharacterUse
         wl.IsCharacterUse = function(self, resId)
-            if F.isInjectedRes(resId) then return true end
-            return o3(self, resId)
+            return true
         end
         local o4 = wl.GetWardrobeInsIdByResId
         wl.GetWardrobeInsIdByResId = function(self, resid)
@@ -11228,8 +11226,7 @@ function F.hookAvatarValid()
         if comp and comp.CheckItemValid then
             local o = comp.CheckItemValid
             comp.CheckItemValid = function(self, resID)
-                if F.isInjectedRes(resID) then return true end
-                return o(self, resID)
+                return true
             end
         end
     end)
