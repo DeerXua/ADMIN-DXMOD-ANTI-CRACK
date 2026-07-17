@@ -8572,7 +8572,7 @@ local function GetOutfitConfigPaths(fileName)
     return paths
 end
 
-local CONFIG_PATHS = GetOutfitConfigPaths("dung0610_outfit.json")
+local CONFIG_PATHS = GetOutfitConfigPaths("dx_outfit.json")
 
 local PERSIST_SLOTS = {
     { "outfit", "outfitRes", "outfitIns", "AddOutfitLastLobbyOutfitRes" },
@@ -13798,30 +13798,18 @@ function _G.InitModMenuTab()
 
                     local StackSkin = { { UI = AliasMap.Title, Text = "DX-MODS SKIN" } }
 
-                    table.insert(StackSkin, { Key = "ModMenu_ModSkin", UI = AliasMap.TitleSwitcher, Text = "▶ BẬT/TẮT MOD SKIN (Trong trận)", ExpandIndex = 0,
-
+                    table.insert(StackSkin, { Key = "ModMenu_ModSkin", UI = AliasMap.TitleSwitcher, Text = "▶ BẬT/TẮT MOD SKIN & TỦ ĐỒ", ExpandIndex = 0,
                         GetFunc = function() return _G.HK_Settings.ModSkin == 1 end,
-
-                        SetFunc = function(_, v) _G.HK_Settings.ModSkin = v and 1 or 0; _G.EnvRequiresUpdate = true; return true end })
-
-                    table.insert(StackSkin, { Key = "ModMenu_UnlockWardrobe", UI = AliasMap.TitleSwitcher, Text = "▶ UNLOCK KHO ĐỒ SẢNH (Đầy đủ skin, xe, dù, thú cưng)", ExpandIndex = 0,
-
-                        GetFunc = function() return _G.HK_Settings.UnlockWardrobe == 1 end,
-
                         SetFunc = function(_, v)
-
-                            _G.HK_Settings.UnlockWardrobe = v and 1 or 0
-
+                            local val = v and 1 or 0
+                            _G.HK_Settings.ModSkin = val
+                            _G.HK_Settings.UnlockWardrobe = val
                             if v then
-
                                 _G.DX_WardrobeInitialized = false  -- Force re-init
-
                                 pcall(_G.DX_InitUnlockWardrobe)
-
                             end
-
+                            _G.EnvRequiresUpdate = true
                             return true
-
                         end })
 
                     -- === Avatar ===
