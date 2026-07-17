@@ -12424,9 +12424,13 @@ function F.startMatchWatcher(char)
         local cur = F.getLocalChar()
         if not cur or not slua.isValid(cur) then return end
 
-        if not _matchWearDone then
-            _matchWearDone = F.matchApplyAllSlots(cur)
+        local wearOk = F.matchApplyAllSlots(cur)
+        if elapsed >= 15.0 and wearOk then
+            _matchWearDone = true
+        else
+            _matchWearDone = false
         end
+
         F.matchApplyHat(cur)
         F.matchApplyFaceWear(cur) -- [FIX VIP] Bổ sung lệnh gọi ép Kính & Mặt Nạ chạy liên tục giống Mũ
         if not _weaponApplied then
