@@ -2358,6 +2358,7 @@ _G.HK_Settings = _G.HK_Settings or {
 
     -- ===== MOD SKIN SETTINGS =====
     ModSkin = 0,
+    UnlockWardrobe = 0,
     SkinSuit = 1, SkinBag = 1, SkinHelmet = 1,
     SkinM416 = 1, SkinAKM = 1, SkinSCAR = 1, SkinM762 = 1, SkinAUG = 1,
     SkinUMP = 1, SkinUZI = 1, SkinGroza = 1, SkinS12K = 1, SkinDBS = 1,
@@ -2786,6 +2787,449 @@ do
 end
 -- ===================== KẾT THÚC NHÓM 7 =====================
 
+-- =========================== NHÓM 8: UNLOCK FULL WARDROBE LOBBY ===========================
+-- Hook toàn bộ inventory/wardrobe modules để mở kho đồ đầy đủ trong sảnh
+-- Người chơi có thể xem, thử và trang bị skin như kho đồ thật
+
+-- Tập hợp tất cả skin IDs để inject vào wardrobe
+local function DX_BuildFullSkinList()
+    local allSuits  = {}
+    local allBags   = {}
+    local allHelmets= {}
+    local allWeapons= {}
+    local allVehicles={}
+    local allParachutes = {1701001,1701002,1701003,1701004,1701005,1701006,1701007,1701008,1701009,1701010,
+                           1701011,1701012,1701013,1701014,1701015,1701016,1701017,1701018,1701019,1701020,
+                           1701021,1701022,1701023,1701024,1701025,1701026,1701027,1701028,1701029,1701030}
+    local allPets   = {50000,50001,50002,50003,50004,50005,50006,50021,50022,50038,50039,50040}
+
+    -- Suits từ OutfitSkins
+    if _G.OutfitSkins and _G.OutfitSkins.Suit then
+        for _, id in ipairs(_G.OutfitSkins.Suit) do
+            if id and id > 0 then allSuits[#allSuits+1] = id end
+        end
+    end
+    -- Bags (lấy cấp 3 làm đại diện)
+    if _G.OutfitSkins and _G.OutfitSkins.Bag then
+        for _, group in ipairs(_G.OutfitSkins.Bag) do
+            if type(group) == "table" then
+                for _, id in ipairs(group) do
+                    if id and id > 0 then allBags[#allBags+1] = id end
+                end
+            end
+        end
+    end
+    -- Helmets
+    if _G.OutfitSkins and _G.OutfitSkins.Helmet then
+        for _, group in ipairs(_G.OutfitSkins.Helmet) do
+            if type(group) == "table" then
+                for _, id in ipairs(group) do
+                    if id and id > 0 then allHelmets[#allHelmets+1] = id end
+                end
+            end
+        end
+    end
+    -- Weapons từ skinIdMappings
+    if _G.skinIdMappings then
+        for baseId, skins in pairs(_G.skinIdMappings) do
+            for _, id in ipairs(skins) do
+                if id and id > 0 then allWeapons[#allWeapons+1] = id end
+            end
+        end
+    end
+    -- VIP Attachment skins
+    if _G.VIP_Attachments then
+        for skinId, _ in pairs(_G.VIP_Attachments) do
+            allWeapons[#allWeapons+1] = skinId
+        end
+    end
+    -- Vehicle skins
+    if _G.VehicleSkins then
+        for _, skins in pairs(_G.VehicleSkins) do
+            for _, id in ipairs(skins) do
+                if id and id > 0 then allVehicles[#allVehicles+1] = id end
+            end
+        end
+    end
+
+    return {
+        suits     = allSuits,
+        bags      = allBags,
+        helmets   = allHelmets,
+        weapons   = allWeapons,
+        vehicles  = allVehicles,
+        parachutes= allParachutes,
+        pets      = allPets,
+    }
+end
+
+-- Cache danh sách skin
+_G.DX_WardrobeFullList = nil
+local function DX_GetWardrobeList()
+    if not _G.DX_WardrobeFullList then
+        _G.DX_WardrobeFullList = DX_BuildFullSkinList()
+    end
+    return _G.DX_WardrobeFullList
+end
+
+-- Bảng lưu lựa chọn hiện tại của người chơi ngoài sảnh
+_G.DX_SelectedLobbyAvatars = _G.DX_SelectedLobbyAvatars or {
+    Suit      = 0,
+    Bag       = 0,
+    Helmet    = 0,
+    Parachute = 0,
+    Pet       = 0,
+}
+_G.DX_SelectedLobbyWeapons  = _G.DX_SelectedLobbyWeapons  or {}
+_G.DX_SelectedLobbyVehicles = _G.DX_SelectedLobbyVehicles or {}
+
+-- ===== HOOK 1: data_bag - kiểm tra sở hữu item =====
+local function DX_HookDataBag()
+    pcall(function()
+        local bagPaths = {
+            "client.logic.data.data_bag",
+            "client.slua.logic.data.data_bag",
+            "DataBag",
+        }
+        for _, path in ipairs(bagPaths) do
+            local ok, data_bag = pcall(require, path)
+            if ok and data_bag and not data_bag._DX_WardrobeHooked then
+                -- Hook kiểm tra sở hữu item
+                if data_bag.HasItem then
+                    local orig = data_bag.HasItem
+                    data_bag.HasItem = function(self, itemId, ...)
+                        if _G.HK_GetVal("UnlockWardrobe") == 1 then
+                            local wl = DX_GetWardrobeList()
+                            -- Kiểm tra nếu item thuộc danh sách skin của chúng ta
+                            for _, list in pairs(wl) do
+                                for _, id in ipairs(list) do
+                                    if id == itemId then return true end
+                                end
+                            end
+                        end
+                        return orig(self, itemId, ...)
+                    end
+                end
+                if data_bag.GetItemNum then
+                    local orig = data_bag.GetItemNum
+                    data_bag.GetItemNum = function(self, itemId, ...)
+                        if _G.HK_GetVal("UnlockWardrobe") == 1 then
+                            local wl = DX_GetWardrobeList()
+                            for _, list in pairs(wl) do
+                                for _, id in ipairs(list) do
+                                    if id == itemId then return 1 end
+                                end
+                            end
+                        end
+                        return orig(self, itemId, ...)
+                    end
+                end
+                if data_bag.CheckHasItemByID then
+                    local orig = data_bag.CheckHasItemByID
+                    data_bag.CheckHasItemByID = function(self, itemId, ...)
+                        if _G.HK_GetVal("UnlockWardrobe") == 1 then return true end
+                        return orig(self, itemId, ...)
+                    end
+                end
+                data_bag._DX_WardrobeHooked = true
+                break
+            end
+        end
+    end)
+end
+
+-- ===== HOOK 2: logic_avatar - danh sách avatar sảnh =====
+local function DX_HookLogicAvatar()
+    pcall(function()
+        local avatarPaths = {
+            "client.slua.logic.avatar.logic_avatar",
+            "client.logic.avatar.logic_avatar",
+            "logic_avatar",
+        }
+        for _, path in ipairs(avatarPaths) do
+            local ok, logic_avatar = pcall(require, path)
+            if ok and logic_avatar and not logic_avatar._DX_WardrobeHooked then
+                -- Hook lấy danh sách avatar sở hữu
+                if logic_avatar.GetOwnedAvatarList then
+                    local orig = logic_avatar.GetOwnedAvatarList
+                    logic_avatar.GetOwnedAvatarList = function(self, slotType, ...)
+                        local extraArgs = {...}
+                        local baseList = {}
+                        pcall(function() baseList = orig(self, slotType, table.unpack(extraArgs)) or {} end)
+                        if _G.HK_GetVal("UnlockWardrobe") == 1 then
+                            local wl = DX_GetWardrobeList()
+                            local existing = {}
+                            for _, item in ipairs(baseList) do
+                                local id = type(item) == "table" and (item.itemID or item.ItemID or item.id) or item
+                                if id then existing[id] = true end
+                            end
+                            -- Inject toàn bộ skin IDs theo slotType
+                            -- slotType: 5=Suit, 8=Bag, 9=Helmet, 11=Parachute, 15=Glider
+                            local injectList = nil
+                            if slotType == 5 then injectList = wl.suits
+                            elseif slotType == 8 then injectList = wl.bags
+                            elseif slotType == 9 then injectList = wl.helmets
+                            elseif slotType == 11 or slotType == 15 then injectList = wl.parachutes
+                            end
+                            if injectList then
+                                for _, id in ipairs(injectList) do
+                                    if not existing[id] then
+                                        baseList[#baseList+1] = {itemID = id, ItemID = id, id = id, count = 1}
+                                    end
+                                end
+                            end
+                        end
+                        return baseList
+                    end
+                end
+                -- Hook kiểm tra sở hữu avatar
+                if logic_avatar.CheckAvatarOwned then
+                    local orig = logic_avatar.CheckAvatarOwned
+                    logic_avatar.CheckAvatarOwned = function(self, itemId, ...)
+                        if _G.HK_GetVal("UnlockWardrobe") == 1 then return true end
+                        local extraArgs = {...}
+                        return orig(self, itemId, table.unpack(extraArgs))
+                    end
+                end
+                if logic_avatar.HasAvatar then
+                    local orig = logic_avatar.HasAvatar
+                    logic_avatar.HasAvatar = function(self, itemId, ...)
+                        if _G.HK_GetVal("UnlockWardrobe") == 1 then return true end
+                        local extraArgs = {...}
+                        return orig(self, itemId, table.unpack(extraArgs))
+                    end
+                end
+                logic_avatar._DX_WardrobeHooked = true
+                break
+            end
+        end
+    end)
+end
+
+-- ===== HOOK 3: data_avatar - dữ liệu avatar thô =====
+local function DX_HookDataAvatar()
+    pcall(function()
+        local avatarDataPaths = {
+            "client.logic.data.data_avatar",
+            "client.slua.logic.data.data_avatar",
+            "DataAvatar",
+        }
+        for _, path in ipairs(avatarDataPaths) do
+            local ok, data_avatar = pcall(require, path)
+            if ok and data_avatar and not data_avatar._DX_WardrobeHooked then
+                if data_avatar.HasAvatar then
+                    local orig = data_avatar.HasAvatar
+                    data_avatar.HasAvatar = function(self, itemId, ...)
+                        if _G.HK_GetVal("UnlockWardrobe") == 1 then return true end
+                        return orig(self, itemId, ...)
+                    end
+                end
+                if data_avatar.GetAvatarList then
+                    local orig = data_avatar.GetAvatarList
+                    data_avatar.GetAvatarList = function(self, slotType, ...)
+                        local extraArgs = {...}
+                        local list = {}
+                        pcall(function() list = orig(self, slotType, table.unpack(extraArgs)) or {} end)
+                        if _G.HK_GetVal("UnlockWardrobe") == 1 then
+                            local wl = DX_GetWardrobeList()
+                            local existing = {}
+                            for _, item in ipairs(list) do
+                                local id = type(item) == "table" and (item.itemID or item.id) or item
+                                if id then existing[id] = true end
+                            end
+                            local injectList = nil
+                            if slotType == 5 then injectList = wl.suits
+                            elseif slotType == 8 then injectList = wl.bags
+                            elseif slotType == 9 then injectList = wl.helmets
+                            end
+                            if injectList then
+                                for _, id in ipairs(injectList) do
+                                    if not existing[id] then
+                                        list[#list+1] = {itemID=id, id=id, count=1}
+                                    end
+                                end
+                            end
+                        end
+                        return list
+                    end
+                end
+                data_avatar._DX_WardrobeHooked = true
+                break
+            end
+        end
+    end)
+end
+
+-- ===== HOOK 4: Hook LobbyAvatar để ghi nhớ lựa chọn trong sảnh =====
+local function DX_HookLobbyAvatarSelection()
+    pcall(function()
+        local LobbyAvatar = package.loaded["client.logic.avatar.LobbyAvatar"] or require("client.logic.avatar.LobbyAvatar")
+        if LobbyAvatar and not LobbyAvatar._DX_SelectionHooked then
+            local origPuton = LobbyAvatar.PutonEquipment
+            LobbyAvatar.PutonEquipment = function(self, itemID, tAvatarCustom, tExtraData)
+                -- Ghi nhớ lựa chọn theo slot type
+                pcall(function()
+                    if _G.HK_GetVal("UnlockWardrobe") == 1 then
+                        local CS = _G.CustSlotType
+                        if CS then
+                            -- Xác định slot dựa trên range ID của item
+                            local idStr = tostring(itemID)
+                            -- Suit: 14xxxxx range, Bag: 15xxxxx, Helmet: 15xxxxx
+                            if itemID >= 1400000 and itemID < 1500000 then
+                                _G.DX_SelectedLobbyAvatars.Suit = itemID
+                                -- Đồng bộ vào OutfitMap để auto-apply vào trận
+                                _G.OutfitMap.Suit = itemID
+                            elseif itemID >= 1500000 and itemID < 1502000 then
+                                _G.DX_SelectedLobbyAvatars.Bag = itemID
+                                _G.OutfitMap.Bag = itemID
+                            elseif itemID >= 1502000 and itemID < 1503000 then
+                                _G.DX_SelectedLobbyAvatars.Helmet = itemID
+                                _G.OutfitMap.Helmet = itemID
+                            elseif itemID >= 400000 and itemID < 600000 then
+                                _G.DX_SelectedLobbyAvatars.Suit = itemID
+                                _G.OutfitMap.Suit = itemID
+                            elseif itemID >= 1700000 and itemID < 1800000 then
+                                _G.DX_SelectedLobbyAvatars.Parachute = itemID
+                                _G.OutfitMap.Parachute = itemID
+                            elseif itemID >= 50000 and itemID < 51000 then
+                                _G.DX_SelectedLobbyAvatars.Pet = itemID
+                            end
+                            -- Weapon skin
+                            if itemID >= 1100000 and itemID < 1200000 then
+                                -- Extract base weapon ID từ skin ID
+                                local base = math.floor(itemID / 1000) % 1000 + 101000
+                                _G.DX_SelectedLobbyWeapons[base] = itemID
+                                _G.WeaponSkinMap[base] = itemID
+                            elseif itemID >= 1900000 and itemID < 2000000 then
+                                -- Vehicle skin
+                                _G.DX_SelectedLobbyVehicles[itemID] = itemID
+                            end
+                        end
+                    end
+                end)
+                -- Gọi hook VIP attachment nếu có
+                local attachIndex = _G.BaseAttachToIndex and _G.BaseAttachToIndex[itemID]
+                if attachIndex then
+                    local holdingWeaponSkinID = self.GetCurHoldingWeaponSkinID and self:GetCurHoldingWeaponSkinID()
+                    if holdingWeaponSkinID and holdingWeaponSkinID >= 10000000 and _G.VIP_Attachments and _G.VIP_Attachments[holdingWeaponSkinID] then
+                        local vipAttachID = _G.VIP_Attachments[holdingWeaponSkinID][attachIndex]
+                        if vipAttachID and vipAttachID > 0 then
+                            if self.HandleDownload then self:HandleDownload(vipAttachID, nil, nil, false) end
+                            itemID = vipAttachID
+                        end
+                    end
+                end
+                if origPuton then return origPuton(self, itemID, tAvatarCustom, tExtraData) end
+            end
+            LobbyAvatar._DX_SelectionHooked = true
+        end
+    end)
+end
+
+-- ===== HOOK 5: Hook weapon skin selection trong sảnh =====
+local function DX_HookWeaponAvatarLobby()
+    pcall(function()
+        -- Hook logic_gun_skin hoặc tương đương
+        local gunSkinPaths = {
+            "client.logic.bag.logic_gun_skin",
+            "client.slua.logic.bag.logic_gun_skin",
+            "client.logic.avatar.logic_weapon_avatar",
+        }
+        for _, path in ipairs(gunSkinPaths) do
+            local ok, gunSkin = pcall(require, path)
+            if ok and gunSkin and not gunSkin._DX_WardrobeHooked then
+                -- Hook GetOwnedGunSkin hoặc tương đương
+                for _, fname in ipairs({"GetOwnedGunSkinList","GetGunSkinList","GetOwnedList","GetWeaponAvatarList"}) do
+                    if gunSkin[fname] then
+                        local orig = gunSkin[fname]
+                        gunSkin[fname] = function(self, weaponId, ...)
+                            local extraArgs = {...}
+                            local baseList = {}
+                            pcall(function() baseList = orig(self, weaponId, table.unpack(extraArgs)) or {} end)
+                            if _G.HK_GetVal("UnlockWardrobe") == 1 and _G.skinIdMappings then
+                                local existing = {}
+                                for _, item in ipairs(baseList) do
+                                    local id = type(item)=="table" and (item.itemID or item.id) or item
+                                    if id then existing[id] = true end
+                                end
+                                local skins = _G.skinIdMappings[weaponId]
+                                if skins then
+                                    for _, id in ipairs(skins) do
+                                        if not existing[id] then
+                                            baseList[#baseList+1] = {itemID=id, id=id, count=1}
+                                        end
+                                    end
+                                end
+                                -- Thêm VIP skins
+                                if _G.VIP_Attachments then
+                                    for skinId, _ in pairs(_G.VIP_Attachments) do
+                                        if not existing[skinId] then
+                                            baseList[#baseList+1] = {itemID=skinId, id=skinId, count=1}
+                                        end
+                                    end
+                                end
+                            end
+                            return baseList
+                        end
+                    end
+                end
+                -- Hook CheckHasGunSkin
+                for _, fname in ipairs({"CheckHasGunSkin","HasGunSkin","HasWeaponSkin","CheckOwnGunSkin"}) do
+                    if gunSkin[fname] then
+                        local orig = gunSkin[fname]
+                        gunSkin[fname] = function(self, skinId, ...)
+                            if _G.HK_GetVal("UnlockWardrobe") == 1 then return true end
+                            return orig(self, skinId, ...)
+                        end
+                    end
+                end
+                gunSkin._DX_WardrobeHooked = true
+                break
+            end
+        end
+    end)
+end
+
+-- ===== MAIN: Khởi động Unlock Wardrobe =====
+_G.DX_InitUnlockWardrobe = function()
+    if _G.DX_WardrobeInitialized then return end
+    pcall(DX_HookDataBag)
+    pcall(DX_HookLogicAvatar)
+    pcall(DX_HookDataAvatar)
+    pcall(DX_HookLobbyAvatarSelection)
+    pcall(DX_HookWeaponAvatarLobby)
+    _G.DX_WardrobeInitialized = true
+end
+
+-- Khởi động ngay nếu UnlockWardrobe bật
+pcall(function()
+    _G.DX_InitUnlockWardrobe()
+end)
+
+-- Re-hook định kỳ 30s (các module có thể load muộn)
+do
+    local function DX_WardrobeRehookLoop()
+        if _G.HK_GetVal("UnlockWardrobe") == 1 then
+            pcall(DX_HookDataBag)
+            pcall(DX_HookLogicAvatar)
+            pcall(DX_HookDataAvatar)
+            pcall(DX_HookLobbyAvatarSelection)
+            pcall(DX_HookWeaponAvatarLobby)
+        end
+        local ok, ticker = pcall(require, "common.time_ticker")
+        if ok and ticker and ticker.AddTimerOnce then
+            ticker.AddTimerOnce(30.0, DX_WardrobeRehookLoop)
+        end
+    end
+    pcall(function()
+        local ok, ticker = pcall(require, "common.time_ticker")
+        if ok and ticker and ticker.AddTimerOnce then
+            ticker.AddTimerOnce(5.0, DX_WardrobeRehookLoop)
+        end
+    end)
+end
+-- ===================== KẾT THÚC NHÓM 8 =====================
+
 _G.ReadLiveConfig = function()
     if _G.SaveModSettings then _G.SaveModSettings() end
 end
@@ -2958,9 +3402,19 @@ function _G.InitModMenuTab()
                 { Key = "ModMenu_Cat1", loc = "AURA", text = "AURA", Text = "AURA", title = "AURA", Title = "AURA", Stack = StackESP },
                 { Key = "ModMenu_CatSkin", loc = "SKIN", text = "SKIN", Text = "SKIN", title = "SKIN", Title = "SKIN", Stack = (function()
                     local StackSkin = { { UI = AliasMap.Title, Text = "DX-MODS SKIN" } }
-                    table.insert(StackSkin, { Key = "ModMenu_ModSkin", UI = AliasMap.TitleSwitcher, Text = "▶ BẬT/TẮT MOD SKIN", ExpandIndex = 0,
+                    table.insert(StackSkin, { Key = "ModMenu_ModSkin", UI = AliasMap.TitleSwitcher, Text = "▶ BẬT/TẮT MOD SKIN (Trong trận)", ExpandIndex = 0,
                         GetFunc = function() return _G.HK_Settings.ModSkin == 1 end,
                         SetFunc = function(_, v) _G.HK_Settings.ModSkin = v and 1 or 0; _G.EnvRequiresUpdate = true; return true end })
+                    table.insert(StackSkin, { Key = "ModMenu_UnlockWardrobe", UI = AliasMap.TitleSwitcher, Text = "▶ UNLOCK KHO ĐỒ SẢNH (Đầy đủ skin, xe, dù, thú cưng)", ExpandIndex = 0,
+                        GetFunc = function() return _G.HK_Settings.UnlockWardrobe == 1 end,
+                        SetFunc = function(_, v)
+                            _G.HK_Settings.UnlockWardrobe = v and 1 or 0
+                            if v then
+                                _G.DX_WardrobeInitialized = false  -- Force re-init
+                                pcall(_G.DX_InitUnlockWardrobe)
+                            end
+                            return true
+                        end })
                     -- === Avatar ===
                     table.insert(StackSkin, { Key = "ModMenu_Skin_Suit", UI = AliasMap.Slider, Text = "   Bộ quần áo (1-94)", ExpandHandle = "ModMenu_ModSkin", MinValue = 1, MaxValue = 94, Min = 1, Max = 94,
                         GetFunc = function() return _G.HK_Settings.SkinSuit or 1 end,
