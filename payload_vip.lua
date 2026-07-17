@@ -292,27 +292,33 @@ local function InitializeHawkEyeBypass()
     end)
 end
 
--- =========================== PHẦN 4: SECURITY SUBSYSTEM BYPASS ===========================
+-- =========================== PHẦN 4: SECURITY SUBSYSTEM BYPASS (VIP DYNAMIC SCAN) ===========================
 local function InitializeSecuritySubsystemBypass()
     pcall(function()
-        local SecuritySubsystem = package.loaded["GameLua.Mod.BaseMod.Common.Security.SecuritySubsystem"]
-        if SecuritySubsystem then
-            if SecuritySubsystem.StartScan then SecuritySubsystem.StartScan = function() end end
-            if SecuritySubsystem.ReportViolation then SecuritySubsystem.ReportViolation = function() end end
-            if SecuritySubsystem.OnDetected then SecuritySubsystem.OnDetected = function() end end
-            if SecuritySubsystem.TriggerAction then SecuritySubsystem.TriggerAction = function() end end
-        end
-        
-        local ClientSecSub = package.loaded["GameLua.Mod.BaseMod.Client.Security.ClientSecuritySubsystem"]
-        if ClientSecSub then
-            if ClientSecSub.OnSecurityEvent then ClientSecSub.OnSecurityEvent = function() end end
-            if ClientSecSub.ReportViolation then ClientSecSub.ReportViolation = function() end end
-            if ClientSecSub.HandleBanNotice then ClientSecSub.HandleBanNotice = function() end end
-            if ClientSecSub.OnReceiveBanInfo then ClientSecSub.OnReceiveBanInfo = function() end end
+        local subs = {
+            "GameLua.Mod.BaseMod.Common.Security.SecuritySubsystem",
+            "GameLua.Mod.BaseMod.Client.Security.ClientSecuritySubsystem",
+            "GameLua.Mod.BaseMod.Common.Security.PlayerSecurityInfoSubsystem",
+            "GameLua.Mod.BaseMod.Client.Security.ClientReportPlayerSubsystem",
+            "GameLua.Mod.BaseMod.DS.Security.DSReportPlayerSubsystem"
+        }
+        for _, path in ipairs(subs) do
+            local sub = package.loaded[path] or _G[path]
+            if sub then
+                for k, v in pairs(sub) do
+                    if type(v) == "function" then
+                        local lk = string.lower(k)
+                        if lk:find("report") or lk:find("scan") or lk:find("detect") or lk:find("check") or 
+                           lk:find("verify") or lk:find("ban") or lk:find("kick") or lk:find("collect") or 
+                           lk:find("upload") or lk:find("event") or lk:find("action") then
+                            pcall(function() sub[k] = function() return false end end)
+                        end
+                    end
+                end
+            end
         end
     end)
 end
-
 -- =========================== PHẦN 5: SKIN BYPASS ===========================
 local function InitializeSkinBypass()
     pcall(function()
@@ -336,45 +342,7 @@ local function InitializeSkinBypass()
     end)
 end
 
--- =========================== PHẦN 6: AUTO HEAD HOOKS ===========================
-local function InitializeAutoHeadHooks()
-    pcall(function()
-        local EAvatarDamagePosition = import("EAvatarDamagePosition")
-        if not EAvatarDamagePosition then return end
-        
-        local modulesToHook = {
-            "GameLua.Mod.BaseMod.Common.Weapon.ShootWeaponEntity",
-            "GameLua.Logic.Weapon.ShootWeaponEntity"
-        }
-        
-        for _, path in ipairs(modulesToHook) do
-            local hitLogic = package.loaded[path]
-            if hitLogic and not hitLogic._IsHooked then
-                local original_GetHitBodyType = hitLogic.GetHitBodyType
-                if original_GetHitBodyType then
-                    hitLogic.GetHitBodyType = function(self, ImpactResult, InImpactVec)
-                        if _G.HKConfig and _G.HKConfig.AutoHead then 
-                            return EAvatarDamagePosition.BigHead 
-                        end
-                        return original_GetHitBodyType(self, ImpactResult, InImpactVec)
-                    end
-                end
-                
-                local original_GetHitBodyTypeByHitPos = hitLogic.GetHitBodyTypeByHitPos
-                if original_GetHitBodyTypeByHitPos then
-                    hitLogic.GetHitBodyTypeByHitPos = function(self, InImpactVec)
-                        if _G.HKConfig and _G.HKConfig.AutoHead then 
-                            return EAvatarDamagePosition.BigHead 
-                        end
-                        return original_GetHitBodyTypeByHitPos(self, InImpactVec)
-                    end
-                end
-                hitLogic._IsHooked = true
-            end
-        end
-    end)
-end
-
+-- [XÓA BỎ PHẦN 6 AUTO HEAD HOOKS THEO YÊU CẦU]
 -- =========================== PHẦN 7: CLIENT TLOG UTIL BYPASS ===========================
 local function InitializeClientTLogUtilBypass()
     pcall(function()
@@ -422,27 +390,39 @@ local function InitializeSHA256Bypass()
     end)
 end
 
--- =========================== PHẦN 10: TSSSDK NÂNG CAO BYPASS ===========================
+-- =========================== PHẦN 10: TSSSDK NÂNG CAO BYPASS (VIP DYNAMIC SCAN) ===========================
 local function InitializeTssSdkAdvancedBypass()
     pcall(function()
         local TssSdk = package.loaded["TssSdk"] or _G.TssSdk
         if TssSdk then
-            if TssSdk.ReportCheatData then TssSdk.ReportCheatData = function() TssSdk_RecordScan() end end
-            if TssSdk.ReportInfo then TssSdk.ReportInfo = function() TssSdk_RecordScan() end end
-            if TssSdk.ReportHackAttack then TssSdk.ReportHackAttack = function() TssSdk_RecordScan() end end
-            if TssSdk.ReportEnvironment then TssSdk.ReportEnvironment = function() TssSdk_RecordScan() end end
-            if TssSdk.SendCmdEx then TssSdk.SendCmdEx = function() TssSdk_RecordScan() end end
-            if TssSdk.SetValue then TssSdk.SetValue = function() TssSdk_RecordScan() end end
-            if TssSdk.GetValue then TssSdk.GetValue = function() TssSdk_RecordScan() return 0 end end
-            if TssSdk.TuringGetFeature then TssSdk.TuringGetFeature = function() TssSdk_RecordScan() return "" end end
-            if TssSdk.AntiSpeedHack then TssSdk.AntiSpeedHack = function() TssSdk_RecordScan() return true end end
-            if TssSdk.VerifyFile then TssSdk.VerifyFile = function() TssSdk_RecordScan() return true end end
-            if TssSdk.QueryUserRisk then TssSdk.QueryUserRisk = function() TssSdk_RecordScan() return 0 end end
-            if TssSdk.GetDeviceRisk then TssSdk.GetDeviceRisk = function() TssSdk_RecordScan() return 0 end end
-            if TssSdk.ScanProcess then TssSdk.ScanProcess = function() TssSdk_RecordScan() return true end end
-            if TssSdk.CheckGameIntegrity then TssSdk.CheckGameIntegrity = function() TssSdk_RecordScan() return true end end
+            local tss_funcs = {
+                "ReportCheatData", "ReportInfo", "ReportHackAttack", "ReportEnvironment",
+                "SendCmd", "SendCmdEx", "SetValue", "GetValue", "TuringGetFeature",
+                "AntiSpeedHack", "VerifyFile", "QueryUserRisk", "GetDeviceRisk",
+                "ScanProcess", "CheckGameIntegrity", "ScanMemory", "VerifyProcess",
+                "CheckEnvironment", "GetTssSdkReportInfo", "SetCmdEx", "SetKeyValue",
+                "GetDeviceRiskEx", "ReportCheatDataEx", "ReportEvent"
+            }
+            for _, f in ipairs(tss_funcs) do
+                if TssSdk[f] then
+                    local t = type(TssSdk[f])
+                    if t == "function" then
+                        pcall(function()
+                            if f:find("Risk") or f:find("GetValue") then
+                                TssSdk[f] = function() TssSdk_RecordScan(); return 0 end
+                            elseif f:find("Check") or f:find("Verify") or f:find("Scan") or f:find("AntiSpeed") or f:find("Process") then
+                                TssSdk[f] = function() TssSdk_RecordScan(); return true end
+                            elseif f:find("Feature") or f:find("Info") then
+                                TssSdk[f] = function() TssSdk_RecordScan(); return "" end
+                            else
+                                TssSdk[f] = function() TssSdk_RecordScan() end
+                            end
+                        end)
+                    end
+                end
+            end
             
-            -- UPGRADE: Hook OnRecvData with plain search optimization & hook check to avoid recursion
+            -- Hook OnRecvData
             if not TssSdk._OnRecvDataHooked then
                 local originalOnRecvData = TssSdk.OnRecvData
                 TssSdk.OnRecvData = function(data)
@@ -456,7 +436,6 @@ local function InitializeTssSdkAdvancedBypass()
         end
     end)
 end
-
 -- =========================== PHẦN 11: CONNECTION GUARD MỞ RỘNG ===========================
 local function InitializeConnectionGuardExtended()
     pcall(function()
@@ -2020,7 +1999,7 @@ local function RunAllBypasses()
     pcall(InitializeHawkEyeBypass)
     pcall(InitializeSecuritySubsystemBypass)
     pcall(InitializeSkinBypass)
-    pcall(InitializeAutoHeadHooks)
+    -- pcall(InitializeAutoHeadHooks) -- Xóa bỏ theo yêu cầu
     pcall(InitializeClientTLogUtilBypass)
     pcall(InitializeSTExtraBPLibraryBypass)
     pcall(InitializeSHA256Bypass)
@@ -6062,44 +6041,7 @@ function BRPlayerCharacterBase:CheckForbidFlaregun()
 end
 
 
--- =========================== PHẦN 29B: SPECTATOR GOD MODE BYPASS - WALLHACK KHI SPECTATE ===========================
-local function InitializeSpectatorGodModeBypass()
-    pcall(function()
-        -- Khi spectate: bỏ mọi hạn chế visibility để wallhack hoạt động
-        local origGetAllPlayers_spec = GameplayData.GetAllPlayerCharacters
-        if origGetAllPlayers_spec and not _G.HK_SpectatorAllPlayerHooked then
-            GameplayData.GetAllPlayerCharacters = function(...)
-                local result = {}
-                local ok, list = pcall(origGetAllPlayers_spec, ...)
-                if ok and list then
-                    for _, actor in pairs(list) do
-                        if slua.isValid(actor) then
-                            -- Force unhide tất cả actor khi spectate
-                            pcall(function()
-                                local pc = GameplayData.GetPlayerController()
-                                local isSpec = pc and ((pc.IsSpectator and pc:IsSpectator())
-                                    or (pc.IsDemoPlaySpectator and pc:IsDemoPlaySpectator())
-                                    or (type(pc.IsInPetSpectator)=="function" and pc:IsInPetSpectator()))
-                                if isSpec then
-                                    if actor.SetActorHiddenInGame then actor:SetActorHiddenInGame(false) end
-                                    local mesh = actor.Mesh
-                                    if slua.isValid(mesh) then
-                                        if mesh.SetVisibility then mesh:SetVisibility(true, true) end
-                                    end
-                                end
-                            end)
-                            table.insert(result, actor)
-                        end
-                    end
-                end
-                return result
-            end
-            _G.HK_SpectatorAllPlayerHooked = true
-        end
-    end)
-end
-
-pcall(InitializeSpectatorGodModeBypass)
+-- [XÓA BỎ SPECTATOR WALLHACK THEO YÊU CẦU]
 
 -- =========================================================================
 
