@@ -3464,6 +3464,8 @@ _G.Lobby_ForceRefreshSkins = function()
             end
         end
     end)
+end
+
 function _G.InitializeSkinModSystem()
     pcall(function()
         local LobbyAvatar = package.loaded["client.logic.avatar.LobbyAvatar"] or require("client.logic.avatar.LobbyAvatar")
