@@ -11262,6 +11262,23 @@ function F.getDesiredOutfit()
     if MATCH_CONFIG.outfitRes and MATCH_CONFIG.outfitRes > 0 then
         return MATCH_CONFIG.outfitRes
     end
+    -- Ưu tiên persist config (lưu lâu dài vào file, không mất khi restart)
+    if PERSIST.configSlots and tonumber(PERSIST.configSlots.outfit) and tonumber(PERSIST.configSlots.outfit) > 0 then
+        return tonumber(PERSIST.configSlots.outfit)
+    end
+    -- Ưu tiên cache local (lưu khi người dùng chọn skin trong phiên hiện tại)
+    local c = F.cache()
+    if c.outfitRes and tonumber(c.outfitRes) > 0 then
+        return tonumber(c.outfitRes)
+    end
+    if c.tshirtRes and tonumber(c.tshirtRes) > 0 then
+        return nil -- Người dùng đang mặc áo riêng lẻ, không dùng bộ
+    end
+    -- Fallback: global (lưu từ lần chọn gần nhất)
+    if _G.AddOutfitLastLobbyOutfitRes and tonumber(_G.AddOutfitLastLobbyOutfitRes) > 0 then
+        return tonumber(_G.AddOutfitLastLobbyOutfitRes)
+    end
+    -- Cuối cùng: kiểm tra GetRoleWear từ server
     local wornSuitRes
     pcall(function()
         local _, res = F.findWornInsBySubType(OUTFIT_SUB, function(r) return F.isSuitRes(r) end)
@@ -11275,8 +11292,7 @@ function F.getDesiredOutfit()
     end)
     if tshirtWorn then return nil end
     F.syncBodyCacheFromLobby()
-    local c = F.cache()
-    return c.outfitRes
+    return F.cache().outfitRes
 end
 
 function F.matchApplyOutfit(char)
