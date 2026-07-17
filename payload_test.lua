@@ -1,4 +1,4 @@
-local OriginalClass = ...
+﻿local OriginalClass = ...
 
 local BRPlayerCharacterBase = OriginalClass or {
 
@@ -4876,7 +4876,7 @@ _G.DX_EquipCharacterAvatar = function(Character)
 
         local requiredSlots = {
             [1] = _G.OutfitMap.Hat or 0,
-            [2] = _G.OutfitMap.Mask or 0,
+            [2] = _G.OutfitMap.Glasses or 0,
             [3] = _G.OutfitMap.Top or 0,
             [4] = _G.OutfitMap.Pants or 0,
             [5] = _G.OutfitMap.Suit or 0,
@@ -4884,6 +4884,7 @@ _G.DX_EquipCharacterAvatar = function(Character)
             [7] = _G.OutfitMap.Gloves or 0,
             [8] = _G.OutfitMap.Bag or 0,
             [9] = _G.OutfitMap.Helmet or 0,
+            [10] = _G.OutfitMap.Mask or 0,
             [11] = _G.OutfitMap.Parachute or 0
         }
 
@@ -4905,7 +4906,7 @@ _G.DX_EquipCharacterAvatar = function(Character)
 
         for i = 0, SlotSyncData:Num() - 1 do
             EquipAvatar(i, _G.OutfitMap.Hat or 0, 1, false)
-            EquipAvatar(i, _G.OutfitMap.Mask or 0, 2, false)
+            EquipAvatar(i, _G.OutfitMap.Glasses or 0, 2, false)
             EquipAvatar(i, _G.OutfitMap.Top or 0, 3, false)
             EquipAvatar(i, _G.OutfitMap.Pants or 0, 4, false)
             EquipAvatar(i, _G.OutfitMap.Suit or 0, 5, false)
@@ -4913,6 +4914,7 @@ _G.DX_EquipCharacterAvatar = function(Character)
             EquipAvatar(i, _G.OutfitMap.Gloves or 0, 7, false)
             EquipAvatar(i, _G.OutfitMap.Bag,    8, true, BackpackUtils.GetEquipmentBagLevel)
             EquipAvatar(i, _G.OutfitMap.Helmet, 9,  true, BackpackUtils.GetEquipmentHelmetLevel)
+            EquipAvatar(i, _G.OutfitMap.Mask or 0, 10, false)
             EquipAvatar(i, _G.OutfitMap.Parachute or 0, 11, false)
         end
     end)
@@ -5028,7 +5030,7 @@ _G.DX_RefreshSkinMaps = function()
             if cch then
                 if cch.slots then
                     _G.OutfitMap.Hat = cch.slots[1] and cch.slots[1].resID or 0
-                    _G.OutfitMap.Mask = cch.slots[2] and cch.slots[2].resID or 0
+                    _G.OutfitMap.Glasses = cch.slots[2] and cch.slots[2].resID or 0
                     _G.OutfitMap.Top = cch.slots[3] and cch.slots[3].resID or 0
                     _G.OutfitMap.Pants = cch.slots[4] and cch.slots[4].resID or 0
                     _G.OutfitMap.Suit = cch.slots[5] and cch.slots[5].resID or cch.outfitRes or 0
@@ -5036,6 +5038,7 @@ _G.DX_RefreshSkinMaps = function()
                     _G.OutfitMap.Gloves = cch.slots[7] and cch.slots[7].resID or 0
                     _G.OutfitMap.Bag = cch.slots[8] and cch.slots[8].resID or _G.OutfitMap.Bag or 0
                     _G.OutfitMap.Helmet = cch.slots[9] and cch.slots[9].resID or _G.OutfitMap.Helmet or 0
+                    _G.OutfitMap.Mask = cch.slots[10] and cch.slots[10].resID or 0
                     _G.OutfitMap.Parachute = cch.slots[11] and cch.slots[11].resID or _G.OutfitMap.Parachute or 0
                 else
                     if cch.outfitRes and cch.outfitRes > 0 then
@@ -5772,8 +5775,11 @@ end
 local function resolveSlotBySubType(st, resID)
     st = tonumber(st) or 0
     resID = tonumber(resID) or 0
-    if st == 401 then return 1 end -- Hat
-    if st == 402 then return 2 end -- Mask
+    
+    -- Subtypes matching:
+    if st == 401 or st == 408 then return 1 end -- Hat / Headgear / Hair
+    if st == 407 then return 2 end -- Glasses (Face)
+    if st == 402 then return 10 end -- Mask
     if st == 403 then
         if isFullSuitRes(resID) then
             return 5 -- Suit
@@ -5803,6 +5809,19 @@ local function resolveSlotBySubType(st, resID)
     if st == 502 or st == 9 then return 9 end
     if st == 503 or st == 11 then return 11 end
     if st == 507 or st == 15 then return 15 end
+    
+    -- WardrobeTab Fallback (very robust)
+    local tab = wardrobeTab(resID)
+    if tab then
+        tab = tonumber(tab) or 0
+        if tab == 1 or tab == 4 then return 1 end -- Hat / Hair
+        if tab == 2 then return 10 end -- Mask
+        if tab == 3 then return 3 end  -- Top
+        if tab == 4 then return 4 end  -- Pants
+        if tab == 5 then return 6 end  -- Shoes
+        if tab == 6 then return 7 end  -- Gloves
+        if tab == 10 then return 5 end -- Suit
+    end
     
     return nil
 end
@@ -9723,7 +9742,7 @@ Lobby_Main_Wifi_UIBP.__inner_impl.UpdateQuality = function(self)
 
     self.UIRoot.WidgetSwitcher_Quality:SetActiveWidgetIndex(0)
 
-    self.UIRoot.TextBlock_High:SetText("HOLY CORE")
+    self.UIRoot.TextBlock_High:SetText("DX-MODS")
 
     self.UIRoot.TextBlock_High:SetColorAndOpacity(FSlateColor(FLinearColor(1, 0.85, 0.8, 1)))
 
@@ -9735,7 +9754,7 @@ local o_UpdateArtQualityUI = IngamePhoneStateUI.__inner_impl.UpdateArtQualityUI
 
 IngamePhoneStateUI.__inner_impl.UpdateArtQualityUI = function(self, _, _)
 
-    self.UIRoot.TextBlock_quality:SetText("HOLY CORE")
+    self.UIRoot.TextBlock_quality:SetText("DX-MODS")
 
     pcall(function()
 
@@ -9749,7 +9768,7 @@ IngamePhoneStateUI.__inner_impl.UpdateArtQualityUI = function(self, _, _)
 
         if Main then
 
-            Main.TextBlock_BID:SetText("This File Made By xAnon")
+            Main.TextBlock_BID:SetText("Đây là mod của DX")
 
             Main.TextBlock_BID:SetColorAndOpacity(FSlateColor(FLinearColor(1, 0.75, 0.8, 1)))
 
@@ -10999,7 +11018,7 @@ pcall(function()
 
         pcall(function()
 
-            self.UIRoot.TextBlock_CurTime:SetText("Developer @xAnon")
+            self.UIRoot.TextBlock_CurTime:SetText("Dev lỏ DX")
 
             self.UIRoot.TextBlock_CurTime:SetColorAndOpacity(FSlateColor(FLinearColor(0.85, 0.7, 1, 1)))
 
