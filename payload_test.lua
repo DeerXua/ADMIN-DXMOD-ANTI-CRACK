@@ -2626,6 +2626,7 @@ function _G.InitModMenuTab()
                 _G.HK_Settings.ModSkin = value and 1 or 0
                 _G.EnvRequiresUpdate = true
                 _G.MagicUpdateVersion = (_G.MagicUpdateVersion or 1) + 1
+                if _G.Lobby_ForceRefreshSkins then pcall(_G.Lobby_ForceRefreshSkins) end
                 return true
             end
         })
@@ -2697,6 +2698,7 @@ function _G.InitModMenuTab()
             SetFunc = function(_, value)
                 _G.HK_Settings.SkinEnable_Suit = value and 1 or 0
                 _G.EnvRequiresUpdate = true
+                if _G.Lobby_ForceRefreshSkins then pcall(_G.Lobby_ForceRefreshSkins) end
                 return true
             end
         })
@@ -2710,6 +2712,7 @@ function _G.InitModMenuTab()
                 local v = math.floor(tonumber(value) or 1)
                 _G.HK_Settings.SkinSuit = math.max(1, math.min(63, v))
                 _G.EnvRequiresUpdate = true
+                if _G.Lobby_ForceRefreshSkins then pcall(_G.Lobby_ForceRefreshSkins) end
                 return true
             end
         })
@@ -2723,6 +2726,7 @@ function _G.InitModMenuTab()
             SetFunc = function(_, value)
                 _G.HK_Settings.SkinEnable_Bag = value and 1 or 0
                 _G.EnvRequiresUpdate = true
+                if _G.Lobby_ForceRefreshSkins then pcall(_G.Lobby_ForceRefreshSkins) end
                 return true
             end
         })
@@ -2736,6 +2740,7 @@ function _G.InitModMenuTab()
                 local v = math.floor(tonumber(value) or 1)
                 _G.HK_Settings.SkinBag = math.max(1, math.min(2, v))
                 _G.EnvRequiresUpdate = true
+                if _G.Lobby_ForceRefreshSkins then pcall(_G.Lobby_ForceRefreshSkins) end
                 return true
             end
         })
@@ -2750,6 +2755,7 @@ function _G.InitModMenuTab()
                 SetFunc = function(_, value)
                     _G.HK_Settings["SkinEnable_" .. gunKey] = value and 1 or 0
                     _G.EnvRequiresUpdate = true
+                    if _G.Lobby_ForceRefreshSkins then pcall(_G.Lobby_ForceRefreshSkins) end
                     return true
                 end
             })
@@ -2763,6 +2769,7 @@ function _G.InitModMenuTab()
                     local v = math.floor(tonumber(value) or 1)
                     _G.HK_Settings["Skin" .. gunKey] = math.max(1, math.min(maxSkinIdx, v))
                     _G.EnvRequiresUpdate = true
+                    if _G.Lobby_ForceRefreshSkins then pcall(_G.Lobby_ForceRefreshSkins) end
                     return true
                 end
             })
@@ -2789,6 +2796,7 @@ function _G.InitModMenuTab()
                 SetFunc = function(_, value)
                     _G.HK_Settings["SkinEnable_" .. carKey] = value and 1 or 0
                     _G.EnvRequiresUpdate = true
+                    if _G.Lobby_ForceRefreshSkins then pcall(_G.Lobby_ForceRefreshSkins) end
                     return true
                 end
             })
@@ -2802,6 +2810,7 @@ function _G.InitModMenuTab()
                     local v = math.floor(tonumber(value) or 1)
                     _G.HK_Settings["Skin" .. carKey] = math.max(1, math.min(maxSkinIdx, v))
                     _G.EnvRequiresUpdate = true
+                    if _G.Lobby_ForceRefreshSkins then pcall(_G.Lobby_ForceRefreshSkins) end
                     return true
                 end
             })
@@ -3738,12 +3747,124 @@ _G.ForceEnableKillMessage = function()
     end)
 end
 
+_G.Lobby_ForceRefreshSkins = function()
+    pcall(function()
+        local selfUID = nil
+        local TeamUpNewSystem = package.loaded["client.logic.team.TeamUpNewSystem"] or require("client.logic.team.TeamUpNewSystem")
+        if TeamUpNewSystem and TeamUpNewSystem.GetSelfUID then selfUID = TeamUpNewSystem.GetSelfUID() end
+        if not selfUID and _G.DataMgr and _G.DataMgr.roleData then selfUID = _G.DataMgr.roleData.uid end
+        
+        if selfUID then
+            local TeamAvatarManager = package.loaded["client.logic.avatar.logic_team_avatar_manager"] or require("client.logic.avatar.logic_team_avatar_manager")
+            if TeamAvatarManager and TeamAvatarManager.GetAvatarByUid then
+                local avatar = TeamAvatarManager.GetAvatarByUid(selfUID)
+                if avatar and avatar.GetEquipments and avatar.PutonEquipment then
+                    _G.ForceRefreshSkinMaps()
+                    local equipments = avatar:GetEquipments()
+                    local count = type(equipments.Num) == "function" and equipments:Num() or #equipments
+                    for i = 1, count do
+                        local equip = type(equipments.Get) == "function" and equipments:Get(i-1) or equipments[i]
+                        if equip and equip.itemID then
+                            avatar:PutonEquipment(equip.itemID, equip.CustomInfo, {bIsUse = false})
+                        end
+                    end
+                    if _G.HK_GetVal("SkinEnable_Suit") == 1 and _G.OutfitMap.Suit and _G.OutfitMap.Suit > 0 then
+                        avatar:PutonEquipment(_G.OutfitMap.Suit, nil, nil)
+                    end
+                end
+            end
+        end
+    end)
+end
+
 function _G.InitializeSkinModSystem()
     pcall(function()
         local LobbyAvatar = package.loaded["client.logic.avatar.LobbyAvatar"] or require("client.logic.avatar.LobbyAvatar")
         if LobbyAvatar and not _G.LobbyBypassHacked then
             local originalPutonEquipment = LobbyAvatar.PutonEquipment
             LobbyAvatar.PutonEquipment = function(self, itemID, tAvatarCustom, tExtraData)
+                local isSelfAvatar = false
+                pcall(function()
+                    local selfUID = nil
+                    local TeamUpNewSystem = package.loaded["client.logic.team.TeamUpNewSystem"] or require("client.logic.team.TeamUpNewSystem")
+                    if TeamUpNewSystem and TeamUpNewSystem.GetSelfUID then selfUID = TeamUpNewSystem.GetSelfUID() end
+                    if not selfUID and _G.DataMgr and _G.DataMgr.roleData then selfUID = _G.DataMgr.roleData.uid end
+                    if selfUID then
+                        local TeamAvatarManager = package.loaded["client.logic.avatar.logic_team_avatar_manager"] or require("client.logic.avatar.logic_team_avatar_manager")
+                        if TeamAvatarManager and TeamAvatarManager.GetAvatarByUid then
+                            local selfAvatar = TeamAvatarManager.GetAvatarByUid(selfUID)
+                            if selfAvatar == self then
+                                isSelfAvatar = true
+                            end
+                        end
+                    end
+                end)
+
+                if isSelfAvatar and _G.HK_GetVal("ModSkin") == 1 then
+                    local slotID = nil
+                    if tAvatarCustom then slotID = tAvatarCustom.SlotID or tAvatarCustom.slotID or tAvatarCustom.SlotId end
+                    if not slotID and tExtraData then slotID = tExtraData.SlotID or tExtraData.slotID or tExtraData.SlotId end
+                    
+                    if not slotID then
+                        local prefix = math.floor(itemID / 100000)
+                        if prefix == 15 then
+                            local subPrefix = math.floor(itemID / 10000)
+                            if subPrefix == 1501 then slotID = _G.CustSlotType.BackpackEquipemtSlot
+                            elseif subPrefix == 1502 then slotID = _G.CustSlotType.HelmetEquipemtSlot end
+                        elseif prefix == 41 then
+                            slotID = _G.CustSlotType.ParachuteEquipemtSlot
+                        end
+                    end
+
+                    if slotID then
+                        if slotID == _G.CustSlotType.ClothesEquipemtSlot then
+                            if _G.HK_GetVal("SkinEnable_Suit") == 1 and _G.OutfitMap.Suit and _G.OutfitMap.Suit > 0 then
+                                itemID = _G.OutfitMap.Suit
+                            end
+                        elseif slotID == _G.CustSlotType.TopEquipemtSlot then
+                            if _G.HK_GetVal("SkinEnable_Suit") == 1 and _G.OutfitMap.Suit and _G.OutfitMap.Suit > 0 then
+                                itemID = 0
+                            elseif _G.HK_GetVal("SkinEnable_Top") == 1 and _G.OutfitMap.Top and _G.OutfitMap.Top > 0 then
+                                itemID = _G.OutfitMap.Top
+                            end
+                        elseif slotID == _G.CustSlotType.BottomEquipemtSlot then
+                            if _G.HK_GetVal("SkinEnable_Suit") == 1 and _G.OutfitMap.Suit and _G.OutfitMap.Suit > 0 then
+                                itemID = 0
+                            elseif _G.HK_GetVal("SkinEnable_Bottom") == 1 and _G.OutfitMap.Bottom and _G.OutfitMap.Bottom > 0 then
+                                itemID = _G.OutfitMap.Bottom
+                            end
+                        elseif slotID == _G.CustSlotType.ShoesEquipemtSlot then
+                            if _G.HK_GetVal("SkinEnable_Suit") == 1 and _G.OutfitMap.Suit and _G.OutfitMap.Suit > 0 then
+                                itemID = 0
+                            elseif _G.HK_GetVal("SkinEnable_Shoes") == 1 and _G.OutfitMap.Shoes and _G.OutfitMap.Shoes > 0 then
+                                itemID = _G.OutfitMap.Shoes
+                            end
+                        elseif slotID == _G.CustSlotType.GlovesEquipemtSlot then
+                            if _G.HK_GetVal("SkinEnable_Suit") == 1 and _G.OutfitMap.Suit and _G.OutfitMap.Suit > 0 then
+                                itemID = 0
+                            elseif _G.HK_GetVal("SkinEnable_Gloves") == 1 and _G.OutfitMap.Gloves and _G.OutfitMap.Gloves > 0 then
+                                itemID = _G.OutfitMap.Gloves
+                            end
+                        elseif slotID == _G.CustSlotType.BackpackEquipemtSlot then
+                            if _G.HK_GetVal("SkinEnable_Bag") == 1 and _G.OutfitMap.Bag then
+                                local bagSkins = _G.OutfitMap.Bag
+                                local targetBagId = type(bagSkins) == "table" and (bagSkins[3] or bagSkins[1]) or bagSkins
+                                if targetBagId and targetBagId > 0 then itemID = targetBagId end
+                            end
+                        elseif slotID == _G.CustSlotType.HelmetEquipemtSlot then
+                            if _G.HK_GetVal("SkinEnable_Helmet") == 1 and _G.OutfitMap.Helmet then
+                                local helmetSkins = _G.OutfitMap.Helmet
+                                local targetHelmetId = type(helmetSkins) == "table" and (helmetSkins[3] or helmetSkins[1]) or helmetSkins
+                                if targetHelmetId and targetHelmetId > 0 then itemID = targetHelmetId end
+                            end
+                        elseif slotID == _G.CustSlotType.ParachuteEquipemtSlot then
+                            if _G.HK_GetVal("SkinEnable_Parachute") == 1 and _G.OutfitMap.Parachute and _G.OutfitMap.Parachute > 0 then
+                                itemID = _G.OutfitMap.Parachute
+                            end
+                        end
+                    end
+                end
+
                 local attachIndex = _G.BaseAttachToIndex and _G.BaseAttachToIndex[itemID]
                 if attachIndex then
                     local holdingWeaponSkinID = self.GetCurHoldingWeaponSkinID and self:GetCurHoldingWeaponSkinID()
@@ -3760,11 +3881,35 @@ function _G.InitializeSkinModSystem()
 
             local originalCharEquipWeaponByResId = LobbyAvatar.CharEquipWeaponByResId
             LobbyAvatar.CharEquipWeaponByResId = function(self, resID, isUse, isAsync, SocketName)
+                local isSelfAvatar = false
+                pcall(function()
+                    local selfUID = nil
+                    local TeamUpNewSystem = package.loaded["client.logic.team.TeamUpNewSystem"] or require("client.logic.team.TeamUpNewSystem")
+                    if TeamUpNewSystem and TeamUpNewSystem.GetSelfUID then selfUID = TeamUpNewSystem.GetSelfUID() end
+                    if not selfUID and _G.DataMgr and _G.DataMgr.roleData then selfUID = _G.DataMgr.roleData.uid end
+                    if selfUID then
+                        local TeamAvatarManager = package.loaded["client.logic.avatar.logic_team_avatar_manager"] or require("client.logic.avatar.logic_team_avatar_manager")
+                        if TeamAvatarManager and TeamAvatarManager.GetAvatarByUid then
+                            local selfAvatar = TeamAvatarManager.GetAvatarByUid(selfUID)
+                            if selfAvatar == self then
+                                isSelfAvatar = true
+                            end
+                        end
+                    end
+                end)
+
+                if isSelfAvatar and _G.HK_GetVal("ModSkin") == 1 then
+                    _G.ForceRefreshSkinMaps()
+                    resID = _G.get_skin_id(resID) or resID
+                end
+
                 local retValue = originalCharEquipWeaponByResId and originalCharEquipWeaponByResId(self, resID, isUse, isAsync, SocketName) or nil
                 if isUse and self.GetEquipments then
                     local equipments = self:GetEquipments()
-                    for _, equip in ipairs(equipments) do
-                        if _G.BaseAttachToIndex and _G.BaseAttachToIndex[equip.itemID] then
+                    local count = type(equipments.Num) == "function" and equipments:Num() or #equipments
+                    for i = 1, count do
+                        local equip = type(equipments.Get) == "function" and equipments:Get(i-1) or equipments[i]
+                        if equip and _G.BaseAttachToIndex and _G.BaseAttachToIndex[equip.itemID] then
                             self:PutonEquipment(equip.itemID, equip.CustomInfo, {bIsUse = false})
                         end
                     end
