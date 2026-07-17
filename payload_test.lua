@@ -5139,39 +5139,30 @@ _G.DX_RefreshSkinMaps = function()
         end
 
         -- NHÓM 8 LOBBY WARDROBE UNLOCKER SYNCRONIZATION:
-
         if _G.HK_GetVal("UnlockWardrobe") == 1 then
-
             local cch = _G.AddOutfitEquippedCache
-
             if cch then
-
                 -- Sync outfit (suit)
-
                 if cch.outfitRes and cch.outfitRes > 0 then
-
                     _G.OutfitMap.Suit = cch.outfitRes
-
                 end
-
                 -- Sync weapons (guns)
-
                 if cch.weapons then
-
                     for wid, w in pairs(cch.weapons) do
-
                         if w.resID and w.resID > 0 then
-
                             _G.WeaponSkinMap[wid] = w.resID
-
                         end
-
                     end
-
                 end
-
+                -- Sync vehicles (cars)
+                if cch.vehicles then
+                    for vid, v in pairs(cch.vehicles) do
+                        if v.resID and v.resID > 0 then
+                            _G.VehicleSkinMap[vid] = v.resID
+                        end
+                    end
+                end
             end
-
         end
 
     end)
@@ -5571,125 +5562,79 @@ local _matchApplied = false
 local _weaponSkinCache = {}
 
 local function cache()
-
     _G.AddOutfitEquippedCache = _G.AddOutfitEquippedCache or {
-
         outfitRes = nil, outfitIns = nil,
-
         weapons = {},
-
+        vehicles = {},
     }
-
     return _G.AddOutfitEquippedCache
-
 end
 
 _G.SaveLobbyWardrobe = function()
-
     pcall(function()
-
         local cch = cache()
-
         local content = "return {\n"
-
         content = content .. "  outfitRes = " .. tostring(cch.outfitRes or 0) .. ",\n"
-
         content = content .. "  outfitIns = " .. tostring(cch.outfitIns or 0) .. ",\n"
-
         content = content .. "  weapons = {\n"
-
         for wid, w in pairs(cch.weapons) do
-
             content = content .. "    [" .. tostring(wid) .. "] = { resID = " .. tostring(w.resID or 0) .. ", insID = " .. tostring(w.insID or 0) .. " },\n"
-
         end
-
+        content = content .. "  },\n"
+        content = content .. "  vehicles = {\n"
+        for vid, v in pairs(cch.vehicles or {}) do
+            content = content .. "    [" .. tostring(vid) .. "] = { resID = " .. tostring(v.resID or 0) .. ", insID = " .. tostring(v.insID or 0) .. " },\n"
+        end
         content = content .. "  }\n"
-
         content = content .. "}"
-
         local paths = GetConfigPaths("dx_wardrobe.ini")
-
         for _, path in ipairs(paths) do
-
             local file = io.open(path, "w")
-
             if file then
-
                 file:write(content)
-
                 file:close()
-
                 break
-
             end
-
         end
-
     end)
-
 end
 
 _G.LoadLobbyWardrobe = function()
-
     pcall(function()
-
         local paths = GetConfigPaths("dx_wardrobe.ini")
-
         local content = nil
-
         for _, path in ipairs(paths) do
-
             local file = io.open(path, "r")
-
             if file then
-
                 content = file:read("*a")
-
                 file:close()
-
                 break
-
             end
-
         end
-
         if content then
-
             local func = load(content)
-
             if func then
-
                 local savedData = func()
-
                 if savedData and type(savedData) == "table" then
-
                     local cch = cache()
-
                     cch.outfitRes = savedData.outfitRes
-
                     cch.outfitIns = savedData.outfitIns
-
                     if savedData.weapons then
-
                         for wid, w in pairs(savedData.weapons) do
-
                             cch.weapons[wid] = { resID = w.resID, insID = w.insID }
-
                             _weaponSkinCache[wid] = { resID = w.resID, insID = w.insID }
-
                         end
-
                     end
-
+                    cch.vehicles = cch.vehicles or {}
+                    if savedData.vehicles then
+                        for vid, v in pairs(savedData.vehicles) do
+                            cch.vehicles[vid] = { resID = v.resID, insID = v.insID }
+                        end
+                    end
                 end
-
             end
-
         end
-
     end)
-
 end
 
 local function cfg(resID)
@@ -5921,51 +5866,56 @@ local function cacheWeaponSkinFromIns(weaponID, insID)
 end
 
 local function saveEquip(resID, insID)
-
     resID, insID = tonumber(resID), tonumber(insID)
-
     if not resID or not insID then return end
-
     local c = cfg(resID)
-
     local st = subType(c)
-
     local cch = cache()
-
     if getClothKind(resID) == "full_suit" then
-
         cch.outfitRes, cch.outfitIns = resID, insID
-
         _G.AddOutfitLastLobbyOutfitRes = resID
-
         invalidateSocialWearCache()
-
     elseif getClothKind(resID) == "top" then
-
         if cch.outfitRes and isFullSuitRes(cch.outfitRes) then
-
             cch.outfitRes, cch.outfitIns = nil, nil
-
             invalidateSocialWearCache()
-
         end
-
     elseif GUN_SUB[st] then
-
         local wid = weaponIdFromSkin(resID)
-
         if wid then saveWeaponToCache(wid, resID, insID) end
-
     elseif st == MELEE_ID then
-
         saveWeaponToCache(MELEE_ID, resID, insID)
-
     end
-
     _matchApplied = false
-
     if _G.SaveLobbyWardrobe then _G.SaveLobbyWardrobe() end
+end
 
+_G.saveVehicleEquip = function(resID, instID)
+    resID, instID = tonumber(resID), tonumber(instID)
+    if not resID or not instID then return end
+    local baseId = nil
+    if _G.VehicleSkins then
+        for bId, list in pairs(_G.VehicleSkins) do
+            for _, id in ipairs(list) do
+                if id == resID then baseId = bId break end
+            end
+            if baseId then break end
+        end
+    end
+    if not baseId then
+        if resID >= 1903000 and resID < 1904000 then baseId = 1903001
+        elseif resID >= 1908000 and resID < 1909000 then baseId = 1908001
+        elseif resID >= 1961000 and resID < 1962000 then baseId = 1961001
+        elseif resID >= 1907000 and resID < 1908000 then baseId = 1907001
+        elseif resID >= 1915000 and resID < 1916000 then baseId = 1915001
+        end
+    end
+    if baseId then
+        local cch = cache()
+        cch.vehicles = cch.vehicles or {}
+        cch.vehicles[baseId] = { resID = resID, insID = instID }
+        if _G.SaveLobbyWardrobe then _G.SaveLobbyWardrobe() end
+    end
 end
 
 local function syncWeaponCacheFromLobby()
@@ -11247,8 +11197,8 @@ pcall(function()
                 if itemCfg then
 
                     DataMgr.UpdateVehicleSkin(itemCfg.ItemSubType, tonumber(item_inst_id))
-
                 end
+                if _G.saveVehicleEquip then _G.saveVehicleEquip(resID, item_inst_id) end
 
                 DataMgr.vst_skin = tonumber(item_inst_id)
 
@@ -11321,13 +11271,10 @@ pcall(function()
                     if insID ~= 0 and resID then
 
                         GarageThemeSystem.GarageVehicleInfo[slot_id] = {
-
                             inst_id = insID,
-
                             res_id = resID
-
                         }
-
+                        if _G.saveVehicleEquip then _G.saveVehicleEquip(resID, insID) end
                     else
 
                         GarageThemeSystem.GarageVehicleInfo[slot_id] = nil
