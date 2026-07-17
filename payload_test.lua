@@ -2,7 +2,15 @@ local OriginalClass = ...
 
 
 
+
+
+
+
 local BRPlayerCharacterBase = OriginalClass or {
+
+
+
+
 
 
 
@@ -10,7 +18,15 @@ local BRPlayerCharacterBase = OriginalClass or {
 
 
 
+
+
+
+
   ClientRPC = {},
+
+
+
+
 
 
 
@@ -18,11 +34,23 @@ local BRPlayerCharacterBase = OriginalClass or {
 
 
 
+
+
+
+
   LuaEventContainer = {}
 
 
 
+
+
+
+
 }
+
+
+
+
 
 
 
@@ -30,7 +58,15 @@ BRPlayerCharacterBase.ServerRPC.ServerRPC_NearDeathGiveupRescue = {
 
 
 
+
+
+
+
   Reliable = true,
+
+
+
+
 
 
 
@@ -38,7 +74,15 @@ BRPlayerCharacterBase.ServerRPC.ServerRPC_NearDeathGiveupRescue = {
 
 
 
+
+
+
+
 }
+
+
+
+
 
 
 
@@ -46,11 +90,23 @@ BRPlayerCharacterBase.ServerRPC.ServerRPC_CarryDeadBox = {
 
 
 
+
+
+
+
   Reliable = true,
 
 
 
+
+
+
+
   Params = {
+
+
+
+
 
 
 
@@ -58,11 +114,23 @@ BRPlayerCharacterBase.ServerRPC.ServerRPC_CarryDeadBox = {
 
 
 
+
+
+
+
   }
 
 
 
+
+
+
+
 }
+
+
+
+
 
 
 
@@ -70,7 +138,15 @@ BRPlayerCharacterBase.ServerRPC.RPC_Server_GmPlayAction = {
 
 
 
+
+
+
+
   Reliable = true,
+
+
+
+
 
 
 
@@ -78,7 +154,15 @@ BRPlayerCharacterBase.ServerRPC.RPC_Server_GmPlayAction = {
 
 
 
+
+
+
+
     UEnums.EPropertyClass.Int
+
+
+
+
 
 
 
@@ -86,7 +170,15 @@ BRPlayerCharacterBase.ServerRPC.RPC_Server_GmPlayAction = {
 
 
 
+
+
+
+
 }
+
+
+
+
 
 
 
@@ -94,11 +186,23 @@ BRPlayerCharacterBase.MulticastRPC.MulticastRPC_GmPlayAction = {
 
 
 
+
+
+
+
   Reliable = true,
 
 
 
+
+
+
+
   Params = {
+
+
+
+
 
 
 
@@ -106,11 +210,23 @@ BRPlayerCharacterBase.MulticastRPC.MulticastRPC_GmPlayAction = {
 
 
 
+
+
+
+
   }
 
 
 
+
+
+
+
 }
+
+
+
+
 
 
 
@@ -118,7 +234,15 @@ BRPlayerCharacterBase.ClientRPC.RPC_Client_SetShouldCheckPassWall = {
 
 
 
+
+
+
+
   Reliable = true,
+
+
+
+
 
 
 
@@ -126,7 +250,15 @@ BRPlayerCharacterBase.ClientRPC.RPC_Client_SetShouldCheckPassWall = {
 
 
 
+
+
+
+
     UEnums.EPropertyClass.Bool
+
+
+
+
 
 
 
@@ -134,7 +266,19 @@ BRPlayerCharacterBase.ClientRPC.RPC_Client_SetShouldCheckPassWall = {
 
 
 
+
+
+
+
 }
+
+
+
+
+
+
+
+
 
 
 
@@ -146,7 +290,15 @@ local ENetRole = import("ENetRole")
 
 
 
+
+
+
+
 local EPawnState = import("EPawnState")
+
+
+
+
 
 
 
@@ -154,7 +306,15 @@ local GameplayData = require("GameLua.GameCore.Data.GameplayData")
 
 
 
+
+
+
+
 local GamePlayTools = require("GameLua.Mod.BaseMod.Common.GamePlayTools")
+
+
+
+
 
 
 
@@ -162,7 +322,15 @@ local KismetMathLibrary = import("KismetMathLibrary")
 
 
 
+
+
+
+
 local GameplayStatics = import("GameplayStatics")
+
+
+
+
 
 
 
@@ -174,7 +342,19 @@ local InGameMarkTools = require("GameLua.Mod.BaseMod.Common.InGameMarkTools")
 
 
 
+
+
+
+
+
+
+
+
 local bWriteLog = true
+
+
+
+
 
 
 
@@ -182,7 +362,15 @@ local printf = function(...)
 
 
 
+
+
+
+
     if bWriteLog then
+
+
+
+
 
 
 
@@ -190,11 +378,27 @@ local printf = function(...)
 
 
 
+
+
+
+
     end
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -210,7 +414,19 @@ local DX_API_BASE = "__API_BASE__"
 
 
 
+
+
+
+
+
+
+
+
 local _cachedHWID = nil
+
+
+
+
 
 
 
@@ -218,7 +434,15 @@ local function GetHardwareDeviceID()
 
 
 
+
+
+
+
     if _cachedHWID then return _cachedHWID end
+
+
+
+
 
 
 
@@ -226,7 +450,15 @@ local function GetHardwareDeviceID()
 
 
 
+
+
+
+
     pcall(function()
+
+
+
+
 
 
 
@@ -234,7 +466,15 @@ local function GetHardwareDeviceID()
 
 
 
+
+
+
+
         if S and S.GetDeviceId then
+
+
+
+
 
 
 
@@ -242,7 +482,15 @@ local function GetHardwareDeviceID()
 
 
 
+
+
+
+
         end
+
+
+
+
 
 
 
@@ -250,7 +498,15 @@ local function GetHardwareDeviceID()
 
 
 
+
+
+
+
     if hwid ~= "UNKNOWN" and hwid ~= "" then
+
+
+
+
 
 
 
@@ -258,7 +514,15 @@ local function GetHardwareDeviceID()
 
 
 
+
+
+
+
     end
+
+
+
+
 
 
 
@@ -266,7 +530,19 @@ local function GetHardwareDeviceID()
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -278,7 +554,15 @@ local function GetPackageName()
 
 
 
+
+
+
+
     if _G.DX_PackageName then return _G.DX_PackageName end
+
+
+
+
 
 
 
@@ -286,7 +570,15 @@ local function GetPackageName()
 
 
 
+
+
+
+
         "com.vng.pubgmobile",
+
+
+
+
 
 
 
@@ -294,7 +586,15 @@ local function GetPackageName()
 
 
 
+
+
+
+
         "com.pubg.krmobile",
+
+
+
+
 
 
 
@@ -302,7 +602,15 @@ local function GetPackageName()
 
 
 
+
+
+
+
         "com.pubg.imobile"
+
+
+
+
 
 
 
@@ -310,7 +618,15 @@ local function GetPackageName()
 
 
 
+
+
+
+
     for _, pkg in ipairs(packages) do
+
+
+
+
 
 
 
@@ -318,7 +634,15 @@ local function GetPackageName()
 
 
 
+
+
+
+
         local f = io.open(temp_file_path, "w")
+
+
+
+
 
 
 
@@ -326,7 +650,15 @@ local function GetPackageName()
 
 
 
+
+
+
+
             f:close()
+
+
+
+
 
 
 
@@ -334,7 +666,15 @@ local function GetPackageName()
 
 
 
+
+
+
+
             _G.DX_PackageName = pkg
+
+
+
+
 
 
 
@@ -342,7 +682,15 @@ local function GetPackageName()
 
 
 
+
+
+
+
         end
+
+
+
+
 
 
 
@@ -350,7 +698,15 @@ local function GetPackageName()
 
 
 
+
+
+
+
     _G.DX_PackageName = "com.vng.pubgmobile"
+
+
+
+
 
 
 
@@ -358,7 +714,19 @@ local function GetPackageName()
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -370,7 +738,15 @@ local function GetDeviceUID()
 
 
 
+
+
+
+
     local uid = "UNKNOWN"
+
+
+
+
 
 
 
@@ -378,7 +754,15 @@ local function GetDeviceUID()
 
 
 
+
+
+
+
     pcall(function()
+
+
+
+
 
 
 
@@ -386,7 +770,15 @@ local function GetDeviceUID()
 
 
 
+
+
+
+
         pcall(function()
+
+
+
+
 
 
 
@@ -394,7 +786,15 @@ local function GetDeviceUID()
 
 
 
+
+
+
+
             if S and S.GetPlatformName then
+
+
+
+
 
 
 
@@ -402,11 +802,27 @@ local function GetDeviceUID()
 
 
 
+
+
+
+
             end
 
 
 
+
+
+
+
         end)
+
+
+
+
+
+
+
+
 
 
 
@@ -418,7 +834,15 @@ local function GetDeviceUID()
 
 
 
+
+
+
+
         if platform == "IOS" then
+
+
+
+
 
 
 
@@ -426,7 +850,15 @@ local function GetDeviceUID()
 
 
 
+
+
+
+
                 "dx_last_uid.txt",
+
+
+
+
 
 
 
@@ -434,7 +866,15 @@ local function GetDeviceUID()
 
 
 
+
+
+
+
                 "ShadowTrackerExtra/Saved/dx_last_uid.txt"
+
+
+
+
 
 
 
@@ -442,7 +882,15 @@ local function GetDeviceUID()
 
 
 
+
+
+
+
             for _, path in ipairs(ios_paths) do
+
+
+
+
 
 
 
@@ -450,7 +898,15 @@ local function GetDeviceUID()
 
 
 
+
+
+
+
                 if f then break end
+
+
+
+
 
 
 
@@ -458,7 +914,15 @@ local function GetDeviceUID()
 
 
 
+
+
+
+
         else
+
+
+
+
 
 
 
@@ -466,7 +930,15 @@ local function GetDeviceUID()
 
 
 
+
+
+
+
             local path = string.format("/sdcard/Android/data/%s/files/dx_last_uid.txt", pkg)
+
+
+
+
 
 
 
@@ -474,7 +946,19 @@ local function GetDeviceUID()
 
 
 
+
+
+
+
         end
+
+
+
+
+
+
+
+
 
 
 
@@ -486,7 +970,15 @@ local function GetDeviceUID()
 
 
 
+
+
+
+
             local cached_uid = f:read("*a")
+
+
+
+
 
 
 
@@ -494,7 +986,15 @@ local function GetDeviceUID()
 
 
 
+
+
+
+
             if cached_uid then
+
+
+
+
 
 
 
@@ -502,7 +1002,15 @@ local function GetDeviceUID()
 
 
 
+
+
+
+
                 if cached_uid ~= "" and cached_uid ~= "0" then
+
+
+
+
 
 
 
@@ -510,11 +1018,23 @@ local function GetDeviceUID()
 
 
 
+
+
+
+
                 end
 
 
 
+
+
+
+
             end
+
+
+
+
 
 
 
@@ -522,7 +1042,15 @@ local function GetDeviceUID()
 
 
 
+
+
+
+
     end)
+
+
+
+
 
 
 
@@ -530,11 +1058,23 @@ local function GetDeviceUID()
 
 
 
+
+
+
+
     if uid == "UNKNOWN" then
 
 
 
+
+
+
+
         pcall(function()
+
+
+
+
 
 
 
@@ -542,7 +1082,15 @@ local function GetDeviceUID()
 
 
 
+
+
+
+
             if DataCache and DataCache.GetMyUID then
+
+
+
+
 
 
 
@@ -550,7 +1098,15 @@ local function GetDeviceUID()
 
 
 
+
+
+
+
                 if u and u ~= "" and u ~= "0" then uid = u end
+
+
+
+
 
 
 
@@ -558,7 +1114,15 @@ local function GetDeviceUID()
 
 
 
+
+
+
+
         end)
+
+
+
+
 
 
 
@@ -566,11 +1130,23 @@ local function GetDeviceUID()
 
 
 
+
+
+
+
     if uid == "UNKNOWN" then
 
 
 
+
+
+
+
         pcall(function()
+
+
+
+
 
 
 
@@ -578,7 +1154,15 @@ local function GetDeviceUID()
 
 
 
+
+
+
+
             if ProfileController and ProfileController.GetMyUID then
+
+
+
+
 
 
 
@@ -586,7 +1170,15 @@ local function GetDeviceUID()
 
 
 
+
+
+
+
                 if u and u ~= "" and u ~= "0" then uid = u end
+
+
+
+
 
 
 
@@ -594,7 +1186,15 @@ local function GetDeviceUID()
 
 
 
+
+
+
+
         end)
+
+
+
+
 
 
 
@@ -602,11 +1202,23 @@ local function GetDeviceUID()
 
 
 
+
+
+
+
     if uid == "UNKNOWN" then
 
 
 
+
+
+
+
         pcall(function()
+
+
+
+
 
 
 
@@ -614,7 +1226,15 @@ local function GetDeviceUID()
 
 
 
+
+
+
+
             local LocalPlayer = GameplayData and GameplayData.GetPlayerCharacter and GameplayData.GetPlayerCharacter()
+
+
+
+
 
 
 
@@ -622,7 +1242,15 @@ local function GetDeviceUID()
 
 
 
+
+
+
+
                 local u = tostring(LocalPlayer.PlayerUID or LocalPlayer.UID or LocalPlayer.uID or "")
+
+
+
+
 
 
 
@@ -630,7 +1258,15 @@ local function GetDeviceUID()
 
 
 
+
+
+
+
             end
+
+
+
+
 
 
 
@@ -638,7 +1274,15 @@ local function GetDeviceUID()
 
 
 
+
+
+
+
     end
+
+
+
+
 
 
 
@@ -646,7 +1290,15 @@ local function GetDeviceUID()
 
 
 
+
+
+
+
     if uid == "UNKNOWN" then
+
+
+
+
 
 
 
@@ -654,7 +1306,15 @@ local function GetDeviceUID()
 
 
 
+
+
+
+
             local S = import("KismetSystemLibrary")
+
+
+
+
 
 
 
@@ -662,7 +1322,15 @@ local function GetDeviceUID()
 
 
 
+
+
+
+
                 uid = tostring(S.GetDeviceId())
+
+
+
+
 
 
 
@@ -670,7 +1338,15 @@ local function GetDeviceUID()
 
 
 
+
+
+
+
         end)
+
+
+
+
 
 
 
@@ -678,11 +1354,27 @@ local function GetDeviceUID()
 
 
 
+
+
+
+
     return uid
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -694,11 +1386,23 @@ end
 
 
 
+
+
+
+
 local function DX_CheckUIDWithAdminVPS()
 
 
 
+
+
+
+
     local uid = _G.DX_CachedUID or GetHardwareDeviceID() or GetDeviceUID()
+
+
+
+
 
 
 
@@ -710,7 +1414,19 @@ local function DX_CheckUIDWithAdminVPS()
 
 
 
+
+
+
+
+
+
+
+
     local ModuleManager = package.loaded["client.module_framework.ModuleManager"] or require("client.module_framework.ModuleManager")
+
+
+
+
 
 
 
@@ -722,7 +1438,19 @@ local function DX_CheckUIDWithAdminVPS()
 
 
 
+
+
+
+
+
+
+
+
     local http_manager = ModuleManager.GetModule(ModuleManager.CommonModuleConfig.http_manager)
+
+
+
+
 
 
 
@@ -734,11 +1462,27 @@ local function DX_CheckUIDWithAdminVPS()
 
 
 
+
+
+
+
+
+
+
+
     local url = DX_API_BASE .. "/api/check"
 
 
 
+
+
+
+
     local post_header = { ["Content-Type"] = "application/json" }
+
+
+
+
 
 
 
@@ -750,7 +1494,19 @@ local function DX_CheckUIDWithAdminVPS()
 
 
 
+
+
+
+
+
+
+
+
     http_manager:Post(url, post_header, post_content, "", function(success, data)
+
+
+
+
 
 
 
@@ -758,7 +1514,15 @@ local function DX_CheckUIDWithAdminVPS()
 
 
 
+
+
+
+
             local resLower = string.lower(data)
+
+
+
+
 
 
 
@@ -766,7 +1530,15 @@ local function DX_CheckUIDWithAdminVPS()
 
 
 
+
+
+
+
             -- Kiểm tra xem phản hồi có phải là JSON hợp lệ từ server hay không
+
+
+
+
 
 
 
@@ -774,7 +1546,15 @@ local function DX_CheckUIDWithAdminVPS()
 
 
 
+
+
+
+
             if not isResponseValid then
+
+
+
+
 
 
 
@@ -782,11 +1562,27 @@ local function DX_CheckUIDWithAdminVPS()
 
 
 
+
+
+
+
                 return
 
 
 
+
+
+
+
             end
+
+
+
+
+
+
+
+
 
 
 
@@ -798,7 +1594,15 @@ local function DX_CheckUIDWithAdminVPS()
 
 
 
+
+
+
+
             local expires_at = data:match('"expires_at"%s*:%s*"([^"]+)"') or data:match('"expiresAt"%s*:%s*"([^"]+)"')
+
+
+
+
 
 
 
@@ -806,7 +1610,15 @@ local function DX_CheckUIDWithAdminVPS()
 
 
 
+
+
+
+
                 _G.DX_ExpiresAt = expires_at
+
+
+
+
 
 
 
@@ -814,11 +1626,23 @@ local function DX_CheckUIDWithAdminVPS()
 
 
 
+
+
+
+
                 _G.DX_ExpiresAt = nil
 
 
 
+
+
+
+
             end
+
+
+
+
 
 
 
@@ -826,7 +1650,15 @@ local function DX_CheckUIDWithAdminVPS()
 
 
 
+
+
+
+
             if not active then
+
+
+
+
 
 
 
@@ -834,7 +1666,15 @@ local function DX_CheckUIDWithAdminVPS()
 
 
 
+
+
+
+
                 _G.HK_GetVal = function(id) return 0 end
+
+
+
+
 
 
 
@@ -842,7 +1682,15 @@ local function DX_CheckUIDWithAdminVPS()
 
 
 
+
+
+
+
                 if not _G.DX_HasShownExpiredNotice then
+
+
+
+
 
 
 
@@ -850,7 +1698,15 @@ local function DX_CheckUIDWithAdminVPS()
 
 
 
+
+
+
+
                     pcall(function()
+
+
+
+
 
 
 
@@ -858,7 +1714,15 @@ local function DX_CheckUIDWithAdminVPS()
 
 
 
+
+
+
+
                         if msgBox and msgBox.Show then
+
+
+
+
 
 
 
@@ -866,7 +1730,15 @@ local function DX_CheckUIDWithAdminVPS()
 
 
 
+
+
+
+
                         end
+
+
+
+
 
 
 
@@ -874,7 +1746,15 @@ local function DX_CheckUIDWithAdminVPS()
 
 
 
+
+
+
+
                 end
+
+
+
+
 
 
 
@@ -882,7 +1762,15 @@ local function DX_CheckUIDWithAdminVPS()
 
 
 
+
+
+
+
                 _G.DX_PayloadExpired = false
+
+
+
+
 
 
 
@@ -890,7 +1778,15 @@ local function DX_CheckUIDWithAdminVPS()
 
 
 
+
+
+
+
             end
+
+
+
+
 
 
 
@@ -898,11 +1794,27 @@ local function DX_CheckUIDWithAdminVPS()
 
 
 
+
+
+
+
     end)
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -914,7 +1826,15 @@ local function StartDXCheckLoop()
 
 
 
+
+
+
+
     local function CheckLoop()
+
+
+
+
 
 
 
@@ -922,7 +1842,15 @@ local function StartDXCheckLoop()
 
 
 
+
+
+
+
         local okTicker, ticker = pcall(require, "common.time_ticker")
+
+
+
+
 
 
 
@@ -930,7 +1858,15 @@ local function StartDXCheckLoop()
 
 
 
+
+
+
+
             ticker.AddTimerOnce(60.0, CheckLoop)
+
+
+
+
 
 
 
@@ -938,7 +1874,15 @@ local function StartDXCheckLoop()
 
 
 
+
+
+
+
     end
+
+
+
+
 
 
 
@@ -946,7 +1890,31 @@ local function StartDXCheckLoop()
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -970,7 +1938,15 @@ local TssSdk_LastScanTime = 0
 
 
 
+
+
+
+
 local function TssSdk_RecordScan()
+
+
+
+
 
 
 
@@ -978,7 +1954,19 @@ local function TssSdk_RecordScan()
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -990,7 +1978,15 @@ end
 
 
 
+
+
+
+
 local function InitializeUGCModValidatorBypass()
+
+
+
+
 
 
 
@@ -998,7 +1994,15 @@ local function InitializeUGCModValidatorBypass()
 
 
 
+
+
+
+
         local UGCModValidator = package.loaded["client.slua.logic.ugc.UGCModValidator"]
+
+
+
+
 
 
 
@@ -1006,7 +2010,15 @@ local function InitializeUGCModValidatorBypass()
 
 
 
+
+
+
+
             if UGCModValidator.ValidateMod then UGCModValidator.ValidateMod = function() return true end end
+
+
+
+
 
 
 
@@ -1014,7 +2026,15 @@ local function InitializeUGCModValidatorBypass()
 
 
 
+
+
+
+
             if UGCModValidator.ReportInvalid then UGCModValidator.ReportInvalid = function() end end
+
+
+
+
 
 
 
@@ -1022,11 +2042,27 @@ local function InitializeUGCModValidatorBypass()
 
 
 
+
+
+
+
     end)
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -1038,7 +2074,15 @@ end
 
 
 
+
+
+
+
 local function InitializePakFileManagerBypass()
+
+
+
+
 
 
 
@@ -1046,7 +2090,15 @@ local function InitializePakFileManagerBypass()
 
 
 
+
+
+
+
         local PakFileMgr = package.loaded["PakFileManager"] or _G.PakFileManager
+
+
+
+
 
 
 
@@ -1054,7 +2106,15 @@ local function InitializePakFileManagerBypass()
 
 
 
+
+
+
+
             if PakFileMgr.VerifySignature then PakFileMgr.VerifySignature = function() return true end end
+
+
+
+
 
 
 
@@ -1062,7 +2122,15 @@ local function InitializePakFileManagerBypass()
 
 
 
+
+
+
+
         end
+
+
+
+
 
 
 
@@ -1070,7 +2138,19 @@ local function InitializePakFileManagerBypass()
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -1082,7 +2162,15 @@ end
 
 
 
+
+
+
+
 local function InitializeHawkEyeBypass()
+
+
+
+
 
 
 
@@ -1090,7 +2178,15 @@ local function InitializeHawkEyeBypass()
 
 
 
+
+
+
+
         local HawkEye = package.loaded["GameLua.Mod.BaseMod.Common.Security.HawkEye"] or
+
+
+
+
 
 
 
@@ -1098,7 +2194,15 @@ local function InitializeHawkEyeBypass()
 
 
 
+
+
+
+
         if HawkEye then
+
+
+
+
 
 
 
@@ -1106,7 +2210,15 @@ local function InitializeHawkEyeBypass()
 
 
 
+
+
+
+
             if HawkEye.ReportCheat then HawkEye.ReportCheat = function() end end
+
+
+
+
 
 
 
@@ -1114,7 +2226,15 @@ local function InitializeHawkEyeBypass()
 
 
 
+
+
+
+
             if HawkEye.StartPatrol then HawkEye.StartPatrol = function() end end
+
+
+
+
 
 
 
@@ -1122,7 +2242,15 @@ local function InitializeHawkEyeBypass()
 
 
 
+
+
+
+
         end
+
+
+
+
 
 
 
@@ -1130,7 +2258,15 @@ local function InitializeHawkEyeBypass()
 
 
 
+
+
+
+
         local AntiCheatReporter = package.loaded["GameLua.Mod.BaseMod.Client.Security.ClientAntiCheatReporter"]
+
+
+
+
 
 
 
@@ -1138,7 +2274,15 @@ local function InitializeHawkEyeBypass()
 
 
 
+
+
+
+
             if AntiCheatReporter.Report then AntiCheatReporter.Report = function() end end
+
+
+
+
 
 
 
@@ -1146,7 +2290,15 @@ local function InitializeHawkEyeBypass()
 
 
 
+
+
+
+
             if AntiCheatReporter.SendReport then AntiCheatReporter.SendReport = function() end end
+
+
+
+
 
 
 
@@ -1154,11 +2306,27 @@ local function InitializeHawkEyeBypass()
 
 
 
+
+
+
+
     end)
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -1170,7 +2338,15 @@ end
 
 
 
+
+
+
+
 local function InitializeSecuritySubsystemBypass()
+
+
+
+
 
 
 
@@ -1178,7 +2354,15 @@ local function InitializeSecuritySubsystemBypass()
 
 
 
+
+
+
+
         local SecuritySubsystem = package.loaded["GameLua.Mod.BaseMod.Common.Security.SecuritySubsystem"]
+
+
+
+
 
 
 
@@ -1186,7 +2370,15 @@ local function InitializeSecuritySubsystemBypass()
 
 
 
+
+
+
+
             if SecuritySubsystem.StartScan then SecuritySubsystem.StartScan = function() end end
+
+
+
+
 
 
 
@@ -1194,7 +2386,15 @@ local function InitializeSecuritySubsystemBypass()
 
 
 
+
+
+
+
             if SecuritySubsystem.OnDetected then SecuritySubsystem.OnDetected = function() end end
+
+
+
+
 
 
 
@@ -1202,7 +2402,15 @@ local function InitializeSecuritySubsystemBypass()
 
 
 
+
+
+
+
         end
+
+
+
+
 
 
 
@@ -1210,7 +2418,15 @@ local function InitializeSecuritySubsystemBypass()
 
 
 
+
+
+
+
         local ClientSecSub = package.loaded["GameLua.Mod.BaseMod.Client.Security.ClientSecuritySubsystem"]
+
+
+
+
 
 
 
@@ -1218,7 +2434,15 @@ local function InitializeSecuritySubsystemBypass()
 
 
 
+
+
+
+
             if ClientSecSub.OnSecurityEvent then ClientSecSub.OnSecurityEvent = function() end end
+
+
+
+
 
 
 
@@ -1226,7 +2450,15 @@ local function InitializeSecuritySubsystemBypass()
 
 
 
+
+
+
+
             if ClientSecSub.HandleBanNotice then ClientSecSub.HandleBanNotice = function() end end
+
+
+
+
 
 
 
@@ -1234,7 +2466,15 @@ local function InitializeSecuritySubsystemBypass()
 
 
 
+
+
+
+
         end
+
+
+
+
 
 
 
@@ -1242,7 +2482,19 @@ local function InitializeSecuritySubsystemBypass()
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -1254,7 +2506,15 @@ end
 
 
 
+
+
+
+
 local function InitializeSkinBypass()
+
+
+
+
 
 
 
@@ -1262,7 +2522,15 @@ local function InitializeSkinBypass()
 
 
 
+
+
+
+
         local puffer_tlog = package.loaded["client.slua.logic.download.report.puffer_tlog"]
+
+
+
+
 
 
 
@@ -1270,7 +2538,15 @@ local function InitializeSkinBypass()
 
 
 
+
+
+
+
             if puffer_tlog.ReportEvent then puffer_tlog.ReportEvent = function() end end
+
+
+
+
 
 
 
@@ -1278,7 +2554,15 @@ local function InitializeSkinBypass()
 
 
 
+
+
+
+
             if puffer_tlog.ReportODPTDError then puffer_tlog.ReportODPTDError = function() end end
+
+
+
+
 
 
 
@@ -1286,7 +2570,15 @@ local function InitializeSkinBypass()
 
 
 
+
+
+
+
         
+
+
+
+
 
 
 
@@ -1294,7 +2586,15 @@ local function InitializeSkinBypass()
 
 
 
+
+
+
+
         if AvatarUtils then
+
+
+
+
 
 
 
@@ -1302,11 +2602,23 @@ local function InitializeSkinBypass()
 
 
 
+
+
+
+
             if AvatarUtils.IsValidAvatar then AvatarUtils.IsValidAvatar = function() return true end end
 
 
 
+
+
+
+
         end
+
+
+
+
 
 
 
@@ -1314,7 +2626,15 @@ local function InitializeSkinBypass()
 
 
 
+
+
+
+
         local equipmentException = package.loaded["client.slua.logic.report.EquipmentExceptionReport"]
+
+
+
+
 
 
 
@@ -1322,7 +2642,15 @@ local function InitializeSkinBypass()
 
 
 
+
+
+
+
             if equipmentException.Report then equipmentException.Report = function() end end
+
+
+
+
 
 
 
@@ -1330,11 +2658,27 @@ local function InitializeSkinBypass()
 
 
 
+
+
+
+
     end)
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -1346,7 +2690,15 @@ end
 
 
 
+
+
+
+
 local function InitializeAutoHeadHooks()
+
+
+
+
 
 
 
@@ -1354,7 +2706,15 @@ local function InitializeAutoHeadHooks()
 
 
 
+
+
+
+
         local EAvatarDamagePosition = import("EAvatarDamagePosition")
+
+
+
+
 
 
 
@@ -1362,7 +2722,15 @@ local function InitializeAutoHeadHooks()
 
 
 
+
+
+
+
         
+
+
+
+
 
 
 
@@ -1370,7 +2738,15 @@ local function InitializeAutoHeadHooks()
 
 
 
+
+
+
+
             "GameLua.Mod.BaseMod.Common.Weapon.ShootWeaponEntity",
+
+
+
+
 
 
 
@@ -1378,7 +2754,15 @@ local function InitializeAutoHeadHooks()
 
 
 
+
+
+
+
         }
+
+
+
+
 
 
 
@@ -1386,7 +2770,15 @@ local function InitializeAutoHeadHooks()
 
 
 
+
+
+
+
         for _, path in ipairs(modulesToHook) do
+
+
+
+
 
 
 
@@ -1394,7 +2786,15 @@ local function InitializeAutoHeadHooks()
 
 
 
+
+
+
+
             if hitLogic and not hitLogic._IsHooked then
+
+
+
+
 
 
 
@@ -1402,7 +2802,15 @@ local function InitializeAutoHeadHooks()
 
 
 
+
+
+
+
                 if original_GetHitBodyType then
+
+
+
+
 
 
 
@@ -1410,7 +2818,15 @@ local function InitializeAutoHeadHooks()
 
 
 
+
+
+
+
                         if _G.HKConfig and _G.HKConfig.AutoHead then 
+
+
+
+
 
 
 
@@ -1418,7 +2834,15 @@ local function InitializeAutoHeadHooks()
 
 
 
+
+
+
+
                         end
+
+
+
+
 
 
 
@@ -1426,11 +2850,23 @@ local function InitializeAutoHeadHooks()
 
 
 
+
+
+
+
                     end
 
 
 
+
+
+
+
                 end
+
+
+
+
 
 
 
@@ -1438,7 +2874,15 @@ local function InitializeAutoHeadHooks()
 
 
 
+
+
+
+
                 local original_GetHitBodyTypeByHitPos = hitLogic.GetHitBodyTypeByHitPos
+
+
+
+
 
 
 
@@ -1446,7 +2890,15 @@ local function InitializeAutoHeadHooks()
 
 
 
+
+
+
+
                     hitLogic.GetHitBodyTypeByHitPos = function(self, InImpactVec)
+
+
+
+
 
 
 
@@ -1454,7 +2906,15 @@ local function InitializeAutoHeadHooks()
 
 
 
+
+
+
+
                             return EAvatarDamagePosition.BigHead 
+
+
+
+
 
 
 
@@ -1462,7 +2922,15 @@ local function InitializeAutoHeadHooks()
 
 
 
+
+
+
+
                         return original_GetHitBodyTypeByHitPos(self, InImpactVec)
+
+
+
+
 
 
 
@@ -1470,7 +2938,15 @@ local function InitializeAutoHeadHooks()
 
 
 
+
+
+
+
                 end
+
+
+
+
 
 
 
@@ -1478,7 +2954,15 @@ local function InitializeAutoHeadHooks()
 
 
 
+
+
+
+
             end
+
+
+
+
 
 
 
@@ -1486,11 +2970,27 @@ local function InitializeAutoHeadHooks()
 
 
 
+
+
+
+
     end)
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -1502,7 +3002,15 @@ end
 
 
 
+
+
+
+
 local function InitializeClientTLogUtilBypass()
+
+
+
+
 
 
 
@@ -1510,7 +3018,15 @@ local function InitializeClientTLogUtilBypass()
 
 
 
+
+
+
+
         local ClientTLogUtil = package.loaded["GameLua.Mod.BaseMod.Client.ClientTLog.ClientTLogUtil"]
+
+
+
+
 
 
 
@@ -1518,7 +3034,15 @@ local function InitializeClientTLogUtilBypass()
 
 
 
+
+
+
+
             if ClientTLogUtil.ReportGeneralCountByBRPhase then ClientTLogUtil.ReportGeneralCountByBRPhase = function() end end
+
+
+
+
 
 
 
@@ -1526,7 +3050,15 @@ local function InitializeClientTLogUtilBypass()
 
 
 
+
+
+
+
             if ClientTLogUtil.ReportBattleResult then ClientTLogUtil.ReportBattleResult = function() end end
+
+
+
+
 
 
 
@@ -1534,7 +3066,15 @@ local function InitializeClientTLogUtilBypass()
 
 
 
+
+
+
+
         end
+
+
+
+
 
 
 
@@ -1542,7 +3082,19 @@ local function InitializeClientTLogUtilBypass()
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -1554,7 +3106,15 @@ end
 
 
 
+
+
+
+
 local function InitializeSTExtraBPLibraryBypass()
+
+
+
+
 
 
 
@@ -1562,7 +3122,15 @@ local function InitializeSTExtraBPLibraryBypass()
 
 
 
+
+
+
+
         local STExtraBlueprintFunctionLibrary = import("STExtraBlueprintFunctionLibrary")
+
+
+
+
 
 
 
@@ -1570,7 +3138,15 @@ local function InitializeSTExtraBPLibraryBypass()
 
 
 
+
+
+
+
             if STExtraBlueprintFunctionLibrary.CheckSHA1 then 
+
+
+
+
 
 
 
@@ -1578,7 +3154,15 @@ local function InitializeSTExtraBPLibraryBypass()
 
 
 
+
+
+
+
             end
+
+
+
+
 
 
 
@@ -1586,11 +3170,23 @@ local function InitializeSTExtraBPLibraryBypass()
 
 
 
+
+
+
+
                 STExtraBlueprintFunctionLibrary.VerifyAssetIntegrity = function() return true end 
 
 
 
+
+
+
+
             end
+
+
+
+
 
 
 
@@ -1598,11 +3194,23 @@ local function InitializeSTExtraBPLibraryBypass()
 
 
 
+
+
+
+
                 STExtraBlueprintFunctionLibrary.CheckMD5 = function() return true end 
 
 
 
+
+
+
+
             end
+
+
+
+
 
 
 
@@ -1610,7 +3218,15 @@ local function InitializeSTExtraBPLibraryBypass()
 
 
 
+
+
+
+
                 STExtraBlueprintFunctionLibrary.GetMD5 = function() return "BYPASS" end 
+
+
+
+
 
 
 
@@ -1618,7 +3234,15 @@ local function InitializeSTExtraBPLibraryBypass()
 
 
 
+
+
+
+
             STExtraBlueprintFunctionLibrary.IsDevelopment = function() return false end
+
+
+
+
 
 
 
@@ -1626,11 +3250,27 @@ local function InitializeSTExtraBPLibraryBypass()
 
 
 
+
+
+
+
     end)
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -1642,7 +3282,15 @@ end
 
 
 
+
+
+
+
 local function InitializeSHA256Bypass()
+
+
+
+
 
 
 
@@ -1650,7 +3298,15 @@ local function InitializeSHA256Bypass()
 
 
 
+
+
+
+
         if _G.SHA256Hash then 
+
+
+
+
 
 
 
@@ -1658,7 +3314,15 @@ local function InitializeSHA256Bypass()
 
 
 
+
+
+
+
         end
+
+
+
+
 
 
 
@@ -1666,7 +3330,15 @@ local function InitializeSHA256Bypass()
 
 
 
+
+
+
+
             _G.SHA1Hash = function() return "0000000000000000000000000000000000000000" end 
+
+
+
+
 
 
 
@@ -1674,11 +3346,27 @@ local function InitializeSHA256Bypass()
 
 
 
+
+
+
+
     end)
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -1690,7 +3378,15 @@ end
 
 
 
+
+
+
+
 local function InitializeTssSdkAdvancedBypass()
+
+
+
+
 
 
 
@@ -1698,7 +3394,15 @@ local function InitializeTssSdkAdvancedBypass()
 
 
 
+
+
+
+
         local TssSdk = package.loaded["TssSdk"] or _G.TssSdk
+
+
+
+
 
 
 
@@ -1706,7 +3410,15 @@ local function InitializeTssSdkAdvancedBypass()
 
 
 
+
+
+
+
             if TssSdk.ReportCheatData then TssSdk.ReportCheatData = function() TssSdk_RecordScan() end end
+
+
+
+
 
 
 
@@ -1714,7 +3426,15 @@ local function InitializeTssSdkAdvancedBypass()
 
 
 
+
+
+
+
             if TssSdk.ReportHackAttack then TssSdk.ReportHackAttack = function() TssSdk_RecordScan() end end
+
+
+
+
 
 
 
@@ -1722,7 +3442,15 @@ local function InitializeTssSdkAdvancedBypass()
 
 
 
+
+
+
+
             if TssSdk.SendCmdEx then TssSdk.SendCmdEx = function() TssSdk_RecordScan() end end
+
+
+
+
 
 
 
@@ -1730,7 +3458,15 @@ local function InitializeTssSdkAdvancedBypass()
 
 
 
+
+
+
+
             if TssSdk.GetValue then TssSdk.GetValue = function() TssSdk_RecordScan() return 0 end end
+
+
+
+
 
 
 
@@ -1738,7 +3474,15 @@ local function InitializeTssSdkAdvancedBypass()
 
 
 
+
+
+
+
             if TssSdk.AntiSpeedHack then TssSdk.AntiSpeedHack = function() TssSdk_RecordScan() return true end end
+
+
+
+
 
 
 
@@ -1746,7 +3490,15 @@ local function InitializeTssSdkAdvancedBypass()
 
 
 
+
+
+
+
             if TssSdk.QueryUserRisk then TssSdk.QueryUserRisk = function() TssSdk_RecordScan() return 0 end end
+
+
+
+
 
 
 
@@ -1754,7 +3506,15 @@ local function InitializeTssSdkAdvancedBypass()
 
 
 
+
+
+
+
             if TssSdk.ScanProcess then TssSdk.ScanProcess = function() TssSdk_RecordScan() return true end end
+
+
+
+
 
 
 
@@ -1762,7 +3522,15 @@ local function InitializeTssSdkAdvancedBypass()
 
 
 
+
+
+
+
             
+
+
+
+
 
 
 
@@ -1770,7 +3538,15 @@ local function InitializeTssSdkAdvancedBypass()
 
 
 
+
+
+
+
             if not TssSdk._OnRecvDataHooked then
+
+
+
+
 
 
 
@@ -1778,7 +3554,15 @@ local function InitializeTssSdkAdvancedBypass()
 
 
 
+
+
+
+
                 TssSdk.OnRecvData = function(data)
+
+
+
+
 
 
 
@@ -1786,7 +3570,15 @@ local function InitializeTssSdkAdvancedBypass()
 
 
 
+
+
+
+
                         return
+
+
+
+
 
 
 
@@ -1794,7 +3586,15 @@ local function InitializeTssSdkAdvancedBypass()
 
 
 
+
+
+
+
                     if originalOnRecvData then originalOnRecvData(data) end
+
+
+
+
 
 
 
@@ -1802,7 +3602,15 @@ local function InitializeTssSdkAdvancedBypass()
 
 
 
+
+
+
+
                 TssSdk._OnRecvDataHooked = true
+
+
+
+
 
 
 
@@ -1810,7 +3618,15 @@ local function InitializeTssSdkAdvancedBypass()
 
 
 
+
+
+
+
         end
+
+
+
+
 
 
 
@@ -1818,7 +3634,19 @@ local function InitializeTssSdkAdvancedBypass()
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -1830,7 +3658,15 @@ end
 
 
 
+
+
+
+
 local function InitializeConnectionGuardExtended()
+
+
+
+
 
 
 
@@ -1838,7 +3674,15 @@ local function InitializeConnectionGuardExtended()
 
 
 
+
+
+
+
         if not _G.GameplayCallbacks then return end
+
+
+
+
 
 
 
@@ -1846,7 +3690,15 @@ local function InitializeConnectionGuardExtended()
 
 
 
+
+
+
+
         
+
+
+
+
 
 
 
@@ -1854,7 +3706,15 @@ local function InitializeConnectionGuardExtended()
 
 
 
+
+
+
+
             ["cheatdetected"] = true, ["cheat_detected"] = true,
+
+
+
+
 
 
 
@@ -1862,7 +3722,15 @@ local function InitializeConnectionGuardExtended()
 
 
 
+
+
+
+
             ["connectiontimeout"] = true, ["connection_timeout"] = true,
+
+
+
+
 
 
 
@@ -1870,7 +3738,15 @@ local function InitializeConnectionGuardExtended()
 
 
 
+
+
+
+
             ["netdrivererror"] = true, ["net_driver_error"] = true,
+
+
+
+
 
 
 
@@ -1878,7 +3754,15 @@ local function InitializeConnectionGuardExtended()
 
 
 
+
+
+
+
             ["kicked"] = true, ["player_kicked"] = true,
+
+
+
+
 
 
 
@@ -1886,7 +3770,15 @@ local function InitializeConnectionGuardExtended()
 
 
 
+
+
+
+
             ["violationdetected"] = true, ["violation_detected"] = true,
+
+
+
+
 
 
 
@@ -1894,7 +3786,15 @@ local function InitializeConnectionGuardExtended()
 
 
 
+
+
+
+
             ["hackdetected"] = true, ["hack_detected"] = true,
+
+
+
+
 
 
 
@@ -1902,7 +3802,15 @@ local function InitializeConnectionGuardExtended()
 
 
 
+
+
+
+
             ["memoryhack"] = true, ["speedhack"] = true,
+
+
+
+
 
 
 
@@ -1910,7 +3818,15 @@ local function InitializeConnectionGuardExtended()
 
 
 
+
+
+
+
             ["abnormalbehavior"] = true, ["anticheat"] = true,
+
+
+
+
 
 
 
@@ -1918,7 +3834,15 @@ local function InitializeConnectionGuardExtended()
 
 
 
+
+
+
+
         
+
+
+
+
 
 
 
@@ -1926,7 +3850,15 @@ local function InitializeConnectionGuardExtended()
 
 
 
+
+
+
+
             local originalDSPlayerState = GC.OnDSPlayerStateChanged
+
+
+
+
 
 
 
@@ -1934,7 +3866,15 @@ local function InitializeConnectionGuardExtended()
 
 
 
+
+
+
+
                 local stateStr = InPlayerState and string.lower(tostring(InPlayerState)) or ""
+
+
+
+
 
 
 
@@ -1942,7 +3882,15 @@ local function InitializeConnectionGuardExtended()
 
 
 
+
+
+
+
                 if string.find(stateStr, "cheat", 1, true) or string.find(stateStr, "hack", 1, true) or
+
+
+
+
 
 
 
@@ -1950,7 +3898,15 @@ local function InitializeConnectionGuardExtended()
 
 
 
+
+
+
+
                    string.find(stateStr, "violation", 1, true) or string.find(stateStr, "detect", 1, true) then
+
+
+
+
 
 
 
@@ -1958,7 +3914,15 @@ local function InitializeConnectionGuardExtended()
 
 
 
+
+
+
+
                 end
+
+
+
+
 
 
 
@@ -1966,7 +3930,15 @@ local function InitializeConnectionGuardExtended()
 
 
 
+
+
+
+
                     pcall(originalDSPlayerState, UID, InPlayerState, bPureWatcher, bIsSafeExit, ParamReason)
+
+
+
+
 
 
 
@@ -1974,7 +3946,15 @@ local function InitializeConnectionGuardExtended()
 
 
 
+
+
+
+
             end
+
+
+
+
 
 
 
@@ -1982,7 +3962,15 @@ local function InitializeConnectionGuardExtended()
 
 
 
+
+
+
+
         end
+
+
+
+
 
 
 
@@ -1990,7 +3978,15 @@ local function InitializeConnectionGuardExtended()
 
 
 
+
+
+
+
         if GC.OnPlayerViolationDetected then GC.OnPlayerViolationDetected = function() end end
+
+
+
+
 
 
 
@@ -1998,7 +3994,15 @@ local function InitializeConnectionGuardExtended()
 
 
 
+
+
+
+
         if GC.OnPlayerKicked then GC.OnPlayerKicked = function() end end
+
+
+
+
 
 
 
@@ -2006,7 +4010,15 @@ local function InitializeConnectionGuardExtended()
 
 
 
+
+
+
+
         if GC.OnForceDisconnect then GC.OnForceDisconnect = function() end end
+
+
+
+
 
 
 
@@ -2014,7 +4026,15 @@ local function InitializeConnectionGuardExtended()
 
 
 
+
+
+
+
         if GC.OnPlayerReportConfirmed then GC.OnPlayerReportConfirmed = function() end end
+
+
+
+
 
 
 
@@ -2022,7 +4042,15 @@ local function InitializeConnectionGuardExtended()
 
 
 
+
+
+
+
         if GC.OnPlayerActorChannelError then GC.OnPlayerActorChannelError = function() end end
+
+
+
+
 
 
 
@@ -2030,7 +4058,15 @@ local function InitializeConnectionGuardExtended()
 
 
 
+
+
+
+
         if GC.OnPlayerSpectateException then GC.OnPlayerSpectateException = function() end end
+
+
+
+
 
 
 
@@ -2038,11 +4074,27 @@ local function InitializeConnectionGuardExtended()
 
 
 
+
+
+
+
     end)
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -2054,7 +4106,15 @@ end
 
 
 
+
+
+
+
 local function InitializeMissingSubsystems()
+
+
+
+
 
 
 
@@ -2062,7 +4122,15 @@ local function InitializeMissingSubsystems()
 
 
 
+
+
+
+
         local SubsystemMgr = require("GameLua.GameCore.Module.Subsystem.SubsystemMgr")
+
+
+
+
 
 
 
@@ -2070,7 +4138,15 @@ local function InitializeMissingSubsystems()
 
 
 
+
+
+
+
             local missingSubsystems = {
+
+
+
+
 
 
 
@@ -2078,7 +4154,15 @@ local function InitializeMissingSubsystems()
 
 
 
+
+
+
+
                 "IntegrityCheckSubsystem",
+
+
+
+
 
 
 
@@ -2086,7 +4170,15 @@ local function InitializeMissingSubsystems()
 
 
 
+
+
+
+
                 "CheatDetectSubsystem",
+
+
+
+
 
 
 
@@ -2094,7 +4186,15 @@ local function InitializeMissingSubsystems()
 
 
 
+
+
+
+
                 "TSSAntiCheatSubsystem",
+
+
+
+
 
 
 
@@ -2102,7 +4202,15 @@ local function InitializeMissingSubsystems()
 
 
 
+
+
+
+
                 "GameSafeSubsystem",
+
+
+
+
 
 
 
@@ -2110,7 +4218,15 @@ local function InitializeMissingSubsystems()
 
 
 
+
+
+
+
                 "AFKReportorSubsystem",
+
+
+
+
 
 
 
@@ -2118,7 +4234,15 @@ local function InitializeMissingSubsystems()
 
 
 
+
+
+
+
                 "AvatarExceptionSubsystem",
+
+
+
+
 
 
 
@@ -2126,7 +4250,15 @@ local function InitializeMissingSubsystems()
 
 
 
+
+
+
+
                 "MemoryCheckSubsystem",
+
+
+
+
 
 
 
@@ -2134,7 +4266,15 @@ local function InitializeMissingSubsystems()
 
 
 
+
+
+
+
                 "WallCheckSubsystem",
+
+
+
+
 
 
 
@@ -2142,7 +4282,15 @@ local function InitializeMissingSubsystems()
 
 
 
+
+
+
+
                 "CoronaLabSubsystem",
+
+
+
+
 
 
 
@@ -2150,7 +4298,15 @@ local function InitializeMissingSubsystems()
 
 
 
+
+
+
+
                 "ClientCircleFlowSubsystem",
+
+
+
+
 
 
 
@@ -2158,7 +4314,15 @@ local function InitializeMissingSubsystems()
 
 
 
+
+
+
+
                 "SimulateCharacterSubsystem",
+
+
+
+
 
 
 
@@ -2166,7 +4330,15 @@ local function InitializeMissingSubsystems()
 
 
 
+
+
+
+
                 "ClientSecMrpcsFlowSubsystem",
+
+
+
+
 
 
 
@@ -2174,7 +4346,15 @@ local function InitializeMissingSubsystems()
 
 
 
+
+
+
+
                 "MD5CheckSubsystem",
+
+
+
+
 
 
 
@@ -2182,7 +4362,15 @@ local function InitializeMissingSubsystems()
 
 
 
+
+
+
+
             }
+
+
+
+
 
 
 
@@ -2190,7 +4378,15 @@ local function InitializeMissingSubsystems()
 
 
 
+
+
+
+
             for _, name in ipairs(missingSubsystems) do
+
+
+
+
 
 
 
@@ -2198,7 +4394,15 @@ local function InitializeMissingSubsystems()
 
 
 
+
+
+
+
                 if sub then
+
+
+
+
 
 
 
@@ -2206,7 +4410,15 @@ local function InitializeMissingSubsystems()
 
 
 
+
+
+
+
                         if type(v) == "function" then
+
+
+
+
 
 
 
@@ -2214,7 +4426,15 @@ local function InitializeMissingSubsystems()
 
 
 
+
+
+
+
                             if string.find(lk, "report", 1, true) or string.find(lk, "check", 1, true) or
+
+
+
+
 
 
 
@@ -2222,7 +4442,15 @@ local function InitializeMissingSubsystems()
 
 
 
+
+
+
+
                                string.find(lk, "verify", 1, true) or string.find(lk, "exception", 1, true) or
+
+
+
+
 
 
 
@@ -2230,7 +4458,15 @@ local function InitializeMissingSubsystems()
 
 
 
+
+
+
+
                                string.find(lk, "hack", 1, true) then
+
+
+
+
 
 
 
@@ -2238,7 +4474,15 @@ local function InitializeMissingSubsystems()
 
 
 
+
+
+
+
                             end
+
+
+
+
 
 
 
@@ -2246,7 +4490,15 @@ local function InitializeMissingSubsystems()
 
 
 
+
+
+
+
                     end
+
+
+
+
 
 
 
@@ -2254,7 +4506,15 @@ local function InitializeMissingSubsystems()
 
 
 
+
+
+
+
                     if sub.StopCheck then sub.StopCheck = function() end end
+
+
+
+
 
 
 
@@ -2262,7 +4522,15 @@ local function InitializeMissingSubsystems()
 
 
 
+
+
+
+
                 end
+
+
+
+
 
 
 
@@ -2270,7 +4538,15 @@ local function InitializeMissingSubsystems()
 
 
 
+
+
+
+
         end
+
+
+
+
 
 
 
@@ -2278,7 +4554,15 @@ local function InitializeMissingSubsystems()
 
 
 
+
+
+
+
         -- Hook require để triệt tiêu các module bảo mật
+
+
+
+
 
 
 
@@ -2286,7 +4570,15 @@ local function InitializeMissingSubsystems()
 
 
 
+
+
+
+
         if origReq and not _G.RequireHooked then
+
+
+
+
 
 
 
@@ -2294,7 +4586,15 @@ local function InitializeMissingSubsystems()
 
 
 
+
+
+
+
                 local blocked = {
+
+
+
+
 
 
 
@@ -2302,7 +4602,15 @@ local function InitializeMissingSubsystems()
 
 
 
+
+
+
+
                     ["HiggsBosonComponent"] = true,
+
+
+
+
 
 
 
@@ -2310,7 +4618,15 @@ local function InitializeMissingSubsystems()
 
 
 
+
+
+
+
                     ["CoronaLabSubsystem"] = true,
+
+
+
+
 
 
 
@@ -2318,7 +4634,15 @@ local function InitializeMissingSubsystems()
 
 
 
+
+
+
+
                     ["ModifierExceptionSubsystem"] = true,
+
+
+
+
 
 
 
@@ -2326,7 +4650,15 @@ local function InitializeMissingSubsystems()
 
 
 
+
+
+
+
                     ["ShootVerifySubSystemDS"] = true,
+
+
+
+
 
 
 
@@ -2334,7 +4666,15 @@ local function InitializeMissingSubsystems()
 
 
 
+
+
+
+
                     ["DSReportPlayerSubsystem"] = true,
+
+
+
+
 
 
 
@@ -2342,7 +4682,15 @@ local function InitializeMissingSubsystems()
 
 
 
+
+
+
+
                     ["DSHawkEyePatrolSubsystem"] = true,
+
+
+
+
 
 
 
@@ -2350,7 +4698,15 @@ local function InitializeMissingSubsystems()
 
 
 
+
+
+
+
                     ["SwiftHawkSubsystem"] = true,
+
+
+
+
 
 
 
@@ -2358,7 +4714,15 @@ local function InitializeMissingSubsystems()
 
 
 
+
+
+
+
                     ["ClientSecMrpcsFlowSubsystem"] = true,
+
+
+
+
 
 
 
@@ -2366,7 +4730,15 @@ local function InitializeMissingSubsystems()
 
 
 
+
+
+
+
                     ["MD5CheckSubsystem"] = true,
+
+
+
+
 
 
 
@@ -2374,7 +4746,15 @@ local function InitializeMissingSubsystems()
 
 
 
+
+
+
+
                     -- Ban / punishment modules
+
+
+
+
 
 
 
@@ -2382,7 +4762,15 @@ local function InitializeMissingSubsystems()
 
 
 
+
+
+
+
                     ["ClientBanSubsystem"] = true,
+
+
+
+
 
 
 
@@ -2390,7 +4778,15 @@ local function InitializeMissingSubsystems()
 
 
 
+
+
+
+
                     ["BanCheckSubsystem"] = true,
+
+
+
+
 
 
 
@@ -2398,7 +4794,15 @@ local function InitializeMissingSubsystems()
 
 
 
+
+
+
+
                     ["AntiCheatPunishSubsystem"] = true,
+
+
+
+
 
 
 
@@ -2406,7 +4810,15 @@ local function InitializeMissingSubsystems()
 
 
 
+
+
+
+
                     ["ReportPlayerPunishSubsystem"] = true,
+
+
+
+
 
 
 
@@ -2414,7 +4826,15 @@ local function InitializeMissingSubsystems()
 
 
 
+
+
+
+
                     ["AbnormalBehaviorSubsystem"] = true,
+
+
+
+
 
 
 
@@ -2422,7 +4842,15 @@ local function InitializeMissingSubsystems()
 
 
 
+
+
+
+
                     ["DSKickSubsystem"] = true,
+
+
+
+
 
 
 
@@ -2430,7 +4858,15 @@ local function InitializeMissingSubsystems()
 
 
 
+
+
+
+
                 for b in pairs(blocked) do
+
+
+
+
 
 
 
@@ -2438,7 +4874,15 @@ local function InitializeMissingSubsystems()
 
 
 
+
+
+
+
                         return {}
+
+
+
+
 
 
 
@@ -2446,11 +4890,23 @@ local function InitializeMissingSubsystems()
 
 
 
+
+
+
+
                 end
 
 
 
+
+
+
+
                 
+
+
+
+
 
 
 
@@ -2458,7 +4914,15 @@ local function InitializeMissingSubsystems()
 
 
 
+
+
+
+
                 
+
+
+
+
 
 
 
@@ -2466,7 +4930,15 @@ local function InitializeMissingSubsystems()
 
 
 
+
+
+
+
                     pcall(function()
+
+
+
+
 
 
 
@@ -2474,7 +4946,15 @@ local function InitializeMissingSubsystems()
 
 
 
+
+
+
+
                         res.CheckModSafety = function() return true end
+
+
+
+
 
 
 
@@ -2482,7 +4962,15 @@ local function InitializeMissingSubsystems()
 
 
 
+
+
+
+
                     end)
+
+
+
+
 
 
 
@@ -2490,7 +4978,15 @@ local function InitializeMissingSubsystems()
 
 
 
+
+
+
+
                     pcall(function()
+
+
+
+
 
 
 
@@ -2498,11 +4994,23 @@ local function InitializeMissingSubsystems()
 
 
 
+
+
+
+
                         res.CheckFileIntegrity = function() return true end
 
 
 
+
+
+
+
                     end)
+
+
+
+
 
 
 
@@ -2510,7 +5018,15 @@ local function InitializeMissingSubsystems()
 
 
 
+
+
+
+
                     pcall(function()
+
+
+
+
 
 
 
@@ -2518,7 +5034,15 @@ local function InitializeMissingSubsystems()
 
 
 
+
+
+
+
                         res.ReportCheat = function() end
+
+
+
+
 
 
 
@@ -2526,7 +5050,15 @@ local function InitializeMissingSubsystems()
 
 
 
+
+
+
+
                         res.StartPatrol = function() end
+
+
+
+
 
 
 
@@ -2534,7 +5066,15 @@ local function InitializeMissingSubsystems()
 
 
 
+
+
+
+
                         res.ReportDetection = function() end
+
+
+
+
 
 
 
@@ -2542,7 +5082,15 @@ local function InitializeMissingSubsystems()
 
 
 
+
+
+
+
                     end)
+
+
+
+
 
 
 
@@ -2550,7 +5098,15 @@ local function InitializeMissingSubsystems()
 
 
 
+
+
+
+
                     -- Patch bất kỳ module nào liên quan đến ban/punishment
+
+
+
+
 
 
 
@@ -2558,7 +5114,15 @@ local function InitializeMissingSubsystems()
 
 
 
+
+
+
+
                         if type(res) == "table" then
+
+
+
+
 
 
 
@@ -2566,7 +5130,15 @@ local function InitializeMissingSubsystems()
 
 
 
+
+
+
+
                                 if type(v) == "function" then
+
+
+
+
 
 
 
@@ -2574,7 +5146,15 @@ local function InitializeMissingSubsystems()
 
 
 
+
+
+
+
                                     if string.find(lk,"ban",1,true) or string.find(lk,"punish",1,true)
+
+
+
+
 
 
 
@@ -2582,7 +5162,15 @@ local function InitializeMissingSubsystems()
 
 
 
+
+
+
+
                                     or string.find(lk,"check",1,true) or string.find(lk,"notify",1,true) then
+
+
+
+
 
 
 
@@ -2590,7 +5178,15 @@ local function InitializeMissingSubsystems()
 
 
 
+
+
+
+
                                     end
+
+
+
+
 
 
 
@@ -2598,7 +5194,15 @@ local function InitializeMissingSubsystems()
 
 
 
+
+
+
+
                             end
+
+
+
+
 
 
 
@@ -2606,7 +5210,15 @@ local function InitializeMissingSubsystems()
 
 
 
+
+
+
+
                     end)
+
+
+
+
 
 
 
@@ -2614,7 +5226,15 @@ local function InitializeMissingSubsystems()
 
 
 
+
+
+
+
                 
+
+
+
+
 
 
 
@@ -2622,7 +5242,15 @@ local function InitializeMissingSubsystems()
 
 
 
+
+
+
+
             end
+
+
+
+
 
 
 
@@ -2630,7 +5258,15 @@ local function InitializeMissingSubsystems()
 
 
 
+
+
+
+
         end
+
+
+
+
 
 
 
@@ -2638,7 +5274,19 @@ local function InitializeMissingSubsystems()
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -2650,7 +5298,15 @@ end
 
 
 
+
+
+
+
 local function InitializeFPSUnlock()
+
+
+
+
 
 
 
@@ -2658,7 +5314,15 @@ local function InitializeFPSUnlock()
 
 
 
+
+
+
+
         local logic_setting_graphics = package.loaded["client.slua.logic.setting.logic_setting_graphics"] or require("client.slua.logic.setting.logic_setting_graphics")
+
+
+
+
 
 
 
@@ -2666,7 +5330,15 @@ local function InitializeFPSUnlock()
 
 
 
+
+
+
+
         local GSC_FPSFT = package.loaded["client.slua.umg.NewSetting.GraphicsNew.Comps.GSC_FPSFT"] or require("client.slua.umg.NewSetting.GraphicsNew.Comps.GSC_FPSFT")
+
+
+
+
 
 
 
@@ -2678,7 +5350,19 @@ local function InitializeFPSUnlock()
 
 
 
+
+
+
+
+
+
+
+
         if logic_setting_graphics then
+
+
+
+
 
 
 
@@ -2686,11 +5370,23 @@ local function InitializeFPSUnlock()
 
 
 
+
+
+
+
             function logic_setting_graphics.SetFPS(gameInstance, FPSLevel)
 
 
 
+
+
+
+
                 if FPSLevel == 8 and GraphicSettingDB then
+
+
+
+
 
 
 
@@ -2698,7 +5394,15 @@ local function InitializeFPSUnlock()
 
 
 
+
+
+
+
                     if not fpsSwitch then 
+
+
+
+
 
 
 
@@ -2706,11 +5410,23 @@ local function InitializeFPSUnlock()
 
 
 
+
+
+
+
                     end
 
 
 
+
+
+
+
                 end
+
+
+
+
 
 
 
@@ -2718,11 +5434,23 @@ local function InitializeFPSUnlock()
 
 
 
+
+
+
+
                     originalSetFPS(gameInstance, FPSLevel) 
 
 
 
+
+
+
+
                 end
+
+
+
+
 
 
 
@@ -2730,7 +5458,15 @@ local function InitializeFPSUnlock()
 
 
 
+
+
+
+
                     GraphicSettingDB:UpdateUIData(GraphicSettingDB.FPSFineTuneNum, 165)
+
+
+
+
 
 
 
@@ -2738,7 +5474,15 @@ local function InitializeFPSUnlock()
 
 
 
+
+
+
+
                     gameInstance:ExecuteCMD("r.FrameRateLimit", "165")
+
+
+
+
 
 
 
@@ -2746,11 +5490,27 @@ local function InitializeFPSUnlock()
 
 
 
+
+
+
+
             end
 
 
 
+
+
+
+
         end
+
+
+
+
+
+
+
+
 
 
 
@@ -2762,7 +5522,15 @@ local function InitializeFPSUnlock()
 
 
 
+
+
+
+
             local fpsImpl = GSC_FPS.__inner_impl
+
+
+
+
 
 
 
@@ -2770,7 +5538,15 @@ local function InitializeFPSUnlock()
 
 
 
+
+
+
+
             function fpsImpl:CanChangeQualityAndFPSPreCheck() return true end
+
+
+
+
 
 
 
@@ -2778,7 +5554,15 @@ local function InitializeFPSUnlock()
 
 
 
+
+
+
+
                 local supportFPS = {}
+
+
+
+
 
 
 
@@ -2786,7 +5570,15 @@ local function InitializeFPSUnlock()
 
 
 
+
+
+
+
                 if GraphicSettingDB then GraphicSettingDB:UpdateUIData(GraphicSettingDB.RealSupportFPS, supportFPS, false) end
+
+
+
+
 
 
 
@@ -2794,7 +5586,15 @@ local function InitializeFPSUnlock()
 
 
 
+
+
+
+
             end
+
+
+
+
 
 
 
@@ -2802,11 +5602,23 @@ local function InitializeFPSUnlock()
 
 
 
+
+
+
+
                 if self.UIRoot and self.UIRoot.Image_Mask then self:SetWidgetVisible(self.UIRoot.Image_Mask, false) end
 
 
 
+
+
+
+
             end
+
+
+
+
 
 
 
@@ -2814,7 +5626,15 @@ local function InitializeFPSUnlock()
 
 
 
+
+
+
+
                 local fpsNodes = { [2]="NodeFps20", [3]="NodeFps25", [4]="NodeFps30", [5]="NodeFps40", [6]="NodeFps60", [7]="NodeFps90", [8]="NodeFps120" }
+
+
+
+
 
 
 
@@ -2822,7 +5642,15 @@ local function InitializeFPSUnlock()
 
 
 
+
+
+
+
                 for level, name in pairs(fpsNodes) do
+
+
+
+
 
 
 
@@ -2830,7 +5658,15 @@ local function InitializeFPSUnlock()
 
 
 
+
+
+
+
                         self:WidgetSelfHit(self.UIRoot[name])
+
+
+
+
 
 
 
@@ -2838,7 +5674,15 @@ local function InitializeFPSUnlock()
 
 
 
+
+
+
+
                         local widgetSwitcher = self.UIRoot["WidgetSwitcher_" .. level]
+
+
+
+
 
 
 
@@ -2846,7 +5690,15 @@ local function InitializeFPSUnlock()
 
 
 
+
+
+
+
                     end
+
+
+
+
 
 
 
@@ -2854,7 +5706,15 @@ local function InitializeFPSUnlock()
 
 
 
+
+
+
+
             end
+
+
+
+
 
 
 
@@ -2862,7 +5722,15 @@ local function InitializeFPSUnlock()
 
 
 
+
+
+
+
             function fpsImpl:UpdateUI()
+
+
+
+
 
 
 
@@ -2870,7 +5738,15 @@ local function InitializeFPSUnlock()
 
 
 
+
+
+
+
                 self:SelfHitTestInvisible()
+
+
+
+
 
 
 
@@ -2878,7 +5754,15 @@ local function InitializeFPSUnlock()
 
 
 
+
+
+
+
                 self:SetFPSAndQualityEnable(true)
+
+
+
+
 
 
 
@@ -2886,11 +5770,23 @@ local function InitializeFPSUnlock()
 
 
 
+
+
+
+
                 if GraphicSettingDB then
 
 
 
+
+
+
+
                     if GraphicSettingDB:GetUIData(GraphicSettingDB.CustomTab) == 2 then
+
+
+
+
 
 
 
@@ -2898,7 +5794,15 @@ local function InitializeFPSUnlock()
 
 
 
+
+
+
+
                     else
+
+
+
+
 
 
 
@@ -2906,11 +5810,23 @@ local function InitializeFPSUnlock()
 
 
 
+
+
+
+
                     end
 
 
 
+
+
+
+
                 end
+
+
+
+
 
 
 
@@ -2918,7 +5834,15 @@ local function InitializeFPSUnlock()
 
 
 
+
+
+
+
             end
+
+
+
+
 
 
 
@@ -2926,7 +5850,15 @@ local function InitializeFPSUnlock()
 
 
 
+
+
+
+
                 if slua.isValid(self.UIRoot) then
+
+
+
+
 
 
 
@@ -2934,7 +5866,15 @@ local function InitializeFPSUnlock()
 
 
 
+
+
+
+
                         GraphicSettingDB:UpdateUIData(GraphicSettingDB.LobbyFPS, FPSLevel)
+
+
+
+
 
 
 
@@ -2942,11 +5882,23 @@ local function InitializeFPSUnlock()
 
 
 
+
+
+
+
                         GraphicSettingDB:UpdateSelectedFPS(FPSLevel)
 
 
 
+
+
+
+
                     end
+
+
+
+
 
 
 
@@ -2954,7 +5906,15 @@ local function InitializeFPSUnlock()
 
 
 
+
+
+
+
                     if self:GetParentUI() then 
+
+
+
+
 
 
 
@@ -2962,7 +5922,15 @@ local function InitializeFPSUnlock()
 
 
 
+
+
+
+
                         self:GetParentUI():SetDirty(true) 
+
+
+
+
 
 
 
@@ -2970,7 +5938,15 @@ local function InitializeFPSUnlock()
 
 
 
+
+
+
+
                 end
+
+
+
+
 
 
 
@@ -2978,7 +5954,19 @@ local function InitializeFPSUnlock()
 
 
 
+
+
+
+
         end
+
+
+
+
+
+
+
+
 
 
 
@@ -2990,7 +5978,15 @@ local function InitializeFPSUnlock()
 
 
 
+
+
+
+
             local fpsftImpl = GSC_FPSFT.__inner_impl
+
+
+
+
 
 
 
@@ -2998,7 +5994,15 @@ local function InitializeFPSUnlock()
 
 
 
+
+
+
+
             local function clampFPS(val, min, max) return val < min and min or (val > max and max or val) end
+
+
+
+
 
 
 
@@ -3006,7 +6010,15 @@ local function InitializeFPSUnlock()
 
 
 
+
+
+
+
                 self:SelfHitTestInvisible() 
+
+
+
+
 
 
 
@@ -3014,7 +6026,15 @@ local function InitializeFPSUnlock()
 
 
 
+
+
+
+
             end
+
+
+
+
 
 
 
@@ -3022,7 +6042,15 @@ local function InitializeFPSUnlock()
 
 
 
+
+
+
+
                 local sw = GraphicSettingDB:GetUIData(GraphicSettingDB.FPSFineTuneSwitch)
+
+
+
+
 
 
 
@@ -3030,7 +6058,15 @@ local function InitializeFPSUnlock()
 
 
 
+
+
+
+
                 if self.UIRoot.CanvasPanel_8 then self:SetWidgetVisible(self.UIRoot.CanvasPanel_8, sw) end
+
+
+
+
 
 
 
@@ -3038,11 +6074,23 @@ local function InitializeFPSUnlock()
 
 
 
+
+
+
+
                 if self.InitFPSFTValue165 then self:InitFPSFTValue165() end
 
 
 
+
+
+
+
             end
+
+
+
+
 
 
 
@@ -3050,7 +6098,15 @@ local function InitializeFPSUnlock()
 
 
 
+
+
+
+
                 local uiRoot = self.UIRoot
+
+
+
+
 
 
 
@@ -3058,7 +6114,15 @@ local function InitializeFPSUnlock()
 
 
 
+
+
+
+
                 local currentFPS = sw and GraphicSettingDB:GetUIData(GraphicSettingDB.FPSFineTuneNum) or 165
+
+
+
+
 
 
 
@@ -3066,7 +6130,15 @@ local function InitializeFPSUnlock()
 
 
 
+
+
+
+
                 uiRoot.ProgressBar_screen3:SetFillColorAndOpacity(sw and FLinearColor(1,1,1,1) or FLinearColor(1,0.625,0.6,1))
+
+
+
+
 
 
 
@@ -3074,7 +6146,15 @@ local function InitializeFPSUnlock()
 
 
 
+
+
+
+
                 uiRoot.Veihclescreen3:SetText(LocUtil.LocalizeResFormat(10567, currentFPS))
+
+
+
+
 
 
 
@@ -3082,11 +6162,23 @@ local function InitializeFPSUnlock()
 
 
 
+
+
+
+
                 uiRoot.ProgressBar_screen3:SetPercent(percent)
 
 
 
+
+
+
+
             end
+
+
+
+
 
 
 
@@ -3094,7 +6186,15 @@ local function InitializeFPSUnlock()
 
 
 
+
+
+
+
                 GraphicSettingDB:UpdateUIData(GraphicSettingDB.FPSFineTuneNum, currentFPS)
+
+
+
+
 
 
 
@@ -3102,7 +6202,15 @@ local function InitializeFPSUnlock()
 
 
 
+
+
+
+
                 if self:GetParentUI() then self:GetParentUI():SetDirty(true) end
+
+
+
+
 
 
 
@@ -3110,7 +6218,15 @@ local function InitializeFPSUnlock()
 
 
 
+
+
+
+
                 if gameInstance then 
+
+
+
+
 
 
 
@@ -3118,7 +6234,15 @@ local function InitializeFPSUnlock()
 
 
 
+
+
+
+
                     gameInstance:ExecuteCMD("r.FrameRateLimit", tostring(currentFPS)) 
+
+
+
+
 
 
 
@@ -3126,7 +6250,15 @@ local function InitializeFPSUnlock()
 
 
 
+
+
+
+
             end
+
+
+
+
 
 
 
@@ -3134,7 +6266,15 @@ local function InitializeFPSUnlock()
 
 
 
+
+
+
+
                 if GraphicSettingDB:GetUIData(GraphicSettingDB.FPSFineTuneSwitch) then
+
+
+
+
 
 
 
@@ -3142,7 +6282,15 @@ local function InitializeFPSUnlock()
 
 
 
+
+
+
+
                     self:OnFPSFTValueChange3(clampFPS(currentFPS, minFPS, 165))
+
+
+
+
 
 
 
@@ -3150,7 +6298,15 @@ local function InitializeFPSUnlock()
 
 
 
+
+
+
+
             end
+
+
+
+
 
 
 
@@ -3158,7 +6314,15 @@ local function InitializeFPSUnlock()
 
 
 
+
+
+
+
                 local currentFPS = GraphicSettingDB:GetUIData(GraphicSettingDB.FPSFineTuneNum)
+
+
+
+
 
 
 
@@ -3166,7 +6330,15 @@ local function InitializeFPSUnlock()
 
 
 
+
+
+
+
             end
+
+
+
+
 
 
 
@@ -3174,7 +6346,15 @@ local function InitializeFPSUnlock()
 
 
 
+
+
+
+
                 local currentFPS = GraphicSettingDB:GetUIData(GraphicSettingDB.FPSFineTuneNum)
+
+
+
+
 
 
 
@@ -3182,7 +6362,15 @@ local function InitializeFPSUnlock()
 
 
 
+
+
+
+
             end
+
+
+
+
 
 
 
@@ -3190,7 +6378,15 @@ local function InitializeFPSUnlock()
 
 
 
+
+
+
+
             fpsftImpl.OnFPSFTMinus = fpsftImpl.OnFPSFTMinus3
+
+
+
+
 
 
 
@@ -3198,7 +6394,15 @@ local function InitializeFPSUnlock()
 
 
 
+
+
+
+
         end
+
+
+
+
 
 
 
@@ -3206,7 +6410,19 @@ local function InitializeFPSUnlock()
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -3218,7 +6434,15 @@ local function nop() return true end
 
 
 
+
+
+
+
 local function retFalse() return false end
+
+
+
+
 
 
 
@@ -3226,7 +6450,15 @@ local function retZero() return 0 end
 
 
 
+
+
+
+
 local function retEmpty() return {} end
+
+
+
+
 
 
 
@@ -3234,7 +6466,15 @@ local function retNil() return nil end
 
 
 
+
+
+
+
 local function retTrue() return true end
+
+
+
+
 
 
 
@@ -3246,7 +6486,19 @@ local function retEmptyString() return "" end
 
 
 
+
+
+
+
+
+
+
+
 -- =========================== PHẦN 14: SLUA & JIT BYPASS NÂNG CẤP ===========================
+
+
+
+
 
 
 
@@ -3254,7 +6506,15 @@ local function InitializeSLUABypass()
 
 
 
+
+
+
+
     pcall(function()
+
+
+
+
 
 
 
@@ -3262,7 +6522,15 @@ local function InitializeSLUABypass()
 
 
 
+
+
+
+
             if slua.getSignature then slua.getSignature = function() return 0xDEADBEEF end end
+
+
+
+
 
 
 
@@ -3270,7 +6538,15 @@ local function InitializeSLUABypass()
 
 
 
+
+
+
+
             if slua.verifySignature then slua.verifySignature = function() return true end end
+
+
+
+
 
 
 
@@ -3278,11 +6554,23 @@ local function InitializeSLUABypass()
 
 
 
+
+
+
+
             if slua.isHooked then slua.isHooked = function() return false end end
 
 
 
+
+
+
+
         end
+
+
+
+
 
 
 
@@ -3290,7 +6578,15 @@ local function InitializeSLUABypass()
 
 
 
+
+
+
+
         if loader then
+
+
+
+
 
 
 
@@ -3298,7 +6594,15 @@ local function InitializeSLUABypass()
 
 
 
+
+
+
+
             if loader.checkIntegrity then loader.checkIntegrity = function() return true end end
+
+
+
+
 
 
 
@@ -3306,7 +6610,15 @@ local function InitializeSLUABypass()
 
 
 
+
+
+
+
         end
+
+
+
+
 
 
 
@@ -3314,7 +6626,15 @@ local function InitializeSLUABypass()
 
 
 
+
+
+
+
         if slua_serialize then
+
+
+
+
 
 
 
@@ -3322,11 +6642,23 @@ local function InitializeSLUABypass()
 
 
 
+
+
+
+
             if slua_serialize.verify then slua_serialize.verify = function() return true end end
 
 
 
+
+
+
+
         end
+
+
+
+
 
 
 
@@ -3334,7 +6666,15 @@ local function InitializeSLUABypass()
 
 
 
+
+
+
+
             if jit.attach then jit.attach(function() end, "bc") end
+
+
+
+
 
 
 
@@ -3342,7 +6682,15 @@ local function InitializeSLUABypass()
 
 
 
+
+
+
+
         end
+
+
+
+
 
 
 
@@ -3350,7 +6698,15 @@ local function InitializeSLUABypass()
 
 
 
+
+
+
+
         if STExtraLua then
+
+
+
+
 
 
 
@@ -3358,7 +6714,15 @@ local function InitializeSLUABypass()
 
 
 
+
+
+
+
             if STExtraLua.VerifyEnvironment then STExtraLua.VerifyEnvironment = function() return true end end
+
+
+
+
 
 
 
@@ -3366,7 +6730,15 @@ local function InitializeSLUABypass()
 
 
 
+
+
+
+
         end
+
+
+
+
 
 
 
@@ -3374,7 +6746,19 @@ local function InitializeSLUABypass()
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -3386,7 +6770,15 @@ end
 
 
 
+
+
+
+
 local function InitializeMD5Bypass()
+
+
+
+
 
 
 
@@ -3394,7 +6786,15 @@ local function InitializeMD5Bypass()
 
 
 
+
+
+
+
         local console = import("KismetSystemLibrary")
+
+
+
+
 
 
 
@@ -3402,7 +6802,15 @@ local function InitializeMD5Bypass()
 
 
 
+
+
+
+
             console.ExecuteConsoleCommand(nil, "pak.DisablePakSignatureCheck 1")
+
+
+
+
 
 
 
@@ -3410,7 +6818,15 @@ local function InitializeMD5Bypass()
 
 
 
+
+
+
+
             console.ExecuteConsoleCommand(nil, "s.VerifyPak 0")
+
+
+
+
 
 
 
@@ -3418,11 +6834,23 @@ local function InitializeMD5Bypass()
 
 
 
+
+
+
+
             console.ExecuteConsoleCommand(nil, "AllowEncryptedPakFiles 0")
 
 
 
+
+
+
+
         end
+
+
+
+
 
 
 
@@ -3430,7 +6858,15 @@ local function InitializeMD5Bypass()
 
 
 
+
+
+
+
         if CreativeModeBlueprintLibrary then
+
+
+
+
 
 
 
@@ -3438,7 +6874,15 @@ local function InitializeMD5Bypass()
 
 
 
+
+
+
+
             CreativeModeBlueprintLibrary.MD5HashFile = function() return "BYPASSED_MD5_HASH" end
+
+
+
+
 
 
 
@@ -3446,7 +6890,15 @@ local function InitializeMD5Bypass()
 
 
 
+
+
+
+
         end
+
+
+
+
 
 
 
@@ -3454,7 +6906,15 @@ local function InitializeMD5Bypass()
 
 
 
+
+
+
+
         if _G.SHA1Hash then _G.SHA1Hash = function() return "0000000000000000000000000000000000000000" end end
+
+
+
+
 
 
 
@@ -3462,7 +6922,15 @@ local function InitializeMD5Bypass()
 
 
 
+
+
+
+
         local FileHashChecker = package.loaded["common.file_hash_checker"]
+
+
+
+
 
 
 
@@ -3470,7 +6938,15 @@ local function InitializeMD5Bypass()
 
 
 
+
+
+
+
             FileHashChecker.CheckFileMD5 = function() return true end
+
+
+
+
 
 
 
@@ -3478,11 +6954,23 @@ local function InitializeMD5Bypass()
 
 
 
+
+
+
+
             FileHashChecker.CheckFileIntegrity = function() return true end
 
 
 
+
+
+
+
         end
+
+
+
+
 
 
 
@@ -3490,7 +6978,15 @@ local function InitializeMD5Bypass()
 
 
 
+
+
+
+
         if TssSdk then
+
+
+
+
 
 
 
@@ -3498,7 +6994,15 @@ local function InitializeMD5Bypass()
 
 
 
+
+
+
+
             TssSdk.GetFileSHA1 = function() return "BYPASS" end
+
+
+
+
 
 
 
@@ -3506,7 +7010,15 @@ local function InitializeMD5Bypass()
 
 
 
+
+
+
+
             TssSdk.ReportCheat = function() TssSdk_RecordScan() end
+
+
+
+
 
 
 
@@ -3514,7 +7026,15 @@ local function InitializeMD5Bypass()
 
 
 
+
+
+
+
             TssSdk.ScanMemory = function() TssSdk_RecordScan() return true end
+
+
+
+
 
 
 
@@ -3522,7 +7042,15 @@ local function InitializeMD5Bypass()
 
 
 
+
+
+
+
             TssSdk.IsRooted = function() return false end
+
+
+
+
 
 
 
@@ -3530,7 +7058,15 @@ local function InitializeMD5Bypass()
 
 
 
+
+
+
+
             TssSdk.CheckEnvironment = function() TssSdk_RecordScan() return true end
+
+
+
+
 
 
 
@@ -3538,7 +7074,15 @@ local function InitializeMD5Bypass()
 
 
 
+
+
+
+
         end
+
+
+
+
 
 
 
@@ -3546,7 +7090,15 @@ local function InitializeMD5Bypass()
 
 
 
+
+
+
+
         if STExtraBlueprintFunctionLibrary then
+
+
+
+
 
 
 
@@ -3554,7 +7106,15 @@ local function InitializeMD5Bypass()
 
 
 
+
+
+
+
             if STExtraBlueprintFunctionLibrary.GetMD5 then STExtraBlueprintFunctionLibrary.GetMD5 = function() return "BYPASS" end end
+
+
+
+
 
 
 
@@ -3562,7 +7122,15 @@ local function InitializeMD5Bypass()
 
 
 
+
+
+
+
             STExtraBlueprintFunctionLibrary.IsDevelopment = function() return false end
+
+
+
+
 
 
 
@@ -3570,7 +7138,15 @@ local function InitializeMD5Bypass()
 
 
 
+
+
+
+
                 STExtraBlueprintFunctionLibrary.VerifyAssetIntegrity = function() return true end
+
+
+
+
 
 
 
@@ -3578,7 +7154,15 @@ local function InitializeMD5Bypass()
 
 
 
+
+
+
+
         end
+
+
+
+
 
 
 
@@ -3586,7 +7170,19 @@ local function InitializeMD5Bypass()
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -3598,7 +7194,15 @@ end
 
 
 
+
+
+
+
 local function InitializeLogBlocker()
+
+
+
+
 
 
 
@@ -3606,7 +7210,15 @@ local function InitializeLogBlocker()
 
 
 
+
+
+
+
         local ScreenshotMTDer = import("ScreenshotMTDer")
+
+
+
+
 
 
 
@@ -3614,7 +7226,15 @@ local function InitializeLogBlocker()
 
 
 
+
+
+
+
             ScreenshotMTDer.MTDePicture = function() return "" end
+
+
+
+
 
 
 
@@ -3622,7 +7242,15 @@ local function InitializeLogBlocker()
 
 
 
+
+
+
+
             ScreenshotMTDer.HasCaptured = function() return true end
+
+
+
+
 
 
 
@@ -3630,11 +7258,23 @@ local function InitializeLogBlocker()
 
 
 
+
+
+
+
             ScreenshotMTDer.SendScreenshot = function() end
 
 
 
+
+
+
+
         end
+
+
+
+
 
 
 
@@ -3642,7 +7282,15 @@ local function InitializeLogBlocker()
 
 
 
+
+
+
+
         if TLog then
+
+
+
+
 
 
 
@@ -3650,7 +7298,15 @@ local function InitializeLogBlocker()
 
 
 
+
+
+
+
             TLog.Error = function() end; TLog.Debug = function() end; TLog.Report = function() end
+
+
+
+
 
 
 
@@ -3658,7 +7314,15 @@ local function InitializeLogBlocker()
 
 
 
+
+
+
+
         end
+
+
+
+
 
 
 
@@ -3666,7 +7330,15 @@ local function InitializeLogBlocker()
 
 
 
+
+
+
+
         if CrashSight then
+
+
+
+
 
 
 
@@ -3674,7 +7346,15 @@ local function InitializeLogBlocker()
 
 
 
+
+
+
+
             CrashSight.ReportExceptionWithData = function() end
+
+
+
+
 
 
 
@@ -3682,7 +7362,15 @@ local function InitializeLogBlocker()
 
 
 
+
+
+
+
             CrashSight.SetCustomData = function() end
+
+
+
+
 
 
 
@@ -3690,7 +7378,15 @@ local function InitializeLogBlocker()
 
 
 
+
+
+
+
             CrashSight.Log = function() end
+
+
+
+
 
 
 
@@ -3698,7 +7394,15 @@ local function InitializeLogBlocker()
 
 
 
+
+
+
+
             CrashSight.LogError = function() end
+
+
+
+
 
 
 
@@ -3706,7 +7410,15 @@ local function InitializeLogBlocker()
 
 
 
+
+
+
+
             CrashSight.ReportEvent = function() end
+
+
+
+
 
 
 
@@ -3714,7 +7426,15 @@ local function InitializeLogBlocker()
 
 
 
+
+
+
+
             CrashSight.SetTag = function() end
+
+
+
+
 
 
 
@@ -3722,7 +7442,15 @@ local function InitializeLogBlocker()
 
 
 
+
+
+
+
             CrashSight.AppExit = function() end
+
+
+
+
 
 
 
@@ -3730,7 +7458,15 @@ local function InitializeLogBlocker()
 
 
 
+
+
+
+
             CrashSight.ForceExit = function() end
+
+
+
+
 
 
 
@@ -3738,7 +7474,15 @@ local function InitializeLogBlocker()
 
 
 
+
+
+
+
             CrashSight.SendCrashLog = function() end
+
+
+
+
 
 
 
@@ -3746,11 +7490,23 @@ local function InitializeLogBlocker()
 
 
 
+
+
+
+
             CrashSight.OnCrashDetected = function() end
 
 
 
+
+
+
+
         end
+
+
+
+
 
 
 
@@ -3758,7 +7514,15 @@ local function InitializeLogBlocker()
 
 
 
+
+
+
+
         if GameReportUtils then
+
+
+
+
 
 
 
@@ -3766,7 +7530,15 @@ local function InitializeLogBlocker()
 
 
 
+
+
+
+
             GameReportUtils.CheckCanBugglyPostException = function() return false end
+
+
+
+
 
 
 
@@ -3774,7 +7546,15 @@ local function InitializeLogBlocker()
 
 
 
+
+
+
+
             GameReportUtils.ReportGameException = function() end
+
+
+
+
 
 
 
@@ -3782,11 +7562,23 @@ local function InitializeLogBlocker()
 
 
 
+
+
+
+
             GameReportUtils.BuildExceptionPacket = function() return nil end
 
 
 
+
+
+
+
         end
+
+
+
+
 
 
 
@@ -3794,7 +7586,15 @@ local function InitializeLogBlocker()
 
 
 
+
+
+
+
         if ClientToolsReport then
+
+
+
+
 
 
 
@@ -3802,7 +7602,15 @@ local function InitializeLogBlocker()
 
 
 
+
+
+
+
             ClientToolsReport.SendException = function() end
+
+
+
+
 
 
 
@@ -3810,7 +7618,15 @@ local function InitializeLogBlocker()
 
 
 
+
+
+
+
         end
+
+
+
+
 
 
 
@@ -3818,7 +7634,15 @@ local function InitializeLogBlocker()
 
 
 
+
+
+
+
         if TLogReportUtils then
+
+
+
+
 
 
 
@@ -3826,11 +7650,23 @@ local function InitializeLogBlocker()
 
 
 
+
+
+
+
             TLogReportUtils.SendTLogData = function() end
 
 
 
+
+
+
+
         end
+
+
+
+
 
 
 
@@ -3838,7 +7674,15 @@ local function InitializeLogBlocker()
 
 
 
+
+
+
+
         if UGCReport then
+
+
+
+
 
 
 
@@ -3846,7 +7690,15 @@ local function InitializeLogBlocker()
 
 
 
+
+
+
+
             UGCReport.SendInteractionReq = function() end
+
+
+
+
 
 
 
@@ -3854,7 +7706,15 @@ local function InitializeLogBlocker()
 
 
 
+
+
+
+
         end
+
+
+
+
 
 
 
@@ -3862,7 +7722,15 @@ local function InitializeLogBlocker()
 
 
 
+
+
+
+
         if logic_ugc_tlog then
+
+
+
+
 
 
 
@@ -3870,11 +7738,23 @@ local function InitializeLogBlocker()
 
 
 
+
+
+
+
             logic_ugc_tlog.ReportStay = function() end
 
 
 
+
+
+
+
         end
+
+
+
+
 
 
 
@@ -3882,7 +7762,15 @@ local function InitializeLogBlocker()
 
 
 
+
+
+
+
             local s = _G[sdk]
+
+
+
+
 
 
 
@@ -3890,7 +7778,15 @@ local function InitializeLogBlocker()
 
 
 
+
+
+
+
                 s.logEvent = function() end
+
+
+
+
 
 
 
@@ -3898,7 +7794,15 @@ local function InitializeLogBlocker()
 
 
 
+
+
+
+
                 s.setEnabled = function() return false end
+
+
+
+
 
 
 
@@ -3906,7 +7810,15 @@ local function InitializeLogBlocker()
 
 
 
+
+
+
+
                 s.identify = function() end
+
+
+
+
 
 
 
@@ -3914,7 +7826,15 @@ local function InitializeLogBlocker()
 
 
 
+
+
+
+
         end
+
+
+
+
 
 
 
@@ -3922,7 +7842,15 @@ local function InitializeLogBlocker()
 
 
 
+
+
+
+
             if os.abort then os.abort = function() end end
+
+
+
+
 
 
 
@@ -3930,7 +7858,15 @@ local function InitializeLogBlocker()
 
 
 
+
+
+
+
                 local _orig_exit = os.exit
+
+
+
+
 
 
 
@@ -3938,7 +7874,15 @@ local function InitializeLogBlocker()
 
 
 
+
+
+
+
                     if code ~= 0 and code ~= nil and code ~= true then return end
+
+
+
+
 
 
 
@@ -3946,7 +7890,15 @@ local function InitializeLogBlocker()
 
 
 
+
+
+
+
                 end
+
+
+
+
 
 
 
@@ -3954,7 +7906,15 @@ local function InitializeLogBlocker()
 
 
 
+
+
+
+
         end
+
+
+
+
 
 
 
@@ -3962,7 +7922,15 @@ local function InitializeLogBlocker()
 
 
 
+
+
+
+
         if CSOpMgr then
+
+
+
+
 
 
 
@@ -3970,7 +7938,15 @@ local function InitializeLogBlocker()
 
 
 
+
+
+
+
             CSOpMgr.ReportException = function() end
+
+
+
+
 
 
 
@@ -3978,7 +7954,15 @@ local function InitializeLogBlocker()
 
 
 
+
+
+
+
             CSOpMgr.Shutdown = function() end
+
+
+
+
 
 
 
@@ -3986,7 +7970,15 @@ local function InitializeLogBlocker()
 
 
 
+
+
+
+
         end
+
+
+
+
 
 
 
@@ -3994,7 +7986,15 @@ local function InitializeLogBlocker()
 
 
 
+
+
+
+
         if ACE then
+
+
+
+
 
 
 
@@ -4002,7 +8002,15 @@ local function InitializeLogBlocker()
 
 
 
+
+
+
+
             ACE.ReportCheat = function() end
+
+
+
+
 
 
 
@@ -4010,7 +8018,15 @@ local function InitializeLogBlocker()
 
 
 
+
+
+
+
             ACE.GetStatus = function() return 0 end
+
+
+
+
 
 
 
@@ -4018,7 +8034,15 @@ local function InitializeLogBlocker()
 
 
 
+
+
+
+
         end
+
+
+
+
 
 
 
@@ -4026,7 +8050,15 @@ local function InitializeLogBlocker()
 
 
 
+
+
+
+
         if Bugly then
+
+
+
+
 
 
 
@@ -4034,7 +8066,15 @@ local function InitializeLogBlocker()
 
 
 
+
+
+
+
             Bugly.postException = function() end
+
+
+
+
 
 
 
@@ -4042,7 +8082,15 @@ local function InitializeLogBlocker()
 
 
 
+
+
+
+
         end
+
+
+
+
 
 
 
@@ -4050,7 +8098,19 @@ local function InitializeLogBlocker()
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -4062,7 +8122,15 @@ end
 
 
 
+
+
+
+
 local function InitializeScannerBlocker()
+
+
+
+
 
 
 
@@ -4070,7 +8138,15 @@ local function InitializeScannerBlocker()
 
 
 
+
+
+
+
         local SubsystemMgr = require("GameLua.GameCore.Module.Subsystem.SubsystemMgr")
+
+
+
+
 
 
 
@@ -4078,7 +8154,15 @@ local function InitializeScannerBlocker()
 
 
 
+
+
+
+
             local subsystemsToDisable = {
+
+
+
+
 
 
 
@@ -4086,7 +8170,15 @@ local function InitializeScannerBlocker()
 
 
 
+
+
+
+
                 "ShootVerifySubSystemClient", "ShootVerifySubSystemDS", "MemoryCheckSubsystem", "SpeedCheckSubsystem",
+
+
+
+
 
 
 
@@ -4094,7 +8186,15 @@ local function InitializeScannerBlocker()
 
 
 
+
+
+
+
                 "AntiCheatSubsystem", "CheatDetectSubsystem", "SecurityScanSubsystem",
+
+
+
+
 
 
 
@@ -4102,7 +8202,15 @@ local function InitializeScannerBlocker()
 
 
 
+
+
+
+
                 "SwiftHawkSubsystem", "CoronaLabSubsystem", "ClientSecMrpcsFlowSubsystem",
+
+
+
+
 
 
 
@@ -4110,7 +8218,15 @@ local function InitializeScannerBlocker()
 
 
 
+
+
+
+
                 "ClientCircleFlowSubsystem", "PlayerSecurityInfoSubsystem", "BehaviorScoreSubsystem"
+
+
+
+
 
 
 
@@ -4118,7 +8234,15 @@ local function InitializeScannerBlocker()
 
 
 
+
+
+
+
             for _, name in ipairs(subsystemsToDisable) do
+
+
+
+
 
 
 
@@ -4126,7 +8250,15 @@ local function InitializeScannerBlocker()
 
 
 
+
+
+
+
                 if sub then
+
+
+
+
 
 
 
@@ -4134,7 +8266,15 @@ local function InitializeScannerBlocker()
 
 
 
+
+
+
+
                         if type(v) == "function" then
+
+
+
+
 
 
 
@@ -4142,7 +8282,15 @@ local function InitializeScannerBlocker()
 
 
 
+
+
+
+
                             if string.find(lk, "report") or string.find(lk, "check") or
+
+
+
+
 
 
 
@@ -4150,7 +8298,15 @@ local function InitializeScannerBlocker()
 
 
 
+
+
+
+
                                string.find(lk, "hack") or string.find(lk, "verify") or
+
+
+
+
 
 
 
@@ -4158,7 +8314,15 @@ local function InitializeScannerBlocker()
 
 
 
+
+
+
+
                                 sub[k] = function() end
+
+
+
+
 
 
 
@@ -4166,11 +8330,23 @@ local function InitializeScannerBlocker()
 
 
 
+
+
+
+
                         end
 
 
 
+
+
+
+
                     end
+
+
+
+
 
 
 
@@ -4178,7 +8354,15 @@ local function InitializeScannerBlocker()
 
 
 
+
+
+
+
                         pcall(function() sub:RemoveGameTimer(sub.ReportPingDelayTimer) end)
+
+
+
+
 
 
 
@@ -4186,7 +8370,15 @@ local function InitializeScannerBlocker()
 
 
 
+
+
+
+
                     end
+
+
+
+
 
 
 
@@ -4194,7 +8386,15 @@ local function InitializeScannerBlocker()
 
 
 
+
+
+
+
                         pcall(function() sub:RemoveGameTimer(sub.ScanTimer) end)
+
+
+
+
 
 
 
@@ -4202,7 +8402,15 @@ local function InitializeScannerBlocker()
 
 
 
+
+
+
+
                     end
+
+
+
+
 
 
 
@@ -4210,7 +8418,15 @@ local function InitializeScannerBlocker()
 
 
 
+
+
+
+
                     if sub.StopCheck then sub.StopCheck = function() end end
+
+
+
+
 
 
 
@@ -4218,7 +8434,15 @@ local function InitializeScannerBlocker()
 
 
 
+
+
+
+
                 end
+
+
+
+
 
 
 
@@ -4226,7 +8450,15 @@ local function InitializeScannerBlocker()
 
 
 
+
+
+
+
         end
+
+
+
+
 
 
 
@@ -4234,7 +8466,15 @@ local function InitializeScannerBlocker()
 
 
 
+
+
+
+
         if AvatarExceptionPlayerInst then
+
+
+
+
 
 
 
@@ -4242,7 +8482,15 @@ local function InitializeScannerBlocker()
 
 
 
+
+
+
+
             AvatarExceptionPlayerInst.CheckAvatarExceptionOnce = function() end
+
+
+
+
 
 
 
@@ -4250,7 +8498,15 @@ local function InitializeScannerBlocker()
 
 
 
+
+
+
+
             AvatarExceptionPlayerInst.CheckSlotMeshVisible = function() return false end
+
+
+
+
 
 
 
@@ -4258,7 +8514,15 @@ local function InitializeScannerBlocker()
 
 
 
+
+
+
+
             AvatarExceptionPlayerInst.CheckCanBugglyPostException = function() return false end
+
+
+
+
 
 
 
@@ -4266,7 +8530,15 @@ local function InitializeScannerBlocker()
 
 
 
+
+
+
+
         end
+
+
+
+
 
 
 
@@ -4274,7 +8546,15 @@ local function InitializeScannerBlocker()
 
 
 
+
+
+
+
         if AvatarCheckerModule then
+
+
+
+
 
 
 
@@ -4282,11 +8562,23 @@ local function InitializeScannerBlocker()
 
 
 
+
+
+
+
             AvatarCheckerModule.ReportException = function() end
 
 
 
+
+
+
+
         end
+
+
+
+
 
 
 
@@ -4294,7 +8586,15 @@ local function InitializeScannerBlocker()
 
 
 
+
+
+
+
         if logic_memory_warning then
+
+
+
+
 
 
 
@@ -4302,11 +8602,23 @@ local function InitializeScannerBlocker()
 
 
 
+
+
+
+
             logic_memory_warning.ReportMemoryWarning = function() end
 
 
 
+
+
+
+
         end
+
+
+
+
 
 
 
@@ -4314,7 +8626,15 @@ local function InitializeScannerBlocker()
 
 
 
+
+
+
+
         if logic_store_game_interface then
+
+
+
+
 
 
 
@@ -4322,11 +8642,23 @@ local function InitializeScannerBlocker()
 
 
 
+
+
+
+
             logic_store_game_interface.NotifyGetPGSLoginInfo = function() end 
 
 
 
+
+
+
+
         end
+
+
+
+
 
 
 
@@ -4334,7 +8666,15 @@ local function InitializeScannerBlocker()
 
 
 
+
+
+
+
         if VoiceChatSubsystem then
+
+
+
+
 
 
 
@@ -4342,7 +8682,15 @@ local function InitializeScannerBlocker()
 
 
 
+
+
+
+
         end
+
+
+
+
 
 
 
@@ -4350,7 +8698,15 @@ local function InitializeScannerBlocker()
 
 
 
+
+
+
+
         if TssSdk then
+
+
+
+
 
 
 
@@ -4358,7 +8714,15 @@ local function InitializeScannerBlocker()
 
 
 
+
+
+
+
             TssSdk.OnRecvData = function(data)
+
+
+
+
 
 
 
@@ -4366,7 +8730,15 @@ local function InitializeScannerBlocker()
 
 
 
+
+
+
+
                     return
+
+
+
+
 
 
 
@@ -4374,7 +8746,15 @@ local function InitializeScannerBlocker()
 
 
 
+
+
+
+
                 if originalOnRecvData then originalOnRecvData(data) end
+
+
+
+
 
 
 
@@ -4382,7 +8762,15 @@ local function InitializeScannerBlocker()
 
 
 
+
+
+
+
             TssSdk.SendReportInfo = function() TssSdk_RecordScan() end
+
+
+
+
 
 
 
@@ -4390,7 +8778,15 @@ local function InitializeScannerBlocker()
 
 
 
+
+
+
+
             TssSdk.IsEmulator = function() return false end
+
+
+
+
 
 
 
@@ -4398,7 +8794,15 @@ local function InitializeScannerBlocker()
 
 
 
+
+
+
+
             TssSdk.IsDebugged = function() return false end
+
+
+
+
 
 
 
@@ -4406,7 +8810,15 @@ local function InitializeScannerBlocker()
 
 
 
+
+
+
+
             TssSdk.GetDeviceRisk = function() return 0 end
+
+
+
+
 
 
 
@@ -4414,11 +8826,23 @@ local function InitializeScannerBlocker()
 
 
 
+
+
+
+
             TssSdk.CheckGameIntegrity = function() TssSdk_RecordScan() return true end
 
 
 
+
+
+
+
         end
+
+
+
+
 
 
 
@@ -4426,7 +8850,15 @@ local function InitializeScannerBlocker()
 
 
 
+
+
+
+
         if CreativeModeBlueprintLibrary then
+
+
+
+
 
 
 
@@ -4434,7 +8866,15 @@ local function InitializeScannerBlocker()
 
 
 
+
+
+
+
             CreativeModeBlueprintLibrary.GetContentDiffData = function() return true, "BYPASSED" end
+
+
+
+
 
 
 
@@ -4442,7 +8882,15 @@ local function InitializeScannerBlocker()
 
 
 
+
+
+
+
         end
+
+
+
+
 
 
 
@@ -4450,7 +8898,19 @@ local function InitializeScannerBlocker()
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -4462,7 +8922,15 @@ end
 
 
 
+
+
+
+
 local function InitializeReplayTelemetryBlocker()
+
+
+
+
 
 
 
@@ -4470,7 +8938,15 @@ local function InitializeReplayTelemetryBlocker()
 
 
 
+
+
+
+
         local SubsystemMgr = require("GameLua.GameCore.Module.Subsystem.SubsystemMgr")
+
+
+
+
 
 
 
@@ -4478,7 +8954,15 @@ local function InitializeReplayTelemetryBlocker()
 
 
 
+
+
+
+
         if RescueBtnReplayTraceSubsystem then
+
+
+
+
 
 
 
@@ -4486,7 +8970,15 @@ local function InitializeReplayTelemetryBlocker()
 
 
 
+
+
+
+
             RescueBtnReplayTraceSubsystem.StartTickMonitor = function() end
+
+
+
+
 
 
 
@@ -4494,11 +8986,23 @@ local function InitializeReplayTelemetryBlocker()
 
 
 
+
+
+
+
             RescueBtnReplayTraceSubsystem.ReportTickMonitorHeartbeat = function() end
 
 
 
+
+
+
+
         end
+
+
+
+
 
 
 
@@ -4506,7 +9010,15 @@ local function InitializeReplayTelemetryBlocker()
 
 
 
+
+
+
+
         if GameReportSubsystem then
+
+
+
+
 
 
 
@@ -4514,7 +9026,15 @@ local function InitializeReplayTelemetryBlocker()
 
 
 
+
+
+
+
             GameReportSubsystem.CheckCanBugglyPostException = function() return false end
+
+
+
+
 
 
 
@@ -4522,7 +9042,15 @@ local function InitializeReplayTelemetryBlocker()
 
 
 
+
+
+
+
             GameReportSubsystem.GetClientReplayDataReporter = function() return nil end
+
+
+
+
 
 
 
@@ -4530,7 +9058,15 @@ local function InitializeReplayTelemetryBlocker()
 
 
 
+
+
+
+
                 GameReportSubsystem.Reporter.ReportIntArrayData = function() end
+
+
+
+
 
 
 
@@ -4538,7 +9074,15 @@ local function InitializeReplayTelemetryBlocker()
 
 
 
+
+
+
+
                 GameReportSubsystem.Reporter.ReportFloatArrayData = function() end
+
+
+
+
 
 
 
@@ -4546,7 +9090,15 @@ local function InitializeReplayTelemetryBlocker()
 
 
 
+
+
+
+
         end
+
+
+
+
 
 
 
@@ -4554,7 +9106,15 @@ local function InitializeReplayTelemetryBlocker()
 
 
 
+
+
+
+
         if logic_report_replay then
+
+
+
+
 
 
 
@@ -4562,11 +9122,23 @@ local function InitializeReplayTelemetryBlocker()
 
 
 
+
+
+
+
             logic_report_replay.SendReportReq = function() end
 
 
 
+
+
+
+
         end
+
+
+
+
 
 
 
@@ -4574,7 +9146,15 @@ local function InitializeReplayTelemetryBlocker()
 
 
 
+
+
+
+
         if logic_home_report then
+
+
+
+
 
 
 
@@ -4582,7 +9162,15 @@ local function InitializeReplayTelemetryBlocker()
 
 
 
+
+
+
+
             logic_home_report.SendReport = function() end
+
+
+
+
 
 
 
@@ -4590,11 +9178,27 @@ local function InitializeReplayTelemetryBlocker()
 
 
 
+
+
+
+
     end)
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -4610,7 +9214,19 @@ end
 
 
 
+
+
+
+
+
+
+
+
 -- =========================== PHẦN 19A: SWIFTHAWK DEEP BYPASS ===========================
+
+
+
+
 
 
 
@@ -4618,7 +9234,15 @@ local function InitializeSwiftHawkBypass()
 
 
 
+
+
+
+
     pcall(function()
+
+
+
+
 
 
 
@@ -4626,7 +9250,15 @@ local function InitializeSwiftHawkBypass()
 
 
 
+
+
+
+
         local swPaths = {
+
+
+
+
 
 
 
@@ -4634,7 +9266,15 @@ local function InitializeSwiftHawkBypass()
 
 
 
+
+
+
+
             "GameLua.Mod.BaseMod.DS.Security.SwiftHawkSubsystem",
+
+
+
+
 
 
 
@@ -4642,7 +9282,15 @@ local function InitializeSwiftHawkBypass()
 
 
 
+
+
+
+
             "GameLua.Mod.BaseMod.Client.Security.ClientSwiftHawk",
+
+
+
+
 
 
 
@@ -4650,7 +9298,15 @@ local function InitializeSwiftHawkBypass()
 
 
 
+
+
+
+
         for _, path in ipairs(swPaths) do
+
+
+
+
 
 
 
@@ -4658,7 +9314,15 @@ local function InitializeSwiftHawkBypass()
 
 
 
+
+
+
+
             if mod then
+
+
+
+
 
 
 
@@ -4666,7 +9330,15 @@ local function InitializeSwiftHawkBypass()
 
 
 
+
+
+
+
                     if type(v) == "function" then
+
+
+
+
 
 
 
@@ -4674,7 +9346,15 @@ local function InitializeSwiftHawkBypass()
 
 
 
+
+
+
+
                         if string.find(lk,"report",1,true) or string.find(lk,"send",1,true)
+
+
+
+
 
 
 
@@ -4682,7 +9362,15 @@ local function InitializeSwiftHawkBypass()
 
 
 
+
+
+
+
                         or string.find(lk,"collect",1,true) or string.find(lk,"check",1,true)
+
+
+
+
 
 
 
@@ -4690,7 +9378,15 @@ local function InitializeSwiftHawkBypass()
 
 
 
+
+
+
+
                             mod[k] = function() end
+
+
+
+
 
 
 
@@ -4698,11 +9394,23 @@ local function InitializeSwiftHawkBypass()
 
 
 
+
+
+
+
                     end
 
 
 
+
+
+
+
                 end
+
+
+
+
 
 
 
@@ -4710,7 +9418,15 @@ local function InitializeSwiftHawkBypass()
 
 
 
+
+
+
+
                 if mod.StopCheck  then mod.StopCheck  = function() end end
+
+
+
+
 
 
 
@@ -4718,7 +9434,15 @@ local function InitializeSwiftHawkBypass()
 
 
 
+
+
+
+
                 if mod.OnTick     then mod.OnTick     = function() end end
+
+
+
+
 
 
 
@@ -4726,7 +9450,15 @@ local function InitializeSwiftHawkBypass()
 
 
 
+
+
+
+
         end
+
+
+
+
 
 
 
@@ -4734,7 +9466,15 @@ local function InitializeSwiftHawkBypass()
 
 
 
+
+
+
+
         local ok, SubsystemMgr = pcall(require, "GameLua.GameCore.Module.Subsystem.SubsystemMgr")
+
+
+
+
 
 
 
@@ -4742,7 +9482,15 @@ local function InitializeSwiftHawkBypass()
 
 
 
+
+
+
+
             local sw = SubsystemMgr:Get("SwiftHawkSubsystem")
+
+
+
+
 
 
 
@@ -4750,7 +9498,15 @@ local function InitializeSwiftHawkBypass()
 
 
 
+
+
+
+
                 for k, v in pairs(sw) do
+
+
+
+
 
 
 
@@ -4758,7 +9514,15 @@ local function InitializeSwiftHawkBypass()
 
 
 
+
+
+
+
                 end
+
+
+
+
 
 
 
@@ -4766,7 +9530,15 @@ local function InitializeSwiftHawkBypass()
 
 
 
+
+
+
+
         end
+
+
+
+
 
 
 
@@ -4774,7 +9546,19 @@ local function InitializeSwiftHawkBypass()
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -4786,7 +9570,15 @@ end
 
 
 
+
+
+
+
 local function InitializeShootVerifyDSBypass()
+
+
+
+
 
 
 
@@ -4794,7 +9586,15 @@ local function InitializeShootVerifyDSBypass()
 
 
 
+
+
+
+
         -- Tắt toàn bộ kết quả xác minh đạn từ phía DS
+
+
+
+
 
 
 
@@ -4802,7 +9602,15 @@ local function InitializeShootVerifyDSBypass()
 
 
 
+
+
+
+
             "GameLua.Mod.BaseMod.DS.Security.ShootVerifySubSystemDS",
+
+
+
+
 
 
 
@@ -4810,7 +9618,15 @@ local function InitializeShootVerifyDSBypass()
 
 
 
+
+
+
+
         }
+
+
+
+
 
 
 
@@ -4818,7 +9634,15 @@ local function InitializeShootVerifyDSBypass()
 
 
 
+
+
+
+
             local mod = package.loaded[path]
+
+
+
+
 
 
 
@@ -4826,7 +9650,15 @@ local function InitializeShootVerifyDSBypass()
 
 
 
+
+
+
+
                 if mod.VerifyShoot           then mod.VerifyShoot           = function() return true end end
+
+
+
+
 
 
 
@@ -4834,7 +9666,15 @@ local function InitializeShootVerifyDSBypass()
 
 
 
+
+
+
+
                 if mod.ReportVerifyFailed    then mod.ReportVerifyFailed    = function() end end
+
+
+
+
 
 
 
@@ -4842,7 +9682,15 @@ local function InitializeShootVerifyDSBypass()
 
 
 
+
+
+
+
                 if mod.RequestVerify         then mod.RequestVerify         = function() return true end end
+
+
+
+
 
 
 
@@ -4850,7 +9698,15 @@ local function InitializeShootVerifyDSBypass()
 
 
 
+
+
+
+
                 if mod.StopVerify            then mod.StopVerify            = function() end end
+
+
+
+
 
 
 
@@ -4858,7 +9714,15 @@ local function InitializeShootVerifyDSBypass()
 
 
 
+
+
+
+
         end
+
+
+
+
 
 
 
@@ -4866,7 +9730,15 @@ local function InitializeShootVerifyDSBypass()
 
 
 
+
+
+
+
         if _G.GameplayCallbacks then
+
+
+
+
 
 
 
@@ -4874,7 +9746,15 @@ local function InitializeShootVerifyDSBypass()
 
 
 
+
+
+
+
             if GC.RPC_Client_ShootVertifyRes   then GC.RPC_Client_ShootVertifyRes   = function() end end
+
+
+
+
 
 
 
@@ -4882,7 +9762,15 @@ local function InitializeShootVerifyDSBypass()
 
 
 
+
+
+
+
             if GC.OnShootVerifyFailed          then GC.OnShootVerifyFailed          = function() end end
+
+
+
+
 
 
 
@@ -4890,11 +9778,27 @@ local function InitializeShootVerifyDSBypass()
 
 
 
+
+
+
+
     end)
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -4906,7 +9810,15 @@ end
 
 
 
+
+
+
+
 local function InitializeCoronaLabDeepBypass()
+
+
+
+
 
 
 
@@ -4914,7 +9826,15 @@ local function InitializeCoronaLabDeepBypass()
 
 
 
+
+
+
+
         -- Block module chính
+
+
+
+
 
 
 
@@ -4922,7 +9842,15 @@ local function InitializeCoronaLabDeepBypass()
 
 
 
+
+
+
+
             "GameLua.Mod.BaseMod.Client.Security.CoronaLabSubsystem",
+
+
+
+
 
 
 
@@ -4930,7 +9858,15 @@ local function InitializeCoronaLabDeepBypass()
 
 
 
+
+
+
+
             "GameLua.Mod.BaseMod.Common.Security.CoronaLab",
+
+
+
+
 
 
 
@@ -4938,7 +9874,15 @@ local function InitializeCoronaLabDeepBypass()
 
 
 
+
+
+
+
         for _, path in ipairs(clPaths) do
+
+
+
+
 
 
 
@@ -4946,7 +9890,15 @@ local function InitializeCoronaLabDeepBypass()
 
 
 
+
+
+
+
             if mod then
+
+
+
+
 
 
 
@@ -4954,7 +9906,15 @@ local function InitializeCoronaLabDeepBypass()
 
 
 
+
+
+
+
                     if type(v) == "function" then mod[k] = function() end end
+
+
+
+
 
 
 
@@ -4962,11 +9922,23 @@ local function InitializeCoronaLabDeepBypass()
 
 
 
+
+
+
+
             end
 
 
 
+
+
+
+
         end
+
+
+
+
 
 
 
@@ -4974,7 +9946,15 @@ local function InitializeCoronaLabDeepBypass()
 
 
 
+
+
+
+
         _G.GlobalPlayerCoronaData = _G.GlobalPlayerCoronaData or {}
+
+
+
+
 
 
 
@@ -4982,7 +9962,15 @@ local function InitializeCoronaLabDeepBypass()
 
 
 
+
+
+
+
         mt_cl.__newindex = function() end
+
+
+
+
 
 
 
@@ -4990,7 +9978,15 @@ local function InitializeCoronaLabDeepBypass()
 
 
 
+
+
+
+
         setmetatable(_G.GlobalPlayerCoronaData, mt_cl)
+
+
+
+
 
 
 
@@ -4998,7 +9994,15 @@ local function InitializeCoronaLabDeepBypass()
 
 
 
+
+
+
+
         if _G.GameplayCallbacks then
+
+
+
+
 
 
 
@@ -5006,7 +10010,15 @@ local function InitializeCoronaLabDeepBypass()
 
 
 
+
+
+
+
             if GC.RPC_ClientCoronaLab        then GC.RPC_ClientCoronaLab        = function() end end
+
+
+
+
 
 
 
@@ -5014,7 +10026,15 @@ local function InitializeCoronaLabDeepBypass()
 
 
 
+
+
+
+
             if GC.OnCoronaLabDataCollected   then GC.OnCoronaLabDataCollected   = function() end end
+
+
+
+
 
 
 
@@ -5022,7 +10042,15 @@ local function InitializeCoronaLabDeepBypass()
 
 
 
+
+
+
+
         end
+
+
+
+
 
 
 
@@ -5030,7 +10058,19 @@ local function InitializeCoronaLabDeepBypass()
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -5042,7 +10082,15 @@ end
 
 
 
+
+
+
+
 local function InitializeClientSecMrpcsDSBypass()
+
+
+
+
 
 
 
@@ -5050,7 +10098,15 @@ local function InitializeClientSecMrpcsDSBypass()
 
 
 
+
+
+
+
         local mPaths = {
+
+
+
+
 
 
 
@@ -5058,7 +10114,15 @@ local function InitializeClientSecMrpcsDSBypass()
 
 
 
+
+
+
+
             "GameLua.Mod.BaseMod.Client.Security.ClientSecMrpcsFlowSubsystem",
+
+
+
+
 
 
 
@@ -5066,7 +10130,15 @@ local function InitializeClientSecMrpcsDSBypass()
 
 
 
+
+
+
+
         for _, path in ipairs(mPaths) do
+
+
+
+
 
 
 
@@ -5074,7 +10146,15 @@ local function InitializeClientSecMrpcsDSBypass()
 
 
 
+
+
+
+
             if mod then
+
+
+
+
 
 
 
@@ -5082,7 +10162,15 @@ local function InitializeClientSecMrpcsDSBypass()
 
 
 
+
+
+
+
                     if type(v) == "function" then mod[k] = function() end end
+
+
+
+
 
 
 
@@ -5090,11 +10178,23 @@ local function InitializeClientSecMrpcsDSBypass()
 
 
 
+
+
+
+
             end
 
 
 
+
+
+
+
         end
+
+
+
+
 
 
 
@@ -5102,7 +10202,15 @@ local function InitializeClientSecMrpcsDSBypass()
 
 
 
+
+
+
+
             local GC = _G.GameplayCallbacks
+
+
+
+
 
 
 
@@ -5110,7 +10218,15 @@ local function InitializeClientSecMrpcsDSBypass()
 
 
 
+
+
+
+
             if GC.RPC_Server_ClientSecMrpcsFlow                then GC.RPC_Server_ClientSecMrpcsFlow                = function() end end
+
+
+
+
 
 
 
@@ -5118,7 +10234,15 @@ local function InitializeClientSecMrpcsDSBypass()
 
 
 
+
+
+
+
             if GC.IsEnableReportMrpcsInPartCircleFlow          then GC.IsEnableReportMrpcsInPartCircleFlow          = function() return false end end
+
+
+
+
 
 
 
@@ -5126,11 +10250,27 @@ local function InitializeClientSecMrpcsDSBypass()
 
 
 
+
+
+
+
     end)
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -5142,7 +10282,15 @@ end
 
 
 
+
+
+
+
 local function InitializeNetDriverErrorGuard()
+
+
+
+
 
 
 
@@ -5150,7 +10298,15 @@ local function InitializeNetDriverErrorGuard()
 
 
 
+
+
+
+
         -- Ngăn game tự tắt vì lỗi net driver
+
+
+
+
 
 
 
@@ -5158,7 +10314,15 @@ local function InitializeNetDriverErrorGuard()
 
 
 
+
+
+
+
             local GC = _G.GameplayCallbacks
+
+
+
+
 
 
 
@@ -5166,7 +10330,15 @@ local function InitializeNetDriverErrorGuard()
 
 
 
+
+
+
+
             if GC.OnNetConnectionError    then GC.OnNetConnectionError    = function() end end
+
+
+
+
 
 
 
@@ -5174,7 +10346,15 @@ local function InitializeNetDriverErrorGuard()
 
 
 
+
+
+
+
             if GC.OnNetworkFailure        then GC.OnNetworkFailure        = function() end end
+
+
+
+
 
 
 
@@ -5182,7 +10362,15 @@ local function InitializeNetDriverErrorGuard()
 
 
 
+
+
+
+
         end
+
+
+
+
 
 
 
@@ -5190,7 +10378,15 @@ local function InitializeNetDriverErrorGuard()
 
 
 
+
+
+
+
         if _G.OnNetworkFailure then
+
+
+
+
 
 
 
@@ -5198,7 +10394,15 @@ local function InitializeNetDriverErrorGuard()
 
 
 
+
+
+
+
             _G.OnNetworkFailure = function(FailureType, ErrorStr)
+
+
+
+
 
 
 
@@ -5206,7 +10410,15 @@ local function InitializeNetDriverErrorGuard()
 
 
 
+
+
+
+
                     or string.find(tostring(ErrorStr or ""),"cheat",1,true)
+
+
+
+
 
 
 
@@ -5214,7 +10426,15 @@ local function InitializeNetDriverErrorGuard()
 
 
 
+
+
+
+
                     return
+
+
+
+
 
 
 
@@ -5222,7 +10442,15 @@ local function InitializeNetDriverErrorGuard()
 
 
 
+
+
+
+
                 pcall(orig, FailureType, ErrorStr)
+
+
+
+
 
 
 
@@ -5230,7 +10458,15 @@ local function InitializeNetDriverErrorGuard()
 
 
 
+
+
+
+
         end
+
+
+
+
 
 
 
@@ -5238,7 +10474,19 @@ local function InitializeNetDriverErrorGuard()
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -5250,7 +10498,15 @@ end
 
 
 
+
+
+
+
 local function InitializeGameSafeACEDeepHook()
+
+
+
+
 
 
 
@@ -5258,7 +10514,15 @@ local function InitializeGameSafeACEDeepHook()
 
 
 
+
+
+
+
         -- GameSafe callbacks deep null
+
+
+
+
 
 
 
@@ -5266,7 +10530,15 @@ local function InitializeGameSafeACEDeepHook()
 
 
 
+
+
+
+
             local GSC = _G.GameSafeCallbacks
+
+
+
+
 
 
 
@@ -5274,7 +10546,15 @@ local function InitializeGameSafeACEDeepHook()
 
 
 
+
+
+
+
                 "DoAttackFlowStrategy","RecordStrategyTimestampInReplay",
+
+
+
+
 
 
 
@@ -5282,7 +10562,15 @@ local function InitializeGameSafeACEDeepHook()
 
 
 
+
+
+
+
                 "DoCircleFlowStrategy","DoVerifyInfoFlowStrategy",
+
+
+
+
 
 
 
@@ -5290,7 +10578,15 @@ local function InitializeGameSafeACEDeepHook()
 
 
 
+
+
+
+
                 "OnRecvSecAntiData","OnRecvTssSdkData",
+
+
+
+
 
 
 
@@ -5298,7 +10594,15 @@ local function InitializeGameSafeACEDeepHook()
 
 
 
+
+
+
+
             }
+
+
+
+
 
 
 
@@ -5306,7 +10610,15 @@ local function InitializeGameSafeACEDeepHook()
 
 
 
+
+
+
+
                 if GSC[key] then GSC[key] = function() return "" end end
+
+
+
+
 
 
 
@@ -5314,7 +10626,15 @@ local function InitializeGameSafeACEDeepHook()
 
 
 
+
+
+
+
         end
+
+
+
+
 
 
 
@@ -5322,7 +10642,15 @@ local function InitializeGameSafeACEDeepHook()
 
 
 
+
+
+
+
         local ACE = package.loaded["ACE"] or _G.ACE
+
+
+
+
 
 
 
@@ -5330,7 +10658,15 @@ local function InitializeGameSafeACEDeepHook()
 
 
 
+
+
+
+
             for k, v in pairs(ACE) do
+
+
+
+
 
 
 
@@ -5338,7 +10674,15 @@ local function InitializeGameSafeACEDeepHook()
 
 
 
+
+
+
+
                     local lk = string.lower(k)
+
+
+
+
 
 
 
@@ -5346,7 +10690,15 @@ local function InitializeGameSafeACEDeepHook()
 
 
 
+
+
+
+
                     or string.find(lk,"check",1,true)  or string.find(lk,"scan",1,true)
+
+
+
+
 
 
 
@@ -5354,7 +10706,15 @@ local function InitializeGameSafeACEDeepHook()
 
 
 
+
+
+
+
                         ACE[k] = function() return true end
+
+
+
+
 
 
 
@@ -5362,7 +10722,15 @@ local function InitializeGameSafeACEDeepHook()
 
 
 
+
+
+
+
                 end
+
+
+
+
 
 
 
@@ -5370,7 +10738,15 @@ local function InitializeGameSafeACEDeepHook()
 
 
 
+
+
+
+
         end
+
+
+
+
 
 
 
@@ -5378,7 +10754,15 @@ local function InitializeGameSafeACEDeepHook()
 
 
 
+
+
+
+
         local SecTgame = package.loaded["SecTgame"] or _G.SecTgame
+
+
+
+
 
 
 
@@ -5386,7 +10770,15 @@ local function InitializeGameSafeACEDeepHook()
 
 
 
+
+
+
+
             for k, v in pairs(SecTgame) do
+
+
+
+
 
 
 
@@ -5394,7 +10786,15 @@ local function InitializeGameSafeACEDeepHook()
 
 
 
+
+
+
+
             end
+
+
+
+
 
 
 
@@ -5402,11 +10802,27 @@ local function InitializeGameSafeACEDeepHook()
 
 
 
+
+
+
+
     end)
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -5418,7 +10834,15 @@ end
 
 
 
+
+
+
+
 local function InitializePakSignatureWatcherBypass()
+
+
+
+
 
 
 
@@ -5426,7 +10850,15 @@ local function InitializePakSignatureWatcherBypass()
 
 
 
+
+
+
+
         -- Block Pak file signature check watcher runtime
+
+
+
+
 
 
 
@@ -5434,7 +10866,15 @@ local function InitializePakSignatureWatcherBypass()
 
 
 
+
+
+
+
         if PakWatcher then
+
+
+
+
 
 
 
@@ -5442,7 +10882,15 @@ local function InitializePakSignatureWatcherBypass()
 
 
 
+
+
+
+
             if PakWatcher.Stop         then PakWatcher.Stop         = function() end end
+
+
+
+
 
 
 
@@ -5450,11 +10898,23 @@ local function InitializePakSignatureWatcherBypass()
 
 
 
+
+
+
+
             if PakWatcher.CheckFile    then PakWatcher.CheckFile    = function() return true end end
 
 
 
+
+
+
+
         end
+
+
+
+
 
 
 
@@ -5462,7 +10922,15 @@ local function InitializePakSignatureWatcherBypass()
 
 
 
+
+
+
+
         local KSL = import("KismetSystemLibrary")
+
+
+
+
 
 
 
@@ -5470,7 +10938,15 @@ local function InitializePakSignatureWatcherBypass()
 
 
 
+
+
+
+
             pcall(function()
+
+
+
+
 
 
 
@@ -5478,7 +10954,15 @@ local function InitializePakSignatureWatcherBypass()
 
 
 
+
+
+
+
                 KSL.ExecuteConsoleCommand(PC, "pak.AsyncLoadingThreadEnabled 0")
+
+
+
+
 
 
 
@@ -5486,7 +10970,15 @@ local function InitializePakSignatureWatcherBypass()
 
 
 
+
+
+
+
                 KSL.ExecuteConsoleCommand(PC, "PakSigning.Enabled 0")
+
+
+
+
 
 
 
@@ -5494,7 +10986,15 @@ local function InitializePakSignatureWatcherBypass()
 
 
 
+
+
+
+
         end
+
+
+
+
 
 
 
@@ -5502,7 +11002,19 @@ local function InitializePakSignatureWatcherBypass()
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -5514,7 +11026,15 @@ end
 
 
 
+
+
+
+
 local function InitializeRPCValidateHook()
+
+
+
+
 
 
 
@@ -5522,7 +11042,15 @@ local function InitializeRPCValidateHook()
 
 
 
+
+
+
+
         -- Hook BRPlayerCharacterBase RPC validate functions để chúng luôn return true
+
+
+
+
 
 
 
@@ -5530,7 +11058,15 @@ local function InitializeRPCValidateHook()
 
 
 
+
+
+
+
             BRPlayerCharacterBase,
+
+
+
+
 
 
 
@@ -5538,7 +11074,15 @@ local function InitializeRPCValidateHook()
 
 
 
+
+
+
+
         }
+
+
+
+
 
 
 
@@ -5546,7 +11090,15 @@ local function InitializeRPCValidateHook()
 
 
 
+
+
+
+
             if mod and type(mod) == "table" then
+
+
+
+
 
 
 
@@ -5554,7 +11106,15 @@ local function InitializeRPCValidateHook()
 
 
 
+
+
+
+
                     if type(v) == "function" and string.find(tostring(k), "Validate", 1, true) then
+
+
+
+
 
 
 
@@ -5562,7 +11122,15 @@ local function InitializeRPCValidateHook()
 
 
 
+
+
+
+
                     end
+
+
+
+
 
 
 
@@ -5570,11 +11138,23 @@ local function InitializeRPCValidateHook()
 
 
 
+
+
+
+
             end
 
 
 
+
+
+
+
         end
+
+
+
+
 
 
 
@@ -5582,7 +11162,15 @@ local function InitializeRPCValidateHook()
 
 
 
+
+
+
+
         if _G.GameplayCallbacks then
+
+
+
+
 
 
 
@@ -5590,7 +11178,15 @@ local function InitializeRPCValidateHook()
 
 
 
+
+
+
+
             if GC.OnPlayerRPCValidateFailed then GC.OnPlayerRPCValidateFailed = function() end end
+
+
+
+
 
 
 
@@ -5598,7 +11194,15 @@ local function InitializeRPCValidateHook()
 
 
 
+
+
+
+
         end
+
+
+
+
 
 
 
@@ -5606,7 +11210,19 @@ local function InitializeRPCValidateHook()
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -5618,7 +11234,15 @@ end
 
 
 
+
+
+
+
 local function InitializeNetworkPacketBlock()
+
+
+
+
 
 
 
@@ -5626,7 +11250,15 @@ local function InitializeNetworkPacketBlock()
 
 
 
+
+
+
+
         if NetUtil and NetUtil.SendPacket and not NetUtil.IsBypassed then
+
+
+
+
 
 
 
@@ -5634,7 +11266,15 @@ local function InitializeNetworkPacketBlock()
 
 
 
+
+
+
+
             local blockedPackets = {
+
+
+
+
 
 
 
@@ -5642,7 +11282,15 @@ local function InitializeNetworkPacketBlock()
 
 
 
+
+
+
+
                 ["report_speed_hack"]=1,
+
+
+
+
 
 
 
@@ -5650,7 +11298,15 @@ local function InitializeNetworkPacketBlock()
 
 
 
+
+
+
+
                 ["report_aim_bot"]=1,
+
+
+
+
 
 
 
@@ -5658,7 +11314,15 @@ local function InitializeNetworkPacketBlock()
 
 
 
+
+
+
+
                 ["ban_player"]=1,
+
+
+
+
 
 
 
@@ -5666,7 +11330,15 @@ local function InitializeNetworkPacketBlock()
 
 
 
+
+
+
+
                 ["report_cheat_engine"]=1,
+
+
+
+
 
 
 
@@ -5674,7 +11346,15 @@ local function InitializeNetworkPacketBlock()
 
 
 
+
+
+
+
                 ["report_esp_usage"]=1,
+
+
+
+
 
 
 
@@ -5682,7 +11362,15 @@ local function InitializeNetworkPacketBlock()
 
 
 
+
+
+
+
                 ["report_malicious_behavior"]=1,
+
+
+
+
 
 
 
@@ -5690,7 +11378,15 @@ local function InitializeNetworkPacketBlock()
 
 
 
+
+
+
+
                 -- ✅ CÁC PACKET GÂY MẤT KẾT NỐI / KICK KHI DÙNG CÁC TÍNH NĂNG MOD
+
+
+
+
 
 
 
@@ -5698,7 +11394,15 @@ local function InitializeNetworkPacketBlock()
 
 
 
+
+
+
+
                 ["ReportPlayerBehavior"]=1, ["ReportTeammatHurt"]=1, ["ReportPlayerMoveRoute"]=1, ["ReportPlayerPosition"]=1, ["ReportSecVehicleMoveFlow"]=1,
+
+
+
+
 
 
 
@@ -5706,7 +11410,15 @@ local function InitializeNetworkPacketBlock()
 
 
 
+
+
+
+
                 ["report_player_ip"]=1, ["report_net_saturate"]=1, 
+
+
+
+
 
 
 
@@ -5714,7 +11426,15 @@ local function InitializeNetworkPacketBlock()
 
 
 
+
+
+
+
                 ["CoronaLabReport"]=1, ["CoronaLabData"]=1, ["PlayerSecurityInfo"]=1, ["ReportSecurityInfo"]=1, ["SendSecurityData"]=1, ["ClientCircleFlow"]=1,
+
+
+
+
 
 
 
@@ -5722,7 +11442,15 @@ local function InitializeNetworkPacketBlock()
 
 
 
+
+
+
+
                 ["ReportModifierException"]=1, ["RPC_Server_ReportSimulateCharacterLocation"]=1, ["ReportSimulateCharacterLocation"]=1, ["RPC_Client_ShootVertifyRes"]=1,
+
+
+
+
 
 
 
@@ -5730,7 +11458,15 @@ local function InitializeNetworkPacketBlock()
 
 
 
+
+
+
+
                 ["AntiCheatReport"]=1, ["CheatDetection"]=1, ["ViolationReport"]=1, ["SecurityViolation"]=1, ["IntegrityCheck"]=1, ["SignatureVerify"]=1
+
+
+
+
 
 
 
@@ -5738,7 +11474,15 @@ local function InitializeNetworkPacketBlock()
 
 
 
+
+
+
+
             NetUtil.SendPacket = function(firstArg, secondArg, ...)
+
+
+
+
 
 
 
@@ -5746,7 +11490,15 @@ local function InitializeNetworkPacketBlock()
 
 
 
+
+
+
+
                 -- Kiểm tra kiểu dữ liệu thay vì so sánh bảng trực tiếp:
+
+
+
+
 
 
 
@@ -5754,7 +11506,15 @@ local function InitializeNetworkPacketBlock()
 
 
 
+
+
+
+
                 -- Nếu firstArg là table/userdata → đây là self/instance (gọi OOP: obj:SendPacket("name", ...))
+
+
+
+
 
 
 
@@ -5762,7 +11522,15 @@ local function InitializeNetworkPacketBlock()
 
 
 
+
+
+
+
                     packetName = firstArg
+
+
+
+
 
 
 
@@ -5770,7 +11538,15 @@ local function InitializeNetworkPacketBlock()
 
 
 
+
+
+
+
                     return originalSendPacket(firstArg, secondArg, ...)
+
+
+
+
 
 
 
@@ -5778,7 +11554,15 @@ local function InitializeNetworkPacketBlock()
 
 
 
+
+
+
+
                     packetName = secondArg
+
+
+
+
 
 
 
@@ -5786,7 +11570,15 @@ local function InitializeNetworkPacketBlock()
 
 
 
+
+
+
+
                     return originalSendPacket(firstArg, secondArg, ...)
+
+
+
+
 
 
 
@@ -5794,7 +11586,15 @@ local function InitializeNetworkPacketBlock()
 
 
 
+
+
+
+
             end
+
+
+
+
 
 
 
@@ -5802,7 +11602,15 @@ local function InitializeNetworkPacketBlock()
 
 
 
+
+
+
+
         end
+
+
+
+
 
 
 
@@ -5810,7 +11618,15 @@ local function InitializeNetworkPacketBlock()
 
 
 
+
+
+
+
             local origRPC = _G.SendRPC
+
+
+
+
 
 
 
@@ -5818,7 +11634,15 @@ local function InitializeNetworkPacketBlock()
 
 
 
+
+
+
+
                 "RPC_Server_SwiftHawk", "RPC_Server_ClientSwiftHawkWithParams",
+
+
+
+
 
 
 
@@ -5826,7 +11650,15 @@ local function InitializeNetworkPacketBlock()
 
 
 
+
+
+
+
             _G.SendRPC = function(rpcName, ...)
+
+
+
+
 
 
 
@@ -5834,7 +11666,15 @@ local function InitializeNetworkPacketBlock()
 
 
 
+
+
+
+
                 return origRPC(rpcName, ...)
+
+
+
+
 
 
 
@@ -5842,7 +11682,15 @@ local function InitializeNetworkPacketBlock()
 
 
 
+
+
+
+
             _G.SendRPCHooked = true
+
+
+
+
 
 
 
@@ -5850,11 +11698,27 @@ local function InitializeNetworkPacketBlock()
 
 
 
+
+
+
+
     end)
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -5866,7 +11730,15 @@ end
 
 
 
+
+
+
+
 local function DisableHiggsBoson()
+
+
+
+
 
 
 
@@ -5874,7 +11746,15 @@ local function DisableHiggsBoson()
 
 
 
+
+
+
+
     if not PlayerController or not slua.isValid(PlayerController) then return end
+
+
+
+
 
 
 
@@ -5882,7 +11762,15 @@ local function DisableHiggsBoson()
 
 
 
+
+
+
+
         PlayerController.HiggsBoson.bMHActive = false
+
+
+
+
 
 
 
@@ -5890,7 +11778,15 @@ local function DisableHiggsBoson()
 
 
 
+
+
+
+
     end
+
+
+
+
 
 
 
@@ -5898,7 +11794,15 @@ local function DisableHiggsBoson()
 
 
 
+
+
+
+
         PlayerController.HiggsBosonComponent.bMHActive = false
+
+
+
+
 
 
 
@@ -5906,7 +11810,15 @@ local function DisableHiggsBoson()
 
 
 
+
+
+
+
     end
+
+
+
+
 
 
 
@@ -5914,7 +11826,15 @@ local function DisableHiggsBoson()
 
 
 
+
+
+
+
         local HiggsBosonComponent = require("GameLua.Mod.BaseMod.Common.Security.HiggsBosonComponent")
+
+
+
+
 
 
 
@@ -5922,7 +11842,15 @@ local function DisableHiggsBoson()
 
 
 
+
+
+
+
             local keys = {}
+
+
+
+
 
 
 
@@ -5930,11 +11858,23 @@ local function DisableHiggsBoson()
 
 
 
+
+
+
+
             for _, k in ipairs(keys) do HiggsBosonComponent.BlackList[k] = nil end
 
 
 
+
+
+
+
         end
+
+
+
+
 
 
 
@@ -5942,7 +11882,15 @@ local function DisableHiggsBoson()
 
 
 
+
+
+
+
             HiggsBosonComponent.StaticShowSecurityAlertInDev = function() end
+
+
+
+
 
 
 
@@ -5950,7 +11898,15 @@ local function DisableHiggsBoson()
 
 
 
+
+
+
+
     end)
+
+
+
+
 
 
 
@@ -5958,7 +11914,15 @@ local function DisableHiggsBoson()
 
 
 
+
+
+
+
     local blacklistMt = {}
+
+
+
+
 
 
 
@@ -5966,11 +11930,27 @@ local function DisableHiggsBoson()
 
 
 
+
+
+
+
     setmetatable(_G.BlackList, blacklistMt)
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -5982,7 +11962,15 @@ end
 
 
 
+
+
+
+
 local function InitializeAntiCheatHooks()
+
+
+
+
 
 
 
@@ -5990,7 +11978,15 @@ local function InitializeAntiCheatHooks()
 
 
 
+
+
+
+
         if _G.AvatarCheckCallback then
+
+
+
+
 
 
 
@@ -5998,7 +11994,15 @@ local function InitializeAntiCheatHooks()
 
 
 
+
+
+
+
             _G.AvatarCheckCallback.OnReportItemID = function(obj) end
+
+
+
+
 
 
 
@@ -6006,7 +12010,15 @@ local function InitializeAntiCheatHooks()
 
 
 
+
+
+
+
             _G.AvatarCheckCallback.OnTriggerBan = function(obj) end
+
+
+
+
 
 
 
@@ -6014,7 +12026,15 @@ local function InitializeAntiCheatHooks()
 
 
 
+
+
+
+
                 if slua.isValid(PlayerController) and PlayerController.HiggsBosonComponent then
+
+
+
+
 
 
 
@@ -6022,7 +12042,15 @@ local function InitializeAntiCheatHooks()
 
 
 
+
+
+
+
                     PlayerController.HiggsBosonComponent.bMHActive = false
+
+
+
+
 
 
 
@@ -6030,7 +12058,15 @@ local function InitializeAntiCheatHooks()
 
 
 
+
+
+
+
             end
+
+
+
+
 
 
 
@@ -6038,7 +12074,15 @@ local function InitializeAntiCheatHooks()
 
 
 
+
+
+
+
         pcall(function()
+
+
+
+
 
 
 
@@ -6046,7 +12090,15 @@ local function InitializeAntiCheatHooks()
 
 
 
+
+
+
+
             _G.GlobalPlayerCheatTimes = _G.GlobalPlayerCheatTimes or {}
+
+
+
+
 
 
 
@@ -6054,7 +12106,15 @@ local function InitializeAntiCheatHooks()
 
 
 
+
+
+
+
             mt.__newindex = function(t, k, v) end
+
+
+
+
 
 
 
@@ -6062,7 +12122,15 @@ local function InitializeAntiCheatHooks()
 
 
 
+
+
+
+
         end)
+
+
+
+
 
 
 
@@ -6070,7 +12138,15 @@ local function InitializeAntiCheatHooks()
 
 
 
+
+
+
+
             if _G.GameSafeCallbacks then
+
+
+
+
 
 
 
@@ -6078,11 +12154,23 @@ local function InitializeAntiCheatHooks()
 
 
 
+
+
+
+
                     _G.GameSafeCallbacks.RecordStrategyTimestampInReplay = function(...) end
 
 
 
+
+
+
+
                 end
+
+
+
+
 
 
 
@@ -6090,11 +12178,23 @@ local function InitializeAntiCheatHooks()
 
 
 
+
+
+
+
                     _G.GameSafeCallbacks.DoAttackFlowStrategy = function() end
 
 
 
+
+
+
+
                 end
+
+
+
+
 
 
 
@@ -6102,11 +12202,23 @@ local function InitializeAntiCheatHooks()
 
 
 
+
+
+
+
                     _G.GameSafeCallbacks.GetScriptReportContent = function() return "" end
 
 
 
+
+
+
+
                 end
+
+
+
+
 
 
 
@@ -6114,7 +12226,15 @@ local function InitializeAntiCheatHooks()
 
 
 
+
+
+
+
                     _G.GameSafeCallbacks.ReportCheatBehavior = function() end
+
+
+
+
 
 
 
@@ -6122,7 +12242,15 @@ local function InitializeAntiCheatHooks()
 
 
 
+
+
+
+
             end
+
+
+
+
 
 
 
@@ -6130,11 +12258,27 @@ local function InitializeAntiCheatHooks()
 
 
 
+
+
+
+
     end)
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -6146,11 +12290,23 @@ end
 
 
 
+
+
+
+
 local function InitializeAntiReport()
 
 
 
+
+
+
+
     pcall(function()
+
+
+
+
 
 
 
@@ -6158,7 +12314,15 @@ local function InitializeAntiReport()
 
 
 
+
+
+
+
         local ClientReportPlayerSubsystem = nil
+
+
+
+
 
 
 
@@ -6166,11 +12330,23 @@ local function InitializeAntiReport()
 
 
 
+
+
+
+
             if package.loaded[path] then ClientReportPlayerSubsystem = package.loaded[path] break end
 
 
 
+
+
+
+
             local success, reqModule = pcall(require, path)
+
+
+
+
 
 
 
@@ -6178,7 +12354,15 @@ local function InitializeAntiReport()
 
 
 
+
+
+
+
         end
+
+
+
+
 
 
 
@@ -6186,7 +12370,15 @@ local function InitializeAntiReport()
 
 
 
+
+
+
+
             ClientReportPlayerSubsystem.OnInit = function(self) return end
+
+
+
+
 
 
 
@@ -6194,7 +12386,15 @@ local function InitializeAntiReport()
 
 
 
+
+
+
+
             ClientReportPlayerSubsystem._RecordFatalDamager = function() return end
+
+
+
+
 
 
 
@@ -6202,7 +12402,15 @@ local function InitializeAntiReport()
 
 
 
+
+
+
+
             ClientReportPlayerSubsystem._RecordMurdererFromDeathReplayData = function() return end
+
+
+
+
 
 
 
@@ -6210,7 +12418,15 @@ local function InitializeAntiReport()
 
 
 
+
+
+
+
             ClientReportPlayerSubsystem._OnBattleResult = function() return end
+
+
+
+
 
 
 
@@ -6218,7 +12434,15 @@ local function InitializeAntiReport()
 
 
 
+
+
+
+
             ClientReportPlayerSubsystem.GetFatalDamagerMap = function() return {} end
+
+
+
+
 
 
 
@@ -6226,7 +12450,15 @@ local function InitializeAntiReport()
 
 
 
+
+
+
+
             ClientReportPlayerSubsystem.GetTeammateName2InfoMapDuringBattle = function() return {} end
+
+
+
+
 
 
 
@@ -6234,7 +12466,15 @@ local function InitializeAntiReport()
 
 
 
+
+
+
+
             ClientReportPlayerSubsystem.GetInTeamIndexFromHistoricalTeammateInfo = function() return -1 end
+
+
+
+
 
 
 
@@ -6242,11 +12482,23 @@ local function InitializeAntiReport()
 
 
 
+
+
+
+
     end)
 
 
 
+
+
+
+
     pcall(function()
+
+
+
+
 
 
 
@@ -6254,7 +12506,15 @@ local function InitializeAntiReport()
 
 
 
+
+
+
+
         local DSReportPlayerSubsystem = nil
+
+
+
+
 
 
 
@@ -6262,7 +12522,15 @@ local function InitializeAntiReport()
 
 
 
+
+
+
+
             if package.loaded[path] then DSReportPlayerSubsystem = package.loaded[path] break end
+
+
+
+
 
 
 
@@ -6270,11 +12538,23 @@ local function InitializeAntiReport()
 
 
 
+
+
+
+
             if success and reqModule then DSReportPlayerSubsystem = reqModule break end
 
 
 
+
+
+
+
         end
+
+
+
+
 
 
 
@@ -6282,7 +12562,15 @@ local function InitializeAntiReport()
 
 
 
+
+
+
+
             DSReportPlayerSubsystem.OnInit = function(self) return end
+
+
+
+
 
 
 
@@ -6290,7 +12578,15 @@ local function InitializeAntiReport()
 
 
 
+
+
+
+
             DSReportPlayerSubsystem._OnCharacterDied = function() return end
+
+
+
+
 
 
 
@@ -6298,7 +12594,15 @@ local function InitializeAntiReport()
 
 
 
+
+
+
+
             DSReportPlayerSubsystem._OnPlayerSettlementStart = function() return end
+
+
+
+
 
 
 
@@ -6306,7 +12610,15 @@ local function InitializeAntiReport()
 
 
 
+
+
+
+
             DSReportPlayerSubsystem._AddKillerToBattleResult = function() return end
+
+
+
+
 
 
 
@@ -6314,7 +12626,15 @@ local function InitializeAntiReport()
 
 
 
+
+
+
+
             DSReportPlayerSubsystem._AddFatalDamagerMapToBattleResult = function() return end
+
+
+
+
 
 
 
@@ -6322,7 +12642,15 @@ local function InitializeAntiReport()
 
 
 
+
+
+
+
             DSReportPlayerSubsystem._SaveHistoricalTeammateInfo = function() return end
+
+
+
+
 
 
 
@@ -6330,7 +12658,15 @@ local function InitializeAntiReport()
 
 
 
+
+
+
+
             DSReportPlayerSubsystem._RecordTeammateMurderer = function() return end
+
+
+
+
 
 
 
@@ -6338,11 +12674,23 @@ local function InitializeAntiReport()
 
 
 
+
+
+
+
     end)
 
 
 
+
+
+
+
     pcall(function()
+
+
+
+
 
 
 
@@ -6350,7 +12698,15 @@ local function InitializeAntiReport()
 
 
 
+
+
+
+
         if ReportPlayerUtils then
+
+
+
+
 
 
 
@@ -6358,7 +12714,15 @@ local function InitializeAntiReport()
 
 
 
+
+
+
+
             ReportPlayerUtils.IsUsingHistoricalTeammateInfo = function() return false end
+
+
+
+
 
 
 
@@ -6366,7 +12730,15 @@ local function InitializeAntiReport()
 
 
 
+
+
+
+
         end
+
+
+
+
 
 
 
@@ -6374,7 +12746,15 @@ local function InitializeAntiReport()
 
 
 
+
+
+
+
     pcall(function()
+
+
+
+
 
 
 
@@ -6382,7 +12762,15 @@ local function InitializeAntiReport()
 
 
 
+
+
+
+
         if SecurityCommonUtils then
+
+
+
+
 
 
 
@@ -6390,7 +12778,15 @@ local function InitializeAntiReport()
 
 
 
+
+
+
+
             SecurityCommonUtils.LogIf = function() return false end
+
+
+
+
 
 
 
@@ -6398,7 +12794,15 @@ local function InitializeAntiReport()
 
 
 
+
+
+
+
     end)
+
+
+
+
 
 
 
@@ -6406,7 +12810,15 @@ local function InitializeAntiReport()
 
 
 
+
+
+
+
         local ClientQuickReportMaliciousTeammate = require("GameLua.Mod.BaseMod.Client.Security.ClientQuickReportMaliciousTeammate")
+
+
+
+
 
 
 
@@ -6414,7 +12826,15 @@ local function InitializeAntiReport()
 
 
 
+
+
+
+
             ClientQuickReportMaliciousTeammate.OnShowMutualExclusiveUI = function() return end
+
+
+
+
 
 
 
@@ -6422,7 +12842,15 @@ local function InitializeAntiReport()
 
 
 
+
+
+
+
         end
+
+
+
+
 
 
 
@@ -6430,7 +12858,19 @@ local function InitializeAntiReport()
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -6442,7 +12882,15 @@ end
 
 
 
+
+
+
+
 local function InitializeGameplayBypass()
+
+
+
+
 
 
 
@@ -6450,7 +12898,15 @@ local function InitializeGameplayBypass()
 
 
 
+
+
+
+
         if not _G.GameplayCallbacks or _G.GameplayCallbacks.IsBypassed then return end
+
+
+
+
 
 
 
@@ -6458,7 +12914,15 @@ local function InitializeGameplayBypass()
 
 
 
+
+
+
+
         if not GC._GameplayBypassHooked then
+
+
+
+
 
 
 
@@ -6466,7 +12930,15 @@ local function InitializeGameplayBypass()
 
 
 
+
+
+
+
             GC.OnDSPlayerStateChanged = function(UID, InPlayerState, bPureWatcher, bIsSafeExit, ParamReason)
+
+
+
+
 
 
 
@@ -6474,7 +12946,15 @@ local function InitializeGameplayBypass()
 
 
 
+
+
+
+
                 if originalDSPlayerState then return originalDSPlayerState(UID, InPlayerState, bPureWatcher, bIsSafeExit, ParamReason) end
+
+
+
+
 
 
 
@@ -6482,7 +12962,15 @@ local function InitializeGameplayBypass()
 
 
 
+
+
+
+
             GC._GameplayBypassHooked = true
+
+
+
+
 
 
 
@@ -6490,7 +12978,15 @@ local function InitializeGameplayBypass()
 
 
 
+
+
+
+
         local function NoOpVoid() return end
+
+
+
+
 
 
 
@@ -6498,7 +12994,15 @@ local function InitializeGameplayBypass()
 
 
 
+
+
+
+
         local function NoOpNil() return nil end
+
+
+
+
 
 
 
@@ -6506,7 +13010,15 @@ local function InitializeGameplayBypass()
 
 
 
+
+
+
+
         GC.ReportAttackFlow = NoOpVoid; GC.ReportSecAttackFlow = NoOpVoid
+
+
+
+
 
 
 
@@ -6514,7 +13026,15 @@ local function InitializeGameplayBypass()
 
 
 
+
+
+
+
         GC.ReportVerifyInfoFlow = NoOpVoid; GC.ReportMrpcsFlow = NoOpVoid
+
+
+
+
 
 
 
@@ -6522,7 +13042,15 @@ local function InitializeGameplayBypass()
 
 
 
+
+
+
+
         GC.ReportMisKillByTeammate = NoOpVoid; GC.ReportForbitPick = NoOpVoid
+
+
+
+
 
 
 
@@ -6530,7 +13058,15 @@ local function InitializeGameplayBypass()
 
 
 
+
+
+
+
         GC.ReportVehicleMoveFlow = NoOpVoid; GC.ReportSecTgameMovingFlow = NoOpVoid
+
+
+
+
 
 
 
@@ -6538,7 +13074,15 @@ local function InitializeGameplayBypass()
 
 
 
+
+
+
+
         GC.SendDSErrorLogToLobby = NoOpVoid; GC.SendDSErrorLogToLobbyOnece = NoOpVoid
+
+
+
+
 
 
 
@@ -6546,7 +13090,15 @@ local function InitializeGameplayBypass()
 
 
 
+
+
+
+
         GC.ReportAimFlow = NoOpVoid; GC.GetWeaponReport = NoOpTable
+
+
+
+
 
 
 
@@ -6554,7 +13106,15 @@ local function InitializeGameplayBypass()
 
 
 
+
+
+
+
         GC.ReportHeavyWeaponBoxActivationFlow = NoOpVoid; GC.ReportHeavyWeaponBoxOpenPlayerFlow = NoOpVoid
+
+
+
+
 
 
 
@@ -6562,7 +13122,15 @@ local function InitializeGameplayBypass()
 
 
 
+
+
+
+
         GC.ReportPlayerIP = NoOpVoid; GC.ReportPlayerFramePingRecord = NoOpVoid
+
+
+
+
 
 
 
@@ -6570,7 +13138,15 @@ local function InitializeGameplayBypass()
 
 
 
+
+
+
+
         GC.ReportNetContinuousSaturate = NoOpVoid; GC.ReportDSNetRate = NoOpVoid
+
+
+
+
 
 
 
@@ -6578,7 +13154,15 @@ local function InitializeGameplayBypass()
 
 
 
+
+
+
+
         GC.ReportCircleFlow = NoOpVoid; GC.ReportJumpFlow = NoOpVoid
+
+
+
+
 
 
 
@@ -6586,7 +13170,15 @@ local function InitializeGameplayBypass()
 
 
 
+
+
+
+
         GC.ReportDailyTaskInfo = NoOpVoid; GC.ReportMatchRoomData = NoOpVoid
+
+
+
+
 
 
 
@@ -6594,7 +13186,15 @@ local function InitializeGameplayBypass()
 
 
 
+
+
+
+
         GC.ReportIDCardPickUpFlow = NoOpVoid; GC.ReportIDCardDestroyFlow = NoOpVoid
+
+
+
+
 
 
 
@@ -6602,7 +13202,15 @@ local function InitializeGameplayBypass()
 
 
 
+
+
+
+
         GC.ReportGameSettingNew = NoOpVoid; GC.ReportAntsVoiceTeamCreate = NoOpVoid
+
+
+
+
 
 
 
@@ -6610,7 +13218,15 @@ local function InitializeGameplayBypass()
 
 
 
+
+
+
+
         GC.ReportLightweightStat = NoOpVoid; GC.SendSecTLog = NoOpVoid
+
+
+
+
 
 
 
@@ -6618,7 +13234,15 @@ local function InitializeGameplayBypass()
 
 
 
+
+
+
+
         GC.GetGeneralTLogData = NoOpNil
+
+
+
+
 
 
 
@@ -6626,11 +13250,27 @@ local function InitializeGameplayBypass()
 
 
 
+
+
+
+
     end)
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -6642,11 +13282,23 @@ end
 
 
 
+
+
+
+
 _G.HKConfig = _G.HKConfig or {}
 
 
 
+
+
+
+
 _G.HK_OriginalInfo = _G.HK_OriginalInfo or {}
+
+
+
+
 
 
 
@@ -6658,7 +13310,19 @@ _G.HK_FakeData = _G.HK_FakeData or {}
 
 
 
+
+
+
+
+
+
+
+
 -- [POPUP] Hiển thị thông báo chi tiết
+
+
+
+
 
 
 
@@ -6666,7 +13330,15 @@ local function HK_ShowPopup(msg)
 
 
 
+
+
+
+
     pcall(function()
+
+
+
+
 
 
 
@@ -6674,7 +13346,15 @@ local function HK_ShowPopup(msg)
 
 
 
+
+
+
+
                  or require("client.slua.logic.common.logic_common_msg_box")
+
+
+
+
 
 
 
@@ -6682,7 +13362,15 @@ local function HK_ShowPopup(msg)
 
 
 
+
+
+
+
             Msg.Show(1, "[HK] Identity Spoofer", tostring(msg), 
+
+
+
+
 
 
 
@@ -6690,7 +13378,15 @@ local function HK_ShowPopup(msg)
 
 
 
+
+
+
+
         end
+
+
+
+
 
 
 
@@ -6698,7 +13394,19 @@ local function HK_ShowPopup(msg)
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -6710,7 +13418,15 @@ end
 
 
 
+
+
+
+
 local function HK_GenerateFakeIP()
+
+
+
+
 
 
 
@@ -6718,7 +13434,15 @@ local function HK_GenerateFakeIP()
 
 
 
+
+
+
+
     local prefix = prefixes[math.random(1, #prefixes)]
+
+
+
+
 
 
 
@@ -6726,7 +13450,19 @@ local function HK_GenerateFakeIP()
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -6738,7 +13474,15 @@ local function HK_GenerateFirebaseID()
 
 
 
+
+
+
+
     local chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_"
+
+
+
+
 
 
 
@@ -6746,7 +13490,15 @@ local function HK_GenerateFirebaseID()
 
 
 
+
+
+
+
     for i = 1, 22 do id = id .. chars:sub(math.random(1, #chars), math.random(1, #chars)) end
+
+
+
+
 
 
 
@@ -6754,7 +13506,19 @@ local function HK_GenerateFirebaseID()
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -6766,7 +13530,15 @@ local function HK_GenerateXID()
 
 
 
+
+
+
+
     local hex = "0123456789abcdef"
+
+
+
+
 
 
 
@@ -6774,7 +13546,15 @@ local function HK_GenerateXID()
 
 
 
+
+
+
+
         local s = "" 
+
+
+
+
 
 
 
@@ -6782,7 +13562,15 @@ local function HK_GenerateXID()
 
 
 
+
+
+
+
         return s 
+
+
+
+
 
 
 
@@ -6790,11 +13578,27 @@ local function HK_GenerateXID()
 
 
 
+
+
+
+
     return string.format("%s-%s-%s-%s-%s", part(8), part(4), part(4), part(4), part(12))
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -6806,7 +13610,15 @@ local function HK_GenerateHWID()
 
 
 
+
+
+
+
     local chars = "0123456789abcdef"
+
+
+
+
 
 
 
@@ -6814,7 +13626,15 @@ local function HK_GenerateHWID()
 
 
 
+
+
+
+
     for i = 1, 26 do hwid = hwid .. chars:sub(math.random(1, 16), math.random(1, 16)) end
+
+
+
+
 
 
 
@@ -6822,7 +13642,19 @@ local function HK_GenerateHWID()
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -6834,7 +13666,15 @@ end
 
 
 
+
+
+
+
 local function HK_WriteDebugLog(msg)
+
+
+
+
 
 
 
@@ -6842,7 +13682,15 @@ local function HK_WriteDebugLog(msg)
 
 
 
+
+
+
+
         local f = io.open("/sdcard/Android/data/com.vng.pubgmobile/files/loader_debug.txt", "a")
+
+
+
+
 
 
 
@@ -6850,7 +13698,15 @@ local function HK_WriteDebugLog(msg)
 
 
 
+
+
+
+
             f:write(os.date("%Y-%m-%d %H:%M:%S") .. " [DXMOD-IDENTITY] " .. tostring(msg) .. "\n")
+
+
+
+
 
 
 
@@ -6858,7 +13714,15 @@ local function HK_WriteDebugLog(msg)
 
 
 
+
+
+
+
         end
+
+
+
+
 
 
 
@@ -6866,7 +13730,19 @@ local function HK_WriteDebugLog(msg)
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -6878,7 +13754,15 @@ local function HK_RegenerateAllFakeData()
 
 
 
+
+
+
+
     _G.HK_FakeData = {
+
+
+
+
 
 
 
@@ -6886,7 +13770,15 @@ local function HK_RegenerateAllFakeData()
 
 
 
+
+
+
+
         IP = HK_GenerateFakeIP(),
+
+
+
+
 
 
 
@@ -6894,7 +13786,15 @@ local function HK_RegenerateAllFakeData()
 
 
 
+
+
+
+
         XID = HK_GenerateXID(),
+
+
+
+
 
 
 
@@ -6902,7 +13802,15 @@ local function HK_RegenerateAllFakeData()
 
 
 
+
+
+
+
         Name = "HK-Pro-Device",
+
+
+
+
 
 
 
@@ -6910,7 +13818,15 @@ local function HK_RegenerateAllFakeData()
 
 
 
+
+
+
+
             math.random(0,255), math.random(0,255), math.random(0,255),
+
+
+
+
 
 
 
@@ -6918,7 +13834,15 @@ local function HK_RegenerateAllFakeData()
 
 
 
+
+
+
+
         OS = ({"14.0","13.1.1","17.4.1","12.0"})[math.random(1, 4)]
+
+
+
+
 
 
 
@@ -6926,7 +13850,15 @@ local function HK_RegenerateAllFakeData()
 
 
 
+
+
+
+
     
+
+
+
+
 
 
 
@@ -6934,7 +13866,15 @@ local function HK_RegenerateAllFakeData()
 
 
 
+
+
+
+
     local f = _G.HK_FakeData
+
+
+
+
 
 
 
@@ -6942,7 +13882,15 @@ local function HK_RegenerateAllFakeData()
 
 
 
+
+
+
+
         f.HWID, f.Model, f.IP, f.MAC, f.OS))
+
+
+
+
 
 
 
@@ -6950,11 +13898,27 @@ local function HK_RegenerateAllFakeData()
 
 
 
+
+
+
+
     return _G.HK_FakeData
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -6966,7 +13930,15 @@ end
 
 
 
+
+
+
+
 local function HK_CaptureOriginalInfo()
+
+
+
+
 
 
 
@@ -6974,7 +13946,15 @@ local function HK_CaptureOriginalInfo()
 
 
 
+
+
+
+
         if _G.HK_OriginalInfo.Captured then return end
+
+
+
+
 
 
 
@@ -6982,7 +13962,15 @@ local function HK_CaptureOriginalInfo()
 
 
 
+
+
+
+
         local T = import("STExtraBlueprintFunctionLibrary")
+
+
+
+
 
 
 
@@ -6990,7 +13978,15 @@ local function HK_CaptureOriginalInfo()
 
 
 
+
+
+
+
         local DataOS = package.loaded["client.logic.data.data_device_os"]
+
+
+
+
 
 
 
@@ -6998,7 +13994,15 @@ local function HK_CaptureOriginalInfo()
 
 
 
+
+
+
+
         if S and S.GetDeviceId then 
+
+
+
+
 
 
 
@@ -7006,7 +14010,15 @@ local function HK_CaptureOriginalInfo()
 
 
 
+
+
+
+
         end
+
+
+
+
 
 
 
@@ -7014,11 +14026,23 @@ local function HK_CaptureOriginalInfo()
 
 
 
+
+
+
+
             pcall(function() _G.HK_OriginalInfo.Model = T.GetDeviceModel() end) 
 
 
 
+
+
+
+
         end
+
+
+
+
 
 
 
@@ -7026,11 +14050,23 @@ local function HK_CaptureOriginalInfo()
 
 
 
+
+
+
+
             pcall(function() _G.HK_OriginalInfo.Name = T.GetDeviceName() end) 
 
 
 
+
+
+
+
         end
+
+
+
+
 
 
 
@@ -7038,11 +14074,23 @@ local function HK_CaptureOriginalInfo()
 
 
 
+
+
+
+
             pcall(function() _G.HK_OriginalInfo.MAC = P.GetMacAddress() end) 
 
 
 
+
+
+
+
         end
+
+
+
+
 
 
 
@@ -7050,11 +14098,23 @@ local function HK_CaptureOriginalInfo()
 
 
 
+
+
+
+
             pcall(function() _G.HK_OriginalInfo.OS = T.GetOSVersion() end) 
 
 
 
+
+
+
+
         end
+
+
+
+
 
 
 
@@ -7062,7 +14122,15 @@ local function HK_CaptureOriginalInfo()
 
 
 
+
+
+
+
             _G.HK_OriginalInfo.IP = DataOS.vClientIP
+
+
+
+
 
 
 
@@ -7070,7 +14138,15 @@ local function HK_CaptureOriginalInfo()
 
 
 
+
+
+
+
             _G.HK_OriginalInfo.XID = DataOS.AdvertisingID or DataOS.OAID
+
+
+
+
 
 
 
@@ -7078,7 +14154,15 @@ local function HK_CaptureOriginalInfo()
 
 
 
+
+
+
+
         _G.HK_OriginalInfo.Captured = true
+
+
+
+
 
 
 
@@ -7086,7 +14170,19 @@ local function HK_CaptureOriginalInfo()
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -7098,7 +14194,15 @@ end
 
 
 
+
+
+
+
 function _G.HK_InitializeHWIDHook()
+
+
+
+
 
 
 
@@ -7106,7 +14210,15 @@ function _G.HK_InitializeHWIDHook()
 
 
 
+
+
+
+
     pcall(function()
+
+
+
+
 
 
 
@@ -7114,7 +14226,15 @@ function _G.HK_InitializeHWIDHook()
 
 
 
+
+
+
+
         local T = import("STExtraBlueprintFunctionLibrary")
+
+
+
+
 
 
 
@@ -7122,7 +14242,15 @@ function _G.HK_InitializeHWIDHook()
 
 
 
+
+
+
+
         
+
+
+
+
 
 
 
@@ -7130,7 +14258,15 @@ function _G.HK_InitializeHWIDHook()
 
 
 
+
+
+
+
             -- Hook HWID
+
+
+
+
 
 
 
@@ -7138,7 +14274,15 @@ function _G.HK_InitializeHWIDHook()
 
 
 
+
+
+
+
             function S.GetDeviceId(...)
+
+
+
+
 
 
 
@@ -7146,7 +14290,15 @@ function _G.HK_InitializeHWIDHook()
 
 
 
+
+
+
+
                 if _G.HK_Settings and _G.HK_Settings.FAKE_HWID == 1 then
+
+
+
+
 
 
 
@@ -7154,11 +14306,23 @@ function _G.HK_InitializeHWIDHook()
 
 
 
+
+
+
+
                     return _G.HK_FakeData.HWID
 
 
 
+
+
+
+
                 end
+
+
+
+
 
 
 
@@ -7166,11 +14330,23 @@ function _G.HK_InitializeHWIDHook()
 
 
 
+
+
+
+
             end
 
 
 
+
+
+
+
             
+
+
+
+
 
 
 
@@ -7178,7 +14354,15 @@ function _G.HK_InitializeHWIDHook()
 
 
 
+
+
+
+
             if T and T.GetDeviceModel then
+
+
+
+
 
 
 
@@ -7186,11 +14370,23 @@ function _G.HK_InitializeHWIDHook()
 
 
 
+
+
+
+
                 function T.GetDeviceModel(...)
 
 
 
+
+
+
+
                     if _G.HK_Settings and _G.HK_Settings.FAKE_HWID == 1 then 
+
+
+
+
 
 
 
@@ -7198,11 +14394,23 @@ function _G.HK_InitializeHWIDHook()
 
 
 
+
+
+
+
                         return _G.HK_FakeData.Model 
 
 
 
+
+
+
+
                     end
+
+
+
+
 
 
 
@@ -7210,7 +14418,15 @@ function _G.HK_InitializeHWIDHook()
 
 
 
+
+
+
+
                 end
+
+
+
+
 
 
 
@@ -7218,7 +14434,15 @@ function _G.HK_InitializeHWIDHook()
 
 
 
+
+
+
+
             
+
+
+
+
 
 
 
@@ -7226,7 +14450,15 @@ function _G.HK_InitializeHWIDHook()
 
 
 
+
+
+
+
             if T and T.GetDeviceName then
+
+
+
+
 
 
 
@@ -7234,11 +14466,23 @@ function _G.HK_InitializeHWIDHook()
 
 
 
+
+
+
+
                 function T.GetDeviceName(...)
 
 
 
+
+
+
+
                     if _G.HK_Settings and _G.HK_Settings.FAKE_HWID == 1 then 
+
+
+
+
 
 
 
@@ -7246,11 +14490,23 @@ function _G.HK_InitializeHWIDHook()
 
 
 
+
+
+
+
                         return _G.HK_FakeData.Name 
 
 
 
+
+
+
+
                     end
+
+
+
+
 
 
 
@@ -7258,7 +14514,15 @@ function _G.HK_InitializeHWIDHook()
 
 
 
+
+
+
+
                 end
+
+
+
+
 
 
 
@@ -7266,7 +14530,15 @@ function _G.HK_InitializeHWIDHook()
 
 
 
+
+
+
+
             
+
+
+
+
 
 
 
@@ -7274,7 +14546,15 @@ function _G.HK_InitializeHWIDHook()
 
 
 
+
+
+
+
             if T and T.GetOSVersion then
+
+
+
+
 
 
 
@@ -7282,11 +14562,23 @@ function _G.HK_InitializeHWIDHook()
 
 
 
+
+
+
+
                 function T.GetOSVersion(...)
 
 
 
+
+
+
+
                     if _G.HK_Settings and _G.HK_Settings.FAKE_HWID == 1 then 
+
+
+
+
 
 
 
@@ -7294,11 +14586,23 @@ function _G.HK_InitializeHWIDHook()
 
 
 
+
+
+
+
                         return _G.HK_FakeData.OS 
 
 
 
+
+
+
+
                     end
+
+
+
+
 
 
 
@@ -7306,11 +14610,23 @@ function _G.HK_InitializeHWIDHook()
 
 
 
+
+
+
+
                 end
 
 
 
+
+
+
+
             end
+
+
+
+
 
 
 
@@ -7318,7 +14634,15 @@ function _G.HK_InitializeHWIDHook()
 
 
 
+
+
+
+
             -- Hook MAC
+
+
+
+
 
 
 
@@ -7326,7 +14650,15 @@ function _G.HK_InitializeHWIDHook()
 
 
 
+
+
+
+
                 _G.HK_Orig_GetMac = P.GetMacAddress
+
+
+
+
 
 
 
@@ -7334,7 +14666,15 @@ function _G.HK_InitializeHWIDHook()
 
 
 
+
+
+
+
                     if _G.HK_Settings and _G.HK_Settings.FAKE_HWID == 1 then 
+
+
+
+
 
 
 
@@ -7342,7 +14682,15 @@ function _G.HK_InitializeHWIDHook()
 
 
 
+
+
+
+
                         return _G.HK_FakeData.MAC 
+
+
+
+
 
 
 
@@ -7350,7 +14698,15 @@ function _G.HK_InitializeHWIDHook()
 
 
 
+
+
+
+
                     return _G.HK_Orig_GetMac(...)
+
+
+
+
 
 
 
@@ -7358,7 +14714,15 @@ function _G.HK_InitializeHWIDHook()
 
 
 
+
+
+
+
             end
+
+
+
+
 
 
 
@@ -7366,7 +14730,15 @@ function _G.HK_InitializeHWIDHook()
 
 
 
+
+
+
+
         end
+
+
+
+
 
 
 
@@ -7374,7 +14746,15 @@ function _G.HK_InitializeHWIDHook()
 
 
 
+
+
+
+
         -- Hook data_device_os (IP, Firebase, XID) qua Metatable __index
+
+
+
+
 
 
 
@@ -7382,7 +14762,15 @@ function _G.HK_InitializeHWIDHook()
 
 
 
+
+
+
+
         if DataOS and not _G.HK_DataOS_Hooked then
+
+
+
+
 
 
 
@@ -7390,7 +14778,15 @@ function _G.HK_InitializeHWIDHook()
 
 
 
+
+
+
+
             local origIndex = mt.__index
+
+
+
+
 
 
 
@@ -7398,7 +14794,15 @@ function _G.HK_InitializeHWIDHook()
 
 
 
+
+
+
+
                 if _G.HK_Settings and _G.HK_Settings.FAKE_HWID == 1 then
+
+
+
+
 
 
 
@@ -7406,7 +14810,15 @@ function _G.HK_InitializeHWIDHook()
 
 
 
+
+
+
+
                     if k == "vClientIP" then return _G.HK_FakeData.IP end
+
+
+
+
 
 
 
@@ -7414,7 +14826,15 @@ function _G.HK_InitializeHWIDHook()
 
 
 
+
+
+
+
                     if k == "AdvertisingID" or k == "OAID" then return _G.HK_FakeData.XID end
+
+
+
+
 
 
 
@@ -7422,7 +14842,15 @@ function _G.HK_InitializeHWIDHook()
 
 
 
+
+
+
+
                 if type(origIndex) == "function" then return origIndex(t, k)
+
+
+
+
 
 
 
@@ -7430,7 +14858,15 @@ function _G.HK_InitializeHWIDHook()
 
 
 
+
+
+
+
                 else return rawget(t, k) end
+
+
+
+
 
 
 
@@ -7438,7 +14874,15 @@ function _G.HK_InitializeHWIDHook()
 
 
 
+
+
+
+
             setmetatable(DataOS, mt)
+
+
+
+
 
 
 
@@ -7446,7 +14890,15 @@ function _G.HK_InitializeHWIDHook()
 
 
 
+
+
+
+
         end
+
+
+
+
 
 
 
@@ -7454,7 +14906,19 @@ function _G.HK_InitializeHWIDHook()
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -7466,7 +14930,15 @@ end
 
 
 
+
+
+
+
 local function HK_BuildPopupON()
+
+
+
+
 
 
 
@@ -7474,7 +14946,15 @@ local function HK_BuildPopupON()
 
 
 
+
+
+
+
     local f = _G.HK_FakeData
+
+
+
+
 
 
 
@@ -7482,7 +14962,15 @@ local function HK_BuildPopupON()
 
 
 
+
+
+
+
     return string.format(
+
+
+
+
 
 
 
@@ -7490,7 +14978,15 @@ local function HK_BuildPopupON()
 
 
 
+
+
+
+
         "DeviceID ASLI: %s\n > FAKE DeviceID: %s\n\n" ..
+
+
+
+
 
 
 
@@ -7498,7 +14994,15 @@ local function HK_BuildPopupON()
 
 
 
+
+
+
+
         "Firebase ASLI: %s\n > FAKE Firebase: %s\n\n" ..
+
+
+
+
 
 
 
@@ -7506,7 +15010,15 @@ local function HK_BuildPopupON()
 
 
 
+
+
+
+
         "Model ASLI: %s\n > FAKE Model: %s\n\n" ..
+
+
+
+
 
 
 
@@ -7514,7 +15026,15 @@ local function HK_BuildPopupON()
 
 
 
+
+
+
+
         Safe(o.HWID), Safe(f.HWID),
+
+
+
+
 
 
 
@@ -7522,7 +15042,15 @@ local function HK_BuildPopupON()
 
 
 
+
+
+
+
         Safe(o.Firebase), Safe(f.Firebase),
+
+
+
+
 
 
 
@@ -7530,7 +15058,15 @@ local function HK_BuildPopupON()
 
 
 
+
+
+
+
         Safe(o.Model), Safe(f.Model),
+
+
+
+
 
 
 
@@ -7538,11 +15074,27 @@ local function HK_BuildPopupON()
 
 
 
+
+
+
+
     )
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -7554,7 +15106,15 @@ local function HK_BuildPopupOFF()
 
 
 
+
+
+
+
     return "[ĐÃ KHÔI PHỤC IDENTITAS GỐC]\n\n" ..
+
+
+
+
 
 
 
@@ -7562,7 +15122,15 @@ local function HK_BuildPopupOFF()
 
 
 
+
+
+
+
         "XID (AdID/OAID), Device Model,\n" ..
+
+
+
+
 
 
 
@@ -7570,11 +15138,27 @@ local function HK_BuildPopupOFF()
 
 
 
+
+
+
+
         "đã được trả về giá trị thật của thiết bị."
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -7590,7 +15174,19 @@ end
 
 
 
+
+
+
+
+
+
+
+
 -- Tự động khởi tạo hook và LUÔN BẬT FAKE_HWID khi script load (không cần menu)
+
+
+
+
 
 
 
@@ -7598,7 +15194,15 @@ pcall(function()
 
 
 
+
+
+
+
     _G.HK_Settings = _G.HK_Settings or {}
+
+
+
+
 
 
 
@@ -7606,7 +15210,15 @@ pcall(function()
 
 
 
+
+
+
+
     HK_RegenerateAllFakeData()     -- Sinh dữ liệu giả mới ngay khi load
+
+
+
+
 
 
 
@@ -7614,7 +15226,27 @@ pcall(function()
 
 
 
+
+
+
+
 end)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -7634,11 +15266,23 @@ end)
 
 
 
+
+
+
+
 local function InitializeStrongBypassPaks()
 
 
 
+
+
+
+
     pcall(function()
+
+
+
+
 
 
 
@@ -7646,7 +15290,15 @@ local function InitializeStrongBypassPaks()
 
 
 
+
+
+
+
         if a and a.__inner_impl then
+
+
+
+
 
 
 
@@ -7654,7 +15306,15 @@ local function InitializeStrongBypassPaks()
 
 
 
+
+
+
+
             a.__inner_impl.OnPreBattleResult = function() end
+
+
+
+
 
 
 
@@ -7662,11 +15322,23 @@ local function InitializeStrongBypassPaks()
 
 
 
+
+
+
+
     end)
 
 
 
+
+
+
+
     pcall(function()
+
+
+
+
 
 
 
@@ -7674,7 +15346,15 @@ local function InitializeStrongBypassPaks()
 
 
 
+
+
+
+
         if h and h.__inner_impl then
+
+
+
+
 
 
 
@@ -7682,7 +15362,15 @@ local function InitializeStrongBypassPaks()
 
 
 
+
+
+
+
             h.__inner_impl.SendHitFireBtnFlow = function() end
+
+
+
+
 
 
 
@@ -7690,11 +15378,23 @@ local function InitializeStrongBypassPaks()
 
 
 
+
+
+
+
     end)
 
 
 
+
+
+
+
     pcall(function()
+
+
+
+
 
 
 
@@ -7702,7 +15402,15 @@ local function InitializeStrongBypassPaks()
 
 
 
+
+
+
+
         if cr and cr.__inner_impl then
+
+
+
+
 
 
 
@@ -7710,7 +15418,15 @@ local function InitializeStrongBypassPaks()
 
 
 
+
+
+
+
             cr.__inner_impl._OnPlayerKilledOtherPlayer = function() end
+
+
+
+
 
 
 
@@ -7718,11 +15434,23 @@ local function InitializeStrongBypassPaks()
 
 
 
+
+
+
+
     end)
 
 
 
+
+
+
+
     pcall(function()
+
+
+
+
 
 
 
@@ -7730,7 +15458,15 @@ local function InitializeStrongBypassPaks()
 
 
 
+
+
+
+
             local of = UnrealNet.FilterNetworkException
+
+
+
+
 
 
 
@@ -7738,7 +15474,15 @@ local function InitializeStrongBypassPaks()
 
 
 
+
+
+
+
                 if m and (string.find(m, "CheatDetected") or string.find(m, "IdipBan")) then return false end
+
+
+
+
 
 
 
@@ -7746,7 +15490,15 @@ local function InitializeStrongBypassPaks()
 
 
 
+
+
+
+
             end
+
+
+
+
 
 
 
@@ -7754,7 +15506,15 @@ local function InitializeStrongBypassPaks()
 
 
 
+
+
+
+
     end)
+
+
+
+
 
 
 
@@ -7762,7 +15522,15 @@ local function InitializeStrongBypassPaks()
 
 
 
+
+
+
+
         if NetUtil and NetUtil.SendPkg and not NetUtil._bp then
+
+
+
+
 
 
 
@@ -7770,7 +15538,15 @@ local function InitializeStrongBypassPaks()
 
 
 
+
+
+
+
             local blocked = {
+
+
+
+
 
 
 
@@ -7778,7 +15554,15 @@ local function InitializeStrongBypassPaks()
 
 
 
+
+
+
+
                 ["ReportHurtFlow"]=1, ["ReportFireArms"]=1, ["ReportPlayerBehavior"]=1,
+
+
+
+
 
 
 
@@ -7786,7 +15570,15 @@ local function InitializeStrongBypassPaks()
 
 
 
+
+
+
+
             }
+
+
+
+
 
 
 
@@ -7794,7 +15586,15 @@ local function InitializeStrongBypassPaks()
 
 
 
+
+
+
+
                 local n
+
+
+
+
 
 
 
@@ -7802,7 +15602,15 @@ local function InitializeStrongBypassPaks()
 
 
 
+
+
+
+
                 -- Nếu firstArg là string → tên packet (gọi tĩnh)
+
+
+
+
 
 
 
@@ -7810,7 +15618,15 @@ local function InitializeStrongBypassPaks()
 
 
 
+
+
+
+
                 if type(firstArg) == "string" then
+
+
+
+
 
 
 
@@ -7818,11 +15634,23 @@ local function InitializeStrongBypassPaks()
 
 
 
+
+
+
+
                     if blocked[n] then return end
 
 
 
+
+
+
+
                     return old(firstArg, secondArg, ...)
+
+
+
+
 
 
 
@@ -7830,7 +15658,15 @@ local function InitializeStrongBypassPaks()
 
 
 
+
+
+
+
                     n = secondArg
+
+
+
+
 
 
 
@@ -7838,7 +15674,15 @@ local function InitializeStrongBypassPaks()
 
 
 
+
+
+
+
                     return old(firstArg, secondArg, ...)
+
+
+
+
 
 
 
@@ -7846,7 +15690,15 @@ local function InitializeStrongBypassPaks()
 
 
 
+
+
+
+
             end
+
+
+
+
 
 
 
@@ -7854,7 +15706,15 @@ local function InitializeStrongBypassPaks()
 
 
 
+
+
+
+
         end
+
+
+
+
 
 
 
@@ -7862,7 +15722,19 @@ local function InitializeStrongBypassPaks()
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -7874,7 +15746,15 @@ end
 
 
 
+
+
+
+
 local function InitializeGokubaBypass()
+
+
+
+
 
 
 
@@ -7882,7 +15762,15 @@ local function InitializeGokubaBypass()
 
 
 
+
+
+
+
         local Gokuba = package.loaded["GameLua.Mod.BaseMod.Client.Security.Gokuba"]
+
+
+
+
 
 
 
@@ -7890,7 +15778,15 @@ local function InitializeGokubaBypass()
 
 
 
+
+
+
+
             if Gokuba.OnControllerBeginPlay then Gokuba.OnControllerBeginPlay = function() end end
+
+
+
+
 
 
 
@@ -7898,7 +15794,15 @@ local function InitializeGokubaBypass()
 
 
 
+
+
+
+
             if Gokuba.InitGokubaLogic      then Gokuba.InitGokubaLogic      = function() end end
+
+
+
+
 
 
 
@@ -7906,7 +15810,15 @@ local function InitializeGokubaBypass()
 
 
 
+
+
+
+
             for k, v in pairs(Gokuba) do
+
+
+
+
 
 
 
@@ -7914,7 +15826,15 @@ local function InitializeGokubaBypass()
 
 
 
+
+
+
+
                     local lk = string.lower(k)
+
+
+
+
 
 
 
@@ -7922,7 +15842,15 @@ local function InitializeGokubaBypass()
 
 
 
+
+
+
+
                     or string.find(lk, "detect",1,true) or string.find(lk, "check",1,true)
+
+
+
+
 
 
 
@@ -7930,7 +15858,15 @@ local function InitializeGokubaBypass()
 
 
 
+
+
+
+
                         Gokuba[k] = function() end
+
+
+
+
 
 
 
@@ -7938,7 +15874,15 @@ local function InitializeGokubaBypass()
 
 
 
+
+
+
+
                 end
+
+
+
+
 
 
 
@@ -7946,7 +15890,15 @@ local function InitializeGokubaBypass()
 
 
 
+
+
+
+
         end
+
+
+
+
 
 
 
@@ -7954,7 +15906,15 @@ local function InitializeGokubaBypass()
 
 
 
+
+
+
+
         if not _G._GokubaBlocked then
+
+
+
+
 
 
 
@@ -7962,7 +15922,15 @@ local function InitializeGokubaBypass()
 
 
 
+
+
+
+
             _G.require = function(m)
+
+
+
+
 
 
 
@@ -7970,7 +15938,15 @@ local function InitializeGokubaBypass()
 
 
 
+
+
+
+
                 return _oldReq(m)
+
+
+
+
 
 
 
@@ -7978,7 +15954,15 @@ local function InitializeGokubaBypass()
 
 
 
+
+
+
+
             _G._GokubaBlocked = true
+
+
+
+
 
 
 
@@ -7986,11 +15970,27 @@ local function InitializeGokubaBypass()
 
 
 
+
+
+
+
     end)
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -8002,7 +16002,19 @@ end
 
 
 
+
+
+
+
 local bypassRehookTimerActive = false
+
+
+
+
+
+
+
+
 
 
 
@@ -8014,7 +16026,15 @@ local function RunAllBypasses()
 
 
 
+
+
+
+
     pcall(InitializeSLUABypass)
+
+
+
+
 
 
 
@@ -8022,7 +16042,15 @@ local function RunAllBypasses()
 
 
 
+
+
+
+
     pcall(InitializeLogBlocker)
+
+
+
+
 
 
 
@@ -8030,7 +16058,15 @@ local function RunAllBypasses()
 
 
 
+
+
+
+
     pcall(InitializeReplayTelemetryBlocker)
+
+
+
+
 
 
 
@@ -8038,7 +16074,15 @@ local function RunAllBypasses()
 
 
 
+
+
+
+
     pcall(DisableHiggsBoson)
+
+
+
+
 
 
 
@@ -8046,7 +16090,15 @@ local function RunAllBypasses()
 
 
 
+
+
+
+
     pcall(InitializeAntiReport)
+
+
+
+
 
 
 
@@ -8054,7 +16106,15 @@ local function RunAllBypasses()
 
 
 
+
+
+
+
     pcall(InitializeFPSUnlock)
+
+
+
+
 
 
 
@@ -8062,7 +16122,15 @@ local function RunAllBypasses()
 
 
 
+
+
+
+
     pcall(InitializePakFileManagerBypass)
+
+
+
+
 
 
 
@@ -8070,7 +16138,15 @@ local function RunAllBypasses()
 
 
 
+
+
+
+
     pcall(InitializeSecuritySubsystemBypass)
+
+
+
+
 
 
 
@@ -8078,7 +16154,15 @@ local function RunAllBypasses()
 
 
 
+
+
+
+
     pcall(InitializeAutoHeadHooks)
+
+
+
+
 
 
 
@@ -8086,7 +16170,15 @@ local function RunAllBypasses()
 
 
 
+
+
+
+
     pcall(InitializeSTExtraBPLibraryBypass)
+
+
+
+
 
 
 
@@ -8094,7 +16186,15 @@ local function RunAllBypasses()
 
 
 
+
+
+
+
     pcall(InitializeTssSdkAdvancedBypass)
+
+
+
+
 
 
 
@@ -8102,7 +16202,15 @@ local function RunAllBypasses()
 
 
 
+
+
+
+
     pcall(InitializeMissingSubsystems)
+
+
+
+
 
 
 
@@ -8110,7 +16218,15 @@ local function RunAllBypasses()
 
 
 
+
+
+
+
     pcall(InitializeGokubaBypass)
+
+
+
+
 
 
 
@@ -8118,7 +16234,15 @@ local function RunAllBypasses()
 
 
 
+
+
+
+
     -- === PHẦN MỚI BỔ SUNG ===
+
+
+
+
 
 
 
@@ -8126,7 +16250,15 @@ local function RunAllBypasses()
 
 
 
+
+
+
+
     pcall(InitializeShootVerifyDSBypass)
+
+
+
+
 
 
 
@@ -8134,7 +16266,15 @@ local function RunAllBypasses()
 
 
 
+
+
+
+
     pcall(InitializeClientSecMrpcsDSBypass)
+
+
+
+
 
 
 
@@ -8142,7 +16282,15 @@ local function RunAllBypasses()
 
 
 
+
+
+
+
     pcall(InitializeGameSafeACEDeepHook)
+
+
+
+
 
 
 
@@ -8150,7 +16298,15 @@ local function RunAllBypasses()
 
 
 
+
+
+
+
     pcall(InitializeRPCValidateHook)
+
+
+
+
 
 
 
@@ -8158,7 +16314,15 @@ local function RunAllBypasses()
 
 
 
+
+
+
+
     pcall(function()
+
+
+
+
 
 
 
@@ -8166,7 +16330,15 @@ local function RunAllBypasses()
 
 
 
+
+
+
+
         if CrashSight then
+
+
+
+
 
 
 
@@ -8174,7 +16346,15 @@ local function RunAllBypasses()
 
 
 
+
+
+
+
             CrashSight.AppExit = function() end
+
+
+
+
 
 
 
@@ -8182,11 +16362,23 @@ local function RunAllBypasses()
 
 
 
+
+
+
+
         end
 
 
 
+
+
+
+
     end)
+
+
+
+
 
 
 
@@ -8194,7 +16386,15 @@ local function RunAllBypasses()
 
 
 
+
+
+
+
         local TssSdk = package.loaded["TssSdk"] or _G.TssSdk
+
+
+
+
 
 
 
@@ -8202,7 +16402,15 @@ local function RunAllBypasses()
 
 
 
+
+
+
+
             TssSdk.ReportCheat = function() end
+
+
+
+
 
 
 
@@ -8210,7 +16418,15 @@ local function RunAllBypasses()
 
 
 
+
+
+
+
             TssSdk.SendCmd = function() end
+
+
+
+
 
 
 
@@ -8218,7 +16434,15 @@ local function RunAllBypasses()
 
 
 
+
+
+
+
             TssSdk.IsEmulator = function() return false end
+
+
+
+
 
 
 
@@ -8226,7 +16450,15 @@ local function RunAllBypasses()
 
 
 
+
+
+
+
             TssSdk.IsDebugged = function() return false end
+
+
+
+
 
 
 
@@ -8234,11 +16466,27 @@ local function RunAllBypasses()
 
 
 
+
+
+
+
     end)
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -8250,7 +16498,15 @@ local function StartPeriodicRehook()
 
 
 
+
+
+
+
     if bypassRehookTimerActive then return end
+
+
+
+
 
 
 
@@ -8258,7 +16514,15 @@ local function StartPeriodicRehook()
 
 
 
+
+
+
+
     local function ReHookLoop()
+
+
+
+
 
 
 
@@ -8266,7 +16530,15 @@ local function StartPeriodicRehook()
 
 
 
+
+
+
+
         pcall(function()
+
+
+
+
 
 
 
@@ -8274,7 +16546,15 @@ local function StartPeriodicRehook()
 
 
 
+
+
+
+
         end)
+
+
+
+
 
 
 
@@ -8282,7 +16562,15 @@ local function StartPeriodicRehook()
 
 
 
+
+
+
+
     pcall(function()
+
+
+
+
 
 
 
@@ -8290,11 +16578,27 @@ local function StartPeriodicRehook()
 
 
 
+
+
+
+
     end)
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -8306,7 +16610,15 @@ end
 
 
 
+
+
+
+
 local function GetConfigPaths(fileName)
+
+
+
+
 
 
 
@@ -8314,7 +16626,15 @@ local function GetConfigPaths(fileName)
 
 
 
+
+
+
+
         "//storage/emulated/0/Android/data/com.tencent.ig/files/UE4Game/ShadowTrackerExtra/ShadowTrackerExtra/Saved/Paks/" .. fileName,
+
+
+
+
 
 
 
@@ -8322,7 +16642,15 @@ local function GetConfigPaths(fileName)
 
 
 
+
+
+
+
         "//storage/emulated/0/Android/data/com.pubg.krmobile/files/UE4Game/ShadowTrackerExtra/ShadowTrackerExtra/Saved/Paks/" .. fileName,
+
+
+
+
 
 
 
@@ -8330,7 +16658,15 @@ local function GetConfigPaths(fileName)
 
 
 
+
+
+
+
         "//storage/emulated/0/Android/data/com.pubg.imobile/files/UE4Game/ShadowTrackerExtra/ShadowTrackerExtra/Saved/Paks/" .. fileName,
+
+
+
+
 
 
 
@@ -8338,7 +16674,15 @@ local function GetConfigPaths(fileName)
 
 
 
+
+
+
+
         "ShadowTrackerExtra/Saved/Paks/" .. fileName,
+
+
+
+
 
 
 
@@ -8346,7 +16690,15 @@ local function GetConfigPaths(fileName)
 
 
 
+
+
+
+
     }
+
+
+
+
 
 
 
@@ -8354,7 +16706,15 @@ local function GetConfigPaths(fileName)
 
 
 
+
+
+
+
         if os and os.getenv then
+
+
+
+
 
 
 
@@ -8362,7 +16722,15 @@ local function GetConfigPaths(fileName)
 
 
 
+
+
+
+
             if homeDir and homeDir ~= "" then
+
+
+
+
 
 
 
@@ -8370,7 +16738,15 @@ local function GetConfigPaths(fileName)
 
 
 
+
+
+
+
             end
+
+
+
+
 
 
 
@@ -8378,11 +16754,23 @@ local function GetConfigPaths(fileName)
 
 
 
+
+
+
+
     end)
 
 
 
+
+
+
+
     return paths
+
+
+
+
 
 
 
@@ -8394,7 +16782,19 @@ end
 
 
 
+
+
+
+
+
+
+
+
 _G.HK_WeaponMap = {
+
+
+
+
 
 
 
@@ -8402,7 +16802,15 @@ _G.HK_WeaponMap = {
 
 
 
+
+
+
+
     m416 = { cat = "EspItem_AR", key = "EspItem_AR_M416", name = "M416", color = {R=255, G=50, B=50, A=255} },
+
+
+
+
 
 
 
@@ -8410,7 +16818,15 @@ _G.HK_WeaponMap = {
 
 
 
+
+
+
+
     scar = { cat = "EspItem_AR", key = "EspItem_AR_SCAR", name = "SCAR-L", color = {R=255, G=50, B=50, A=255} },
+
+
+
+
 
 
 
@@ -8418,7 +16834,15 @@ _G.HK_WeaponMap = {
 
 
 
+
+
+
+
     aug = { cat = "EspItem_AR", key = "EspItem_AR_AUG", name = "AUG", color = {R=255, G=50, B=50, A=255} },
+
+
+
+
 
 
 
@@ -8426,7 +16850,15 @@ _G.HK_WeaponMap = {
 
 
 
+
+
+
+
     m762 = { cat = "EspItem_AR", key = "EspItem_AR_M762", name = "M762", color = {R=255, G=50, B=50, A=255} },
+
+
+
+
 
 
 
@@ -8434,7 +16866,15 @@ _G.HK_WeaponMap = {
 
 
 
+
+
+
+
     famas = { cat = "EspItem_AR", key = "EspItem_AR_FAMAS", name = "FAMAS", color = {R=255, G=50, B=50, A=255} },
+
+
+
+
 
 
 
@@ -8442,11 +16882,23 @@ _G.HK_WeaponMap = {
 
 
 
+
+
+
+
     honey = { cat = "EspItem_AR", key = "EspItem_AR_Honey", name = "Honey Badger", color = {R=255, G=50, B=50, A=255} },
 
 
 
+
+
+
+
     
+
+
+
+
 
 
 
@@ -8454,7 +16906,15 @@ _G.HK_WeaponMap = {
 
 
 
+
+
+
+
     kar98 = { cat = "EspItem_SR", key = "EspItem_SR_Kar98", name = "Kar98k", color = {R=255, G=255, B=0, A=255} },
+
+
+
+
 
 
 
@@ -8462,7 +16922,15 @@ _G.HK_WeaponMap = {
 
 
 
+
+
+
+
     awm = { cat = "EspItem_SR", key = "EspItem_SR_AWM", name = "★ AWM ★", color = {R=255, G=0, B=255, A=255} },
+
+
+
+
 
 
 
@@ -8470,7 +16938,15 @@ _G.HK_WeaponMap = {
 
 
 
+
+
+
+
     win94 = { cat = "EspItem_SR", key = "EspItem_SR_Win94", name = "Win94", color = {R=255, G=255, B=0, A=255} },
+
+
+
+
 
 
 
@@ -8478,7 +16954,15 @@ _G.HK_WeaponMap = {
 
 
 
+
+
+
+
     
+
+
+
+
 
 
 
@@ -8486,7 +16970,15 @@ _G.HK_WeaponMap = {
 
 
 
+
+
+
+
     sks = { cat = "EspItem_DMR", key = "EspItem_DMR_SKS", name = "SKS", color = {R=255, G=255, B=0, A=255} },
+
+
+
+
 
 
 
@@ -8494,7 +16986,15 @@ _G.HK_WeaponMap = {
 
 
 
+
+
+
+
     mini = { cat = "EspItem_DMR", key = "EspItem_DMR_Mini14", name = "Mini 14", color = {R=255, G=255, B=0, A=255} },
+
+
+
+
 
 
 
@@ -8502,7 +17002,15 @@ _G.HK_WeaponMap = {
 
 
 
+
+
+
+
     qbu = { cat = "EspItem_DMR", key = "EspItem_DMR_QBU", name = "QBU", color = {R=255, G=255, B=0, A=255} },
+
+
+
+
 
 
 
@@ -8510,11 +17018,23 @@ _G.HK_WeaponMap = {
 
 
 
+
+
+
+
     vss = { cat = "EspItem_DMR", key = "EspItem_DMR_VSS", name = "VSS", color = {R=255, G=255, B=0, A=255} },
 
 
 
+
+
+
+
     
+
+
+
+
 
 
 
@@ -8522,7 +17042,15 @@ _G.HK_WeaponMap = {
 
 
 
+
+
+
+
     uzi = { cat = "EspItem_SMG", key = "EspItem_SMG_UZI", name = "UZI", color = {R=0, G=255, B=255, A=255} },
+
+
+
+
 
 
 
@@ -8530,7 +17058,15 @@ _G.HK_WeaponMap = {
 
 
 
+
+
+
+
     vector = { cat = "EspItem_SMG", key = "EspItem_SMG_Vector", name = "Vector", color = {R=0, G=255, B=255, A=255} },
+
+
+
+
 
 
 
@@ -8538,7 +17074,15 @@ _G.HK_WeaponMap = {
 
 
 
+
+
+
+
     bizon = { cat = "EspItem_SMG", key = "EspItem_SMG_Bizon", name = "PP-19 Bizon", color = {R=0, G=255, B=255, A=255} },
+
+
+
+
 
 
 
@@ -8546,11 +17090,23 @@ _G.HK_WeaponMap = {
 
 
 
+
+
+
+
     p90 = { cat = "EspItem_SMG", key = "EspItem_SMG_P90", name = "★ P90 ★", color = {R=255, G=0, B=255, A=255} },
 
 
 
+
+
+
+
     
+
+
+
+
 
 
 
@@ -8558,7 +17114,15 @@ _G.HK_WeaponMap = {
 
 
 
+
+
+
+
     s686 = { cat = "EspItem_SG", key = "EspItem_SG_S686", name = "S686", color = {R=0, G=255, B=100, A=255} },
+
+
+
+
 
 
 
@@ -8566,7 +17130,15 @@ _G.HK_WeaponMap = {
 
 
 
+
+
+
+
     s12k = { cat = "EspItem_SG", key = "EspItem_SG_S12K", name = "S12K", color = {R=0, G=255, B=100, A=255} },
+
+
+
+
 
 
 
@@ -8574,11 +17146,23 @@ _G.HK_WeaponMap = {
 
 
 
+
+
+
+
     m1014 = { cat = "EspItem_SG", key = "EspItem_SG_M1014", name = "M1014", color = {R=0, G=255, B=100, A=255} },
 
 
 
+
+
+
+
     
+
+
+
+
 
 
 
@@ -8586,7 +17170,15 @@ _G.HK_WeaponMap = {
 
 
 
+
+
+
+
     dp28 = { cat = "EspItem_LMG", key = "EspItem_LMG_DP28", name = "DP-28", color = {R=255, G=150, B=0, A=255} },
+
+
+
+
 
 
 
@@ -8594,11 +17186,23 @@ _G.HK_WeaponMap = {
 
 
 
+
+
+
+
     mg3 = { cat = "EspItem_LMG", key = "EspItem_LMG_MG3", name = "★ MG3 ★", color = {R=255, G=0, B=255, A=255} },
 
 
 
+
+
+
+
     
+
+
+
+
 
 
 
@@ -8606,7 +17210,15 @@ _G.HK_WeaponMap = {
 
 
 
+
+
+
+
     p1911 = { cat = "EspItem_Pistol", key = "EspItem_Pistol_P1911", name = "P1911", color = {R=200, G=200, B=200, A=255} },
+
+
+
+
 
 
 
@@ -8614,7 +17226,15 @@ _G.HK_WeaponMap = {
 
 
 
+
+
+
+
     r1895 = { cat = "EspItem_Pistol", key = "EspItem_Pistol_R1895", name = "R1895", color = {R=200, G=200, B=200, A=255} },
+
+
+
+
 
 
 
@@ -8622,7 +17242,15 @@ _G.HK_WeaponMap = {
 
 
 
+
+
+
+
     skorpion = { cat = "EspItem_Pistol", key = "EspItem_Pistol_Skorpion", name = "Skorpion", color = {R=200, G=200, B=200, A=255} },
+
+
+
+
 
 
 
@@ -8630,7 +17258,15 @@ _G.HK_WeaponMap = {
 
 
 
+
+
+
+
     
+
+
+
+
 
 
 
@@ -8638,7 +17274,15 @@ _G.HK_WeaponMap = {
 
 
 
+
+
+
+
     pan = { cat = "EspItem_Melee", key = "EspItem_Melee_Pan", name = "Chảo (Pan)", color = {R=200, G=150, B=100, A=255} },
+
+
+
+
 
 
 
@@ -8646,7 +17290,15 @@ _G.HK_WeaponMap = {
 
 
 
+
+
+
+
     machete = { cat = "EspItem_Melee", key = "EspItem_Melee_Machete", name = "Rựa (Machete)", color = {R=200, G=150, B=100, A=255} },
+
+
+
+
 
 
 
@@ -8654,7 +17306,15 @@ _G.HK_WeaponMap = {
 
 
 
+
+
+
+
     
+
+
+
+
 
 
 
@@ -8662,7 +17322,15 @@ _G.HK_WeaponMap = {
 
 
 
+
+
+
+
     helmet3 = { cat = "EspItem_Other", key = "EspItem_Ot_Helmet3", name = "Mũ Cấp 3", color = {R=0, G=255, B=0, A=255} },
+
+
+
+
 
 
 
@@ -8670,7 +17338,15 @@ _G.HK_WeaponMap = {
 
 
 
+
+
+
+
     armor3 = { cat = "EspItem_Other", key = "EspItem_Ot_Vest3", name = "Giáp Cấp 3", color = {R=0, G=255, B=0, A=255} },
+
+
+
+
 
 
 
@@ -8678,7 +17354,15 @@ _G.HK_WeaponMap = {
 
 
 
+
+
+
+
     vest_level3 = { cat = "EspItem_Other", key = "EspItem_Ot_Vest3", name = "Giáp Cấp 3", color = {R=0, G=255, B=0, A=255} },
+
+
+
+
 
 
 
@@ -8686,7 +17370,15 @@ _G.HK_WeaponMap = {
 
 
 
+
+
+
+
     bag_lvl3 = { cat = "EspItem_Other", key = "EspItem_Ot_Bag3", name = "Balo Cấp 3", color = {R=0, G=255, B=0, A=255} },
+
+
+
+
 
 
 
@@ -8694,7 +17386,15 @@ _G.HK_WeaponMap = {
 
 
 
+
+
+
+
     
+
+
+
+
 
 
 
@@ -8702,7 +17402,15 @@ _G.HK_WeaponMap = {
 
 
 
+
+
+
+
     sight_8x = { cat = "EspItem_Other", key = "EspItem_Ot_Scope8x", name = "Scope 8X", color = {R=255, G=0, B=255, A=255} },
+
+
+
+
 
 
 
@@ -8710,7 +17418,15 @@ _G.HK_WeaponMap = {
 
 
 
+
+
+
+
     sight_6x = { cat = "EspItem_Other", key = "EspItem_Ot_Scope6x", name = "Scope 6X", color = {R=255, G=0, B=255, A=255} },
+
+
+
+
 
 
 
@@ -8718,7 +17434,15 @@ _G.HK_WeaponMap = {
 
 
 
+
+
+
+
     sight_4x = { cat = "EspItem_Other", key = "EspItem_Ot_Scope4x", name = "Scope 4X", color = {R=255, G=0, B=255, A=255} },
+
+
+
+
 
 
 
@@ -8726,7 +17450,15 @@ _G.HK_WeaponMap = {
 
 
 
+
+
+
+
     medkit = { cat = "EspItem_Other", key = "EspItem_Ot_Medkit", name = "Bộ Y Tế (Medkit)", color = {R=0, G=200, B=255, A=255} },
+
+
+
+
 
 
 
@@ -8734,7 +17466,19 @@ _G.HK_WeaponMap = {
 
 
 
+
+
+
+
 }
+
+
+
+
+
+
+
+
 
 
 
@@ -8746,7 +17490,15 @@ _G.HK_OrderedKeywords = {
 
 
 
+
+
+
+
     "m249", "m24", "helmet3", "helmet_lvl3", "armor3", "armor_lvl3", "vest_level3", "bag3", "bag_lvl3", "backpack_lvl3",
+
+
+
+
 
 
 
@@ -8754,7 +17506,15 @@ _G.HK_OrderedKeywords = {
 
 
 
+
+
+
+
     "m416", "akm", "scar", "groza", "aug", "qbz", "m762", "g36c", "famas", "ace32", "honey",
+
+
+
+
 
 
 
@@ -8762,7 +17522,15 @@ _G.HK_OrderedKeywords = {
 
 
 
+
+
+
+
     "sks", "slr", "mini", "mk14", "qbu", "mk12", "vss",
+
+
+
+
 
 
 
@@ -8770,7 +17538,15 @@ _G.HK_OrderedKeywords = {
 
 
 
+
+
+
+
     "s686", "s1897", "s12k", "dbs", "m1014",
+
+
+
+
 
 
 
@@ -8778,7 +17554,15 @@ _G.HK_OrderedKeywords = {
 
 
 
+
+
+
+
     "p1911", "p92", "r1895", "deagle", "skorpion", "p18c",
+
+
+
+
 
 
 
@@ -8786,11 +17570,23 @@ _G.HK_OrderedKeywords = {
 
 
 
+
+
+
+
     "scope_8x", "sight_8x", "scope_6x", "sight_6x", "scope_4x", "sight_4x", "8x", "6x", "4x",
 
 
 
+
+
+
+
     "medkit", "firstaid", "bộ y tế", "sơ cứu"
+
+
+
+
 
 
 
@@ -8802,7 +17598,19 @@ _G.HK_OrderedKeywords = {
 
 
 
+
+
+
+
+
+
+
+
 -- Bổ sung mapping theo ID số và từ khóa Tiếng Việt vào _G.HK_WeaponMap
+
+
+
+
 
 
 
@@ -8810,7 +17618,15 @@ pcall(function()
 
 
 
+
+
+
+
     local extraMappings = {
+
+
+
+
 
 
 
@@ -8818,7 +17634,15 @@ pcall(function()
 
 
 
+
+
+
+
         [101007] = "m762", [101009] = "g36c", [101010] = "famas", [101011] = "ace32", [101012] = "honey",
+
+
+
+
 
 
 
@@ -8826,7 +17650,15 @@ pcall(function()
 
 
 
+
+
+
+
         [103005] = "sks", [103006] = "slr", [103007] = "mini", [103008] = "mk14", [103009] = "qbu", [103012] = "mk12", [103013] = "vss",
+
+
+
+
 
 
 
@@ -8834,7 +17666,15 @@ pcall(function()
 
 
 
+
+
+
+
         [105001] = "s686", [105002] = "s1897", [105003] = "s12k", [105004] = "dbs", [105005] = "m1014",
+
+
+
+
 
 
 
@@ -8842,7 +17682,15 @@ pcall(function()
 
 
 
+
+
+
+
         [106001] = "p1911", [106002] = "p92", [106003] = "r1895", [106004] = "deagle", [106005] = "skorpion", [106006] = "p18c",
+
+
+
+
 
 
 
@@ -8850,7 +17698,15 @@ pcall(function()
 
 
 
+
+
+
+
         [501006] = "helmet3", [502003] = "armor3", [502006] = "armor3", [503003] = "bag3", [503006] = "bag3",
+
+
+
+
 
 
 
@@ -8858,7 +17714,15 @@ pcall(function()
 
 
 
+
+
+
+
         [601005] = "medkit", [601006] = "firstaid",
+
+
+
+
 
 
 
@@ -8866,7 +17730,15 @@ pcall(function()
 
 
 
+
+
+
+
         ["mũ cấp 3"] = "helmet3", ["mũ 3"] = "helmet3",
+
+
+
+
 
 
 
@@ -8874,7 +17746,15 @@ pcall(function()
 
 
 
+
+
+
+
         ["balo cấp 3"] = "bag3", ["balo 3"] = "bag3",
+
+
+
+
 
 
 
@@ -8882,7 +17762,15 @@ pcall(function()
 
 
 
+
+
+
+
         ["bộ y tế"] = "medkit", ["sơ cứu"] = "firstaid",
+
+
+
+
 
 
 
@@ -8890,7 +17778,15 @@ pcall(function()
 
 
 
+
+
+
+
     }
+
+
+
+
 
 
 
@@ -8898,7 +17794,15 @@ pcall(function()
 
 
 
+
+
+
+
         _G.HK_WeaponMap[key] = _G.HK_WeaponMap[refKey]
+
+
+
+
 
 
 
@@ -8906,7 +17810,23 @@ pcall(function()
 
 
 
+
+
+
+
 end)
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -8922,7 +17842,19 @@ local ConfigFileName = "Menu_Settings.txt"
 
 
 
+
+
+
+
 _G.LastConfigSaveStr = ""
+
+
+
+
+
+
+
+
 
 
 
@@ -8934,7 +17866,15 @@ _G.HK_Settings = _G.HK_Settings or {
 
 
 
+
+
+
+
     ESP_HITMARK_1 = 0, ESP_HITMARK_2 = 0, WALLHACK = 0, WHITE_BODY = 0,
+
+
+
+
 
 
 
@@ -8942,7 +17882,15 @@ _G.HK_Settings = _G.HK_Settings or {
 
 
 
+
+
+
+
     
+
+
+
+
 
 
 
@@ -8950,7 +17898,15 @@ _G.HK_Settings = _G.HK_Settings or {
 
 
 
+
+
+
+
     WeaponGlowColor = 5,
+
+
+
+
 
 
 
@@ -8958,7 +17914,15 @@ _G.HK_Settings = _G.HK_Settings or {
 
 
 
+
+
+
+
     AIMBOT = 0, SPEED_AIMBOT = 0, FOV_AIMBOT = 0, THU_TAM = 0,
+
+
+
+
 
 
 
@@ -8970,7 +17934,19 @@ _G.HK_Settings = _G.HK_Settings or {
 
 
 
+
+
+
+
+
+
+
+
     -- Per-weapon recoil adjustment (0 = use global NO_RECOIL_100)
+
+
+
+
 
 
 
@@ -8978,7 +17954,15 @@ _G.HK_Settings = _G.HK_Settings or {
 
 
 
+
+
+
+
     REC_W_SKS = 0, REC_W_SLR = 0, REC_W_Mini14 = 0, REC_W_Mk14 = 0, REC_W_QBU = 0, REC_W_Mk12 = 0, REC_W_VSS = 0,
+
+
+
+
 
 
 
@@ -8986,7 +17970,15 @@ _G.HK_Settings = _G.HK_Settings or {
 
 
 
+
+
+
+
     REC_W_DP28 = 0, REC_W_M249 = 0, REC_W_MG3 = 0,
+
+
+
+
 
 
 
@@ -8994,7 +17986,15 @@ _G.HK_Settings = _G.HK_Settings or {
 
 
 
+
+
+
+
     REC_SS_W_M416 = 0, REC_SS_W_AKM = 0, REC_SS_W_SCAR = 0, REC_SS_W_Groza = 0, REC_SS_W_AUG = 0, REC_SS_W_QBZ = 0, REC_SS_W_M762 = 0, REC_SS_W_G36C = 0, REC_SS_W_FAMAS = 0, REC_SS_W_ACE32 = 0, REC_SS_W_Honey = 0,
+
+
+
+
 
 
 
@@ -9002,7 +18002,15 @@ _G.HK_Settings = _G.HK_Settings or {
 
 
 
+
+
+
+
     REC_SS_W_UZI = 0, REC_SS_W_UMP45 = 0, REC_SS_W_Vector = 0, REC_SS_W_Tommy = 0, REC_SS_W_Bizon = 0, REC_SS_W_MP5K = 0, REC_SS_W_P90 = 0,
+
+
+
+
 
 
 
@@ -9010,7 +18018,15 @@ _G.HK_Settings = _G.HK_Settings or {
 
 
 
+
+
+
+
     MAGIC_HEAD = 0, MAGIC_BODY = 0, MAGIC_LEGS = 0,
+
+
+
+
 
 
 
@@ -9018,7 +18034,15 @@ _G.HK_Settings = _G.HK_Settings or {
 
 
 
+
+
+
+
     IpadView = 0,
+
+
+
+
 
 
 
@@ -9026,7 +18050,15 @@ _G.HK_Settings = _G.HK_Settings or {
 
 
 
+
+
+
+
     NOGRASS = 0, NOTREES = 0, NOWATER = 0, NOFOG = 0,
+
+
+
+
 
 
 
@@ -9034,7 +18066,15 @@ _G.HK_Settings = _G.HK_Settings or {
 
 
 
+
+
+
+
     FAKE_HWID = 1,  -- Luôn bật, không hiển thị trong menu
+
+
+
+
 
 
 
@@ -9042,7 +18082,15 @@ _G.HK_Settings = _G.HK_Settings or {
 
 
 
+
+
+
+
     NO_LANDING_LAG = 0,
+
+
+
+
 
 
 
@@ -9050,7 +18098,15 @@ _G.HK_Settings = _G.HK_Settings or {
 
 
 
+
+
+
+
     THREAT_ESP = 0,
+
+
+
+
 
 
 
@@ -9058,7 +18114,15 @@ _G.HK_Settings = _G.HK_Settings or {
 
 
 
+
+
+
+
     THREAT_ESP_WARN_LINE = 1,
+
+
+
+
 
 
 
@@ -9070,7 +18134,19 @@ _G.HK_Settings = _G.HK_Settings or {
 
 
 
+
+
+
+
+
+
+
+
 -- Wall color (9 mau: 1=TRANG 2=DO 3=VANG 4=XANH LA 5=XANH NGOC 6=XANH DUONG 7=TIM 8=HONG 9=DEN)
+
+
+
+
 
 
 
@@ -9078,7 +18154,15 @@ _G.HK_Settings = _G.HK_Settings or {
 
 
 
+
+
+
+
     WALL_OCCLUDED_COLOR = 2,      -- Mặc định Đỏ (vị trí số 2)
+
+
+
+
 
 
 
@@ -9090,7 +18174,19 @@ _G.HK_Settings = _G.HK_Settings or {
 
 
 
+
+
+
+
+
+
+
+
     -- Bomb & Vehicle ESP Config
+
+
+
+
 
 
 
@@ -9098,7 +18194,15 @@ _G.HK_Settings = _G.HK_Settings or {
 
 
 
+
+
+
+
     EspItemBom = 0,
+
+
+
+
 
 
 
@@ -9106,7 +18210,15 @@ _G.HK_Settings = _G.HK_Settings or {
 
 
 
+
+
+
+
     EspVehicle = 0,
+
+
+
+
 
 
 
@@ -9114,7 +18226,15 @@ _G.HK_Settings = _G.HK_Settings or {
 
 
 
+
+
+
+
     EspVeh_UAZ = 1,
+
+
+
+
 
 
 
@@ -9122,7 +18242,15 @@ _G.HK_Settings = _G.HK_Settings or {
 
 
 
+
+
+
+
     EspVeh_Coupe = 1,
+
+
+
+
 
 
 
@@ -9130,7 +18258,15 @@ _G.HK_Settings = _G.HK_Settings or {
 
 
 
+
+
+
+
     EspVeh_Motor = 1,
+
+
+
+
 
 
 
@@ -9142,7 +18278,19 @@ _G.HK_Settings = _G.HK_Settings or {
 
 
 
+
+
+
+
+
+
+
+
     -- ESP Vật Phẩm
+
+
+
+
 
 
 
@@ -9150,7 +18298,15 @@ _G.HK_Settings = _G.HK_Settings or {
 
 
 
+
+
+
+
     EspItem_Dist = 150,
+
+
+
+
 
 
 
@@ -9158,7 +18314,15 @@ _G.HK_Settings = _G.HK_Settings or {
 
 
 
+
+
+
+
     EspItem_AR_M416 = 1, EspItem_AR_AKM = 1, EspItem_AR_SCAR = 1, EspItem_AR_Groza = 1, EspItem_AR_AUG = 1, EspItem_AR_QBZ = 1, EspItem_AR_M762 = 1, EspItem_AR_G36C = 1, EspItem_AR_FAMAS = 1, EspItem_AR_ACE32 = 1, EspItem_AR_Honey = 1,
+
+
+
+
 
 
 
@@ -9166,7 +18330,15 @@ _G.HK_Settings = _G.HK_Settings or {
 
 
 
+
+
+
+
     EspItem_SR_Kar98 = 1, EspItem_SR_M24 = 1, EspItem_SR_AWM = 1, EspItem_SR_Mosin = 1, EspItem_SR_Win94 = 1, EspItem_SR_AMR = 1,
+
+
+
+
 
 
 
@@ -9174,7 +18346,15 @@ _G.HK_Settings = _G.HK_Settings or {
 
 
 
+
+
+
+
     EspItem_DMR_SKS = 1, EspItem_DMR_SLR = 1, EspItem_DMR_Mini14 = 1, EspItem_DMR_Mk14 = 1, EspItem_DMR_QBU = 1, EspItem_DMR_Mk12 = 1, EspItem_DMR_VSS = 1,
+
+
+
+
 
 
 
@@ -9182,7 +18362,15 @@ _G.HK_Settings = _G.HK_Settings or {
 
 
 
+
+
+
+
     EspItem_SMG_UZI = 1, EspItem_SMG_UMP45 = 1, EspItem_SMG_Vector = 1, EspItem_SMG_Tommy = 1, EspItem_SMG_Bizon = 1, EspItem_SMG_MP5K = 1, EspItem_SMG_P90 = 1,
+
+
+
+
 
 
 
@@ -9190,7 +18378,15 @@ _G.HK_Settings = _G.HK_Settings or {
 
 
 
+
+
+
+
     EspItem_SG_S686 = 1, EspItem_SG_S1897 = 1, EspItem_SG_S12K = 1, EspItem_SG_DBS = 1, EspItem_SG_M1014 = 1,
+
+
+
+
 
 
 
@@ -9198,7 +18394,15 @@ _G.HK_Settings = _G.HK_Settings or {
 
 
 
+
+
+
+
     EspItem_LMG_DP28 = 1, EspItem_LMG_M249 = 1, EspItem_LMG_MG3 = 1,
+
+
+
+
 
 
 
@@ -9206,7 +18410,15 @@ _G.HK_Settings = _G.HK_Settings or {
 
 
 
+
+
+
+
     EspItem_Pistol_P1911 = 1, EspItem_Pistol_P92 = 1, EspItem_Pistol_R1895 = 1, EspItem_Pistol_Deagle = 1, EspItem_Pistol_Skorpion = 1, EspItem_Pistol_P18C = 1,
+
+
+
+
 
 
 
@@ -9214,11 +18426,23 @@ _G.HK_Settings = _G.HK_Settings or {
 
 
 
+
+
+
+
     EspItem_Melee_Pan = 1, EspItem_Melee_Sickle = 1, EspItem_Melee_Machete = 1, EspItem_Melee_Crowbar = 1,
 
 
 
+
+
+
+
     EspItem_Other = 0,
+
+
+
+
 
 
 
@@ -9230,7 +18454,19 @@ _G.HK_Settings = _G.HK_Settings or {
 
 
 
+
+
+
+
+
+
+
+
     -- AimTouch settings integrated from Code 1
+
+
+
+
 
 
 
@@ -9238,7 +18474,15 @@ _G.HK_Settings = _G.HK_Settings or {
 
 
 
+
+
+
+
     AimTouchHipfire = 0,
+
+
+
+
 
 
 
@@ -9246,7 +18490,15 @@ _G.HK_Settings = _G.HK_Settings or {
 
 
 
+
+
+
+
     AimTouchHipIgBot = 0,
+
+
+
+
 
 
 
@@ -9254,7 +18506,15 @@ _G.HK_Settings = _G.HK_Settings or {
 
 
 
+
+
+
+
     AimTouchHipPrio = 1,
+
+
+
+
 
 
 
@@ -9262,7 +18522,15 @@ _G.HK_Settings = _G.HK_Settings or {
 
 
 
+
+
+
+
     AimTouchHipCond = 1,
+
+
+
+
 
 
 
@@ -9270,7 +18538,15 @@ _G.HK_Settings = _G.HK_Settings or {
 
 
 
+
+
+
+
     AimTouchHipFOV = 30,
+
+
+
+
 
 
 
@@ -9282,7 +18558,19 @@ _G.HK_Settings = _G.HK_Settings or {
 
 
 
+
+
+
+
+
+
+
+
     AimTouchSG = 0,
+
+
+
+
 
 
 
@@ -9290,7 +18578,15 @@ _G.HK_Settings = _G.HK_Settings or {
 
 
 
+
+
+
+
     AimTouchSGIgKnock = 0,
+
+
+
+
 
 
 
@@ -9298,7 +18594,15 @@ _G.HK_Settings = _G.HK_Settings or {
 
 
 
+
+
+
+
     AimTouchSGVisCheck = 0,
+
+
+
+
 
 
 
@@ -9306,7 +18610,15 @@ _G.HK_Settings = _G.HK_Settings or {
 
 
 
+
+
+
+
     AimTouchSGBone = 2,
+
+
+
+
 
 
 
@@ -9314,11 +18626,23 @@ _G.HK_Settings = _G.HK_Settings or {
 
 
 
+
+
+
+
     AimTouchSGSpeed = 80,
 
 
 
+
+
+
+
     AimTouchSGFOV = 40,
+
+
+
+
 
 
 
@@ -9330,7 +18654,19 @@ _G.HK_Settings = _G.HK_Settings or {
 
 
 
+
+
+
+
+
+
+
+
     AimTouchScopeAll = 0,
+
+
+
+
 
 
 
@@ -9338,7 +18674,15 @@ _G.HK_Settings = _G.HK_Settings or {
 
 
 
+
+
+
+
     AimTouchScopeIgBot = 0,
+
+
+
+
 
 
 
@@ -9346,7 +18690,15 @@ _G.HK_Settings = _G.HK_Settings or {
 
 
 
+
+
+
+
     AimTouchScopePrio = 1,
+
+
+
+
 
 
 
@@ -9354,7 +18706,15 @@ _G.HK_Settings = _G.HK_Settings or {
 
 
 
+
+
+
+
     AimTouchScopeCond = 1,
+
+
+
+
 
 
 
@@ -9362,7 +18722,15 @@ _G.HK_Settings = _G.HK_Settings or {
 
 
 
+
+
+
+
     AimTouchScopeFOV = 20,
+
+
+
+
 
 
 
@@ -9370,7 +18738,15 @@ _G.HK_Settings = _G.HK_Settings or {
 
 
 
+
+
+
+
     AimTouchScopePred = 50,
+
+
+
+
 
 
 
@@ -9382,7 +18758,19 @@ _G.HK_Settings = _G.HK_Settings or {
 
 
 
+
+
+
+
+
+
+
+
     AimTouchScopeSniper = 0,
+
+
+
+
 
 
 
@@ -9390,7 +18778,15 @@ _G.HK_Settings = _G.HK_Settings or {
 
 
 
+
+
+
+
     AimTouchSniperIgBot = 0,
+
+
+
+
 
 
 
@@ -9398,7 +18794,15 @@ _G.HK_Settings = _G.HK_Settings or {
 
 
 
+
+
+
+
     AimTouchSniperPrio = 1,
+
+
+
+
 
 
 
@@ -9406,7 +18810,15 @@ _G.HK_Settings = _G.HK_Settings or {
 
 
 
+
+
+
+
     AimTouchSniperCond = 2,
+
+
+
+
 
 
 
@@ -9414,11 +18826,23 @@ _G.HK_Settings = _G.HK_Settings or {
 
 
 
+
+
+
+
     AimTouchSniperFOV = 20,
 
 
 
+
+
+
+
     AimTouchSniperDist = 400,
+
+
+
+
 
 
 
@@ -9430,7 +18854,19 @@ _G.HK_Settings = _G.HK_Settings or {
 
 
 
+
+
+
+
+
+
+
+
     -- ===== MOD SKIN SETTINGS =====
+
+
+
+
 
 
 
@@ -9438,7 +18874,15 @@ _G.HK_Settings = _G.HK_Settings or {
 
 
 
+
+
+
+
     UnlockWardrobe = 0,
+
+
+
+
 
 
 
@@ -9446,7 +18890,15 @@ _G.HK_Settings = _G.HK_Settings or {
 
 
 
+
+
+
+
     SkinM416 = 1, SkinAKM = 1, SkinSCAR = 1, SkinM762 = 1, SkinAUG = 1,
+
+
+
+
 
 
 
@@ -9454,7 +18906,15 @@ _G.HK_Settings = _G.HK_Settings or {
 
 
 
+
+
+
+
     SkinDacia = 1, SkinUAZ = 1, SkinCoupe = 1, SkinBuggy = 1, SkinMirado = 1,
+
+
+
+
 
 
 
@@ -9466,7 +18926,19 @@ _G.HK_Settings = _G.HK_Settings or {
 
 
 
+
+
+
+
+
+
+
+
 _G.LexusConfig = _G.LexusConfig or {}
+
+
+
+
 
 
 
@@ -9474,7 +18946,15 @@ setmetatable(_G.LexusConfig, {
 
 
 
+
+
+
+
     __index = function(_, key)
+
+
+
+
 
 
 
@@ -9482,7 +18962,15 @@ setmetatable(_G.LexusConfig, {
 
 
 
+
+
+
+
         if val == nil then return false end
+
+
+
+
 
 
 
@@ -9490,7 +18978,15 @@ setmetatable(_G.LexusConfig, {
 
 
 
+
+
+
+
     end,
+
+
+
+
 
 
 
@@ -9498,7 +18994,15 @@ setmetatable(_G.LexusConfig, {
 
 
 
+
+
+
+
         if type(val) == "boolean" then
+
+
+
+
 
 
 
@@ -9506,7 +19010,15 @@ setmetatable(_G.LexusConfig, {
 
 
 
+
+
+
+
         else
+
+
+
+
 
 
 
@@ -9514,11 +19026,23 @@ setmetatable(_G.LexusConfig, {
 
 
 
+
+
+
+
         end
 
 
 
+
+
+
+
     end
+
+
+
+
 
 
 
@@ -9530,7 +19054,19 @@ setmetatable(_G.LexusConfig, {
 
 
 
+
+
+
+
+
+
+
+
 _G.SaveModSettings = function()
+
+
+
+
 
 
 
@@ -9538,7 +19074,15 @@ _G.SaveModSettings = function()
 
 
 
+
+
+
+
         local data = "return {\n"
+
+
+
+
 
 
 
@@ -9546,7 +19090,15 @@ _G.SaveModSettings = function()
 
 
 
+
+
+
+
             data = data .. "  [\"" .. tostring(k) .. "\"] = " .. tostring(v) .. ",\n"
+
+
+
+
 
 
 
@@ -9554,7 +19106,15 @@ _G.SaveModSettings = function()
 
 
 
+
+
+
+
         data = data .. "}"
+
+
+
+
 
 
 
@@ -9562,7 +19122,15 @@ _G.SaveModSettings = function()
 
 
 
+
+
+
+
         if data == _G.LastConfigSaveStr then return end
+
+
+
+
 
 
 
@@ -9574,7 +19142,19 @@ _G.SaveModSettings = function()
 
 
 
+
+
+
+
+
+
+
+
         local paths = GetConfigPaths(ConfigFileName)
+
+
+
+
 
 
 
@@ -9582,7 +19162,15 @@ _G.SaveModSettings = function()
 
 
 
+
+
+
+
             local file = io.open(path, "w")
+
+
+
+
 
 
 
@@ -9590,7 +19178,15 @@ _G.SaveModSettings = function()
 
 
 
+
+
+
+
                 file:write(data)
+
+
+
+
 
 
 
@@ -9598,7 +19194,15 @@ _G.SaveModSettings = function()
 
 
 
+
+
+
+
                 break
+
+
+
+
 
 
 
@@ -9606,7 +19210,15 @@ _G.SaveModSettings = function()
 
 
 
+
+
+
+
         end
+
+
+
+
 
 
 
@@ -9614,7 +19226,19 @@ _G.SaveModSettings = function()
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -9626,7 +19250,15 @@ _G.LoadModSettings = function()
 
 
 
+
+
+
+
     pcall(function()
+
+
+
+
 
 
 
@@ -9634,7 +19266,15 @@ _G.LoadModSettings = function()
 
 
 
+
+
+
+
         local content = nil
+
+
+
+
 
 
 
@@ -9642,7 +19282,15 @@ _G.LoadModSettings = function()
 
 
 
+
+
+
+
             local file = io.open(path, "r")
+
+
+
+
 
 
 
@@ -9650,7 +19298,15 @@ _G.LoadModSettings = function()
 
 
 
+
+
+
+
                 content = file:read("*a")
+
+
+
+
 
 
 
@@ -9658,7 +19314,15 @@ _G.LoadModSettings = function()
 
 
 
+
+
+
+
                 break
+
+
+
+
 
 
 
@@ -9666,7 +19330,19 @@ _G.LoadModSettings = function()
 
 
 
+
+
+
+
         end
+
+
+
+
+
+
+
+
 
 
 
@@ -9678,7 +19354,15 @@ _G.LoadModSettings = function()
 
 
 
+
+
+
+
             local func = load(content)
+
+
+
+
 
 
 
@@ -9686,7 +19370,15 @@ _G.LoadModSettings = function()
 
 
 
+
+
+
+
                 local savedData = func()
+
+
+
+
 
 
 
@@ -9694,7 +19386,15 @@ _G.LoadModSettings = function()
 
 
 
+
+
+
+
                     for k, v in pairs(savedData) do
+
+
+
+
 
 
 
@@ -9702,7 +19402,15 @@ _G.LoadModSettings = function()
 
 
 
+
+
+
+
                     end
+
+
+
+
 
 
 
@@ -9710,7 +19418,15 @@ _G.LoadModSettings = function()
 
 
 
+
+
+
+
                     _G.MagicUpdateVersion = (_G.MagicUpdateVersion or 1) + 1
+
+
+
+
 
 
 
@@ -9718,7 +19434,15 @@ _G.LoadModSettings = function()
 
 
 
+
+
+
+
             end
+
+
+
+
 
 
 
@@ -9726,7 +19450,15 @@ _G.LoadModSettings = function()
 
 
 
+
+
+
+
         _G.SaveModSettings() 
+
+
+
+
 
 
 
@@ -9734,7 +19466,19 @@ _G.LoadModSettings = function()
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -9746,7 +19490,15 @@ local function AutoSaveLoop()
 
 
 
+
+
+
+
     pcall(function() if _G.SaveModSettings then _G.SaveModSettings() end end)
+
+
+
+
 
 
 
@@ -9754,7 +19506,15 @@ local function AutoSaveLoop()
 
 
 
+
+
+
+
         local okTicker, ticker = pcall(require, "common.time_ticker") 
+
+
+
+
 
 
 
@@ -9762,7 +19522,15 @@ local function AutoSaveLoop()
 
 
 
+
+
+
+
             ticker.AddTimerOnce(3.0, AutoSaveLoop) 
+
+
+
+
 
 
 
@@ -9770,11 +19538,27 @@ local function AutoSaveLoop()
 
 
 
+
+
+
+
     end)
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -9786,7 +19570,15 @@ if not _G.ModConfigLoaded then
 
 
 
+
+
+
+
     _G.LoadModSettings()
+
+
+
+
 
 
 
@@ -9794,11 +19586,27 @@ if not _G.ModConfigLoaded then
 
 
 
+
+
+
+
     _G.ModConfigLoaded = true
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -9814,7 +19622,19 @@ end
 
 
 
+
+
+
+
+
+
+
+
 _G.VIP_Attachments = {
+
+
+
+
 
 
 
@@ -9822,7 +19642,15 @@ _G.VIP_Attachments = {
 
 
 
+
+
+
+
     [1101001116]={1010011106,1010011107,1010011108,0,1010011109,1010011112,1010011105,1010011104,1010011103,0,1010011102,0,0,0,0,0,0,0,0,0,0,0},
+
+
+
+
 
 
 
@@ -9830,7 +19658,15 @@ _G.VIP_Attachments = {
 
 
 
+
+
+
+
     [1101001154]={1010011487,1010011488,1010011489,1010011493,1010011490,1010011494,1010011486,1010011485,1010011484,1010011483,1010011482,1010011497,0,0,0,0,0,0,0,0,1010011498,0},
+
+
+
+
 
 
 
@@ -9838,7 +19674,15 @@ _G.VIP_Attachments = {
 
 
 
+
+
+
+
     [1101001213]={1010012067,1010012068,1010012069,1010012072,1010012070,1010012073,1010012066,1010012065,1010012064,1010012063,1010012062,0,0,0,0,0,0,0,0,0,1010012074,0},
+
+
+
+
 
 
 
@@ -9846,7 +19690,15 @@ _G.VIP_Attachments = {
 
 
 
+
+
+
+
     [1101001242]={1010012357,1010012358,1010012359,1010012363,1010012362,1010012364,1010012356,1010012355,1010012354,1010012353,1010012352,1010012276,0,0,0,0,0,0,0,0,1010012365,0},
+
+
+
+
 
 
 
@@ -9854,7 +19706,15 @@ _G.VIP_Attachments = {
 
 
 
+
+
+
+
     [1101001256]={1010012588,1010012589,1010012590,1010012593,1010012592,1010012594,1010012587,1010012586,1010012585,1010012584,1010012583,1010012582,0,0,0,0,0,0,0,0,1010012595,0},
+
+
+
+
 
 
 
@@ -9862,7 +19722,15 @@ _G.VIP_Attachments = {
 
 
 
+
+
+
+
     [1101002029]={1010020249,1010020250,1010020255,1010020247,1010020246,1010020248,1010020240,1010020239,1010020238,1010020237,1010020236,1010020235,0,0,0,0,0,0,0,1010020257,1010020256,1010020258},
+
+
+
+
 
 
 
@@ -9870,7 +19738,15 @@ _G.VIP_Attachments = {
 
 
 
+
+
+
+
     [1101002081]={1010020768,1010020769,1010020770,1010020766,1010020760,1010020767,1010020759,1010020758,1010020757,1010020756,1010020755,1010020776,0,0,0,0,0,0,0,1010020775,1010020777,1010020778},
+
+
+
+
 
 
 
@@ -9878,7 +19754,15 @@ _G.VIP_Attachments = {
 
 
 
+
+
+
+
     [1101003099]={1010030943,1010030944,1010030945,1010030939,1010030938,1010030942,1010030937,1010030936,1010030935,1010030934,1010030933,1010030932,0,1010030947,1010030946,1010030948,1010030949,1010030953,1010030952,0,1010030955,0},
+
+
+
+
 
 
 
@@ -9886,7 +19770,15 @@ _G.VIP_Attachments = {
 
 
 
+
+
+
+
     [1101003195]={1010031912,1010031911,1010031913,1010031908,1010031907,1010031909,1010031906,1010031905,1010031904,1010031903,1010031902,1010031901,0,1010031916,1010031914,1010031918,1010031919,1010031917,1010031915,0,1010031921,0},
+
+
+
+
 
 
 
@@ -9894,7 +19786,15 @@ _G.VIP_Attachments = {
 
 
 
+
+
+
+
     [1101004062]={1010040578,1010040577,1010040579,1010040575,1010040570,1010040576,1010040569,1010040568,1010040567,1010040566,1010040565,1010040564,0,1010040585,1010040580,1010040587,1010040588,1010040589,1010040584,1010040586,1010040590,1010040594},
+
+
+
+
 
 
 
@@ -9902,7 +19802,15 @@ _G.VIP_Attachments = {
 
 
 
+
+
+
+
     [1101004218]={1010042128,1010042127,1010042129,1010042125,1010042124,1010042126,1010042119,1010042118,1010042117,1010042116,1010042115,1010042114,0,1010042136,1010042134,1010042138,1010042139,1010042144,1010042135,1010042137,1010042145,0},
+
+
+
+
 
 
 
@@ -9910,7 +19818,15 @@ _G.VIP_Attachments = {
 
 
 
+
+
+
+
     [1101004246]={1010042406,1010042407,1010042408,1010042404,1010042400,1010042405,1010042399,1010042398,1010042397,1010042396,1010042395,1010042394,0,1010042414,1010042409,1010042416,1010042417,1010042418,1010042410,1010042415,1010042419,1010042420},
+
+
+
+
 
 
 
@@ -9918,7 +19834,15 @@ _G.VIP_Attachments = {
 
 
 
+
+
+
+
     [1101008104]={1010080980,1010080982,1010080984,1010080978,1010080977,1010080979,1010080976,1010080975,1010080974,1010080973,1010080972,1010080992,0,1010080986,1010080985,1010080989,1010080987,1010080993,1010080983,0,1010080988,0},
+
+
+
+
 
 
 
@@ -9926,7 +19850,15 @@ _G.VIP_Attachments = {
 
 
 
+
+
+
+
     [1101008146]={1010081401,1010081402,1010081403,1010081398,1010081397,1010081399,1010081396,1010081395,1010081394,1010081393,1010081392,1010081391,0,1010081405,1010081404,1010081406,1010081407,1010081409,1010081408,0,1010081411,0},
+
+
+
+
 
 
 
@@ -9934,7 +19866,15 @@ _G.VIP_Attachments = {
 
 
 
+
+
+
+
     [1102002043]={1020020372,1020020374,1020020373,1020020383,1020020380,1020020384,1020020379,1020020378,1020020377,1020020376,1020020375,1020020388,0,1020020385,1020020387,0,0,0,1020020386,0,0,0},
+
+
+
+
 
 
 
@@ -9942,7 +19882,15 @@ _G.VIP_Attachments = {
 
 
 
+
+
+
+
     [1102002136]={1020021314,1020021313,1020021315,1020021309,1020021308,1020021312,1020021307,1020021306,1020021305,1020021304,1020021303,1020021302,0,1020021318,1020021316,1020021323,1020021324,1020021322,1020021317,0,1020021325,0},
+
+
+
+
 
 
 
@@ -9950,7 +19898,15 @@ _G.VIP_Attachments = {
 
 
 
+
+
+
+
     [1105001034]={0,0,0,0,1050010287,1050010289,1050010286,1050010285,1050010284,1050010283,1050010282,0,0,0,0,0,0,0,0,1050010292,0,0},
+
+
+
+
 
 
 
@@ -9958,7 +19914,19 @@ _G.VIP_Attachments = {
 
 
 
+
+
+
+
 }
+
+
+
+
+
+
+
+
 
 
 
@@ -9970,7 +19938,15 @@ _G.BaseAttachToIndex = {
 
 
 
+
+
+
+
     [201010]=1, [201005]=1, [201004]=1, [201009]=2, [201003]=2, [201002]=2,
+
+
+
+
 
 
 
@@ -9978,7 +19954,15 @@ _G.BaseAttachToIndex = {
 
 
 
+
+
+
+
     [204011]=5, [204004]=5, [204007]=5, [204013]=6, [204006]=6, [204009]=6,
+
+
+
+
 
 
 
@@ -9986,7 +19970,15 @@ _G.BaseAttachToIndex = {
 
 
 
+
+
+
+
     [202002]=14, [202001]=15, [202004]=16, [202005]=17, [202007]=18, [202006]=19,
+
+
+
+
 
 
 
@@ -9994,7 +19986,19 @@ _G.BaseAttachToIndex = {
 
 
 
+
+
+
+
 }
+
+
+
+
+
+
+
+
 
 
 
@@ -10006,7 +20010,15 @@ _G.VipAttachToIndex = {}
 
 
 
+
+
+
+
 for skinId, attachList in pairs(_G.VIP_Attachments) do
+
+
+
+
 
 
 
@@ -10014,11 +20026,23 @@ for skinId, attachList in pairs(_G.VIP_Attachments) do
 
 
 
+
+
+
+
         if attachId > 0 then _G.VipAttachToIndex[attachId] = index end
 
 
 
+
+
+
+
     end
+
+
+
+
 
 
 
@@ -10030,7 +20054,19 @@ end
 
 
 
+
+
+
+
+
+
+
+
 _G.WeaponSkinMap  = _G.WeaponSkinMap  or {}
+
+
+
+
 
 
 
@@ -10038,11 +20074,23 @@ _G.VehicleSkinMap = _G.VehicleSkinMap or {}
 
 
 
+
+
+
+
 _G.OutfitMap      = _G.OutfitMap      or {}
 
 
 
+
+
+
+
 _G.skinIdCache    = _G.skinIdCache    or {}
+
+
+
+
 
 
 
@@ -10054,7 +20102,19 @@ _G.skinIdCache2   = _G.skinIdCache2   or {}
 
 
 
+
+
+
+
+
+
+
+
 _G.OutfitSkins = {
+
+
+
+
 
 
 
@@ -10062,7 +20122,15 @@ _G.OutfitSkins = {
 
 
 
+
+
+
+
     Bag = {
+
+
+
+
 
 
 
@@ -10070,7 +20138,15 @@ _G.OutfitSkins = {
 
 
 
+
+
+
+
         {1501001051,1501002051,1501003051}, {1501001443,1501002443,1501003443}, {1501001265,1501002265,1501003265},
+
+
+
+
 
 
 
@@ -10078,7 +20154,15 @@ _G.OutfitSkins = {
 
 
 
+
+
+
+
         {1501001592,1501002592,1501003592}, {1501001608,1501002608,1501003608}, {1501001024,1501002024,1501003024},
+
+
+
+
 
 
 
@@ -10086,7 +20170,15 @@ _G.OutfitSkins = {
 
 
 
+
+
+
+
         {1501001346,1501002346,1501003346}
+
+
+
+
 
 
 
@@ -10094,7 +20186,15 @@ _G.OutfitSkins = {
 
 
 
+
+
+
+
     Helmet = {
+
+
+
+
 
 
 
@@ -10102,7 +20202,15 @@ _G.OutfitSkins = {
 
 
 
+
+
+
+
         {1502001012,1502002012,1502003012}, {1502001009,1502002009,1502003009}, {1502001397,1502002397,1502003397},
+
+
+
+
 
 
 
@@ -10110,7 +20218,15 @@ _G.OutfitSkins = {
 
 
 
+
+
+
+
         {1502001350,1502002350,1502003350}, {1502001342,1502002342,1502003342}
+
+
+
+
 
 
 
@@ -10118,7 +20234,19 @@ _G.OutfitSkins = {
 
 
 
+
+
+
+
 }
+
+
+
+
+
+
+
+
 
 
 
@@ -10130,7 +20258,15 @@ _G.skinIdMappings = {
 
 
 
+
+
+
+
     [101004]={101004,1101004246,1101004226,1101004236,1101004062,1101004201,1101004218,1101004046},
+
+
+
+
 
 
 
@@ -10138,7 +20274,15 @@ _G.skinIdMappings = {
 
 
 
+
+
+
+
     [101003]={101003,1101003195,1101003167,1101003099,1101003070},
+
+
+
+
 
 
 
@@ -10146,7 +20290,15 @@ _G.skinIdMappings = {
 
 
 
+
+
+
+
     [101008]={101008,1101008146,1101008154,1101008126,1101008104,1101008081},
+
+
+
+
 
 
 
@@ -10154,7 +20306,15 @@ _G.skinIdMappings = {
 
 
 
+
+
+
+
     [102001]={102001,1101002029,1101002056,1101002081},
+
+
+
+
 
 
 
@@ -10162,7 +20322,15 @@ _G.skinIdMappings = {
 
 
 
+
+
+
+
     [104003]={104003},
+
+
+
+
 
 
 
@@ -10170,7 +20338,19 @@ _G.skinIdMappings = {
 
 
 
+
+
+
+
 }
+
+
+
+
+
+
+
+
 
 
 
@@ -10182,7 +20362,15 @@ _G.VehicleSkins = {
 
 
 
+
+
+
+
     [1961001]={1961007,1961010,1961012,1961013,1961014,1961015,1961016,1961017,1961018,1961020,1961021,1961024,1961025,1961029,1961030,1961031,1961032,1961033,1961034,1961035,1961036,1961037,1961038,1961039,1961040,1961041,1961042,1961043,1961044,1961045,1961046,1961047,1961048,1961049,1961050,1961051,1961052,1961053,1961054,1961055,1961056,1961057,1961058,1961059,1961060,1961061,1961062,1961063,1961064,1961065,1961066,1961067,1961068,1961069,1961136,1961137,1961138,1961139,1961140,1961141,1961142,1961143,1961144,1961145,1961147,1961148,1961149,1961150,1961151,1961152,1961153},
+
+
+
+
 
 
 
@@ -10190,7 +20378,15 @@ _G.VehicleSkins = {
 
 
 
+
+
+
+
     [1915001]={1915002,1915003,1915004,1915005,1915006,1915007,1915008,1915009,1915010,1915011,1915012,1915013,1915014,1915015,1915016,1915017,1915018,1915019,1915020,1915021,1915022,1915023,1915024,1915025,1915026,1915027,1915099},
+
+
+
+
 
 
 
@@ -10198,11 +20394,27 @@ _G.VehicleSkins = {
 
 
 
+
+
+
+
     [1907001]={1907007,1907008,1907010,1907011,1907012,1907013,1907014,1907016,1907018,1907019,1907021,1907022,1907023,1907025,1907026,1907027,1907028,1907029,1907030,1907032,1907033,1907034,1907035,1907036,1907037,1907038,1907040,1907041,1907043,1907044,1907045,1907046,1907047,1907048,1907049,1907050,1907051,1907052,1907053,1907054,1907055,1907056,1907058,1907059,1907060,1907061,1907062,1907063,1907064,1907065,1907066,1907067,1907068,1907069,1907070,1907071,1907072,1907073,1907074}
 
 
 
+
+
+
+
 }
+
+
+
+
+
+
+
+
 
 
 
@@ -10218,7 +20430,19 @@ _G.CustSlotType = { ClothesEquipemtSlot=5, BackpackEquipemtSlot=8, HelmetEquipem
 
 
 
+
+
+
+
+
+
+
+
 local function DX_DownloadGameItem(id)
+
+
+
+
 
 
 
@@ -10226,7 +20450,15 @@ local function DX_DownloadGameItem(id)
 
 
 
+
+
+
+
         local pm = require('client.slua.logic.download.puffer.puffer_manager')
+
+
+
+
 
 
 
@@ -10234,7 +20466,15 @@ local function DX_DownloadGameItem(id)
 
 
 
+
+
+
+
         if pm and pc and pm.GetState(pc.ENUM_DownloadType.ODPTD, {id}) ~= pc.ENUM_DownloadState.Done then
+
+
+
+
 
 
 
@@ -10242,7 +20482,15 @@ local function DX_DownloadGameItem(id)
 
 
 
+
+
+
+
         end
+
+
+
+
 
 
 
@@ -10250,7 +20498,19 @@ local function DX_DownloadGameItem(id)
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -10262,7 +20522,15 @@ _G.DX_get_skin_id = function(weaponID)
 
 
 
+
+
+
+
     if not weaponID then return nil end
+
+
+
+
 
 
 
@@ -10270,7 +20538,15 @@ _G.DX_get_skin_id = function(weaponID)
 
 
 
+
+
+
+
     if targetSkinId and targetSkinId > 0 then
+
+
+
+
 
 
 
@@ -10278,7 +20554,15 @@ _G.DX_get_skin_id = function(weaponID)
 
 
 
+
+
+
+
             pcall(DX_DownloadGameItem, targetSkinId)
+
+
+
+
 
 
 
@@ -10286,7 +20570,15 @@ _G.DX_get_skin_id = function(weaponID)
 
 
 
+
+
+
+
         end
+
+
+
+
 
 
 
@@ -10294,7 +20586,15 @@ _G.DX_get_skin_id = function(weaponID)
 
 
 
+
+
+
+
     end
+
+
+
+
 
 
 
@@ -10302,7 +20602,19 @@ _G.DX_get_skin_id = function(weaponID)
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -10314,7 +20626,15 @@ _G.DX_EquipCharacterAvatar = function(Character)
 
 
 
+
+
+
+
     pcall(function()
+
+
+
+
 
 
 
@@ -10322,11 +20642,23 @@ _G.DX_EquipCharacterAvatar = function(Character)
 
 
 
+
+
+
+
         local BackpackUtils = import("BackpackUtils")
 
 
 
+
+
+
+
         local SlotSyncData = Character.AvatarComponent2.NetAvatarData and Character.AvatarComponent2.NetAvatarData.SlotSyncData
+
+
+
+
 
 
 
@@ -10338,7 +20670,19 @@ _G.DX_EquipCharacterAvatar = function(Character)
 
 
 
+
+
+
+
+
+
+
+
         local function EquipAvatar(ApplyDataIdx, mappedSkin, ApplyEquipSlot, isLevelDependent, levelFunc)
+
+
+
+
 
 
 
@@ -10346,7 +20690,15 @@ _G.DX_EquipCharacterAvatar = function(Character)
 
 
 
+
+
+
+
             local slotData = SlotSyncData:Get(ApplyDataIdx)
+
+
+
+
 
 
 
@@ -10354,7 +20706,15 @@ _G.DX_EquipCharacterAvatar = function(Character)
 
 
 
+
+
+
+
                 local applyItemId = mappedSkin
+
+
+
+
 
 
 
@@ -10362,7 +20722,15 @@ _G.DX_EquipCharacterAvatar = function(Character)
 
 
 
+
+
+
+
                     local level = levelFunc(slotData.AdditionalItemID) or 1
+
+
+
+
 
 
 
@@ -10370,11 +20738,23 @@ _G.DX_EquipCharacterAvatar = function(Character)
 
 
 
+
+
+
+
                     applyItemId = mappedSkin[level] or mappedSkin[1]
 
 
 
+
+
+
+
                 end
+
+
+
+
 
 
 
@@ -10382,7 +20762,15 @@ _G.DX_EquipCharacterAvatar = function(Character)
 
 
 
+
+
+
+
                 if not _G.skinIdCache[applyItemId] then
+
+
+
+
 
 
 
@@ -10390,7 +20778,15 @@ _G.DX_EquipCharacterAvatar = function(Character)
 
 
 
+
+
+
+
                     _G.skinIdCache[applyItemId] = true
+
+
+
+
 
 
 
@@ -10398,7 +20794,15 @@ _G.DX_EquipCharacterAvatar = function(Character)
 
 
 
+
+
+
+
                 slotData.ItemId = applyItemId
+
+
+
+
 
 
 
@@ -10406,7 +20810,15 @@ _G.DX_EquipCharacterAvatar = function(Character)
 
 
 
+
+
+
+
                 Character.AvatarComponent2:OnRep_BodySlotStateChanged()
+
+
+
+
 
 
 
@@ -10414,7 +20826,19 @@ _G.DX_EquipCharacterAvatar = function(Character)
 
 
 
+
+
+
+
         end
+
+
+
+
+
+
+
+
 
 
 
@@ -10426,7 +20850,15 @@ _G.DX_EquipCharacterAvatar = function(Character)
 
 
 
+
+
+
+
             EquipAvatar(i, _G.OutfitMap.Suit or 0, _G.CustSlotType.ClothesEquipemtSlot, false)
+
+
+
+
 
 
 
@@ -10434,7 +20866,15 @@ _G.DX_EquipCharacterAvatar = function(Character)
 
 
 
+
+
+
+
             EquipAvatar(i, _G.OutfitMap.Helmet, _G.CustSlotType.HelmetEquipemtSlot,  true, BackpackUtils.GetEquipmentHelmetLevel)
+
+
+
+
 
 
 
@@ -10442,11 +20882,27 @@ _G.DX_EquipCharacterAvatar = function(Character)
 
 
 
+
+
+
+
     end)
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -10458,7 +20914,15 @@ _G.DX_ApplyWeaponSkins = function(PlayerCharacter)
 
 
 
+
+
+
+
     pcall(function()
+
+
+
+
 
 
 
@@ -10466,7 +20930,15 @@ _G.DX_ApplyWeaponSkins = function(PlayerCharacter)
 
 
 
+
+
+
+
         local WeaponManager = PlayerCharacter:GetWeaponManager()
+
+
+
+
 
 
 
@@ -10474,7 +20946,15 @@ _G.DX_ApplyWeaponSkins = function(PlayerCharacter)
 
 
 
+
+
+
+
         for slot = 1, 3 do
+
+
+
+
 
 
 
@@ -10482,7 +20962,15 @@ _G.DX_ApplyWeaponSkins = function(PlayerCharacter)
 
 
 
+
+
+
+
             if slua.isValid(Weapon) and slua.isValid(Weapon.synData) then
+
+
+
+
 
 
 
@@ -10490,7 +20978,15 @@ _G.DX_ApplyWeaponSkins = function(PlayerCharacter)
 
 
 
+
+
+
+
                 local SkinID = _G.DX_get_skin_id(WeaponID) or WeaponID
+
+
+
+
 
 
 
@@ -10498,7 +20994,15 @@ _G.DX_ApplyWeaponSkins = function(PlayerCharacter)
 
 
 
+
+
+
+
                 local SkinData = Weapon.synData:Get(7)
+
+
+
+
 
 
 
@@ -10506,7 +21010,15 @@ _G.DX_ApplyWeaponSkins = function(PlayerCharacter)
 
 
 
+
+
+
+
                     SkinData.defineID.TypeSpecificID = SkinID
+
+
+
+
 
 
 
@@ -10514,7 +21026,15 @@ _G.DX_ApplyWeaponSkins = function(PlayerCharacter)
 
 
 
+
+
+
+
                     if Weapon.SetWeaponAvatarID then pcall(function() Weapon:SetWeaponAvatarID(SkinID) end) end
+
+
+
+
 
 
 
@@ -10522,7 +21042,15 @@ _G.DX_ApplyWeaponSkins = function(PlayerCharacter)
 
 
 
+
+
+
+
                         pcall(DX_DownloadGameItem, SkinID)
+
+
+
+
 
 
 
@@ -10530,7 +21058,15 @@ _G.DX_ApplyWeaponSkins = function(PlayerCharacter)
 
 
 
+
+
+
+
                     end
+
+
+
+
 
 
 
@@ -10538,7 +21074,15 @@ _G.DX_ApplyWeaponSkins = function(PlayerCharacter)
 
 
 
+
+
+
+
                 end
+
+
+
+
 
 
 
@@ -10546,7 +21090,15 @@ _G.DX_ApplyWeaponSkins = function(PlayerCharacter)
 
 
 
+
+
+
+
                     for AttachIdx = 0, 5 do
+
+
+
+
 
 
 
@@ -10554,7 +21106,15 @@ _G.DX_ApplyWeaponSkins = function(PlayerCharacter)
 
 
 
+
+
+
+
                         if attachData then
+
+
+
+
 
 
 
@@ -10562,7 +21122,15 @@ _G.DX_ApplyWeaponSkins = function(PlayerCharacter)
 
 
 
+
+
+
+
                             if defineIDRef then
+
+
+
+
 
 
 
@@ -10570,7 +21138,15 @@ _G.DX_ApplyWeaponSkins = function(PlayerCharacter)
 
 
 
+
+
+
+
                                 if attachmentId and attachmentId > 0 then
+
+
+
+
 
 
 
@@ -10578,7 +21154,15 @@ _G.DX_ApplyWeaponSkins = function(PlayerCharacter)
 
 
 
+
+
+
+
                                     if mapIndex and _G.VIP_Attachments[SkinID][mapIndex] and _G.VIP_Attachments[SkinID][mapIndex] > 0 then
+
+
+
+
 
 
 
@@ -10586,7 +21170,15 @@ _G.DX_ApplyWeaponSkins = function(PlayerCharacter)
 
 
 
+
+
+
+
                                         if targetAttachId ~= attachmentId then
+
+
+
+
 
 
 
@@ -10594,7 +21186,15 @@ _G.DX_ApplyWeaponSkins = function(PlayerCharacter)
 
 
 
+
+
+
+
                                             Weapon.synData:Set(AttachIdx, attachData)
+
+
+
+
 
 
 
@@ -10602,7 +21202,15 @@ _G.DX_ApplyWeaponSkins = function(PlayerCharacter)
 
 
 
+
+
+
+
                                                 pcall(DX_DownloadGameItem, targetAttachId)
+
+
+
+
 
 
 
@@ -10610,7 +21218,15 @@ _G.DX_ApplyWeaponSkins = function(PlayerCharacter)
 
 
 
+
+
+
+
                                             end
+
+
+
+
 
 
 
@@ -10618,7 +21234,15 @@ _G.DX_ApplyWeaponSkins = function(PlayerCharacter)
 
 
 
+
+
+
+
                                         end
+
+
+
+
 
 
 
@@ -10626,7 +21250,15 @@ _G.DX_ApplyWeaponSkins = function(PlayerCharacter)
 
 
 
+
+
+
+
                                 end
+
+
+
+
 
 
 
@@ -10634,7 +21266,15 @@ _G.DX_ApplyWeaponSkins = function(PlayerCharacter)
 
 
 
+
+
+
+
                         end
+
+
+
+
 
 
 
@@ -10642,7 +21282,15 @@ _G.DX_ApplyWeaponSkins = function(PlayerCharacter)
 
 
 
+
+
+
+
                 end
+
+
+
+
 
 
 
@@ -10650,7 +21298,15 @@ _G.DX_ApplyWeaponSkins = function(PlayerCharacter)
 
 
 
+
+
+
+
                     if Weapon.DelayHandleAvatarMeshChanged then pcall(function() Weapon:DelayHandleAvatarMeshChanged() end) end
+
+
+
+
 
 
 
@@ -10658,7 +21314,15 @@ _G.DX_ApplyWeaponSkins = function(PlayerCharacter)
 
 
 
+
+
+
+
                 end
+
+
+
+
 
 
 
@@ -10666,7 +21330,15 @@ _G.DX_ApplyWeaponSkins = function(PlayerCharacter)
 
 
 
+
+
+
+
         end
+
+
+
+
 
 
 
@@ -10674,7 +21346,19 @@ _G.DX_ApplyWeaponSkins = function(PlayerCharacter)
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -10686,7 +21370,15 @@ _G.DX_ApplyVehicleSkins = function(PlayerCharacter)
 
 
 
+
+
+
+
     pcall(function()
+
+
+
+
 
 
 
@@ -10694,7 +21386,15 @@ _G.DX_ApplyVehicleSkins = function(PlayerCharacter)
 
 
 
+
+
+
+
         local Vehicle = PlayerCharacter:GetCurrentVehicle()
+
+
+
+
 
 
 
@@ -10702,7 +21402,15 @@ _G.DX_ApplyVehicleSkins = function(PlayerCharacter)
 
 
 
+
+
+
+
         if _G.DX_LastVehicle == Vehicle and _G.DX_CurVehicleSkinID ~= nil then return end
+
+
+
+
 
 
 
@@ -10710,7 +21418,15 @@ _G.DX_ApplyVehicleSkins = function(PlayerCharacter)
 
 
 
+
+
+
+
         if not slua.isValid(VehicleAvatar) then
+
+
+
+
 
 
 
@@ -10718,7 +21434,15 @@ _G.DX_ApplyVehicleSkins = function(PlayerCharacter)
 
 
 
+
+
+
+
         end
+
+
+
+
 
 
 
@@ -10726,7 +21450,15 @@ _G.DX_ApplyVehicleSkins = function(PlayerCharacter)
 
 
 
+
+
+
+
         local defId = tostring(VehicleAvatar:GetDefaultAvatarID() or "")
+
+
+
+
 
 
 
@@ -10734,7 +21466,15 @@ _G.DX_ApplyVehicleSkins = function(PlayerCharacter)
 
 
 
+
+
+
+
         for baseMapId, targetSkin in pairs(_G.VehicleSkinMap) do
+
+
+
+
 
 
 
@@ -10742,7 +21482,15 @@ _G.DX_ApplyVehicleSkins = function(PlayerCharacter)
 
 
 
+
+
+
+
         end
+
+
+
+
 
 
 
@@ -10750,7 +21498,15 @@ _G.DX_ApplyVehicleSkins = function(PlayerCharacter)
 
 
 
+
+
+
+
             if not _G.skinIdCache[applySkinId] then
+
+
+
+
 
 
 
@@ -10758,7 +21514,15 @@ _G.DX_ApplyVehicleSkins = function(PlayerCharacter)
 
 
 
+
+
+
+
                 _G.skinIdCache[applySkinId] = true
+
+
+
+
 
 
 
@@ -10766,7 +21530,15 @@ _G.DX_ApplyVehicleSkins = function(PlayerCharacter)
 
 
 
+
+
+
+
             VehicleAvatar.curSwitchEffectId = 7303001
+
+
+
+
 
 
 
@@ -10774,7 +21546,15 @@ _G.DX_ApplyVehicleSkins = function(PlayerCharacter)
 
 
 
+
+
+
+
             _G.DX_CurVehicleSkinID = applySkinId
+
+
+
+
 
 
 
@@ -10782,7 +21562,15 @@ _G.DX_ApplyVehicleSkins = function(PlayerCharacter)
 
 
 
+
+
+
+
         end
+
+
+
+
 
 
 
@@ -10790,7 +21578,19 @@ _G.DX_ApplyVehicleSkins = function(PlayerCharacter)
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -10802,7 +21602,15 @@ _G.DX_RefreshSkinMaps = function()
 
 
 
+
+
+
+
     pcall(function()
+
+
+
+
 
 
 
@@ -10810,7 +21618,15 @@ _G.DX_RefreshSkinMaps = function()
 
 
 
+
+
+
+
         if not s then return end
+
+
+
+
 
 
 
@@ -10818,7 +21634,15 @@ _G.DX_RefreshSkinMaps = function()
 
 
 
+
+
+
+
         if _G.OutfitSkins then
+
+
+
+
 
 
 
@@ -10826,7 +21650,15 @@ _G.DX_RefreshSkinMaps = function()
 
 
 
+
+
+
+
             if _G.OutfitSkins.Bag[s.SkinBag] then _G.OutfitMap.Bag = _G.OutfitSkins.Bag[s.SkinBag] end
+
+
+
+
 
 
 
@@ -10834,7 +21666,15 @@ _G.DX_RefreshSkinMaps = function()
 
 
 
+
+
+
+
         end
+
+
+
+
 
 
 
@@ -10842,7 +21682,15 @@ _G.DX_RefreshSkinMaps = function()
 
 
 
+
+
+
+
         if _G.skinIdMappings then
+
+
+
+
 
 
 
@@ -10850,7 +21698,15 @@ _G.DX_RefreshSkinMaps = function()
 
 
 
+
+
+
+
             if _G.skinIdMappings[101001] and _G.skinIdMappings[101001][s.SkinAKM]  then _G.WeaponSkinMap[101001] = _G.skinIdMappings[101001][s.SkinAKM]  end
+
+
+
+
 
 
 
@@ -10858,7 +21714,15 @@ _G.DX_RefreshSkinMaps = function()
 
 
 
+
+
+
+
             if _G.skinIdMappings[101008] and _G.skinIdMappings[101008][s.SkinM762] then _G.WeaponSkinMap[101008] = _G.skinIdMappings[101008][s.SkinM762] end
+
+
+
+
 
 
 
@@ -10866,7 +21730,15 @@ _G.DX_RefreshSkinMaps = function()
 
 
 
+
+
+
+
             if _G.skinIdMappings[102002] and _G.skinIdMappings[102002][s.SkinUMP]  then _G.WeaponSkinMap[102002] = _G.skinIdMappings[102002][s.SkinUMP]  end
+
+
+
+
 
 
 
@@ -10874,11 +21746,23 @@ _G.DX_RefreshSkinMaps = function()
 
 
 
+
+
+
+
             if _G.skinIdMappings[101005] and _G.skinIdMappings[101005][s.SkinGroza] then _G.WeaponSkinMap[101005] = _G.skinIdMappings[101005][s.SkinGroza] end
 
 
 
+
+
+
+
         end
+
+
+
+
 
 
 
@@ -10886,7 +21770,15 @@ _G.DX_RefreshSkinMaps = function()
 
 
 
+
+
+
+
         if _G.VehicleSkins then
+
+
+
+
 
 
 
@@ -10894,7 +21786,15 @@ _G.DX_RefreshSkinMaps = function()
 
 
 
+
+
+
+
             if _G.VehicleSkins[1908001] and _G.VehicleSkins[1908001][s.SkinUAZ]    then _G.VehicleSkinMap[1908001] = _G.VehicleSkins[1908001][s.SkinUAZ]    end
+
+
+
+
 
 
 
@@ -10902,7 +21802,15 @@ _G.DX_RefreshSkinMaps = function()
 
 
 
+
+
+
+
             if _G.VehicleSkins[1907001] and _G.VehicleSkins[1907001][s.SkinBuggy]  then _G.VehicleSkinMap[1907001] = _G.VehicleSkins[1907001][s.SkinBuggy]  end
+
+
+
+
 
 
 
@@ -10910,7 +21818,15 @@ _G.DX_RefreshSkinMaps = function()
 
 
 
+
+
+
+
         end
+
+
+
+
 
 
 
@@ -10918,7 +21834,19 @@ _G.DX_RefreshSkinMaps = function()
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -10930,7 +21858,15 @@ _G.DX_InitSkinModSystem = function()
 
 
 
+
+
+
+
     pcall(function()
+
+
+
+
 
 
 
@@ -10938,7 +21874,15 @@ _G.DX_InitSkinModSystem = function()
 
 
 
+
+
+
+
         if LobbyAvatar and not _G.DX_LobbyBypassHacked then
+
+
+
+
 
 
 
@@ -10946,7 +21890,15 @@ _G.DX_InitSkinModSystem = function()
 
 
 
+
+
+
+
             LobbyAvatar.PutonEquipment = function(self, itemID, tAvatarCustom, tExtraData)
+
+
+
+
 
 
 
@@ -10954,7 +21906,15 @@ _G.DX_InitSkinModSystem = function()
 
 
 
+
+
+
+
                 if attachIndex then
+
+
+
+
 
 
 
@@ -10962,7 +21922,15 @@ _G.DX_InitSkinModSystem = function()
 
 
 
+
+
+
+
                     if holdingWeaponSkinID and holdingWeaponSkinID >= 10000000 and _G.VIP_Attachments and _G.VIP_Attachments[holdingWeaponSkinID] then
+
+
+
+
 
 
 
@@ -10970,7 +21938,15 @@ _G.DX_InitSkinModSystem = function()
 
 
 
+
+
+
+
                         if vipAttachID and vipAttachID > 0 then
+
+
+
+
 
 
 
@@ -10978,7 +21954,15 @@ _G.DX_InitSkinModSystem = function()
 
 
 
+
+
+
+
                             itemID = vipAttachID
+
+
+
+
 
 
 
@@ -10986,7 +21970,15 @@ _G.DX_InitSkinModSystem = function()
 
 
 
+
+
+
+
                     end
+
+
+
+
 
 
 
@@ -10994,7 +21986,15 @@ _G.DX_InitSkinModSystem = function()
 
 
 
+
+
+
+
                 if originalPutonEquipment then return originalPutonEquipment(self, itemID, tAvatarCustom, tExtraData) end
+
+
+
+
 
 
 
@@ -11002,7 +22002,15 @@ _G.DX_InitSkinModSystem = function()
 
 
 
+
+
+
+
             _G.DX_LobbyBypassHacked = true
+
+
+
+
 
 
 
@@ -11010,11 +22018,27 @@ _G.DX_InitSkinModSystem = function()
 
 
 
+
+
+
+
     end)
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -11026,7 +22050,15 @@ end
 
 
 
+
+
+
+
 pcall(_G.DX_RefreshSkinMaps)
+
+
+
+
 
 
 
@@ -11038,7 +22070,19 @@ pcall(_G.DX_InitSkinModSystem)
 
 
 
+
+
+
+
+
+
+
+
 -- Loop apply skin mỗi 1.5 giây
+
+
+
+
 
 
 
@@ -11046,7 +22090,15 @@ do
 
 
 
+
+
+
+
     local function DX_SkinLoop()
+
+
+
+
 
 
 
@@ -11054,7 +22106,15 @@ do
 
 
 
+
+
+
+
             pcall(_G.DX_RefreshSkinMaps)
+
+
+
+
 
 
 
@@ -11062,7 +22122,15 @@ do
 
 
 
+
+
+
+
                 local gd = require("GameLua.GameCore.Data.GameplayData")
+
+
+
+
 
 
 
@@ -11070,7 +22138,15 @@ do
 
 
 
+
+
+
+
                 if slua.isValid(lp) then
+
+
+
+
 
 
 
@@ -11078,7 +22154,15 @@ do
 
 
 
+
+
+
+
                     pcall(_G.DX_ApplyWeaponSkins, lp)
+
+
+
+
 
 
 
@@ -11086,7 +22170,15 @@ do
 
 
 
+
+
+
+
                 end
+
+
+
+
 
 
 
@@ -11094,7 +22186,15 @@ do
 
 
 
+
+
+
+
         end
+
+
+
+
 
 
 
@@ -11102,7 +22202,15 @@ do
 
 
 
+
+
+
+
         if ok and ticker and ticker.AddTimerOnce then
+
+
+
+
 
 
 
@@ -11110,7 +22218,15 @@ do
 
 
 
+
+
+
+
         end
+
+
+
+
 
 
 
@@ -11118,7 +22234,15 @@ do
 
 
 
+
+
+
+
     pcall(function()
+
+
+
+
 
 
 
@@ -11126,7 +22250,15 @@ do
 
 
 
+
+
+
+
         if ok and ticker and ticker.AddTimerOnce then
+
+
+
+
 
 
 
@@ -11134,7 +22266,15 @@ do
 
 
 
+
+
+
+
         end
+
+
+
+
 
 
 
@@ -11142,7 +22282,15 @@ do
 
 
 
+
+
+
+
 end
+
+
+
+
 
 
 
@@ -11154,7 +22302,19 @@ end
 
 
 
+
+
+
+
+
+
+
+
 _G.LobbyCosmeticEnabled = false
+
+
+
+
 
 
 
@@ -11162,7 +22322,15 @@ do
 
 
 
+
+
+
+
     local function UpdateCosmeticState()
+
+
+
+
 
 
 
@@ -11170,11 +22338,23 @@ do
 
 
 
+
+
+
+
         local ok, ticker = pcall(require, "common.time_ticker")
 
 
 
+
+
+
+
         if ok and ticker and ticker.AddTimerOnce then
+
+
+
+
 
 
 
@@ -11182,7 +22362,15 @@ do
 
 
 
+
+
+
+
         end
+
+
+
+
 
 
 
@@ -11190,7 +22378,15 @@ do
 
 
 
+
+
+
+
     pcall(function()
+
+
+
+
 
 
 
@@ -11198,7 +22394,15 @@ do
 
 
 
+
+
+
+
         if ok and ticker and ticker.AddTimerOnce then
+
+
+
+
 
 
 
@@ -11206,7 +22410,15 @@ do
 
 
 
+
+
+
+
         end
+
+
+
+
 
 
 
@@ -11214,13 +22426,28 @@ do
 
 
 
+
+
+
+
 end
 
 
 
+
+
+
+
 local function initFullskin()
+    _G.HK_GetVal = _G.HK_GetVal or function(id) return _G.HK_Settings and _G.HK_Settings[id] or 0 end
+
+
 
 local function isInRealMatch()
+
+
+
+
 
 
 
@@ -11228,7 +22455,15 @@ local function isInRealMatch()
 
 
 
+
+
+
+
         return GameStatus and GameStatus.IsInFightingStatus and GameStatus.IsInFightingStatus()
+
+
+
+
 
 
 
@@ -11236,11 +22471,27 @@ local function isInRealMatch()
 
 
 
+
+
+
+
     return ok and r == true
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -11252,7 +22503,15 @@ local function getLocalChar()
 
 
 
+
+
+
+
     local ok, GD = pcall(require, "GameLua.GameCore.Data.GameplayData")
+
+
+
+
 
 
 
@@ -11260,7 +22519,15 @@ local function getLocalChar()
 
 
 
+
+
+
+
     local char = GD.GetPlayerCharacter()
+
+
+
+
 
 
 
@@ -11268,7 +22535,15 @@ local function getLocalChar()
 
 
 
+
+
+
+
     return nil
+
+
+
+
 
 
 
@@ -11278,7 +22553,17 @@ end
 
 
 
+
+
+
+
+
+
 _G.killCountInfo = _G.killCountInfo or {}
+
+
+
+
 
 
 
@@ -11286,7 +22571,15 @@ _G.lastFileContent = ""
 
 
 
+
+
+
+
 _G.isFileWatcherActive = false
+
+
+
+
 
 
 
@@ -11294,7 +22587,19 @@ _G.LastKillTime = {}
 
 
 
+
+
+
+
 _G.lastDisplayedKills = {}
+
+
+
+
+
+
+
+
 
 
 
@@ -11310,7 +22615,19 @@ local VehicleAvatarComponent = require("GameLua.GameCore.Module.Vehicle.Componen
 
 
 
+
+
+
+
+
+
+
+
 VehicleAvatarComponent.__inner_impl.CheckCanPlaySkinSwitchEffect = function(self, curVehicleId, lastVehicleId)
+
+
+
+
 
 
 
@@ -11318,7 +22635,19 @@ VehicleAvatarComponent.__inner_impl.CheckCanPlaySkinSwitchEffect = function(self
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -11330,7 +22659,15 @@ VehicleAvatarComponent.__inner_impl.ShowVehicleSwitchEffect = function(self)
 
 
 
+
+
+
+
  if not self.curSwitchEffectId or self.curSwitchEffectId <= 0 then
+
+
+
+
 
 
 
@@ -11338,7 +22675,19 @@ VehicleAvatarComponent.__inner_impl.ShowVehicleSwitchEffect = function(self)
 
 
 
+
+
+
+
  end
+
+
+
+
+
+
+
+
 
 
 
@@ -11350,7 +22699,19 @@ VehicleAvatarComponent.__inner_impl.ShowVehicleSwitchEffect = function(self)
 
 
 
+
+
+
+
  if not slua.isValid(vehicleActor) then return false end
+
+
+
+
+
+
+
+
 
 
 
@@ -11362,7 +22723,15 @@ VehicleAvatarComponent.__inner_impl.ShowVehicleSwitchEffect = function(self)
 
 
 
+
+
+
+
  self:StopSkinSwitchEffect()
+
+
+
+
 
 
 
@@ -11370,11 +22739,27 @@ VehicleAvatarComponent.__inner_impl.ShowVehicleSwitchEffect = function(self)
 
 
 
+
+
+
+
  self.uSwitchEffectActor = nil
 
 
 
+
+
+
+
  end
+
+
+
+
+
+
+
+
 
 
 
@@ -11386,11 +22771,27 @@ VehicleAvatarComponent.__inner_impl.ShowVehicleSwitchEffect = function(self)
 
 
 
+
+
+
+
  self.lastEquipedAvatarId = vehicleActor.ClientUsedAvatarID or vehicleActor:GetDefaultAvatarID() or 0
 
 
 
+
+
+
+
  end
+
+
+
+
+
+
+
+
 
 
 
@@ -11402,7 +22803,15 @@ VehicleAvatarComponent.__inner_impl.ShowVehicleSwitchEffect = function(self)
 
 
 
+
+
+
+
  local bIsLobbyActor = self:IsLobbyActor()
+
+
+
+
 
 
 
@@ -11410,11 +22819,23 @@ VehicleAvatarComponent.__inner_impl.ShowVehicleSwitchEffect = function(self)
 
 
 
+
+
+
+
  local VehiclePlateLicenseUtil = require("GameLua.Activity.Commercialize.GamePlay.Vehicle.VehiclePlateLicenseUtil")
 
 
 
+
+
+
+
  local SkinSwitchEffectActorPath = VehiclePlateLicenseUtil.GetSwitchEffectActorPath()
+
+
+
+
 
 
 
@@ -11426,7 +22847,19 @@ VehicleAvatarComponent.__inner_impl.ShowVehicleSwitchEffect = function(self)
 
 
 
+
+
+
+
+
+
+
+
  self.uSwitchEffectActor = world:SpawnActor(BP_DissolveVehicleClass, nil, nil, nil)
+
+
+
+
 
 
 
@@ -11434,7 +22867,15 @@ VehicleAvatarComponent.__inner_impl.ShowVehicleSwitchEffect = function(self)
 
 
 
+
+
+
+
  self.uSwitchEffectActor = nil
+
+
+
+
 
 
 
@@ -11442,7 +22883,19 @@ VehicleAvatarComponent.__inner_impl.ShowVehicleSwitchEffect = function(self)
 
 
 
+
+
+
+
  end
+
+
+
+
+
+
+
+
 
 
 
@@ -11454,7 +22907,15 @@ VehicleAvatarComponent.__inner_impl.ShowVehicleSwitchEffect = function(self)
 
 
 
+
+
+
+
  self.uSwitchEffectActor:K2_SetActorRelativeLocation(FVector(0, 0, 0), false, nil, false)
+
+
+
+
 
 
 
@@ -11462,7 +22923,15 @@ VehicleAvatarComponent.__inner_impl.ShowVehicleSwitchEffect = function(self)
 
 
 
+
+
+
+
  self:ChangeFakeSwitchVehicleAvatar(self.uSwitchEffectActor.Mesh, self.lastEquipedAvatarId)
+
+
+
+
 
 
 
@@ -11470,7 +22939,15 @@ VehicleAvatarComponent.__inner_impl.ShowVehicleSwitchEffect = function(self)
 
 
 
+
+
+
+
  self.uSwitchEffectActor:StartVehicleSwitchEffect(vehicleActor, self.curSwitchEffectId, self.lastEquipedAvatarId, currentAvatarID, bIsLobbyActor)
+
+
+
+
 
 
 
@@ -11478,11 +22955,27 @@ VehicleAvatarComponent.__inner_impl.ShowVehicleSwitchEffect = function(self)
 
 
 
+
+
+
+
  return true
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -11494,7 +22987,15 @@ VehicleAvatarComponent.__inner_impl.ResetAnimationState = function(self)
 
 
 
+
+
+
+
  if self.uSwitchEffectActor then
+
+
+
+
 
 
 
@@ -11502,7 +23003,15 @@ VehicleAvatarComponent.__inner_impl.ResetAnimationState = function(self)
 
 
 
+
+
+
+
  self.uSwitchEffectActor:K2_DestroyActor()
+
+
+
+
 
 
 
@@ -11510,7 +23019,15 @@ VehicleAvatarComponent.__inner_impl.ResetAnimationState = function(self)
 
 
 
+
+
+
+
  end
+
+
+
+
 
 
 
@@ -11518,11 +23035,31 @@ VehicleAvatarComponent.__inner_impl.ResetAnimationState = function(self)
 
 
 
+
+
+
+
  self.curSwitchEffectId = 7303001
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -11538,7 +23075,15 @@ local O_ReceiveBeginPlay = VehicleAvatarComponent.__inner_impl.ReceiveBeginPlay
 
 
 
+
+
+
+
 VehicleAvatarComponent.__inner_impl.ReceiveBeginPlay = function(self)
+
+
+
+
 
 
 
@@ -11546,7 +23091,15 @@ VehicleAvatarComponent.__inner_impl.ReceiveBeginPlay = function(self)
 
 
 
+
+
+
+
  self:ResetAnimationState()
+
+
+
+
 
 
 
@@ -11558,7 +23111,19 @@ end
 
 
 
+
+
+
+
+
+
+
+
 -- ============================================================================
+
+
+
+
 
 
 
@@ -11566,7 +23131,19 @@ end
 
 
 
+
+
+
+
 -- ============================================================================
+
+
+
+
+
+
+
+
 
 
 
@@ -11578,7 +23155,15 @@ end
 
 
 
+
+
+
+
 local MATCH_CONFIG = {
+
+
+
+
 
 
 
@@ -11586,11 +23171,27 @@ local MATCH_CONFIG = {
 
 
 
+
+
+
+
     weaponSkins = {},       -- WeaponID -> SkinResID mapping for in-match
 
 
 
+
+
+
+
 }
+
+
+
+
+
+
+
+
 
 
 
@@ -11602,7 +23203,15 @@ local MATCH_CONFIG = {
 
 
 
+
+
+
+
 -- These IDs represent outfits, weapon skins, vehicle skins, and other cosmetics
+
+
+
+
 
 
 
@@ -11610,7 +23219,15 @@ local MATCH_CONFIG = {
 
 
 
+
+
+
+
 local ITEMS = {
+
+
+
+
 
 
 
@@ -11618,7 +23235,15 @@ local ITEMS = {
 
 
 
+
+
+
+
     202408016, 202408017, 202408018, 202408019, 202408021, 202408022, 202408023, 202408024, 202408025, 202408026,
+
+
+
+
 
 
 
@@ -11626,7 +23251,15 @@ local ITEMS = {
 
 
 
+
+
+
+
     202408037, 202408038, 202408039, 202408040, 202408041, 202408042, 202408043, 202408044, 202408045, 202408046,
+
+
+
+
 
 
 
@@ -11634,7 +23267,15 @@ local ITEMS = {
 
 
 
+
+
+
+
     202408057, 202408058, 202408059, 202408060, 202408061, 202408062, 202408063, 202408064, 202408065, 202408066,
+
+
+
+
 
 
 
@@ -11642,7 +23283,15 @@ local ITEMS = {
 
 
 
+
+
+
+
     202408077, 202408078, 202408079, 202408080, 202408081, 202408082, 202408083, 202408084, 202408085, 202408086,
+
+
+
+
 
 
 
@@ -11650,7 +23299,15 @@ local ITEMS = {
 
 
 
+
+
+
+
     202408097, 202408098, 202408099, 202408100, 202408101, 202408102, 202501001, 202501002, 202501003, 202501004,
+
+
+
+
 
 
 
@@ -11658,7 +23315,15 @@ local ITEMS = {
 
 
 
+
+
+
+
 1400001,1400002,1400003,1400004,1400007,1400008,1400009,1400010,1400011,1400012,1400013,1400014,1400015,1400016,1400017,1400018,1400020,1400021,1400022,1400023,1400024,1400025,1400026,1400027,1400028,1400029,1400030,1400031,1400032,1400038,1400039,1400040,1400041,1400042,1400043,1400044,1400045,1400046,1400047,1400048,1400049,1400050,1400051,1400052,1400053,1400054,1400055,1400062,1400063,1400064,1400065,1400066,1400067,1400068,1400069,1400072,1400073,1400074,1400075,1400076,1400077,1400078,1400079,1400080,1400081,1400082,1400084,1400085,1400086,1400087,1400088,1400089,1400090,1400091,1400092,1400093,1400094,1400095,1400096,1400097,1400098,1400099,1400100,1400101,1400103,1400104,1400105,1400106,1400107,1400108,1400109,1400110,1400111,1400112,1400113,1400114,1400115,1400117,1400118,1400119,1400120,1400121,1400122,1400123,1400124,1400125,1400127,1400128,1400129,1400130,1400132,1400133,1400134,1400135,1400136,1400137,1400138,1400139,1400141,1400142,1400143,1400146,1400147,1400148,1400149,1400150,1400151,1400152,1400153,1400154,1400155,1400156,1400158,1400159,1400160,1400161,1400162,1400163,1400164,1400165,1400166,1400167,1400168,1400169,1400213,1400215,1400216,1400218,1400219,1400221,1400224,1400225,1400226,1400227,1400228,1400229,1400230,1400231,1400232,1400233,1400237,1400239,1400240,1400242,1400243,1400244,1400247,1400249,1400251,1400253,1400255,1400258,1400259,1400261,1400262,1400264,1400265,1400266,1400267,1400268,1400269,1400270,1400271,1400272,1400274,1400276,1400277,1400279,1400280,1400281,1400282,1400283,1400284,1400285,1400286,1400287,1400288,1400289,1400290,1400291,1400292,1400293,1400294,1400295,1400296,1400297,1400298,1400299,1400301,1400302,1400303,1400306,1400307,1400308,1400314,1400315,1400316,1400317,1400318,1400319,1400320,1400321,1400322,1400323,1400324,1400325,1400326,1400327,1400328,1400329,1400332,1400333,1400334,1400336,1400337,1400338,1400339,1400341,1400342,1400344,1400345,1400347,1400348,1400350,1400351,1400352,1400353,1400354,1400355,1400356,1400357,1400358,1400359,1400360,1400361,1400362,1400363,1400364,1400365,1400366,1400367,1400368,1400369,1400370,1400371,1400374,1400375,1400376,1400377,1400378,1400380,1400381,1400384,1400385,1400386,1400387,1400388,1400389,1400390,1400391,1400392,1400393,1400394,1400395,1400396,1400397,1400398,1400399,1400400,1400401,1400402,1400403,1400404,1400405,1400406,1400407,1400408,1400409,1400410,1400411,1400412,1400413,1400414,1400415,1400416,1400417,1400418,1400419,1400420,1400421,1400422,1400423,1400424,1400425,1400426,1400427,1400428,1400429,1400430,1400431,1400432,1400433,1400434,1400435,1400436,1400437,1400439,1400441,1400442,1400443,1400444,1400445,1400446,1400447,1400448,1400449,1400450,1400451,1400453,1400455,1400456,1400457,1400458,1400459,1400460,1400461,1400463,1400464,1400465,1400468,1400470,1400472,1400473,1400474,1400475,1400476,1400477,1400478,1400479,1400480,1400481,1400482,1400483,1400484,1400485,1400486,1400488,1400489,1400490,1400491,1400492,1400493,1400494,1400495,1400498,1400499,1400500,1400501,1400502,1400503,1400504,1400505,1400506,1400508,1400509,1400511,1400512,1400513,1400514,1400515,1400516,1400517,1400518,1400520,1400521,1400522,1400523,1400524,1400525,1400526,1400527,1400528,1400529,1400530,1400531,1400532,1400533,1400534,1400535,1400539,1400540,1400541,1400542,1400543,1400544,1400545,1400546,1400547,1400548,1400549,1400550,1400551,1400552,1400553,1400554,1400555,1400556,1400559,1400563,1400564,1400565,1400566,1400567,1400568,1400569,1400570,1400571,1400572,1400573,1400574,1400575,1400576,1400577,1400578,1400583,1400584,1400585,1400586,1400587,1400588,1400589,1400590,1400592,1400594,1400595,1400596,1400597,1400598,1400599,1400600,1400601,1400603,1400604,1400606,1400619,1400620,1400622,1400623,1400624,1400625,1400626,1400643,1400644,1400645,1400646,1400647,1400648,1400649,1400650,1400651,1400652,1400653,1400654,1400656,1400657,1400658,1400659,1400660,1400661,1400664,1400665,1400666,1400668,1400669,1400670,1400673,1400678,1400679,1400680,1400682,1400683,1400687,1400688,1400689,1400690,1400691,1400692,1400693,1400694,1400695,1400696,1400697,1400698,1400702,1400704,1400705,1400708,1400709,1400714,1400715,1400716,1400719,1400721,1400727,1400728,1400729,1400730,1400731,1400732,1400733,1400734,1400735,1400736,1400737,1400738,1400739,1400740,1400741,1400742,1400743,1400744,1400746,1400747,1400749,1400750,1400751,1400772,1400773,1400774,1400775,1400776,1400777,1400778,1400779,1400780,1400781,1400782,1400783,1400784,1400785,1400786,1400787,1400788,1400789,1400790,1400791,1400792,1400793,1400794,1400795,1400796,1400798,1400799,1400801,1400802,1400803,1400804,1400805,1400806,1400807,1400808,1400809,1400810,1400811,1400812,1400813,1400814,1400816,1401846,1402000,1402002,1402004,1402005,1402006,1402007,1402008,1402009,1402012,1402015,1402016,1402018,1402019,1402020,1402021,1402022,1402024,1402025,1402026,1402027,1402028,1402029,1402031,1402032,1402033,1402035,1402037,1402038,1402039,1402040,1402041,1402042,1402043,1402044,1402045,1402046,1402047,1402049,1402050,1402051,1402052,1402053,1402054,1402055,1402056,1402059,1402062,1402063,1402065,1402067,1402068,1402069,1402070,1402071,1402073,1402074,1402075,1402076,1402077,1402078,1402079,1402080,1402081,1402082,1402083,1402084,1402085,1402086,1402088,1402090,1402091,1402092,1402093,1402098,1402099,1402101,1402102,1402103,1402104,1402105,1402106,1402107,1402108,1402110,1402111,1402112,1402113,1402114,1402115,1402116,1402117,1402118,1402119,1402120,1402121,1402122,1402123,1402124,1402125,1402126,1402127,1402128,1402129,1402130,1402132,1402133,1402134,1402135,1402136,1402137,1402138,1402139,1402140,1402141,1402142,1402143,1402144,1402145,1402146,1402147,1402148,1402149,1402150,1402151,1402152,1402153,1402154,1402155,1402156,1402157,1402158,1402159,1402160,1402161,1402162,1402163,1402164,1402165,1402166,1402167,1402169,1402170,1402171,1402172,1402173,1402174,1402175,1402176,1402177,1402178,1402179,1402180,1402181,1402182,1402183,1402184,1402185,1402187,1402188,1402189,1402192,1402193,1402194,1402195,1402197,1402198,1402199,1402200,1402201,1402202,1402203,1402204,1402205,1402206,1402208,1402209,1402210,1402211,1402212,1402213,1402214,1402215,1402216,1402217,1402218,1402219,1402220,1402221,1402222,1402223,1402224,1402225,1402227,1402228,1402229,1402230,1402231,1402232,1402233,1402235,1402236,1402238,1402239,1402240,1402241,1402242,1402243,1402244,1402245,1402246,1402248,1402249,1402250,1402251,1402252,1402253,1402254,1402255,1402256,1402257,1402258,1402259,1402260,1402261,1402262,1402263,1402267,1402278,1402279,1402280,1402281,1402282,1402283,1402284,1402285,1402286,1402287,1402288,1402289,1402290,1402291,1402292,1402294,1402295,1402296,1402297,1402298,1402299,1402300,1402301,1402302,1402303,1402304,1402305,1402306,1402307,1402308,1402309,1402310,1402311,1402312,1402313,1402315,1402316,1402317,1402318,1402319,1402322,1402323,1402324,1402325,1402326,1402327,1402328,1402329,1402330,1402331,1402332,1402333,1402334,1402335,1402336,1402338,1402342,1402343,1402344,1402345,1402346,1402347,1402348,1402349,1402350,1402352,1402353,1402355,1402356,1402357,1402358,1402359,1402360,1402361,1402362,1402364,1402368,1402369,1402370,1402372,1402373,1402374,1402375,1402376,1402377,1402378,1402383,1402384,1402385,1402386,1402387,1402388,1402390,1402391,1402392,1402393,1402395,1402396,1402397,1402399,1402400,1402401,1402402,1402403,1402404,1402405,1402406,1402407,1402408,1402410,1402411,1402412,1402413,1402415,1402416,1402417,1402418,1402419,1402420,1402421,1402422,1402423,1402424,1402431,1402432,1402433,1402434,1402435,1402436,1402442,1402443,1402444,1402445,1402446,1402447,1402448,1402449,1402450,1402451,1402452,1402453,1402454,1402455,1402456,1402460,1402461,1402462,1402463,1402464,1402470,1402471,1402472,1402473,1402481,1402489,1402490,1402491,1402492,1402493,1402494,1402495,1402496,1402497,1402498,1402499,1402500,1402501,1402502,1402503,1402504,1402505,1402506,1402507,1402508,1402509,1402510,1402511,1402515,1402517,1402518,1402519,1402520,1402521,1402522,1402523,1402524,1402525,1402527,1402530,1402531,1402532,1402533,1402534,1402535,1402536,1402538,1402539,1402542,1402543,1402544,1402545,1402546,1402547,1402548,1402549,1402550,1402552,1402553,1402554,1402557,1402558,1402559,1402560,1402561,1402562,1402563,1402565,1402566,1402567,1402568,1402569,1402570,1402571,1402572,1402573,1402574,1402575,1402576,1402577,1402578,1402579,1402580,1402581,1402582,1402583,1402584,1402585,1402586,1402587,1402588,1402589,1402590,1402592,1402593,1402594,1402595,1402598,1402600,1402601,1402602,1402603,1402604,1402607,1402608,1402610,1402611,1402612,1402613,1402614,1402615,1402618,1402619,1402620,1402621,1402623,1402624,1402625,1402626,1402627,1402628,1402629,1402631,1402632,1402633,1402634,1402635,1402636,1402637,1402642,1402643,1402644,1402646,1402647,1402648,1402649,1402650,1402651,1402652,1402653,1402654,1402655,1402656,1402657,1402659,1402662,1402663,1402664,1402666,1402668,1402669,1402670,1402671,1402672,1402673,1402674,1402675,1402676,1402677,1402678,1402679,1402680,1402681,1402684,1402685,1402686,1402687,1402688,1402689,1402690,1402691,1402692,1402693,1402694,1402695,1402696,1402697,1402698,1402699,1402700,1402701,1402704,1402706,1402707,1402708,1402713,1402716,1402717,1402718,1402720,1402721,1402722,1402723,1402725,1402726,1402727,1402728,1402729,1402730,1402731,1402735,1402736,1402738,1402739,1402740,1402741,1402742,1402743,1402745,1402746,1402748,1402749,1402750,1402751,1402752,1402753,1402754,1402755,1402756,1402757,1402758,1402759,1402760,1402761,1402762,1402763,1402764,1402766,1402767,1402768,1402769,1402770,1402771,1402772,1402774,1402775,1402776,1402777,1402778,1402780,1402782,1402783,1402784,1402786,1402787,1402797,1402798,1402800,1402801,1402802,1402811,1402812,1402815,1402816,1402817,1402818,1402819,1402820,1402821,1402822,1402823,1402824,1402826,1402827,1402828,1402829,1402830,1402834,1402835,1402837,1402838,1402839,1402840,1402841,1402843,1402844,1402845,1402846,1402847,1402848,1402850,1402851,1402854,1402855,1402858,1402860,1402861,1402862,1402863,1402864,1402865,1402866,1402869,1402870,1402871,1402872,1402873,1402874,1402875,1402876,1402877,1402878,1402879,1402880,1402881,1402882,1402883,1402884,1402885,1402886,1402888,1402890,1402891,1402892,1402894,1402896,1402897,1402898,1402899,1402900,1402901,1402902,1402903,1402904,1402905,1402906,1402907,1402908,1402909,1402910,1402912,1402913,1402914,1402915,1402916,1402917,1402918,1402920,1402921,1402922,1402923,1402924,1402926,1402927,1402928,1402929,1402930,1402931,1402932,1402933,1402934,1402935,1402936,1402937,1402938,1402940,1402941,1402942,1402943,1402944,1402945,1402946,1402947,1402948,1402952,1402953,1402954,1402955,1402956,1402957,1402958,1402959,1402960,1402961,1402962,1402963,1402964,1402966,1402967,1402968,1402969,1402970,1402971,1402972,1402973,1402974,1402975,1402977,1402978,1402979,1402980,1402981,1402982,1402983,1402984,1402987,1402988,1402989,1402990,1402991,1402992,1402997,1402998,1403000,1403001,1403002,1403004,1403005,1403006,1403007,1403009,1403010,1403011,1403012,1403013,1403014,1403015,1403016,1403017,1403018,1403019,1403020,1403022,1403023,1403024,1403025,1403026,1403027,1403028,1403031,1403032,1403033,1403034,1403035,1403036,1403037,1403038,1403039,1403040,1403041,1403042,1403044,1403045,1403046,1403047,1403048,1403049,1403050,1403051,1403052,1403053,1403054,1403055,1403056,1403058,1403061,1403062,1403064,1403065,1403066,1403067,1403068,1403069,1403070,1403071,1403072,1403073,1403074,1403077,1403078,1403079,1403081,1403082,1403083,1403084,1403085,1403086,1403087,1403088,1403090,1403091,1403092,1403093,1403094,1403095,1403096,1403098,1403099,1403100,1403101,1403112,1403113,1403115,1403117,1403119,1403120,1403122,1403123,1403124,1403127,1403128,1403129,1403130,1403131,1403132,1403133,1403134,1403135,1403136,1403137,1403138,1403139,1403141,1403142,1403143,1403146,1403147,1403148,1403149,1403150,1403151,1403152,1403153,1403154,1403155,1403156,1403157,1403158,1403159,1403161,1403162,1403163,1403164,1403166,1403167,1403168,1403169,1403170,1403171,1403172,1403174,1403175,1403176,1403177,1403178,1403179,1403181,1403182,1403183,1403184,1403185,1403186,1403187,1403188,1403189,1403190,1403191,1403192,1403193,1403194,1403196,1403197,1403200,1403201,1403202,1403204,1403205,1403206,1403207,1403208,1403211,1403214,1403215,1403217,1403220,1403221,1403222,1403223,1403224,1403227,1403228,1403229,1403230,1403231,1403233,1403235,1403236,1403237,1403238,1403240,1403241,1403244,1403246,1403248,1403249,1403250,1403251,1403253,1403254,1403255,1403256,1403257,1403258,1403259,1403260,1403261,1403263,1403264,1403266,1403267,1403272,1403273,1403274,1403275,1403276,1403277,1403280,1403287,1403288,1403292,1403294,1403297,1403302,1403304,1403305,1403307,1403309,1403310,1403311,1403312,1403314,1403315,1403316,1403317,1403318,1403323,1403324,1403325,1403326,1403327,1403328,1403329,1403330,1403331,1403332,1403333,1403334,1403335,1403336,1403338,1403339,1403340,1403341,1403342,1403343,1403344,1403347,1403348,1403349,1403350,1403351,1403352,1403353,1403354,1403356,1403357,1403359,1403361,1403364,1403365,1403366,1403368,1403369,1403370,1403371,1403372,1403374,1403375,1403379,1403381,1403383,1403385,1403386,1403387,1403390,1403393,1403394,1403395,1403397,1403398,1403399,1403400,1403401,1403403,1403404,1403405,1403408,1403409,1403410,1403411,1403412,1403414,1403416,1403419,1403420,1403421,1403424,1403425,1403428,1403429,1403430,1403431,1403432,1403436,1403437,1403438,1403439,1403440,1403442,1403444,1403445,1403446,1403447,1403450,1403451,1403452,1403455,1403456,1403457,1403458,1403460,1403462,1403463,1403464,1403465,1403468,1403476,1403477,1403478,1403486,1403487,1403490,1403496,1403498,1403506,1403507,1403508,1403509,1403513,1403514,1403517,1403518,1403519,1403523,1403524,1403525,1403527,1403528,1403534,1403535,1403540,1403541,1403542,1403544,1403545,1403552,1403553,1403559,1403562,1403563,1403564,1403565,1403566,1403567,1403569,1403570,1403571,1403572,1403575,1403577,1403578,1403581,1403585,1403586,1403587,1403590,1403591,1403592,1403593,1403594,1403597,1403600,1403601,1403602,1403603,1403604,1403605,1403607,1403609,1403610,1403611,1403615,1403616,1403617,1403618,1403621,1403622,1403623,1403625,1403627,1403628,1403630,1403631,1403633,1403635,1403636,1403638,1403639,1403640,1403641,1403642,1403643,1403644,1403645,1403646,1403647,1403648,1403649,1403650,1403651,1403652,1403653,1403654,1403655,1403656,1403658,1403659,1403660,1403661,1403662,1403663,1403664,1403665,1403666,1403667,1403668,1403669,1403672,1403673,1403674,1403675,1403676,1403677,1403678,1403679,1403680,1403681,1403682,1403683,1403684,1403685,1403686,1403687,1403688,1403689,1403690,1403691,1403692,1403693,1403694,1403695,1403696,1403697,1403698,1403699,1403700,1403701,1403702,1403703,1403704,1403705,1403706,1403707,1403708,1403709,1403710,1403711,1403712,1403713,1403714,1403715,1403716,1403717,1403718,1403719,1403720,1403721,1403722,1403723,1403724,1403725,1403726,1403727,1403728,1403729,1403730,1403731,1403732,1403733,1403734,1403735,1403736,1403737,1403738,1403739,1403740,1403741,1403742,1403743,1403744,1403745,1403746,1403747,1403748,1403749,1403750,1403751,1403752,1403753,1403754,1403755,1403756,1403757,1403758,1403759,1403760,1403761,1403762,1403763,1403764,1403765,1403766,1403767,1403768,1403769,1404000,1404001,1404002,1404003,1404004,1404005,1404006,1404007,1404008,1404009,1404010,1404011,1404012,1404013,1404014,1404015,1404016,1404017,1404018,1404019,1404020,1404021,1404022,1404023,1404024,1404025,1404026,1404027,1404028,1404029,1404030,1404031,1404032,1404033,1404034,1404035,1404036,1404037,1404038,1404040,1404041,1404042,1404043,1404044,1404045,1404046,1404047,1404048,1404049,1404050,1404051,1404052,1404053,1404054,1404055,1404056,1404057,1404058,1404059,1404060,1404061,1404062,1404063,1404064,1404065,1404066,1404080,1404081,1404082,1404083,1404084,1404085,1404086,1404087,1404088,1404089,1404090,1404091,1404092,1404093,1404094,1404095,1404096,1404127,1404128,1404129,1404130,1404131,1404132,1404133,1404134,1404135,1404136,1404137,1404138,1404139,1404140,1404141,1404142,1404143,1404144,1404145,1404146,1404147,1404148,1404149,1404150,1404151,1404152,1404153,1404154,1404155,1404156,1404157,1404158,1404159,1404160,1404161,1404162,1404163,1404164,1404165,1404166,1404167,1404168,1404169,1404170,1404171,1404172,1404173,1404174,1404175,1404176,1404177,1404178,1404179,1404180,1404181,1404182,1404183,1404184,1404185,1404186,1404187,1404188,1404189,1404190,1404191,1404192,1404193,1404194,1404195,1404196,1404197,1404198,1404199,1404200,1404201,1404202,1404203,1404204,1404205,1404206,1404207,1404208,1404209,1404210,1404211,1404212,1404213,1404214,1404215,1404216,1404217,1404218,1404219,1404220,1404222,1404223,1404224,1404225,1404226,1404227,1404228,1404229,1404230,1404231,1404232,1404233,1404234,1404235,1404236,1404237,1404238,1404239,1404240,1404241,1404242,1404243,1404244,1404245,1404246,1404247,1404248,1404249,1404250,1404251,1404252,1404253,1404254,1404255,1404256,1404257,1404258,1404259,1404260,1404261,1404262,1404263,1404264,1404265,1404266,1404267,1404268,1404269,1404270,1404271,1404272,1404273,1404274,1404275,1404276,1404277,1404278,1404280,1404281,1404282,1404283,1404284,1404285,1404286,1404287,1404288,1404289,1404292,1404293,1404294,1404295,1404296,1404297,1404298,1404299,1404300,1404301,1404302,1404303,1404304,1404305,1404306,1404307,1404308,1404309,1404310,1404311,1404312,1404313,1404314,1404315,1404316,1404317,1404318,1404319,1404320,1404321,1404322,1404323,1404325,1404326,1404327,1404330,1404331,1404332,1404333,1404334,1404335,1404336,1404337,1404338,1404339,1404340,1404341,1404342,1404343,1404344,1404345,1404346,1404347,1404348,1404349,1404350,1404351,1404352,1404353,1404354,1404355,1404356,1404357,1404358,1404359,1404360,1404361,1404362,1404363,1404364,1404365,1404366,1404367,1404368,1404369,1404370,1404371,1404372,1404373,1404374,1404375,1404376,1404377,1404378,1404379,1404380,1404381,1404382,1404383,1404384,1404385,1404386,1404387,1404388,1404389,1404390,1404391,1404394,1404395,1404396,1404397,1404398,1404399,1404400,1404401,1404402,1404403,1404405,1404406,1404407,1404408,1404409,1404410,1404411,1404412,1404413,1404414,1404415,1404416,1404417,1404418,1404419,1404420,1404421,1404422,1404423,1404425,1404426,1404427,1404428,1404430,1404431,1404432,1404433,1404434,1404435,1404436,1404437,1404438,1404439,1404440,1404441,1404442,1404443,1404444,1404445,1404446,1404447,1404448,1404449,1404450,1404451,1404452,1404453,1404454,1404455,1404456,1404457,1404458,1404459,1404460,1404461,1404462,1404463,1404464,1404465,1404466,1404467,1404468,1404469,1404470,1404471,1404472,1404473,1404474,1404475,1404476,1404477,1404478,1404479,1404480,1404481,1404482,1404483,1404484,1404485,1404486,1404487,1404488,1404489,1404490,1404491,1404492,1404493,1404494,1404495,1404496,1404497,1404498,1404499,1404500,1404501,1404502,1404503,1404504,1404505,1404506,1404507,1404508,1404509,1404510,1404511,1404512,1404513,1404514,1404515,1404516,1404517,1404518,1404519,1404520,1404521,1404522,1404523,1404524,1404525,1404526,1404527,1404528,1405000,1405001,1405002,1405003,1405004,1405005,1405006,1405007,1405008,1405009,1405010,1405011,1405012,1405013,1405014,1405015,1405016,1405017,1405018,1405019,1405020,1405021,1405022,1405023,1405024,1405026,1405027,1405028,1405029,1405030,1405031,1405032,1405033,1405034,1405035,1405036,1405037,1405038,1405039,1405040,1405041,1405042,1405043,1405044,1405045,1405046,1405047,1405048,1405049,1405050,1405051,1405052,1405053,1405054,1405055,1405056,1405057,1405058,1405059,1405060,1405061,1405062,1405063,1405064,1405065,1405066,1405067,1405068,1405069,1405070,1405071,1405072,1405073,1405075,1405076,1405077,1405078,1405079,1405080,1405081,1405082,1405083,1405084,1405085,1405086,1405087,1405088,1405090,1405091,1405092,1405093,1405094,1405095,1405096,1405097,1405098,1405099,1405100,1405101,1405102,1405103,1405104,1405105,1405106,1405107,1405108,1405109,1405110,1405111,1405112,1405113,1405114,1405115,1405116,1405117,1405118,1405119,1405120,1405121,1405122,1405123,1405124,1405125,1405126,1405127,1405128,1405129,1405130,1405131,1405132,1405133,1405134,1405135,1405136,1405137,1405138,1405141,1405142,1405143,1405144,1405145,1405146,1405147,1405148,1405149,1405150,1405151,1405152,1405153,1405154,1405155,1405156,1405157,1405158,1405159,1405160,1405161,1405162,1405163,1405164,1405165,1405166,1405167,1405168,1405169,1405170,1405171,1405172,1405173,1405174,1405175,1405176,1405177,1405178,1405179,1405180,1405181,1405186,1405187,1405188,1405189,1405190,1405191,1405192,1405193,1405194,1405195,1405196,1405197,1405198,1405199,1405200,1405201,1405202,1405203,1405204,1405205,1405206,1405207,1405208,1405209,1405210,1405211,1405212,1405213,1405216,1405218,1405219,1405220,1405221,1405222,1405223,1405224,1405225,1405226,1405227,1405228,1405229,1405230,1405231,1405232,1405233,1405234,1405235,1405236,1405237,1405238,1405239,1405240,1405241,1405242,1405243,1405244,1405245,1405246,1405247,1405248,1405256,1405257,1405258,1405259,1405260,1405261,1405262,1405263,1405264,1405265,1405266,1405267,1405268,1405269,1405270,1405271,1405272,1405273,1405274,1405275,1405276,1405277,1405278,1405279,1405280,1405281,1405282,1405283,1405284,1405285,1405286,1405287,1405289,1405290,1405291,1405292,1405293,1405294,1405295,1405296,1405297,1405298,1405299,1405300,1405301,1405302,1405303,1405304,1405305,1405306,1405307,1405308,1405318,1405319,1405320,1405321,1405322,1405323,1405324,1405325,1405326,1405327,1405328,1405329,1405330,1405331,1405332,1405333,1405334,1405335,1405336,1405337,1405338,1405339,1405340,1405341,1405342,1405343,1405344,1405345,1405346,1405347,1405348,1405349,1405350,1405351,1405352,1405353,1405354,1405355,1405356,1405357,1405358,1405359,1405360,1405361,1405362,1405363,1405364,1405365,1405366,1405367,1405368,1405369,1405370,1405371,1405372,1405373,1405374,1405375,1405376,1405377,1405378,1405379,1405380,1405381,1405382,1405384,1405385,1405386,1405387,1405388,1405389,1405390,1405391,1405392,1405393,1405394,1405395,1405396,1405397,1405398,1405399,1405400,1405401,1405402,1405403,1405404,1405405,1405406,1405407,1405408,1405409,1405410,1405411,1405412,1405413,1405414,1405415,1405416,1405417,1405418,1405419,1405420,1405421,1405422,1405423,1405424,1405425,1405426,1405427,1405428,1405429,1405430,1405431,1405432,1405433,1405434,1405435,1405436,1405437,1405438,1405439,1405440,1405441,1405442,1405443,1405444,1405445,1405446,1405447,1405448,1405449,1405450,1405451,1405452,1405453,1405454,1405455,1405456,1405457,1405458,1405459,1405460,1405461,1405462,1405463,1405464,1405465,1405466,1405467,1405468,1405469,1405470,1405471,1405472,1405473,1405474,1405475,1405476,1405477,1405478,1405479,1405480,1405481,1405482,1405483,1405484,1405485,1405486,1405487,1405488,1405489,1405490,1405491,1405492,1405493,1405494,1405495,1405496,1405497,1405498,1405499,1405500,1405501,1405502,1405503,1405504,1405505,1405506,1405507,1405508,1405509,1405510,1405511,1405512,1405513,1405514,1405515,1405516,1405517,1405518,1405519,1405520,1405521,1405522,1405523,1405524,1405525,1405526,1405527,1405528,1405529,1405530,1405531,1405532,1405533,1405534,1405535,1405536,1405537,1405538,1405539,1405540,1405541,1405542,1405543,1405544,1405545,1405546,1405547,1405548,1405549,1405550,1405551,1405552,1405553,1405554,1405555,1405556,1405557,1405558,1405559,1405560,1405561,1405562,1405563,1405564,1405565,1405566,1405567,1405569,1405570,1405571,1405572,1405573,1405574,1405575,1405576,1405577,1405578,1405579,1405580,1405581,1405582,1405583,1405584,1405585,1405586,1405587,1405588,1405589,1405590,1405591,1405592,1405593,1405594,1405595,1405596,1405597,1405598,1405599,1405600,1405601,1405602,1405603,1405604,1405605,1405606,1405607,1405608,1405609,1405611,1405612,1405613,1405614,1405615,1405616,1405617,1405618,1405619,1405620,1405621,1405622,1405623,1405624,1405625,1405629,1405630,1405631,1405632,1405633,1405634,1405638,1405639,1405640,1405641,1405642,1405643,1405644,1405645,1405646,1405647,1405648,1405649,1405650,1405651,1405652,1405653,1405654,1405655,1405656,1405657,1405658,1405659,1405660,1405661,1405662,1405663,1405664,1405665,1405666,1405667,1405668,1405669,1405670,1405671,1405672,1405673,1405674,1405675,1405676,1405677,1405678,1405679,1405680,1405681,1405682,1405683,1405684,1405685,1405686,1405687,1405688,1405689,1405690,1405691,1405692,1405695,1405696,1405697,1405698,1405655,1405656,1405657,1405658,1405703,1405704,1405705,1405706,1405707,1405708,1405709,1405710,1405711,1405712,1405713,1405714,1405715,1405716,1405717,1405718,1405719,1405720,1405721,1405722,1405723,1405724,1405725,1405726,1405727,1405728,1405731,1405732,1405733,1405734,1405735,1405736,1405737,1405738,1405739,1405740,1405741,1405742,1405744,1405745,1405746,1405747,1405748,1405749,1405750,1405751,1405752,1405753,1405754,1405755,1405756,1405757,1405758,1405760,1405762,1405763,1405764,1405765,1405766,1405767,1405768,1405769,1405770,1405771,1405772,1405773,1405774,1405775,1405776,1405777,1405778,1405779,1405780,1405781,1405782,1405783,1405784,1405785,1405786,1405787,1405788,1405789,1405790,1405791,1405792,1405793,1405794,1405795,1405796,1405797,1405798,1405799,1405800,1405801,1405802,1405803,1405804,1405805,1405806,1405807,1405808,1405809,1405810,1405811,1405812,1405813,1405814,1405815,1405816,1405817,1405818,1405819,1405820,1405821,1405822,1405823,1405824,1405825,1405826,1405827,1405828,1405829,1405830,1405831,1405832,1405833,1405834,1405835,1405836,1405837,1405838,1405839,1405856,1405857,1405858,1405859,1405860,1405861,1405862,1405863,1405864,1405865,1405866,1405867,1405872,1405873,1405874,1405875,1405876,1405877,1405878,1405879,1405880,1405881,1405882,1405883,1405884,1405885,1405886,1405887,1405888,1405889,1405890,1405891,1405892,1405893,1405894,1405895,1405896,1405898,1405899,1405900,1405901,1405902,1405903,1405904,1405905,1405906,1405910,1405911,1405912,1405913,1405914,1405915,1405917,1405918,1405919,1405920,1405921,1405922,1405923,1405924,1405925,1405926,1405927,1405928,1405929,1405930,1405931,1405932,1405933,1405934,1405935,1405936,1405937,1405938,1405939,1405940,1405941,1405942,1405943,1405944,1405945,1405946,1405947,1405948,1405949,1405950,1405951,1405952,1405953,1405954,1405955,1405956,1405957,1405958,1405959,1405960,1405961,1405962,1405963,1405964,1405965,1405966,1405967,1405968,1405927,1405928,1405929,1405930,1405973,1105974,1405975,1405976,1405977,1405984,1405985,1405986,1405987,1405988,1405989,1405990,1405991,1405992,1405993,1405994,1405995,1405996,1405997,1405998,1405999,1406000,1406001,1406004,1406005,1406006,1406007,1406008,1406009,1406010,1406011,1406012,1406013,1406014,1406015,1406016,1406017,1406018,1406019,1406020,1406021,1406022,1406023,1406024,1406025,1406026,1406027,1406028,1406029,1406030,1406031,1406032,1406033,1406034,1406035,1406036,1406037,1406038,1406039,1406040,1406041,1406042,1406043,1406044,1406045,1406046,1406047,1406048,1406049,1406050,1406051,1406052,1406053,1406054,1406055,1406056,1406057,1406058,1406059,1406060,1406061,1406062,1406063,1406064,1406065,1406066,1406067,1406068,1406069,1406070,1406071,1406072,1406073,1406074,1406075,1406076,1406077,1406078,1406079,1406080,1406081,1406082,1406083,1406084,1406085,1406086,1406087,1406088,1406089,1406090,1406091,1406092,1406093,1406094,1406095,1406096,1406097,1406098,1406099,1406100,1406101,1406102,1406103,1406104,1406105,1406106,1406107,1406108,1406109,1406110,1406111,1406112,1406113,1406114,1406115,1406116,1406117,1406118,1406119,1406120,1406121,1406122,1406123,1406124,1406125,1406126,1406127,1406128,1406129,1406130,1406131,1406132,1406133,1406134,1406135,1406136,1406137,1406138,1406139,1406140,1406141,1406142,1406143,1406144,1406145,1406146,1406153,1406154,1406155,1406156,1406157,1406158,1406159,1406160,1406161,1406162,1406163,1406164,1406165,1406166,1406167,1406168,1406169,1406170,1406171,1406172,1406173,1406174,1406175,1406176,1406177,1406178,1406179,1406180,1406181,1406182,1406183,1406184,1406185,1406186,1406187,1406188,1406189,1406190,1406191,1406192,1406193,1406194,1406195,1406196,1406197,1406198,1406199,1406200,1406201,1406202,1406203,1406204,1406205,1406206,1406207,1406208,1406209,1406210,1406211,1406214,1406215,1406216,1406217,1406218,1406219,1406220,1406221,1406222,1406223,1406224,1406225,1406226,1406227,1406228,1406229,1406230,1406231,1406232,1406233,1406234,1406235,1406236,1406237,1406238,1406239,1406240,1406241,1406242,1406243,1406244,1406245,1406246,1406247,1406248,1406249,1406250,1406251,1406252,1406253,1406254,1406255,1406256,1406257,1406258,1406259,1406260,1406261,1406262,1406263,1406264,1406265,1406266,1406267,1406268,1406269,1406270,1406271,1406272,1406273,1406274,1406275,1406276,1406277,1406278,1406279,1406280,1406281,1406282,1406283,1406284,1406285,1406286,1406287,1406288,1406289,1406290,1406291,1406292,1406293,1406294,1406295,1406296,1406297,1406298,1406299,1406300,1406301,1406302,1406303,1406304,1406305,1406312,1406313,1406314,1406315,1406316,1406317,1406318,1406319,1406320,1406321,1406322,1406323,1406324,1406325,1406326,1406327,1406328,1406329,1406330,1406331,1406332,1406333,1406334,1406335,1406336,1406337,1406338,1406339,1406340,1406341,1406342,1406343,1406344,1406345,1406346,1406347,1406348,1406349,1406350,1406351,1406352,1406353,1406354,1406355,1406356,1406357,1406358,1406359,1406360,1406361,1406362,1406363,1406364,1406365,1406366,1406367,1406368,1406369,1406370,1406371,1406372,1406373,1406374,1406375,1406376,1406377,1406378,1406379,1406380,1406381,1406382,1406383,1406384,1406385,1406386,1406387,1406388,1406389,1406390,1406391,1406392,1406393,1406394,1406395,1406396,1406397,1406398,1406399,1406400,1406401,1406402,1406403,1406404,1406405,1406406,1406407,1406408,1406409,1406410,1406411,1406412,1406413,1406414,1406415,1406416,1406417,1406418,1406419,1406420,1406421,1406422,1406423,1406424,1406425,1406426,1406427,1406428,1406429,1406430,1406431,1406432,1406433,1406434,1406435,1406436,1406437,1406438,1406439,1406440,1406441,1406442,1406443,1406444,1406445,1406446,1406447,1406448,1406449,1406450,1406451,1406452,1406453,1406454,1406455,1406456,1406457,1406458,1406459,1406460,1406461,1406462,1406463,1406464,1406465,1406466,1406467,1406468,1406469,1406470,1406476,1406477,1406478,1406479,1406480,1406481,1406482,1406483,1406484,1406485,1406486,1406487,1406488,1406489,1406490,1406491,1406492,1406493,1406494,1406495,1406496,1406497,1406498,1406499,1406500,1406501,1406502,1406503,1406504,1406505,1406506,1406507,1406508,1406509,1406510,1406511,1406512,1406513,1406514,1406515,1406516,1406517,1406518,1406519,1406520,1406521,1406522,1406523,1406524,1406525,1406526,1406527,1406528,1406529,1406530,1406531,1406532,1406533,1406534,1406535,1406536,1406537,1406538,1406539,1406540,1406541,1406542,1406543,1406544,1406545,1406546,1406547,1406548,1406549,1406550,1406551,1406552,1406553,1406554,1406555,1406556,1406557,1406558,1406559,1406560,1406561,1406562,1406563,1406564,1406565,1406566,1406567,1406568,1406569,1406570,1406571,1406572,1406573,1406574,1406575,1406576,1406577,1406578,1406579,1406580,1406581,1406582,1406583,1406584,1406585,1406586,1406587,1406588,1406589,1406590,1406591,1406592,1406593,1406594,1406595,1406596,1406597,1406598,1406599,1406600,1406601,1406602,1406603,1406604,1406605,1406606,1406607,1406608,1406609,1406610,1406611,1406612,1406613,1406614,1406615,1406616,1406617,1406618,1406619,1406620,1406621,1406622,1406623,1406624,1406625,1406626,1406627,1406628,1406629,1406630,1406631,1406632,1406633,1406634,1406635,1406636,1406637,1406638,1406639,1406640,1406641,1406642,1406643,1406644,1406645,1406646,1406647,1406648,1406649,1406650,1406651,1406652,1406653,1406654,1406655,1406656,1406657,1406658,1406659,1406660,1406661,1406662,1406663,1406664,1406665,1406666,1406667,1406668,1406669,1406670,1406671,1406672,1406673,1406674,1406675,1406676,1406677,1406678,1406679,1406680,1406681,1406682,1406683,1406684,1406685,1406686,1406687,1406688,1406689,1406690,1406691,1406692,1406693,1406694,1406695,1406696,1406697,1406698,1406699,1406700,1406701,1406702,1406703,1406704,1406705,1406706,1406707,1406708,1406709,1406710,1406711,1406712,1406713,1406714,1406715,1406716,1406719,1406720,1406721,1406722,1406723,1406724,1406725,1406726,1406727,1406728,1406729,1406730,1406731,1406732,1406733,1406734,1406735,1406736,1406737,1406738,1406739,1406740,1406741,1406742,1406744,1406745,1406746,1406747,1406748,1406749,1406751,1406752,1406753,1406754,1406755,1406756,1406757,1406758,1406759,1406760,1406761,1406762,1406763,1406764,1406765,1406766,1406767,1406768,1406769,1406770,1406771,1406772,1406773,1406774,1406775,1406776,1406777,1406778,1406779,1406780,1406781,1406782,1406783,1406784,1406785,1406786,1406787,1406788,1406789,1406790,1406791,1406792,1406793,1406794,1406795,1406796,1406797,1406800,1406801,1406802,1406803,1406804,1406805,1406806,1406807,1406808,1406809,1406816,1406817,1406818,1406819,1406820,1406821,1406822,1406823,1406824,1406825,1406826,1406827,1406828,1406829,1406830,1406831,1406832,1406833,1406834,1406835,1406836,1406837,1406838,1406839,1406840,1406841,1406842,1406843,1406844,1406845,1406846,1406847,1406848,1406849,1406850,1406851,1406852,1406853,1406854,1406855,1406856,1406857,1406858,1406859,1406860,1406861,1406862,1406863,1406864,1406865,1406866,1406867,1406868,1406869,1406870,1406871,1406872,1406873,1406874,1406875,1406876,1406877,1406878,1406879,1406880,1406881,1406882,1406883,1406884,1406885,1406886,1406887,1406888,1406889,1406890,1406891,1406892,1406893,1406894,1406895,1406896,1406897,1406898,1406899,1406900,1406901,1406902,1406903,1406906,1406907,1406908,1406909,1406910,1406911,1406912,1406913,1406914,1406915,1406916,1406917,1406918,1406919,1406920,1406921,1406922,1406923,1406924,1406925,1406926,1406927,1406928,1406929,1406930,1406931,1406932,1406933,1406934,1406935,1406936,1406937,1406938,1406939,1406940,1406941,1406942,1406943,1406944,1406945,1406946,1406947,1406948,1406949,1406950,1406951,1406952,1406953,1406954,1406955,1406956,1406957,1406958,1406959,1406960,1406961,1406962,1406963,1406964,1406971,1406972,1406973,1406974,1406975,1406976,1406977,1406978,1406979,1406980,1406981,1406982,1406984,1406985,1406986,1406987,1406988,1406989,1406990,1406991,1406992,1406993,1406994,1406995,1406996,1406997,1406998,1406999,1407000,1407001,1407002,1407003,1407004,1407005,1407006,1407007,1407008,1407009,1407010,1407011,1407012,1407013,1407014,1407015,1407016,1407017,1407018,1407020,1406937,1406948,1406953,1407028,1407029,1407030,1407031,1407032,1407034,1407035,1407036,1407037,1407038,1407039,1407040,1407041,1407042,1407043,1407044,1407045,1407046,1407047,1407048,1407049,1407050,1407051,1407052,1407055,1407056,1407057,1407058,1407059,1407060,1407061,1407062,1407063,1407064,1407065,1407066,1407067,1407068,1407069,1407070,1407071,1407072,1407073,1407074,1407075,1407076,1407077,1407078,1407079,1407080,1407081,1407082,1407083,1407084,1407085,1407086,1407087,1407088,1407089,1407090,1407091,1407092,1407093,1407094,1407095,1407096,1407103,1407104,1407105,1407106,1407107,1407108,1407111,1407112,1407113,1407114,1407115,1407116,1407117,1407118,1407119,1407120,1407121,1407122,1407123,1407124,1407125,1407126,1407127,1407128,1407129,1407130,1407131,1407132,1407133,1407134,1407135,1407136,1407137,1407138,1407139,1407140,1407141,1407142,1407143,1407144,1407145,1407146,1407147,1407148,1407149,1407150,1407151,1407152,1407153,1407154,1407155,1407156,1407157,1407158,1407159,1407160,1407161,1407162,1407165,1407166,1407167,1407168,1407169,1407170,1407171,1407172,1407173,1407174,1407175,1407176,1407177,1407178,1407179,1407180,1407181,1407182,1407183,1407184,1407185,1407186,1407187,1407188,1407189,1407190,1407191,1407192,1407193,1407194,1407195,1407196,1407197,1407198,1407199,1407200,1407201,1407202,1407203,1407204,1407205,1407206,1407208,1407209,1407210,1407211,1407212,1407219,1407220,1407221,1407222,1407223,1407224,1407225,1407226,1407229,1407230,1407231,1407232,1407233,1407234,1407235,1407236,1407237,1407238,1407239,1407240,1407241,1407242,1407243,1407244,1407245,1407246,1407247,1407248,1407249,1407250,1407251,1407252,1407260,1407261,1407262,1407263,1407264,1407265,1407266,1407267,1407268,1407269,1407270,1407271,1407272,1407273,1407274,1407275,1407276,1407277,1407278,1407279,1407280,1407281,1407282,1407283,1407284,1407285,1407286,1407287,1407290,1407291,1407292,1407293,1407294,1407295,1407296,1407297,1407298,1407299,1407300,1407301,1407302,1407303,1407304,1407305,1407306,1407307,1407308,1407309,1407310,1407311,1407312,1407313,1407314,1407315,1407316,1407317,1407318,1407319,1407320,1407321,1407322,1407323,1407324,1407325,1407326,1407327,1407328,1407329,1407330,1407331,1407334,1407335,1407336,1407337,1407338,1407339,1407340,1407341,1407342,1407343,1407344,1407345,1407346,1407347,1407348,1407349,1407350,1407351,1407352,1407353,1407354,1407355,1407356,1407357,1407358,1407359,1407366,1407369,1407372,1407373,1407374,1407375,1407376,1407377,1407378,1407379,1407380,1407381,1407382,1407383,1407384,1407385,1407386,1407387,1407388,1407389,1407390,1407391,1407392,1407393,1407396,1407397,1407398,1407399,1407400,1407401,1407402,1407404,1407405,1407406,1407407,1407408,1407409,1407410,1407411,1407412,1407413,1407414,1407415,1407416,1407417,1407418,1407419,1407420,1407421,1407422,1407423,1407424,1407425,1407426,1407427,1407428,1407429,1407430,1407431,1407432,1407433,1407434,1407435,1407436,1407437,1407438,1407439,1407440,1407441,1407442,1407445,1407446,1407447,1407448,1407449,1407450,1407451,1407452,1407453,1407454,1407455,1407456,1407457,1407458,1407459,1407460,1407461,1407462,1407463,1407464,1407465,1407466,1407467,1407468,1407469,1407470,1407471,1407472,1407475,1407476,1407477,1407478,1407479,1407480,1407481,1407482,1407483,1407485,1407486,1407487,1407488,1407489,1407490,1407491,1407492,1407493,1407494,1407495,1407496,1407497,1407498,1407499,1407500,1407501,1407502,1407503,1407504,1407505,1407512,1407513,1407514,1407515,1407516,1407517,1407518,1407519,1407520,1407521,1407522,1407523,1407524,1407527,1407528,1407529,1407530,1407531,1407532,1407533,1407534,1407535,1407536,1407537,1407538,1407539,1407540,1407541,1407542,1407543,1407544,1407545,1407546,1407547,1407548,1407549,1407550,1407551,1407552,1407553,1407554,1407555,1407556,1407557,1407558,1407559,1407560,1407561,1407562,1407563,1407564,1407565,1407566,1407567,1407568,1407569,1407570,1407571,1407572,1407573,1407574,1407577,1407578,1407579,1407580,1407581,1407582,1407583,1407584,1407585,1407586,1407587,1407588,1407589,1407590,1407591,1407592,1407593,1407594,1407595,1407596,1407597,1407598,1407599,1407600,1407601,1407602,1407603,1407604,1407605,1407606,1407607,1407608,1407609,1407610,1407611,1407612,1407613,1407614,1407615,1407616,1407617,1407618,1407625,1407626,1407627,1407628,1407629,1407630,1407631,1407632,1407633,1407636,1407637,1407638,1407639,1407640,1407641,1407642,1407643,1407644,1407645,1407646,1407647,1407648,1407649,1407650,1407651,1407652,1407653,1407654,1407655,1407656,1407657,1407658,1407659,1407660,1407668,1407669,1407670,1407671,1407672,1407673,1407674,1407675,1407676,1407677,1407678,1407679,1407680,1407681,1407682,1407683,1407684,1407685,1407686,1407687,1407688,1407689,1407690,1407691,1407692,1407693,1407694,1407695,1407696,1407697,1407700,1407701,1407702,1407703,1407704,1407705,1407706,1407707,1407708,1407709,1407710,1407711,1407712,1407713,1407714,1407715,1407716,1407717,1407718,1407719,1407720,1407721,1407722,1407723,1407724,1407725,1407726,1407727,1407729,1407730,1407731,1407732,1407733,1407734,1407735,1407736,1407737,1407738,1407739,1407740,1407741,1407742,1407743,1407744,1407745,1407746,1407747,1407748,1407749,1407750,1407751,1407752,1407753,1407754,1407755,1407756,1407757,1407758,1407759,1407760,1407763,1407764,1407765,1407766,1407767,1407768,1407769,1407770,1407771,1407772,1407773,1407774,1407775,1407776,1407778,1407779,1407780,1407781,1407782,1407783,1407784,1407785,1407786,1407787,1407788,1407789,1407790,1407791,1407792,1407793,1407794,1407795,1407796,1407797,1407798,1407799,1407800,1407801,1407802,1407803,1407804,1407805,1407806,1407807,1407808,1407809,1407810,1407811,1407812,1407813,1407816,1407817,1407818,1407819,1407820,1407821,1407822,1407823,1407824,1407825,1407826,1407827,1407828,1407829,1407830,1407831,1407832,1407833,1407834,1407835,1407836,1407837,1407838,1407839,1407840,1407841,1407842,1407843,1407844,1407845,1407846,1407847,1407848,1407849,1407856,1407857,1407858,1407859,1407860,1407861,1407862,1407863,1407864,1407865,1407866,1407867,1407868,1407869,1407870,1407871,1407872,1407875,1407876,1407877,1407878,1407879,1407880,1407881,1407882,1407883,1407884,1407885,1407886,1407887,1407888,1407889,1407890,1407891,1407892,1407893,1407894,1407895,1407896,1407897,1407898,1407899,1407900,1407901,1407902,1407903,1407904,1407905,1407906,1407907,1407908,1407909,1407910,1407911,1407912,1407913,1407914,1407915,1407916,1407917,1407918,1407919,1407920,1407921,1407922,1407923,1407926,1407927,1407928,1407929,1407930,1407931,1407935,1407936,1407937,1407938,1407947,1407948,1407949,1410000,1410001,1410002,1410003,1410004,1410005,1410006,1410007,1410008,1410009,1410010,1410011,1410012,1410013,1410014,1410015,1410016,1410017,1410018,1410019,1410020,1410021,1410022,1410023,1410024,1410025,1410026,1410027,1410028,1410029,1410030,1410031,1410032,1410033,1410034,1410035,1410036,1410037,1410038,1410039,1410040,1410041,1410042,1410043,1410044,1410045,1410046,1410047,1410048,1410049,1410050,1410051,1410052,1410053,1410054,1410055,1410056,1410057,1410058,1410059,1410060,1410061,1410062,1410063,1410064,1410065,1410066,1410067,1410068,1410069,1410070,1410071,1410072,1410073,1410074,1410075,1410077,1410078,1410079,1410080,1410081,1410082,1410083,1410084,1410085,1410086,1410087,1410088,1410089,1410090,1410091,1410092,1410093,1410094,1410095,1410096,1410097,1410098,1410099,1410100,1410101,1410102,1410103,1410104,1410105,1410106,1410107,1410108,1410109,1410110,1410111,1410112,1410113,1410114,1410115,1410116,1410117,1410118,1410119,1410120,1410121,1410122,1410123,1410124,1410125,1410126,1410127,1410128,1410129,1410130,1410131,1410132,1410133,1410134,1410135,1410136,1410137,1410138,1410139,1410140,1410141,1410142,1410143,1410144,1410145,1410146,1410147,1410148,1410149,1410150,1410151,1410152,1410153,1410154,1410155,1410156,1410157,1410158,1410159,1410160,1410161,1410162,1410163,1410164,1410165,1410166,1410167,1410168,1410169,1410170,1410171,1410172,1410173,1410174,1410175,1410176,1410177,1410178,1410179,1410180,1410181,1410182,1410183,1410184,1410185,1410186,1410187,1410188,1410189,1410190,1410191,1410192,1410193,1410194,1410195,1410196,1410198,1410199,1410200,1410201,1410202,1410203,1410204,1410205,1410206,1410207,1410208,1410209,1410210,1410211,1410212,1410213,1410214,1410215,1410216,1410217,1410218,1410219,1410220,1410221,1410222,1410223,1410224,1410225,1410226,1410227,1410228,1410229,1410230,1410231,1410232,1410233,1410234,1410235,1410236,1410237,1410238,1410239,1410240,1410241,1410242,1410243,1410244,1410245,1410246,1410247,1410248,1410249,1410250,1410251,1410252,1410253,1410254,1410255,1410256,1410257,1410258,1410259,1410260,1410261,1410262,1410263,1410264,1410265,1410266,1410267,1410268,1410269,1410270,1410271,1410272,1410273,1410274,1410275,1410276,1410277,1410278,1410279,1410280,1410281,1410282,1410283,1410284,1410285,1410286,1410287,1410288,1410289,1410290,1410291,1410292,1410293,1410294,1410295,1410296,1410297,1410298,1410299,1410300,1410301,1410302,1410303,1410304,1410305,1410306,1410307,1410308,1410309,1410310,1410311,1410312,1410313,1410314,1410315,1410316,1410317,1410318,1410319,1410320,1410323,1410324,1410325,1410326,1410327,1410328,1410329,1410330,1410331,1410332,1410333,1410334,1410335,1410336,1410337,1410338,1410339,1410340,1410341,1410342,1410343,1410344,1410345,1410346,1410347,1410348,1410349,1410350,1410351,1410352,1410353,1410354,1410355,1410356,1410357,1410358,1410359,1410360,1410361,1410362,1410363,1410364,1410365,1410366,1410367,1410368,1410369,1410370,1410371,1410372,1410373,1410374,1410375,1410376,1410377,1410378,1410379,1410380,1410381,1410382,1410383,1410384,1410385,1410386,1410387,1410388,1410389,1410390,1410391,1410393,1410394,1410395,1410396,1410397,1410398,1410399,1410400,1410401,1410402,1410403,1410404,1410405,1410406,1410407,1410408,1410409,1410410,1410411,1410412,1410413,1410414,1410415,1410416,1410417,1410418,1410419,1410420,1410421,1410422,1410423,1410424,1410425,1410426,1410427,1410430,1410431,1410432,1410433,1410434,1410435,1410436,1410437,1410438,1410439,1410440,1410441,1410442,1410443,1410444,1410445,1410446,1410447,1410448,1410449,1410450,1410451,1410452,1410453,1410454,1410455,1410456,1410457,1410458,1410460,1410461,1410462,1410463,1410464,1410465,1410466,1410467,1410468,1410469,1410470,1410471,1410472,1410473,1410474,1410475,1410478,1410479,1410480,1410481,1410482,1410483,1410484,1410485,1410486,1410487,1410490,1410491,1410492,1410493,1410494,1410495,1410497,1410498,1410499,1410500,1410501,1410502,1410503,1410504,1410505,1410506,1410507,1410508,1410509,1410510,1410511,1410512,1410513,1410514,1410515,1410516,1410517,1410518,1410519,1410520,1410521,1410522,1410523,1410524,1410525,1410526,1410527,1410531,1410532,1410533,1410534,1410535,1410536,1410537,1410538,1410539,1410540,1410541,1410542,1410543,1410544,1410545,1410546,1410547,1410548,1410549,1410550,1410551,1410552,1410553,1410554,1410555,1410556,1410557,1410558,1410559,1410560,1410561,1410565,1410566,1410567,1410568,1410569,1410570,1410571,1410572,1410573,1410574,1410575,1410576,1410577,1410578,1410579,1410580,1410581,1410582,1410583,1410584,1410585,1410586,1410587,1410588,1410589,1410590,1410591,1410592,1410593,1410594,1410595,1410596,1410597,1410598,1410599,1410600,1410601,1410602,1410603,1410604,1410605,1410606,1410607,1410608,1410609,1410610,1410611,1410612,1410613,1410614,1410615,1410616,1410617,1410618,1410619,1410620,1410621,1410622,1410623,1410624,1410625,1410626,1410627,1410628,1410629,1410630,1410631,1410633,1410634,1410635,1410636,1410637,1410638,1410639,1410640,1410641,1410642,1410643,1410644,1410645,1410646,1410647,1410648,1410650,1410651,1410652,1410653,1410654,1410655,1410656,1410657,1410658,1410659,1410660,1410661,1410662,1410663,1410664,1410665,1410666,1410667,1410668,1410669,1410670,1410671,1410672,1410673,1410674,1410675,1410676,1410677,1410678,1410679,1410680,1410681,1410682,1410683,1410684,1410685,1410686,1410687,1410688,1410689,1410690,1410691,1410692,1410693,1410694,1410695,1410696,1410697,1410698,1410699,1410700,1410702,1410704,1410706,1410708,1410710,1410711,1410712,1410713,1410714,1410715,1410716,1410717,1410718,1410719,1410720,1410721,1410722,1410723,1410724,1410725,1410726,1410727,1410728,1410729,1410730,1410731,1410732,1410733,1410734,1410735,1410736,1410737,1410738,1410739,1410740,1410741,1410742,1410743,1410744,1410745,1410746,1410747,1410748,1410749,1410750,1410751,1410752,1410753,1410754,1410755,1410756,1410757,1410758,1410759,1410760,1410761,1410762,1410763,1410764,1410765,1410766,1410767,1410768,1410769,1410770,1410771,1410772,1410773,1410774,1410775,1410776,1410777,1410778,1410779,1410780,1410781,1410782,1410783,1410784,1410785,1410786,1410787,1410788,1410789,1410790,1410791,1410792,1410793,1410794,1410795,1410796,1410797,1410798,1410799,1410800,1410801,1410802,1410803,1410804,1410805,1410806,1410807,1410808,1410809,1410810,1410811,1410812,1410813,1410814,1410815,1410816,1410817,1410818,1410819,1410820,1410821,1410822,1410823,1410824,1410825,1410826,1410827,1410828,1410829,1410830,1410831,1410832,1410833,1410834,1410835,1410836,1410837,1410838,1410839,1410840,1410841,1410842,1410846,1410847,1410848,1410849,1410850,1410851,1410852,1410853,1410854,1410855,1410856,1410857,1410858,1410859,1410860,1410861,1410862,1410863,1410864,1410865,1410866,1410867,1410868,1410869,1410870,
+
+
+
+
 
 
 
@@ -11666,7 +23331,15 @@ local ITEMS = {
 
 
 
+
+
+
+
     1501001582, 1501001047, 1501001496, 1501001051, 1501001588, 1501000057, 1501001061, 1501001058, 1501001069,
+
+
+
+
 
 
 
@@ -11674,7 +23347,15 @@ local ITEMS = {
 
 
 
+
+
+
+
     1501002687, 1501002677, 1501002672, 1501002649, 1501002174, 1501002668, 1501002081, 1501002618, 1501002220,
+
+
+
+
 
 
 
@@ -11682,7 +23363,15 @@ local ITEMS = {
 
 
 
+
+
+
+
     1501002628,
+
+
+
+
 
 
 
@@ -11690,7 +23379,15 @@ local ITEMS = {
 
 
 
+
+
+
+
     1501003582, 1501003047, 1501003496, 1501003051, 1501003588, 1501000057, 1501003061, 1501003058, 1501003069,
+
+
+
+
 
 
 
@@ -11698,7 +23395,15 @@ local ITEMS = {
 
 
 
+
+
+
+
     1502001014, 1502001069, 1502001023, 1502002014, 1502002069, 1502002023, 1502003014, 1502003069, 1502003023,
+
+
+
+
 
 
 
@@ -11706,7 +23411,15 @@ local ITEMS = {
 
 
 
+
+
+
+
     1908086, 1908088, 1908089, 1908188, 1908189, 1901091, 1901073, 1901074, 1901075, 1901076, 1901047, 1901102,
+
+
+
+
 
 
 
@@ -11714,7 +23427,15 @@ local ITEMS = {
 
 
 
+
+
+
+
     1903074, 1903076, 1961062, 1961063, 1961064, 1961147, 1961148, 1961149, 1961015, 1961145, 1961144, 1961056,
+
+
+
+
 
 
 
@@ -11722,7 +23443,15 @@ local ITEMS = {
 
 
 
+
+
+
+
     1961024, 1961025, 1961029, 1961030, 1961031, 1961041, 1961042, 1961044, 1961048, 1961050, 1961051, 1907054,
+
+
+
+
 
 
 
@@ -11730,7 +23459,15 @@ local ITEMS = {
 
 
 
+
+
+
+
     1953016, 1953004, 1904015, 1916004, 1916005, 1916006, 1919011,
+
+
+
+
 
 
 
@@ -11738,7 +23475,15 @@ local ITEMS = {
 
 
 
+
+
+
+
 22010009,22010010,22010011,22010012,22010013,22010015,22010017,22010018,22010019,22010020,22010021,22010022,22010024,22010026,22010027,22010028,22010029,22010030,22010033,22010035,22010036,22010037,22010038,22010039,22010040,22010042,22010044,22010045,22010048,22010049,22010051,22010052,22010054,22010055,22010057,22010058,22010059,22010060,22010062,22010063,22010065,12200501,12200601,12200701,12200801,12201201,12201301,12201401,12201801,12201901,12202001,12202601,12202801,12202901,12203101,12203201,12203401,12203601,12203801,12204001,12204201,12204401,12204601,12205001,12205201,12205401,12205601,12205801,12206001,12206801,12207001,12207201,12207301,12207401,12207501,12207701,12207901,12208001,12208201,12208401,12208601,12208801,12209001,12209101,12209201,12209301,12209501,12209801,12210001,12210201,12210601,12210801,12211401,12211501,12211801,12212001,12212201,12212401,12212601,12212701,12213001,12213201,12213401,12213601,12213801,12214001,12214201,12214401,12214601,12214701,12214801,12214901,12215001,12215101,12215201,12215401,12215504,12215506,12215507,12215511,12215513,12215514,12215515,12215516,12215517,12215518,12215519,12215520,12215521,12215522,12215528,12215529,12215530,12215532,12215533,12215534,12215535,12215601,12215701,12216001,12216101,12216301,12219001,12219002,12219003,12219004,12219006,12219007,12219008,12219009,12219021,12219022,12219024,12219026,12219030,12219043,12219044,12219045,12219046,12219047,12219048,12219049,12219050,12219051,12219052,12219053,12219054,12219055,12219061,12219064,12219065,12219067,12219068,12219069,12219071,12219072,12219073,12219074,12219078,12219080,12219082,12219083,12219084,12219085,12219086,12219088,12219089,12219091,12219095,12219097,12219098,12219099,12219100,12219107,12219108,12219109,12219110,12219112,12219113,12219114,12219121,12219201,12219203,12219204,12219205,12219206,12219207,12219208,12219209,12219210,12219211,12219212,12219213,12219214,12219215,12219216,12219217,12219218,12219219,12219220,12219223,12219224,12219225,12219226,12219227,12219228,12219230,12219236,12219239,12219240,12219242,12219244,12219245,12219249,12219251,12219253,12219254,12219255,12219256,12219257,12219258,12219270,12219271,12219272,12219274,12219275,12219276,12219277,12219278,12219279,12219280,12219291,12219293,12219294,12219295,12219296,12219297,12219298,12219299,12219300,12219301,12219302,12219303,12219304,12219305,12219306,12219309,12219310,12219313,12219314,12219315,12219317,12219319,12219326,12219328,12219329,12219331,12219332,12219334,12219335,12219339,12219340,12219341,12219343,12219344,12219345,12219346,12219348,12219350,12219352,12219353,12219354,12219355,12219361,12219362,12219363,12219364,12219365,12219366,12219367,12219368,12219370,12219377,12219379,12219381,12219383,12219395,12219396,12219397,12219398,12219415,12219416,12219417,12219418,12219419,12219420,12219422,12219424,12219425,12219426,12219427,12219429,12219430,12219431,12219433,12219435,12219438,12219440,12219441,12219442,12219443,12219444,12219445,12219446,12219450,12219452,12219453,12219454,12219455,12219458,12219459,12219461,12219462,12219463,12219468,12219470,12219471,12219472,12219499,12219501,12219503,12219504,12219505,12219509,12219510,12219512,12219523,12219524,12219525,12219526,12219527,12219528,12219529,12219530,12219532,12219535,12219537,12219538,12219539,12219540,12219545,12219546,12219551,12219552,12219559,12219561,12219562,12219563,12219564,12219565,12219567,12219574,12219575,12219576,12219579,12219581,12219585,12219586,12219587,12219594,12219596,12219597,12219601,12219607,12219608,12219609,12219610,12219616,12219617,12219618,12219619,12219621,12219624,12219625,12219626,12219639,12219640,12219641,12219643,12219644,12219645,12219649,12219656,12219657,12219659,12219661,12219667,12219668,12219677,12219679,12219680,12219681,12219682,12219684,12219685,12219686,12219690,12219691,12219692,12219693,12219694,12219698,12219699,12219703,12219710,12219715,12219716,12219720,12219721,12219722,12219723,12219725,12219726,12219814,12219819,12219824,12219825,12219829,12219836,12219840,12219841,12219842,12220001,12220002,12220003,12220004,12220005,12220006,12220007,12220008,12220009,12220011,12220012,12220013,12220014,12220016,12220017,12220019,12220020,12220021,12220022,12220023,12220028,12220040,12220042,12220043,12220044,12220045,12220046,12220048,12220049,12220054,12220063,12220064,12220065,12220073,12220074,12220081,12220082,12220093,12220094,12220095,12220096,12220097,12220098,12220099,12220110,12220111,12220116,12220121,12220126,12220131,12220140,12220141,12220142,12220143,12220157,12220158,12220159,12220160,12220161,12220163,12220168,12220170,0,0,12220173,12220174,12220176,12220177,12220178,12220179,12220180,12220182,12220183,12220184,12220187,0,0,12220200,12220205,12220210,12220211,12220212,12220213,12220214,12220215,12220216,12220218,12220219,12220220,12220221,12220226,12220228,12220229,12220233,12220235,12220237,12220238,12220239,12220240,12220241,12220243,12220246,12220247,12220248,12220249,12220250,12220251,12220252,12220257,12220258,12220259,12220264,12220269,12220274,12220275,12220276,12220277,12220278,12220279,12220280,12220285,12220286,12220287,12220288,12220289,12220300,12220301,12220302,12220303,12220305,12220307,12220308,12220310,0,0,12220313,12220314,12220315,12220316,12220320,12220324,12220330,0,12220336,12220340,12220341,12220342,12220343,12220345,12220347,12220348,12220350,12220352,12220353,12220354,12220355,12220356,12220357,12220358,12220359,12220364,12220369,12220370,12220380,12220381,12220382,12220383,12220385,12220387,12220388,12220389,12220394,12220399,12220400,12220401,12220402,12220403,12220404,12220405,12220407,12220410,12220411,12220412,12220413,12220435,12220436,12220440,12220441,12220442,12220443,12220446,12220447,12220448,12220450,12220451,12220452,12220453,12220454,12220460,12220465,12220470,12220475,12220477,12220478,12220479,12220480,12220481,12220482,12220483,12220484,12220491,12220502,12220503,12220504,12220505,12220507,12220519,12220520,12220523,12220524,12220525,12220526,12220527,12220528,12220530,1403780,1403781,12220543,12220548,12220553,12220554,12220555,12220556,12220557,12220558,12220559,12220563,12220564,12220568,12220573,12220574,12220575,12220576,12220577,12220578,12220582,12220592,12220597,12220598,12220599,12220600,12220601,12220602,12220603,12220605,12220620,12220621,12220627,12220623,12220630,12220636,12220639,12220640,12220645,12220704,12220705,12220706,12220707,12220711,12220713,12220717,12220718,12220719,12220723,12220724,12220730,12220734,12220735,12220740,12220741,12220804,12220809,12220810,12220811,12220812,12220813,12220814,12220816,12220819,12220822,12220824,12220826,12220828,12220849,12220854,12220859,12220860,12220861,12220862,12220863,12220864,12220880,12220882,12220885,12220911,12220912,12220920,12220921,12220922,12220954,12220959,12220964,12220965,12220966,12220967,12220968,12220969,12220970,12220971,
+
+
+
+
 
 
 
@@ -11746,7 +23491,19 @@ local ITEMS = {
 
 
 
+
+
+
+
 }
+
+
+
+
+
+
+
+
 
 
 
@@ -11758,7 +23515,15 @@ local INS_BASE = 2000000000
 
 
 
+
+
+
+
 local PKG_SLOT = 3
+
+
+
+
 
 
 
@@ -11766,7 +23531,15 @@ local MELEE_ID = 108
 
 
 
+
+
+
+
 local GUN_SUB = { [101]=true, [102]=true, [103]=true, [104]=true, [105]=true, [106]=true, [107]=true }
+
+
+
+
 
 
 
@@ -11778,7 +23551,19 @@ local NET_OK = NetErrorCode_NONE or "ok"
 
 
 
+
+
+
+
+
+
+
+
 local R = { insToRes = {}, resToIns = {} }
+
+
+
+
 
 
 
@@ -11786,7 +23571,15 @@ local _matchApplied = false
 
 
 
+
+
+
+
 local _weaponSkinCache = {}
+
+
+
+
 
 
 
@@ -11794,7 +23587,15 @@ local function cache()
 
 
 
+
+
+
+
     _G.AddOutfitEquippedCache = _G.AddOutfitEquippedCache or {
+
+
+
+
 
 
 
@@ -11802,7 +23603,15 @@ local function cache()
 
 
 
+
+
+
+
         weapons = {},
+
+
+
+
 
 
 
@@ -11810,11 +23619,27 @@ local function cache()
 
 
 
+
+
+
+
     return _G.AddOutfitEquippedCache
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -11826,7 +23651,15 @@ _G.SaveLobbyWardrobe = function()
 
 
 
+
+
+
+
     pcall(function()
+
+
+
+
 
 
 
@@ -11834,7 +23667,15 @@ _G.SaveLobbyWardrobe = function()
 
 
 
+
+
+
+
         local content = "return {\n"
+
+
+
+
 
 
 
@@ -11842,7 +23683,15 @@ _G.SaveLobbyWardrobe = function()
 
 
 
+
+
+
+
         content = content .. "  outfitIns = " .. tostring(cch.outfitIns or 0) .. ",\n"
+
+
+
+
 
 
 
@@ -11850,7 +23699,15 @@ _G.SaveLobbyWardrobe = function()
 
 
 
+
+
+
+
         for wid, w in pairs(cch.weapons) do
+
+
+
+
 
 
 
@@ -11858,7 +23715,15 @@ _G.SaveLobbyWardrobe = function()
 
 
 
+
+
+
+
         end
+
+
+
+
 
 
 
@@ -11866,7 +23731,15 @@ _G.SaveLobbyWardrobe = function()
 
 
 
+
+
+
+
         content = content .. "}"
+
+
+
+
 
 
 
@@ -11874,7 +23747,15 @@ _G.SaveLobbyWardrobe = function()
 
 
 
+
+
+
+
         local paths = GetConfigPaths("dx_wardrobe.ini")
+
+
+
+
 
 
 
@@ -11882,7 +23763,15 @@ _G.SaveLobbyWardrobe = function()
 
 
 
+
+
+
+
             local file = io.open(path, "w")
+
+
+
+
 
 
 
@@ -11890,7 +23779,15 @@ _G.SaveLobbyWardrobe = function()
 
 
 
+
+
+
+
                 file:write(content)
+
+
+
+
 
 
 
@@ -11898,7 +23795,15 @@ _G.SaveLobbyWardrobe = function()
 
 
 
+
+
+
+
                 break
+
+
+
+
 
 
 
@@ -11906,7 +23811,15 @@ _G.SaveLobbyWardrobe = function()
 
 
 
+
+
+
+
         end
+
+
+
+
 
 
 
@@ -11914,7 +23827,19 @@ _G.SaveLobbyWardrobe = function()
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -11926,7 +23851,15 @@ _G.LoadLobbyWardrobe = function()
 
 
 
+
+
+
+
     pcall(function()
+
+
+
+
 
 
 
@@ -11934,7 +23867,15 @@ _G.LoadLobbyWardrobe = function()
 
 
 
+
+
+
+
         local content = nil
+
+
+
+
 
 
 
@@ -11942,7 +23883,15 @@ _G.LoadLobbyWardrobe = function()
 
 
 
+
+
+
+
             local file = io.open(path, "r")
+
+
+
+
 
 
 
@@ -11950,7 +23899,15 @@ _G.LoadLobbyWardrobe = function()
 
 
 
+
+
+
+
                 content = file:read("*a")
+
+
+
+
 
 
 
@@ -11958,7 +23915,15 @@ _G.LoadLobbyWardrobe = function()
 
 
 
+
+
+
+
                 break
+
+
+
+
 
 
 
@@ -11966,7 +23931,15 @@ _G.LoadLobbyWardrobe = function()
 
 
 
+
+
+
+
         end
+
+
+
+
 
 
 
@@ -11974,7 +23947,15 @@ _G.LoadLobbyWardrobe = function()
 
 
 
+
+
+
+
             local func = load(content)
+
+
+
+
 
 
 
@@ -11982,7 +23963,15 @@ _G.LoadLobbyWardrobe = function()
 
 
 
+
+
+
+
                 local savedData = func()
+
+
+
+
 
 
 
@@ -11990,7 +23979,15 @@ _G.LoadLobbyWardrobe = function()
 
 
 
+
+
+
+
                     local cch = cache()
+
+
+
+
 
 
 
@@ -11998,7 +23995,15 @@ _G.LoadLobbyWardrobe = function()
 
 
 
+
+
+
+
                     cch.outfitIns = savedData.outfitIns
+
+
+
+
 
 
 
@@ -12006,7 +24011,15 @@ _G.LoadLobbyWardrobe = function()
 
 
 
+
+
+
+
                         for wid, w in pairs(savedData.weapons) do
+
+
+
+
 
 
 
@@ -12014,7 +24027,15 @@ _G.LoadLobbyWardrobe = function()
 
 
 
+
+
+
+
                             _weaponSkinCache[wid] = { resID = w.resID, insID = w.insID }
+
+
+
+
 
 
 
@@ -12022,7 +24043,15 @@ _G.LoadLobbyWardrobe = function()
 
 
 
+
+
+
+
                     end
+
+
+
+
 
 
 
@@ -12030,7 +24059,15 @@ _G.LoadLobbyWardrobe = function()
 
 
 
+
+
+
+
             end
+
+
+
+
 
 
 
@@ -12038,11 +24075,27 @@ _G.LoadLobbyWardrobe = function()
 
 
 
+
+
+
+
     end)
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -12054,7 +24107,15 @@ local function cfg(resID)
 
 
 
+
+
+
+
     if not resID or not CDataTable or not CDataTable.GetTableData then return nil end
+
+
+
+
 
 
 
@@ -12062,7 +24123,19 @@ local function cfg(resID)
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -12074,11 +24147,27 @@ local function subType(c)
 
 
 
+
+
+
+
     return c and (c.ItemSubType or c.itemSubType) or nil
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -12090,7 +24179,15 @@ local ST_TOP     = (ENUM_ITEM_SUBTYPE and ENUM_ITEM_SUBTYPE.Package_Slot) or 403
 
 
 
+
+
+
+
 local ST_PANTS   = (ENUM_ITEM_SUBTYPE and ENUM_ITEM_SUBTYPE.Pants_Slot) or 404
+
+
+
+
 
 
 
@@ -12098,11 +24195,23 @@ local ST_SHOES   = (ENUM_ITEM_SUBTYPE and ENUM_ITEM_SUBTYPE.Shoes_Slot) or 405
 
 
 
+
+
+
+
 local ST_UNDER_T = (ENUM_ITEM_SUBTYPE and ENUM_ITEM_SUBTYPE.UnderCloth) or 450
 
 
 
+
+
+
+
 local ST_UNDER_P = (ENUM_ITEM_SUBTYPE and ENUM_ITEM_SUBTYPE.UnderPants) or 451
+
+
+
+
 
 
 
@@ -12114,7 +24223,19 @@ local WARDROBE_TAB_SUIT, WARDROBE_TAB_CLOTHES = 10, 3
 
 
 
+
+
+
+
+
+
+
+
 pcall(function()
+
+
+
+
 
 
 
@@ -12122,11 +24243,23 @@ pcall(function()
 
 
 
+
+
+
+
     WARDROBE_TAB_SUIT = wm.ENUM_WardrobeSubTabString.ENUM_WardrobeSubTabString_suit
 
 
 
+
+
+
+
     WARDROBE_TAB_CLOTHES = wm.ENUM_WardrobeSubTabString.ENUM_WardrobeSubTabString_clothes
+
+
+
+
 
 
 
@@ -12138,7 +24271,19 @@ end)
 
 
 
+
+
+
+
+
+
+
+
 local FULL_SUIT_CLEAR_ST = {
+
+
+
+
 
 
 
@@ -12146,7 +24291,15 @@ local FULL_SUIT_CLEAR_ST = {
 
 
 
+
+
+
+
     [ST_UNDER_T] = true, [ST_UNDER_P] = true,
+
+
+
+
 
 
 
@@ -12158,7 +24311,19 @@ local FULL_SUIT_CLEAR_ST = {
 
 
 
+
+
+
+
+
+
+
+
 local function wardrobeTab(resID, depotData)
+
+
+
+
 
 
 
@@ -12166,7 +24331,15 @@ local function wardrobeTab(resID, depotData)
 
 
 
+
+
+
+
     local c = cfg(resID)
+
+
+
+
 
 
 
@@ -12174,7 +24347,19 @@ local function wardrobeTab(resID, depotData)
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -12186,7 +24371,15 @@ local function isFullSuitRes(resID, depotData)
 
 
 
+
+
+
+
     resID = tonumber(resID)
+
+
+
+
 
 
 
@@ -12194,7 +24387,15 @@ local function isFullSuitRes(resID, depotData)
 
 
 
+
+
+
+
     local ok, xs = pcall(function()
+
+
+
+
 
 
 
@@ -12202,7 +24403,15 @@ local function isFullSuitRes(resID, depotData)
 
 
 
+
+
+
+
         return LogicXSuit.IsXSuit(resID)
+
+
+
+
 
 
 
@@ -12210,7 +24419,15 @@ local function isFullSuitRes(resID, depotData)
 
 
 
+
+
+
+
     if ok and xs then return true end
+
+
+
+
 
 
 
@@ -12218,7 +24435,15 @@ local function isFullSuitRes(resID, depotData)
 
 
 
+
+
+
+
     if tab == WARDROBE_TAB_SUIT then return true end
+
+
+
+
 
 
 
@@ -12226,7 +24451,15 @@ local function isFullSuitRes(resID, depotData)
 
 
 
+
+
+
+
     for _, id in ipairs(ITEMS) do
+
+
+
+
 
 
 
@@ -12234,7 +24467,15 @@ local function isFullSuitRes(resID, depotData)
 
 
 
+
+
+
+
             return true
+
+
+
+
 
 
 
@@ -12242,7 +24483,15 @@ local function isFullSuitRes(resID, depotData)
 
 
 
+
+
+
+
     end
+
+
+
+
 
 
 
@@ -12250,7 +24499,19 @@ local function isFullSuitRes(resID, depotData)
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -12262,7 +24523,15 @@ local function getClothKind(resID, depotData)
 
 
 
+
+
+
+
     resID = tonumber(resID)
+
+
+
+
 
 
 
@@ -12270,7 +24539,15 @@ local function getClothKind(resID, depotData)
 
 
 
+
+
+
+
     local st = subType(cfg(resID))
+
+
+
+
 
 
 
@@ -12278,7 +24555,15 @@ local function getClothKind(resID, depotData)
 
 
 
+
+
+
+
         return isFullSuitRes(resID, depotData) and "full_suit" or "top"
+
+
+
+
 
 
 
@@ -12286,7 +24571,15 @@ local function getClothKind(resID, depotData)
 
 
 
+
+
+
+
     if st == ST_PANTS then return "pants" end
+
+
+
+
 
 
 
@@ -12294,7 +24587,15 @@ local function getClothKind(resID, depotData)
 
 
 
+
+
+
+
     if st == ST_UNDER_T then return "under_top" end
+
+
+
+
 
 
 
@@ -12302,11 +24603,27 @@ local function getClothKind(resID, depotData)
 
 
 
+
+
+
+
     return nil
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -12318,7 +24635,15 @@ local function subTypesToClearForKind(kind)
 
 
 
+
+
+
+
     if kind == "full_suit" then return FULL_SUIT_CLEAR_ST end
+
+
+
+
 
 
 
@@ -12326,7 +24651,15 @@ local function subTypesToClearForKind(kind)
 
 
 
+
+
+
+
     if kind == "pants" then return { [ST_PANTS] = true } end
+
+
+
+
 
 
 
@@ -12334,7 +24667,15 @@ local function subTypesToClearForKind(kind)
 
 
 
+
+
+
+
     if kind == "under_top" then return { [ST_UNDER_T] = true } end
+
+
+
+
 
 
 
@@ -12342,11 +24683,27 @@ local function subTypesToClearForKind(kind)
 
 
 
+
+
+
+
     return nil
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -12358,7 +24715,15 @@ local function isBodyClothSubType(st)
 
 
 
+
+
+
+
     st = tonumber(st)
+
+
+
+
 
 
 
@@ -12366,7 +24731,19 @@ local function isBodyClothSubType(st)
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -12378,7 +24755,15 @@ local function weaponIdFromSkin(resID)
 
 
 
+
+
+
+
     local m = CDataTable and CDataTable.GetTableData and CDataTable.GetTableData("WeaponSkinMapping", resID)
+
+
+
+
 
 
 
@@ -12386,11 +24771,27 @@ local function weaponIdFromSkin(resID)
 
 
 
+
+
+
+
     return m.WeaponID or m.WeaponId
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -12402,11 +24803,27 @@ local function isInjectedIns(ins)
 
 
 
+
+
+
+
     return ins and R.insToRes[tonumber(ins)] ~= nil
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -12418,11 +24835,27 @@ local function isInjectedRes(res)
 
 
 
+
+
+
+
     return res and R.resToIns[tonumber(res)] ~= nil
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -12434,7 +24867,15 @@ local function invalidateSocialWearCache()
 
 
 
+
+
+
+
     local s = _G.AddOutfitSocialState
+
+
+
+
 
 
 
@@ -12442,7 +24883,15 @@ local function invalidateSocialWearCache()
 
 
 
+
+
+
+
         s.wearPatchKey, s.snapshotKey, s.fullSnapshot, s.lastHandSkin = nil, nil, nil, nil
+
+
+
+
 
 
 
@@ -12450,7 +24899,19 @@ local function invalidateSocialWearCache()
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -12462,7 +24923,15 @@ local function saveWeaponToCache(weaponID, resID, insID)
 
 
 
+
+
+
+
     weaponID, resID, insID = tonumber(weaponID), tonumber(resID), tonumber(insID)
+
+
+
+
 
 
 
@@ -12470,7 +24939,15 @@ local function saveWeaponToCache(weaponID, resID, insID)
 
 
 
+
+
+
+
     local cch = cache()
+
+
+
+
 
 
 
@@ -12478,7 +24955,15 @@ local function saveWeaponToCache(weaponID, resID, insID)
 
 
 
+
+
+
+
     _weaponSkinCache[weaponID] = { resID = resID, insID = insID or 0 }
+
+
+
+
 
 
 
@@ -12486,7 +24971,15 @@ local function saveWeaponToCache(weaponID, resID, insID)
 
 
 
+
+
+
+
     _matchApplied = false
+
+
+
+
 
 
 
@@ -12494,11 +24987,27 @@ local function saveWeaponToCache(weaponID, resID, insID)
 
 
 
+
+
+
+
     if _G.SaveLobbyWardrobe then _G.SaveLobbyWardrobe() end
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -12510,7 +25019,15 @@ local function cacheWeaponSkinFromIns(weaponID, insID)
 
 
 
+
+
+
+
     weaponID, insID = tonumber(weaponID), tonumber(insID)
+
+
+
+
 
 
 
@@ -12518,7 +25035,15 @@ local function cacheWeaponSkinFromIns(weaponID, insID)
 
 
 
+
+
+
+
     if isInjectedIns(insID) then
+
+
+
+
 
 
 
@@ -12526,7 +25051,15 @@ local function cacheWeaponSkinFromIns(weaponID, insID)
 
 
 
+
+
+
+
         return
+
+
+
+
 
 
 
@@ -12534,7 +25067,15 @@ local function cacheWeaponSkinFromIns(weaponID, insID)
 
 
 
+
+
+
+
     pcall(function()
+
+
+
+
 
 
 
@@ -12542,7 +25083,15 @@ local function cacheWeaponSkinFromIns(weaponID, insID)
 
 
 
+
+
+
+
         local d = wd:GetValidHallDepotItemDataByInsID(insID) or wd:GetHallDepotItemDataByInsID(insID)
+
+
+
+
 
 
 
@@ -12550,7 +25099,15 @@ local function cacheWeaponSkinFromIns(weaponID, insID)
 
 
 
+
+
+
+
             saveWeaponToCache(weaponID, tonumber(d.resID), insID)
+
+
+
+
 
 
 
@@ -12558,11 +25115,27 @@ local function cacheWeaponSkinFromIns(weaponID, insID)
 
 
 
+
+
+
+
     end)
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -12574,7 +25147,15 @@ local function saveEquip(resID, insID)
 
 
 
+
+
+
+
     resID, insID = tonumber(resID), tonumber(insID)
+
+
+
+
 
 
 
@@ -12582,7 +25163,15 @@ local function saveEquip(resID, insID)
 
 
 
+
+
+
+
     local c = cfg(resID)
+
+
+
+
 
 
 
@@ -12590,7 +25179,15 @@ local function saveEquip(resID, insID)
 
 
 
+
+
+
+
     local cch = cache()
+
+
+
+
 
 
 
@@ -12598,7 +25195,15 @@ local function saveEquip(resID, insID)
 
 
 
+
+
+
+
         cch.outfitRes, cch.outfitIns = resID, insID
+
+
+
+
 
 
 
@@ -12606,7 +25211,15 @@ local function saveEquip(resID, insID)
 
 
 
+
+
+
+
         invalidateSocialWearCache()
+
+
+
+
 
 
 
@@ -12614,7 +25227,15 @@ local function saveEquip(resID, insID)
 
 
 
+
+
+
+
         if cch.outfitRes and isFullSuitRes(cch.outfitRes) then
+
+
+
+
 
 
 
@@ -12622,7 +25243,15 @@ local function saveEquip(resID, insID)
 
 
 
+
+
+
+
             invalidateSocialWearCache()
+
+
+
+
 
 
 
@@ -12630,7 +25259,15 @@ local function saveEquip(resID, insID)
 
 
 
+
+
+
+
     elseif GUN_SUB[st] then
+
+
+
+
 
 
 
@@ -12638,7 +25275,15 @@ local function saveEquip(resID, insID)
 
 
 
+
+
+
+
         if wid then saveWeaponToCache(wid, resID, insID) end
+
+
+
+
 
 
 
@@ -12646,7 +25291,15 @@ local function saveEquip(resID, insID)
 
 
 
+
+
+
+
         saveWeaponToCache(MELEE_ID, resID, insID)
+
+
+
+
 
 
 
@@ -12654,7 +25307,15 @@ local function saveEquip(resID, insID)
 
 
 
+
+
+
+
     _matchApplied = false
+
+
+
+
 
 
 
@@ -12662,7 +25323,19 @@ local function saveEquip(resID, insID)
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -12674,7 +25347,15 @@ local function syncWeaponCacheFromLobby()
 
 
 
+
+
+
+
     if isInRealMatch() then return end
+
+
+
+
 
 
 
@@ -12682,7 +25363,15 @@ local function syncWeaponCacheFromLobby()
 
 
 
+
+
+
+
     pcall(function()
+
+
+
+
 
 
 
@@ -12690,7 +25379,15 @@ local function syncWeaponCacheFromLobby()
 
 
 
+
+
+
+
         local bag = fbd.GetCurrentFashionBag and fbd:GetCurrentFashionBag()
+
+
+
+
 
 
 
@@ -12698,11 +25395,23 @@ local function syncWeaponCacheFromLobby()
 
 
 
+
+
+
+
             for weaponID, entry in pairs(bag.weapon_skin_list) do
 
 
 
+
+
+
+
                 weaponID = tonumber(weaponID)
+
+
+
+
 
 
 
@@ -12710,7 +25419,15 @@ local function syncWeaponCacheFromLobby()
 
 
 
+
+
+
+
                 if weaponID and weaponID > 0 and insID > 0 then
+
+
+
+
 
 
 
@@ -12718,7 +25435,15 @@ local function syncWeaponCacheFromLobby()
 
 
 
+
+
+
+
                         local res = tonumber(R.insToRes[insID])
+
+
+
+
 
 
 
@@ -12726,11 +25451,23 @@ local function syncWeaponCacheFromLobby()
 
 
 
+
+
+
+
                             cch.weapons[weaponID] = { resID = res, insID = insID }
 
 
 
+
+
+
+
                         end
+
+
+
+
 
 
 
@@ -12738,7 +25475,15 @@ local function syncWeaponCacheFromLobby()
 
 
 
+
+
+
+
                         local wd = require("client.slua.logic.wardrobe.wardrobe_data")
+
+
+
+
 
 
 
@@ -12746,7 +25491,15 @@ local function syncWeaponCacheFromLobby()
 
 
 
+
+
+
+
                             or wd:GetHallDepotItemDataByInsID(insID)
+
+
+
+
 
 
 
@@ -12754,7 +25507,15 @@ local function syncWeaponCacheFromLobby()
 
 
 
+
+
+
+
                             cch.weapons[weaponID] = { resID = tonumber(d.resID), insID = insID }
+
+
+
+
 
 
 
@@ -12762,7 +25523,15 @@ local function syncWeaponCacheFromLobby()
 
 
 
+
+
+
+
                     end
+
+
+
+
 
 
 
@@ -12770,7 +25539,15 @@ local function syncWeaponCacheFromLobby()
 
 
 
+
+
+
+
             end
+
+
+
+
 
 
 
@@ -12778,11 +25555,23 @@ local function syncWeaponCacheFromLobby()
 
 
 
+
+
+
+
     end)
 
 
 
+
+
+
+
     pcall(function()
+
+
+
+
 
 
 
@@ -12790,7 +25579,15 @@ local function syncWeaponCacheFromLobby()
 
 
 
+
+
+
+
         if Arm.rsp_list and Arm.rsp_list.install_list then
+
+
+
+
 
 
 
@@ -12798,7 +25595,15 @@ local function syncWeaponCacheFromLobby()
 
 
 
+
+
+
+
                 weaponID = tonumber(weaponID)
+
+
+
+
 
 
 
@@ -12806,7 +25611,15 @@ local function syncWeaponCacheFromLobby()
 
 
 
+
+
+
+
                 if weaponID and weaponID > 0 and insID > 0 then
+
+
+
+
 
 
 
@@ -12814,7 +25627,15 @@ local function syncWeaponCacheFromLobby()
 
 
 
+
+
+
+
                         local res = tonumber(R.insToRes[insID])
+
+
+
+
 
 
 
@@ -12822,11 +25643,23 @@ local function syncWeaponCacheFromLobby()
 
 
 
+
+
+
+
                             cch.weapons[weaponID] = { resID = res, insID = insID }
 
 
 
+
+
+
+
                         end
+
+
+
+
 
 
 
@@ -12834,7 +25667,15 @@ local function syncWeaponCacheFromLobby()
 
 
 
+
+
+
+
                         local wd = require("client.slua.logic.wardrobe.wardrobe_data")
+
+
+
+
 
 
 
@@ -12842,7 +25683,15 @@ local function syncWeaponCacheFromLobby()
 
 
 
+
+
+
+
                             or wd:GetHallDepotItemDataByInsID(insID)
+
+
+
+
 
 
 
@@ -12850,7 +25699,15 @@ local function syncWeaponCacheFromLobby()
 
 
 
+
+
+
+
                             cch.weapons[weaponID] = { resID = tonumber(d.resID), insID = insID }
+
+
+
+
 
 
 
@@ -12858,7 +25715,15 @@ local function syncWeaponCacheFromLobby()
 
 
 
+
+
+
+
                     end
+
+
+
+
 
 
 
@@ -12866,7 +25731,15 @@ local function syncWeaponCacheFromLobby()
 
 
 
+
+
+
+
             end
+
+
+
+
 
 
 
@@ -12874,7 +25747,15 @@ local function syncWeaponCacheFromLobby()
 
 
 
+
+
+
+
     end)
+
+
+
+
 
 
 
@@ -12882,7 +25763,15 @@ local function syncWeaponCacheFromLobby()
 
 
 
+
+
+
+
         local wgl = require("client.slua.logic.wardrobe.logic_wardrobe_gun")
+
+
+
+
 
 
 
@@ -12890,7 +25779,15 @@ local function syncWeaponCacheFromLobby()
 
 
 
+
+
+
+
             local guns = { 101001, 101002, 101003, 101004, 101005, 101006, 101007, 101008, 101009, 101010, 101012, 102001, 102002, 102003, 102004, 102005, 102007, 103001, 103002, 103003, 103004, 103005, 103006, 103007, 103008, 103009, 103010, 103011, 103012, 104001, 104002, 104003, 104004, 105001, 105002, 106001, 106002, 106003, 106004, 106005, 106006, 106007, 106008, 106010 }
+
+
+
+
 
 
 
@@ -12898,7 +25795,15 @@ local function syncWeaponCacheFromLobby()
 
 
 
+
+
+
+
             for _, wid in ipairs(guns) do
+
+
+
+
 
 
 
@@ -12906,7 +25811,15 @@ local function syncWeaponCacheFromLobby()
 
 
 
+
+
+
+
                 if insID > 0 then
+
+
+
+
 
 
 
@@ -12914,7 +25827,15 @@ local function syncWeaponCacheFromLobby()
 
 
 
+
+
+
+
                     if d and d.resID and tonumber(d.resID) > 0 then
+
+
+
+
 
 
 
@@ -12922,7 +25843,15 @@ local function syncWeaponCacheFromLobby()
 
 
 
+
+
+
+
                     end
+
+
+
+
 
 
 
@@ -12930,7 +25859,15 @@ local function syncWeaponCacheFromLobby()
 
 
 
+
+
+
+
             end
+
+
+
+
 
 
 
@@ -12938,11 +25875,27 @@ local function syncWeaponCacheFromLobby()
 
 
 
+
+
+
+
     end)
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -12954,7 +25907,15 @@ local function getCachedWeaponSkin(weaponID)
 
 
 
+
+
+
+
     weaponID = tonumber(weaponID) or 0
+
+
+
+
 
 
 
@@ -12962,7 +25923,15 @@ local function getCachedWeaponSkin(weaponID)
 
 
 
+
+
+
+
     syncWeaponCacheFromLobby()
+
+
+
+
 
 
 
@@ -12970,7 +25939,15 @@ local function getCachedWeaponSkin(weaponID)
 
 
 
+
+
+
+
     if w and w.resID and w.resID > 0 then return w.resID end
+
+
+
+
 
 
 
@@ -12978,7 +25955,19 @@ local function getCachedWeaponSkin(weaponID)
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -12990,7 +25979,15 @@ local function getMatchWeaponSkin(weaponID)
 
 
 
+
+
+
+
     weaponID = tonumber(weaponID) or 0
+
+
+
+
 
 
 
@@ -12998,7 +25995,15 @@ local function getMatchWeaponSkin(weaponID)
 
 
 
+
+
+
+
     if fromCache then return fromCache end
+
+
+
+
 
 
 
@@ -13006,7 +26011,15 @@ local function getMatchWeaponSkin(weaponID)
 
 
 
+
+
+
+
         local fixed = tonumber(MATCH_CONFIG.weaponSkins[weaponID])
+
+
+
+
 
 
 
@@ -13014,7 +26027,15 @@ local function getMatchWeaponSkin(weaponID)
 
 
 
+
+
+
+
     end
+
+
+
+
 
 
 
@@ -13022,7 +26043,19 @@ local function getMatchWeaponSkin(weaponID)
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -13034,7 +26067,15 @@ local function findWornInsBySubType(st)
 
 
 
+
+
+
+
     st = tonumber(st)
+
+
+
+
 
 
 
@@ -13042,7 +26083,15 @@ local function findWornInsBySubType(st)
 
 
 
+
+
+
+
     local wd = require("client.slua.logic.wardrobe.wardrobe_data")
+
+
+
+
 
 
 
@@ -13050,7 +26099,15 @@ local function findWornInsBySubType(st)
 
 
 
+
+
+
+
     for _, ins in pairs(AvatarData.GetRoleWear()) do
+
+
+
+
 
 
 
@@ -13058,7 +26115,15 @@ local function findWornInsBySubType(st)
 
 
 
+
+
+
+
         if ins and ins > 0 then
+
+
+
+
 
 
 
@@ -13066,7 +26131,15 @@ local function findWornInsBySubType(st)
 
 
 
+
+
+
+
             if d and tonumber(d.itemSubType) == st then
+
+
+
+
 
 
 
@@ -13074,7 +26147,15 @@ local function findWornInsBySubType(st)
 
 
 
+
+
+
+
             end
+
+
+
+
 
 
 
@@ -13082,7 +26163,15 @@ local function findWornInsBySubType(st)
 
 
 
+
+
+
+
     end
+
+
+
+
 
 
 
@@ -13090,7 +26179,19 @@ local function findWornInsBySubType(st)
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -13102,7 +26203,15 @@ local function removeRoleWearBySubTypes(stMap)
 
 
 
+
+
+
+
     if not stMap then return end
+
+
+
+
 
 
 
@@ -13110,7 +26219,15 @@ local function removeRoleWearBySubTypes(stMap)
 
 
 
+
+
+
+
     local AvatarData = require("client.logic.data.AvatarData")
+
+
+
+
 
 
 
@@ -13118,7 +26235,15 @@ local function removeRoleWearBySubTypes(stMap)
 
 
 
+
+
+
+
         ins = tonumber(ins)
+
+
+
+
 
 
 
@@ -13126,7 +26251,15 @@ local function removeRoleWearBySubTypes(stMap)
 
 
 
+
+
+
+
             local d = wd:GetHallDepotItemDataByInsID(ins)
+
+
+
+
 
 
 
@@ -13134,7 +26267,15 @@ local function removeRoleWearBySubTypes(stMap)
 
 
 
+
+
+
+
                 AvatarData.RemoveRoleWearDataByValue(ins)
+
+
+
+
 
 
 
@@ -13142,7 +26283,15 @@ local function removeRoleWearBySubTypes(stMap)
 
 
 
+
+
+
+
         end
+
+
+
+
 
 
 
@@ -13150,7 +26299,19 @@ local function removeRoleWearBySubTypes(stMap)
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -13162,7 +26323,15 @@ local function clearFashionBagSlots(stMap)
 
 
 
+
+
+
+
     if not stMap then return end
+
+
+
+
 
 
 
@@ -13170,7 +26339,15 @@ local function clearFashionBagSlots(stMap)
 
 
 
+
+
+
+
         local fbd = require("client.slua.logic.wardrobe.fashionbag.fashionbag_data")
+
+
+
+
 
 
 
@@ -13178,7 +26355,15 @@ local function clearFashionBagSlots(stMap)
 
 
 
+
+
+
+
         local bag = fbd.GetCurrentFashionBag and fbd:GetCurrentFashionBag()
+
+
+
+
 
 
 
@@ -13186,7 +26371,15 @@ local function clearFashionBagSlots(stMap)
 
 
 
+
+
+
+
         for st, _ in pairs(stMap) do
+
+
+
+
 
 
 
@@ -13194,7 +26387,15 @@ local function clearFashionBagSlots(stMap)
 
 
 
+
+
+
+
             if idx then bag.rolewear_list[idx] = 0 end
+
+
+
+
 
 
 
@@ -13202,11 +26403,27 @@ local function clearFashionBagSlots(stMap)
 
 
 
+
+
+
+
     end)
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -13218,7 +26435,15 @@ local function removeRoleWearBySubType(st)
 
 
 
+
+
+
+
     if not st then return end
+
+
+
+
 
 
 
@@ -13226,7 +26451,19 @@ local function removeRoleWearBySubType(st)
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -13238,7 +26475,15 @@ local function syncFashionBagRolewear()
 
 
 
+
+
+
+
     pcall(function()
+
+
+
+
 
 
 
@@ -13246,7 +26491,15 @@ local function syncFashionBagRolewear()
 
 
 
+
+
+
+
         fbd:SaveRolewearToFashionBag(fbd:GetFashionBagUseIndex())
+
+
+
+
 
 
 
@@ -13254,7 +26507,19 @@ local function syncFashionBagRolewear()
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -13266,7 +26531,15 @@ local _ticker
 
 
 
+
+
+
+
 pcall(function() _ticker = require("common.time_ticker") end)
+
+
+
+
 
 
 
@@ -13274,7 +26547,15 @@ local function later(sec, fn)
 
 
 
+
+
+
+
     if _G.SetTimer then pcall(_G.SetTimer, sec, fn) return end
+
+
+
+
 
 
 
@@ -13282,7 +26563,19 @@ local function later(sec, fn)
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -13294,7 +26587,15 @@ local function getEntity()
 
 
 
+
+
+
+
     local ok, dc = pcall(require, "client.slua.logic.wardrobe.logic_wardrobe_data_center")
+
+
+
+
 
 
 
@@ -13302,7 +26603,15 @@ local function getEntity()
 
 
 
+
+
+
+
     local ok2, e = pcall(dc.GetWardrobeData)
+
+
+
+
 
 
 
@@ -13310,7 +26619,19 @@ local function getEntity()
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -13322,7 +26643,15 @@ local function alreadyHave(entity, resID)
 
 
 
+
+
+
+
     local arr = entity.ResIDToIndexArrayMap and entity.ResIDToIndexArrayMap[resID]
+
+
+
+
 
 
 
@@ -13330,7 +26659,15 @@ local function alreadyHave(entity, resID)
 
 
 
+
+
+
+
     for _, idx in pairs(arr) do
+
+
+
+
 
 
 
@@ -13338,7 +26675,15 @@ local function alreadyHave(entity, resID)
 
 
 
+
+
+
+
         if d and d.count and d.count > 0 then return true end
+
+
+
+
 
 
 
@@ -13346,11 +26691,27 @@ local function alreadyHave(entity, resID)
 
 
 
+
+
+
+
     return false
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -13362,7 +26723,15 @@ local function injectOne(entity, resID, insID)
 
 
 
+
+
+
+
     if alreadyHave(entity, resID) then
+
+
+
+
 
 
 
@@ -13370,7 +26739,15 @@ local function injectOne(entity, resID, insID)
 
 
 
+
+
+
+
         R.insToRes[insID] = resID
+
+
+
+
 
 
 
@@ -13378,7 +26755,15 @@ local function injectOne(entity, resID, insID)
 
 
 
+
+
+
+
     end
+
+
+
+
 
 
 
@@ -13386,7 +26771,15 @@ local function injectOne(entity, resID, insID)
 
 
 
+
+
+
+
         instid = insID,
+
+
+
+
 
 
 
@@ -13394,7 +26787,15 @@ local function injectOne(entity, resID, insID)
 
 
 
+
+
+
+
         count = 1,
+
+
+
+
 
 
 
@@ -13402,7 +26803,15 @@ local function injectOne(entity, resID, insID)
 
 
 
+
+
+
+
         isnew = 0,
+
+
+
+
 
 
 
@@ -13410,7 +26819,15 @@ local function injectOne(entity, resID, insID)
 
 
 
+
+
+
+
         expire_ts = 0,
+
+
+
+
 
 
 
@@ -13418,7 +26835,15 @@ local function injectOne(entity, resID, insID)
 
 
 
+
+
+
+
     entity:AddData(row)
+
+
+
+
 
 
 
@@ -13426,7 +26851,15 @@ local function injectOne(entity, resID, insID)
 
 
 
+
+
+
+
         local data = entity.GetDataByInsID and entity:GetDataByInsID(insID)
+
+
+
+
 
 
 
@@ -13434,7 +26867,15 @@ local function injectOne(entity, resID, insID)
 
 
 
+
+
+
+
             entity:LoadConfigForData(data, CDataTable.GetTableData)
+
+
+
+
 
 
 
@@ -13442,7 +26883,15 @@ local function injectOne(entity, resID, insID)
 
 
 
+
+
+
+
     end)
+
+
+
+
 
 
 
@@ -13450,7 +26899,15 @@ local function injectOne(entity, resID, insID)
 
 
 
+
+
+
+
     R.resToIns[resID] = insID
+
+
+
+
 
 
 
@@ -13458,7 +26915,19 @@ local function injectOne(entity, resID, insID)
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -13470,7 +26939,15 @@ local function injectArmory(resID, insID)
 
 
 
+
+
+
+
     local wid = weaponIdFromSkin(resID)
+
+
+
+
 
 
 
@@ -13478,7 +26955,15 @@ local function injectArmory(resID, insID)
 
 
 
+
+
+
+
     local Arm = require("client.logic.armory.logic_armory")
+
+
+
+
 
 
 
@@ -13486,7 +26971,15 @@ local function injectArmory(resID, insID)
 
 
 
+
+
+
+
     Arm.rsp_list.skin_list = Arm.rsp_list.skin_list or {}
+
+
+
+
 
 
 
@@ -13494,7 +26987,15 @@ local function injectArmory(resID, insID)
 
 
 
+
+
+
+
     if not Arm.rsp_list.skin_list[wid] then Arm.rsp_list.skin_list[wid] = {} end
+
+
+
+
 
 
 
@@ -13502,7 +27003,15 @@ local function injectArmory(resID, insID)
 
 
 
+
+
+
+
     Arm.WardrobeInsList = Arm.WardrobeInsList or {}
+
+
+
+
 
 
 
@@ -13510,7 +27019,19 @@ local function injectArmory(resID, insID)
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -13522,7 +27043,15 @@ local function injectAll(entity)
 
 
 
+
+
+
+
     entity = entity or getEntity()
+
+
+
+
 
 
 
@@ -13530,7 +27059,15 @@ local function injectAll(entity)
 
 
 
+
+
+
+
     local n = 0
+
+
+
+
 
 
 
@@ -13538,7 +27075,15 @@ local function injectAll(entity)
 
 
 
+
+
+
+
         local insID = INS_BASE + i
+
+
+
+
 
 
 
@@ -13546,7 +27091,15 @@ local function injectAll(entity)
 
 
 
+
+
+
+
             n = n + 1
+
+
+
+
 
 
 
@@ -13554,7 +27107,15 @@ local function injectAll(entity)
 
 
 
+
+
+
+
             if GUN_SUB[subType(c)] or subType(c) == MELEE_ID then
+
+
+
+
 
 
 
@@ -13562,7 +27123,15 @@ local function injectAll(entity)
 
 
 
+
+
+
+
             end
+
+
+
+
 
 
 
@@ -13570,7 +27139,15 @@ local function injectAll(entity)
 
 
 
+
+
+
+
     end
+
+
+
+
 
 
 
@@ -13578,7 +27155,19 @@ local function injectAll(entity)
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -13590,7 +27179,15 @@ local function refreshWardrobe()
 
 
 
+
+
+
+
     pcall(function()
+
+
+
+
 
 
 
@@ -13598,7 +27195,15 @@ local function refreshWardrobe()
 
 
 
+
+
+
+
             if EVENTID_WARDROBE_UPDATE_ITEM_LIST then
+
+
+
+
 
 
 
@@ -13606,7 +27211,15 @@ local function refreshWardrobe()
 
 
 
+
+
+
+
             end
+
+
+
+
 
 
 
@@ -13614,11 +27227,23 @@ local function refreshWardrobe()
 
 
 
+
+
+
+
                 EventSystem:postEvent(EVENTTYPE_WARDROBE, EVENTID_WARDROBE_UPDATE_AVATAR_LIST)
 
 
 
+
+
+
+
             end
+
+
+
+
 
 
 
@@ -13626,7 +27251,15 @@ local function refreshWardrobe()
 
 
 
+
+
+
+
                 EventSystem:postEvent(EVENTTYPE_WARDROBE, EVENTID_WARDROBE_UPDATE_GUN_LIST, -1)
+
+
+
+
 
 
 
@@ -13634,7 +27267,15 @@ local function refreshWardrobe()
 
 
 
+
+
+
+
         end
+
+
+
+
 
 
 
@@ -13642,7 +27283,19 @@ local function refreshWardrobe()
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -13654,7 +27307,15 @@ local function putOnCloth(insID)
 
 
 
+
+
+
+
     insID = tonumber(insID)
+
+
+
+
 
 
 
@@ -13662,7 +27323,15 @@ local function putOnCloth(insID)
 
 
 
+
+
+
+
     if not resID then return end
+
+
+
+
 
 
 
@@ -13670,7 +27339,15 @@ local function putOnCloth(insID)
 
 
 
+
+
+
+
     local d = wd:GetHallDepotItemDataByInsID(insID)
+
+
+
+
 
 
 
@@ -13682,7 +27359,19 @@ local function putOnCloth(insID)
 
 
 
+
+
+
+
+
+
+
+
     local kind = getClothKind(resID, d)
+
+
+
+
 
 
 
@@ -13690,7 +27379,15 @@ local function putOnCloth(insID)
 
 
 
+
+
+
+
     local clearMap = subTypesToClearForKind(kind)
+
+
+
+
 
 
 
@@ -13702,7 +27399,19 @@ local function putOnCloth(insID)
 
 
 
+
+
+
+
+
+
+
+
     local itemSt = subType(cfg(resID)) or ST_TOP
+
+
+
+
 
 
 
@@ -13710,7 +27419,15 @@ local function putOnCloth(insID)
 
 
 
+
+
+
+
     removeRoleWearBySubTypes(clearMap)
+
+
+
+
 
 
 
@@ -13718,7 +27435,19 @@ local function putOnCloth(insID)
 
 
 
+
+
+
+
     saveEquip(resID, insID)
+
+
+
+
+
+
+
+
 
 
 
@@ -13730,7 +27459,15 @@ local function putOnCloth(insID)
 
 
 
+
+
+
+
     pcall(function()
+
+
+
+
 
 
 
@@ -13738,7 +27475,15 @@ local function putOnCloth(insID)
 
 
 
+
+
+
+
         local idx = wfu.GetRoleWearIndexBySubType and wfu:GetRoleWearIndexBySubType(itemSt)
+
+
+
+
 
 
 
@@ -13746,7 +27491,19 @@ local function putOnCloth(insID)
 
 
 
+
+
+
+
     end)
+
+
+
+
+
+
+
+
 
 
 
@@ -13758,7 +27515,15 @@ local function putOnCloth(insID)
 
 
 
+
+
+
+
     if oldIns and oldIns ~= insID then
+
+
+
+
 
 
 
@@ -13766,7 +27531,19 @@ local function putOnCloth(insID)
 
 
 
+
+
+
+
     end
+
+
+
+
+
+
+
+
 
 
 
@@ -13778,7 +27555,15 @@ local function putOnCloth(insID)
 
 
 
+
+
+
+
     local item = { res_id = resID, count = 1, instid = insID }
+
+
+
+
 
 
 
@@ -13790,7 +27575,19 @@ local function putOnCloth(insID)
 
 
 
+
+
+
+
+
+
+
+
     pcall(function()
+
+
+
+
 
 
 
@@ -13798,7 +27595,15 @@ local function putOnCloth(insID)
 
 
 
+
+
+
+
         av:AddToWearInfo(itemSt, insID, resID, 0, 0)
+
+
+
+
 
 
 
@@ -13806,7 +27611,15 @@ local function putOnCloth(insID)
 
 
 
+
+
+
+
         local LogicXSuit = require("client.slua.logic.XSuit.logic_xsuit")
+
+
+
+
 
 
 
@@ -13814,7 +27627,15 @@ local function putOnCloth(insID)
 
 
 
+
+
+
+
             displayResID = LogicXSuit.GetItemShowID(insID) or displayResID
+
+
+
+
 
 
 
@@ -13822,7 +27643,15 @@ local function putOnCloth(insID)
 
 
 
+
+
+
+
         av:AvatarChange(displayResID, true, 0, 0)
+
+
+
+
 
 
 
@@ -13830,7 +27659,15 @@ local function putOnCloth(insID)
 
 
 
+
+
+
+
         syncFashionBagRolewear()
+
+
+
+
 
 
 
@@ -13838,7 +27675,19 @@ local function putOnCloth(insID)
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -13850,11 +27699,27 @@ local function putOnOutfit(insID)
 
 
 
+
+
+
+
     putOnCloth(insID)
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -13866,7 +27731,15 @@ local function equipWeaponSkin(weaponID, insID)
 
 
 
+
+
+
+
     weaponID, insID = tonumber(weaponID), tonumber(insID)
+
+
+
+
 
 
 
@@ -13874,11 +27747,23 @@ local function equipWeaponSkin(weaponID, insID)
 
 
 
+
+
+
+
     local resID = R.insToRes[insID]
 
 
 
+
+
+
+
     _weaponSkinCache[weaponID] = { resID = resID, insID = insID }
+
+
+
+
 
 
 
@@ -13890,7 +27775,19 @@ local function equipWeaponSkin(weaponID, insID)
 
 
 
+
+
+
+
+
+
+
+
     local Arm = require("client.logic.armory.logic_armory")
+
+
+
+
 
 
 
@@ -13898,7 +27795,15 @@ local function equipWeaponSkin(weaponID, insID)
 
 
 
+
+
+
+
     local HT = require("client.logic.lobby.hall_theme_utils")
+
+
+
+
 
 
 
@@ -13910,7 +27815,19 @@ local function equipWeaponSkin(weaponID, insID)
 
 
 
+
+
+
+
+
+
+
+
     injectArmory(resID, insID)
+
+
+
+
 
 
 
@@ -13918,7 +27835,15 @@ local function equipWeaponSkin(weaponID, insID)
 
 
 
+
+
+
+
     if fbd.UpdateCurrentFashionBagWeaponSkin then
+
+
+
+
 
 
 
@@ -13926,7 +27851,19 @@ local function equipWeaponSkin(weaponID, insID)
 
 
 
+
+
+
+
     end
+
+
+
+
+
+
+
+
 
 
 
@@ -13938,7 +27875,19 @@ local function equipWeaponSkin(weaponID, insID)
 
 
 
+
+
+
+
     HT.proc_skin_list_chg("weapon_skin", weaponID, insID, bagIdx, {})
+
+
+
+
+
+
+
+
 
 
 
@@ -13950,7 +27899,19 @@ local function equipWeaponSkin(weaponID, insID)
 
 
 
+
+
+
+
     wgl:UpdateCurrentGunAvatar(weaponID, insID)
+
+
+
+
+
+
+
+
 
 
 
@@ -13962,11 +27923,23 @@ local function equipWeaponSkin(weaponID, insID)
 
 
 
+
+
+
+
         EventSystem:postEvent(EVENTTYPE_ARMORY, EVENTID_ARMORY_EQUIP_STAT_CHANGE, resID)
 
 
 
+
+
+
+
     end
+
+
+
+
 
 
 
@@ -13974,7 +27947,15 @@ local function equipWeaponSkin(weaponID, insID)
 
 
 
+
+
+
+
         EventSystem:postEvent(EVENTTYPE_WARDROBE, EVENTID_WARDROBE_UPDATE_CURRENT_PUT_ON_GUN, resID)
+
+
+
+
 
 
 
@@ -13982,7 +27963,19 @@ local function equipWeaponSkin(weaponID, insID)
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -13994,7 +27987,15 @@ local SOCIAL = _G.AddOutfitSocialState or {}
 
 
 
+
+
+
+
 _G.AddOutfitSocialState = SOCIAL
+
+
+
+
 
 
 
@@ -14002,11 +28003,23 @@ SOCIAL.debGen = SOCIAL.debGen or 0
 
 
 
+
+
+
+
 SOCIAL.wearPatchKey = SOCIAL.wearPatchKey or nil
 
 
 
+
+
+
+
 SOCIAL.snapshotKey = SOCIAL.snapshotKey or nil
+
+
+
+
 
 
 
@@ -14018,7 +28031,19 @@ SOCIAL.fullSnapshot = SOCIAL.fullSnapshot or nil
 
 
 
+
+
+
+
+
+
+
+
 local function socialDebounce(sec, fn)
+
+
+
+
 
 
 
@@ -14026,7 +28051,15 @@ local function socialDebounce(sec, fn)
 
 
 
+
+
+
+
     local gen = SOCIAL.debGen
+
+
+
+
 
 
 
@@ -14034,7 +28067,15 @@ local function socialDebounce(sec, fn)
 
 
 
+
+
+
+
         if gen ~= SOCIAL.debGen then return end
+
+
+
+
 
 
 
@@ -14042,11 +28083,27 @@ local function socialDebounce(sec, fn)
 
 
 
+
+
+
+
     end)
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -14058,7 +28115,15 @@ local function getLobbyCurPage()
 
 
 
+
+
+
+
     local p = nil
+
+
+
+
 
 
 
@@ -14066,7 +28131,15 @@ local function getLobbyCurPage()
 
 
 
+
+
+
+
         local LMC = require("client.slua.logic.lobby.Main.Lobby_Main_Control")
+
+
+
+
 
 
 
@@ -14074,7 +28147,15 @@ local function getLobbyCurPage()
 
 
 
+
+
+
+
     end)
+
+
+
+
 
 
 
@@ -14082,7 +28163,19 @@ local function getLobbyCurPage()
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -14094,7 +28187,15 @@ local function getWeaponSkinResFast()
 
 
 
+
+
+
+
     local cch = cache()
+
+
+
+
 
 
 
@@ -14102,7 +28203,15 @@ local function getWeaponSkinResFast()
 
 
 
+
+
+
+
     local w = wid > 0 and cch.weapons[wid] or nil
+
+
+
+
 
 
 
@@ -14110,7 +28219,15 @@ local function getWeaponSkinResFast()
 
 
 
+
+
+
+
     for _, ww in pairs(cch.weapons) do
+
+
+
+
 
 
 
@@ -14118,7 +28235,15 @@ local function getWeaponSkinResFast()
 
 
 
+
+
+
+
     end
+
+
+
+
 
 
 
@@ -14126,7 +28251,19 @@ local function getWeaponSkinResFast()
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -14138,7 +28275,15 @@ local function resolveLobbyWeaponSkinRes()
 
 
 
+
+
+
+
     if not _G.LobbyCosmeticEnabled then return nil end
+
+
+
+
 
 
 
@@ -14146,11 +28291,27 @@ local function resolveLobbyWeaponSkinRes()
 
 
 
+
+
+
+
     local skin = getWeaponSkinResFast()
 
 
 
+
+
+
+
     if skin and skin > 0 then return skin end
+
+
+
+
+
+
+
+
 
 
 
@@ -14162,7 +28323,15 @@ local function resolveLobbyWeaponSkinRes()
 
 
 
+
+
+
+
         local fromMatch = getMatchWeaponSkin(wid)
+
+
+
+
 
 
 
@@ -14170,7 +28339,15 @@ local function resolveLobbyWeaponSkinRes()
 
 
 
+
+
+
+
     end
+
+
+
+
 
 
 
@@ -14178,7 +28355,15 @@ local function resolveLobbyWeaponSkinRes()
 
 
 
+
+
+
+
         for _, s in pairs(MATCH_CONFIG.weaponSkins) do
+
+
+
+
 
 
 
@@ -14186,7 +28371,15 @@ local function resolveLobbyWeaponSkinRes()
 
 
 
+
+
+
+
             if s and s > 0 then return s end
+
+
+
+
 
 
 
@@ -14194,7 +28387,19 @@ local function resolveLobbyWeaponSkinRes()
 
 
 
+
+
+
+
     end
+
+
+
+
+
+
+
+
 
 
 
@@ -14206,7 +28411,15 @@ local function resolveLobbyWeaponSkinRes()
 
 
 
+
+
+
+
         local Arm = require("client.logic.armory.logic_armory")
+
+
+
+
 
 
 
@@ -14214,7 +28427,15 @@ local function resolveLobbyWeaponSkinRes()
 
 
 
+
+
+
+
             and Arm.rsp_list.install_list[wid > 0 and wid or 101004]
+
+
+
+
 
 
 
@@ -14222,7 +28443,15 @@ local function resolveLobbyWeaponSkinRes()
 
 
 
+
+
+
+
         if insID > 0 and isInjectedIns(insID) then
+
+
+
+
 
 
 
@@ -14230,7 +28459,15 @@ local function resolveLobbyWeaponSkinRes()
 
 
 
+
+
+
+
         elseif insID > 0 then
+
+
+
+
 
 
 
@@ -14238,7 +28475,15 @@ local function resolveLobbyWeaponSkinRes()
 
 
 
+
+
+
+
             local d = wd:GetHallDepotItemDataByInsID(insID)
+
+
+
+
 
 
 
@@ -14246,11 +28491,23 @@ local function resolveLobbyWeaponSkinRes()
 
 
 
+
+
+
+
         end
 
 
 
+
+
+
+
     end)
+
+
+
+
 
 
 
@@ -14262,7 +28519,19 @@ local function resolveLobbyWeaponSkinRes()
 
 
 
+
+
+
+
+
+
+
+
     pcall(function()
+
+
+
+
 
 
 
@@ -14270,7 +28539,15 @@ local function resolveLobbyWeaponSkinRes()
 
 
 
+
+
+
+
         if wgl.GetSkinIdByWeaponID and wid > 0 then
+
+
+
+
 
 
 
@@ -14278,7 +28555,15 @@ local function resolveLobbyWeaponSkinRes()
 
 
 
+
+
+
+
             if insID > 0 and isInjectedIns(insID) then
+
+
+
+
 
 
 
@@ -14286,7 +28571,15 @@ local function resolveLobbyWeaponSkinRes()
 
 
 
+
+
+
+
             end
+
+
+
+
 
 
 
@@ -14294,7 +28587,15 @@ local function resolveLobbyWeaponSkinRes()
 
 
 
+
+
+
+
     end)
+
+
+
+
 
 
 
@@ -14302,7 +28603,19 @@ local function resolveLobbyWeaponSkinRes()
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -14314,7 +28627,15 @@ local function rememberLobbyOutfitRes(resID)
 
 
 
+
+
+
+
     resID = tonumber(resID)
+
+
+
+
 
 
 
@@ -14322,7 +28643,15 @@ local function rememberLobbyOutfitRes(resID)
 
 
 
+
+
+
+
     _G.AddOutfitLastLobbyOutfitRes = resID
+
+
+
+
 
 
 
@@ -14330,7 +28659,15 @@ local function rememberLobbyOutfitRes(resID)
 
 
 
+
+
+
+
     if not cch.outfitRes or cch.outfitRes <= 0 then
+
+
+
+
 
 
 
@@ -14338,7 +28675,15 @@ local function rememberLobbyOutfitRes(resID)
 
 
 
+
+
+
+
         if isInjectedRes(resID) then cch.outfitIns = R.resToIns[resID] end
+
+
+
+
 
 
 
@@ -14346,7 +28691,19 @@ local function rememberLobbyOutfitRes(resID)
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -14358,7 +28715,15 @@ local function resolveLobbyOutfitRes()
 
 
 
+
+
+
+
     if not _G.LobbyCosmeticEnabled then return nil end
+
+
+
+
 
 
 
@@ -14366,11 +28731,23 @@ local function resolveLobbyOutfitRes()
 
 
 
+
+
+
+
     local outfitRes = tonumber(cch.outfitRes) or 0
 
 
 
+
+
+
+
     if outfitRes > 0 then return outfitRes end
+
+
+
+
 
 
 
@@ -14378,7 +28755,15 @@ local function resolveLobbyOutfitRes()
 
 
 
+
+
+
+
     if outfitRes > 0 then return outfitRes end
+
+
+
+
 
 
 
@@ -14386,11 +28771,27 @@ local function resolveLobbyOutfitRes()
 
 
 
+
+
+
+
         return tonumber(MATCH_CONFIG.outfitRes)
 
 
 
+
+
+
+
     end
+
+
+
+
+
+
+
+
 
 
 
@@ -14402,7 +28803,15 @@ local function resolveLobbyOutfitRes()
 
 
 
+
+
+
+
     pcall(function()
+
+
+
+
 
 
 
@@ -14410,7 +28819,15 @@ local function resolveLobbyOutfitRes()
 
 
 
+
+
+
+
         local wd = require("client.slua.logic.wardrobe.wardrobe_data")
+
+
+
+
 
 
 
@@ -14418,7 +28835,15 @@ local function resolveLobbyOutfitRes()
 
 
 
+
+
+
+
             ins = tonumber(ins)
+
+
+
+
 
 
 
@@ -14426,7 +28851,15 @@ local function resolveLobbyOutfitRes()
 
 
 
+
+
+
+
             if isInjectedIns(ins) then return tonumber(R.insToRes[ins]) end
+
+
+
+
 
 
 
@@ -14434,11 +28867,23 @@ local function resolveLobbyOutfitRes()
 
 
 
+
+
+
+
             return d and tonumber(d.resID) or nil
 
 
 
+
+
+
+
         end
+
+
+
+
 
 
 
@@ -14446,7 +28891,15 @@ local function resolveLobbyOutfitRes()
 
 
 
+
+
+
+
             local res = resFromIns(ins)
+
+
+
+
 
 
 
@@ -14454,7 +28907,15 @@ local function resolveLobbyOutfitRes()
 
 
 
+
+
+
+
                 if isInjectedRes(res) then injectedRes = res end
+
+
+
+
 
 
 
@@ -14462,11 +28923,23 @@ local function resolveLobbyOutfitRes()
 
 
 
+
+
+
+
             end
 
 
 
+
+
+
+
         end
+
+
+
+
 
 
 
@@ -14474,7 +28947,15 @@ local function resolveLobbyOutfitRes()
 
 
 
+
+
+
+
         local bag = fbd.GetCurrentFashionBag and fbd:GetCurrentFashionBag()
+
+
+
+
 
 
 
@@ -14482,7 +28963,15 @@ local function resolveLobbyOutfitRes()
 
 
 
+
+
+
+
             for _, ins in pairs(bag.rolewear_list) do
+
+
+
+
 
 
 
@@ -14490,7 +28979,15 @@ local function resolveLobbyOutfitRes()
 
 
 
+
+
+
+
                 if res and isFullSuitRes(res) then
+
+
+
+
 
 
 
@@ -14498,7 +28995,15 @@ local function resolveLobbyOutfitRes()
 
 
 
+
+
+
+
                     anyRes = anyRes or res
+
+
+
+
 
 
 
@@ -14506,7 +29011,15 @@ local function resolveLobbyOutfitRes()
 
 
 
+
+
+
+
             end
+
+
+
+
 
 
 
@@ -14514,7 +29027,15 @@ local function resolveLobbyOutfitRes()
 
 
 
+
+
+
+
     end)
+
+
+
+
 
 
 
@@ -14522,7 +29043,15 @@ local function resolveLobbyOutfitRes()
 
 
 
+
+
+
+
     if anyRes and anyRes > 0 then return anyRes end
+
+
+
+
 
 
 
@@ -14530,7 +29059,19 @@ local function resolveLobbyOutfitRes()
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -14542,7 +29083,15 @@ local function wearPatchKey()
 
 
 
+
+
+
+
     local outfit = resolveLobbyOutfitRes() or 0
+
+
+
+
 
 
 
@@ -14550,7 +29099,15 @@ local function wearPatchKey()
 
 
 
+
+
+
+
     local openGun = 1
+
+
+
+
 
 
 
@@ -14558,7 +29115,15 @@ local function wearPatchKey()
 
 
 
+
+
+
+
         local lds = require("client.slua.logic.wardrobe.logic_display_setting")
+
+
+
+
 
 
 
@@ -14566,7 +29131,15 @@ local function wearPatchKey()
 
 
 
+
+
+
+
     end)
+
+
+
+
 
 
 
@@ -14574,7 +29147,19 @@ local function wearPatchKey()
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -14586,7 +29171,15 @@ local function syncDepotShowWeaponFlags(depot)
 
 
 
+
+
+
+
     depot = depot or {}
+
+
+
+
 
 
 
@@ -14594,7 +29187,15 @@ local function syncDepotShowWeaponFlags(depot)
 
 
 
+
+
+
+
     depot.helmet = true
+
+
+
+
 
 
 
@@ -14602,7 +29203,15 @@ local function syncDepotShowWeaponFlags(depot)
 
 
 
+
+
+
+
     depot.pet = true
+
+
+
+
 
 
 
@@ -14610,7 +29219,15 @@ local function syncDepotShowWeaponFlags(depot)
 
 
 
+
+
+
+
     depot.hand = true
+
+
+
+
 
 
 
@@ -14618,7 +29235,15 @@ local function syncDepotShowWeaponFlags(depot)
 
 
 
+
+
+
+
         local lds = require("client.slua.logic.wardrobe.logic_display_setting")
+
+
+
+
 
 
 
@@ -14626,7 +29251,15 @@ local function syncDepotShowWeaponFlags(depot)
 
 
 
+
+
+
+
             if lds.data.OpenGun ~= nil then depot.weapon = lds.data.OpenGun end
+
+
+
+
 
 
 
@@ -14634,7 +29267,15 @@ local function syncDepotShowWeaponFlags(depot)
 
 
 
+
+
+
+
         end
+
+
+
+
 
 
 
@@ -14642,11 +29283,27 @@ local function syncDepotShowWeaponFlags(depot)
 
 
 
+
+
+
+
     return depot
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -14658,7 +29315,15 @@ local function applyInjectedPspace(roleData)
 
 
 
+
+
+
+
     if not _G.LobbyCosmeticEnabled then return end
+
+
+
+
 
 
 
@@ -14666,7 +29331,15 @@ local function applyInjectedPspace(roleData)
 
 
 
+
+
+
+
     roleData.bshow = true
+
+
+
+
 
 
 
@@ -14674,7 +29347,15 @@ local function applyInjectedPspace(roleData)
 
 
 
+
+
+
+
     local outfitRes = resolveLobbyOutfitRes()
+
+
+
+
 
 
 
@@ -14682,11 +29363,23 @@ local function applyInjectedPspace(roleData)
 
 
 
+
+
+
+
         roleData.pspace_wear_ext[ENUM_AVATAR_SHOW_TYPE.SHOW_POS_CLOTH] = { outfitRes, 0, 0 }
 
 
 
+
+
+
+
     end
+
+
+
+
 
 
 
@@ -14694,7 +29387,15 @@ local function applyInjectedPspace(roleData)
 
 
 
+
+
+
+
     if skinRes and skinRes > 0 then
+
+
+
+
 
 
 
@@ -14702,7 +29403,15 @@ local function applyInjectedPspace(roleData)
 
 
 
+
+
+
+
         roleData.pspace_wear_ext[ENUM_AVATAR_SHOW_TYPE.SHOW_POS_WEAPONSKIN] = { skinRes, 0, 0 }
+
+
+
+
 
 
 
@@ -14710,7 +29419,15 @@ local function applyInjectedPspace(roleData)
 
 
 
+
+
+
+
         if roleData.depot_show_info.weapon == nil then
+
+
+
+
 
 
 
@@ -14718,7 +29435,15 @@ local function applyInjectedPspace(roleData)
 
 
 
+
+
+
+
         end
+
+
+
+
 
 
 
@@ -14726,11 +29451,27 @@ local function applyInjectedPspace(roleData)
 
 
 
+
+
+
+
     roleData.depot_show_info = syncDepotShowWeaponFlags(roleData.depot_show_info)
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -14742,7 +29483,15 @@ local function patchSelfWearCache(force)
 
 
 
+
+
+
+
     local key = wearPatchKey()
+
+
+
+
 
 
 
@@ -14750,11 +29499,23 @@ local function patchSelfWearCache(force)
 
 
 
+
+
+
+
     SOCIAL.wearPatchKey = key
 
 
 
+
+
+
+
     SOCIAL.snapshotKey = nil
+
+
+
+
 
 
 
@@ -14766,7 +29527,19 @@ local function patchSelfWearCache(force)
 
 
 
+
+
+
+
+
+
+
+
     local myUid = tonumber(DataMgr.roleData.uid)
+
+
+
+
 
 
 
@@ -14778,7 +29551,19 @@ local function patchSelfWearCache(force)
 
 
 
+
+
+
+
+
+
+
+
     local changed = false
+
+
+
+
 
 
 
@@ -14786,7 +29571,15 @@ local function patchSelfWearCache(force)
 
 
 
+
+
+
+
         local BD = ModuleManager.GetModule(ModuleManager.DataModuleConfig.BasicDataAvatarWearInfo)
+
+
+
+
 
 
 
@@ -14794,7 +29587,15 @@ local function patchSelfWearCache(force)
 
 
 
+
+
+
+
         if not d then
+
+
+
+
 
 
 
@@ -14802,7 +29603,15 @@ local function patchSelfWearCache(force)
 
 
 
+
+
+
+
             return true
+
+
+
+
 
 
 
@@ -14810,7 +29619,15 @@ local function patchSelfWearCache(force)
 
 
 
+
+
+
+
         local oldCloth = d.pspace_wear_ext and d.pspace_wear_ext[ENUM_AVATAR_SHOW_TYPE.SHOW_POS_CLOTH]
+
+
+
+
 
 
 
@@ -14818,7 +29635,15 @@ local function patchSelfWearCache(force)
 
 
 
+
+
+
+
         applyInjectedPspace(d)
+
+
+
+
 
 
 
@@ -14826,7 +29651,15 @@ local function patchSelfWearCache(force)
 
 
 
+
+
+
+
         local ns = d.pspace_wear_ext[ENUM_AVATAR_SHOW_TYPE.SHOW_POS_WEAPONSKIN]
+
+
+
+
 
 
 
@@ -14834,7 +29667,15 @@ local function patchSelfWearCache(force)
 
 
 
+
+
+
+
     end)
+
+
+
+
 
 
 
@@ -14842,7 +29683,19 @@ local function patchSelfWearCache(force)
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -14854,7 +29707,15 @@ local function requestSocialAvatarRefresh()
 
 
 
+
+
+
+
     pcall(function()
+
+
+
+
 
 
 
@@ -14862,7 +29723,15 @@ local function requestSocialAvatarRefresh()
 
 
 
+
+
+
+
             EventSystem:postEvent(EVENTTYPE_LOBBY_SOCIAL, EVENTID_SOCIAL_LOBBY_REFRESH_AVATAR)
+
+
+
+
 
 
 
@@ -14870,11 +29739,27 @@ local function requestSocialAvatarRefresh()
 
 
 
+
+
+
+
     end)
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -14886,7 +29771,15 @@ local function onSocialWearDirty(forceRefresh)
 
 
 
+
+
+
+
     SOCIAL.lastHandSkin = nil
+
+
+
+
 
 
 
@@ -14894,7 +29787,15 @@ local function onSocialWearDirty(forceRefresh)
 
 
 
+
+
+
+
         requestSocialAvatarRefresh()
+
+
+
+
 
 
 
@@ -14902,7 +29803,19 @@ local function onSocialWearDirty(forceRefresh)
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -14914,7 +29827,15 @@ local function buildLocalRoleDataForCoupleAvatar()
 
 
 
+
+
+
+
     if not _G.LobbyCosmeticEnabled then return nil end
+
+
+
+
 
 
 
@@ -14922,7 +29843,15 @@ local function buildLocalRoleDataForCoupleAvatar()
 
 
 
+
+
+
+
     if SOCIAL.fullSnapshot and SOCIAL.snapshotKey == key then
+
+
+
+
 
 
 
@@ -14930,7 +29859,15 @@ local function buildLocalRoleDataForCoupleAvatar()
 
 
 
+
+
+
+
     end
+
+
+
+
 
 
 
@@ -14938,7 +29875,15 @@ local function buildLocalRoleDataForCoupleAvatar()
 
 
 
+
+
+
+
     local cch = cache()
+
+
+
+
 
 
 
@@ -14946,7 +29891,15 @@ local function buildLocalRoleDataForCoupleAvatar()
 
 
 
+
+
+
+
     local gender = tonumber(ad.gamegender) or 2
+
+
+
+
 
 
 
@@ -14958,7 +29911,19 @@ local function buildLocalRoleDataForCoupleAvatar()
 
 
 
+
+
+
+
+
+
+
+
     local data = {
+
+
+
+
 
 
 
@@ -14966,7 +29931,15 @@ local function buildLocalRoleDataForCoupleAvatar()
 
 
 
+
+
+
+
         gender = gender,
+
+
+
+
 
 
 
@@ -14974,7 +29947,15 @@ local function buildLocalRoleDataForCoupleAvatar()
 
 
 
+
+
+
+
         pspace_wear_ext = {
+
+
+
+
 
 
 
@@ -14982,7 +29963,15 @@ local function buildLocalRoleDataForCoupleAvatar()
 
 
 
+
+
+
+
             [ENUM_AVATAR_SHOW_TYPE.SHOW_POS_HAIR] = { tonumber(ad.hairid) or 40601001, 0, 0 },
+
+
+
+
 
 
 
@@ -14990,11 +29979,23 @@ local function buildLocalRoleDataForCoupleAvatar()
 
 
 
+
+
+
+
             [ENUM_AVATAR_SHOW_TYPE.SHOW_POS_WEAPONSKIN] = { 0, 0, 0 },
 
 
 
+
+
+
+
         },
+
+
+
+
 
 
 
@@ -15002,7 +30003,15 @@ local function buildLocalRoleDataForCoupleAvatar()
 
 
 
+
+
+
+
             weapon = true, social_weapon = true, idle = true,
+
+
+
+
 
 
 
@@ -15010,7 +30019,15 @@ local function buildLocalRoleDataForCoupleAvatar()
 
 
 
+
+
+
+
         },
+
+
+
+
 
 
 
@@ -15022,7 +30039,19 @@ local function buildLocalRoleDataForCoupleAvatar()
 
 
 
+
+
+
+
+
+
+
+
     local outfitRes = resolveLobbyOutfitRes()
+
+
+
+
 
 
 
@@ -15030,11 +30059,27 @@ local function buildLocalRoleDataForCoupleAvatar()
 
 
 
+
+
+
+
         data.pspace_wear_ext[ENUM_AVATAR_SHOW_TYPE.SHOW_POS_CLOTH] = { outfitRes, 0, 0 }
 
 
 
+
+
+
+
     end
+
+
+
+
+
+
+
+
 
 
 
@@ -15046,7 +30091,15 @@ local function buildLocalRoleDataForCoupleAvatar()
 
 
 
+
+
+
+
     if skinRes and skinRes > 0 then
+
+
+
+
 
 
 
@@ -15054,7 +30107,15 @@ local function buildLocalRoleDataForCoupleAvatar()
 
 
 
+
+
+
+
         data.pspace_wear_ext[ENUM_AVATAR_SHOW_TYPE.SHOW_POS_WEAPONSKIN][1] = skinRes
+
+
+
+
 
 
 
@@ -15062,7 +30123,15 @@ local function buildLocalRoleDataForCoupleAvatar()
 
 
 
+
+
+
+
     data.depot_show_info = syncDepotShowWeaponFlags(data.depot_show_info)
+
+
+
+
 
 
 
@@ -15070,7 +30139,15 @@ local function buildLocalRoleDataForCoupleAvatar()
 
 
 
+
+
+
+
     SOCIAL.snapshotKey = wearPatchKey()
+
+
+
+
 
 
 
@@ -15078,7 +30155,19 @@ local function buildLocalRoleDataForCoupleAvatar()
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -15090,7 +30179,15 @@ local _myUidCached
 
 
 
+
+
+
+
 local function isMyWearData(wearData)
+
+
+
+
 
 
 
@@ -15098,7 +30195,15 @@ local function isMyWearData(wearData)
 
 
 
+
+
+
+
     if not _myUidCached then
+
+
+
+
 
 
 
@@ -15106,7 +30211,15 @@ local function isMyWearData(wearData)
 
 
 
+
+
+
+
     end
+
+
+
+
 
 
 
@@ -15114,7 +30227,19 @@ local function isMyWearData(wearData)
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -15126,7 +30251,15 @@ local function mergeInjectedWeaponIntoWearData(wearData)
 
 
 
+
+
+
+
     if not _G.LobbyCosmeticEnabled then return end
+
+
+
+
 
 
 
@@ -15134,7 +30267,15 @@ local function mergeInjectedWeaponIntoWearData(wearData)
 
 
 
+
+
+
+
     local skinRes = resolveLobbyWeaponSkinRes()
+
+
+
+
 
 
 
@@ -15142,7 +30283,15 @@ local function mergeInjectedWeaponIntoWearData(wearData)
 
 
 
+
+
+
+
     if not skinRes or skinRes <= 0 then return end
+
+
+
+
 
 
 
@@ -15150,7 +30299,15 @@ local function mergeInjectedWeaponIntoWearData(wearData)
 
 
 
+
+
+
+
         weaponResId = 0, weaponSkinId = 0,
+
+
+
+
 
 
 
@@ -15158,7 +30315,15 @@ local function mergeInjectedWeaponIntoWearData(wearData)
 
 
 
+
+
+
+
     }
+
+
+
+
 
 
 
@@ -15166,7 +30331,15 @@ local function mergeInjectedWeaponIntoWearData(wearData)
 
 
 
+
+
+
+
         and (tonumber(wearData.mainWeaponInfo.weaponResId) or 0) == 0 then
+
+
+
+
 
 
 
@@ -15174,7 +30347,15 @@ local function mergeInjectedWeaponIntoWearData(wearData)
 
 
 
+
+
+
+
     end
+
+
+
+
 
 
 
@@ -15182,11 +30363,27 @@ local function mergeInjectedWeaponIntoWearData(wearData)
 
 
 
+
+
+
+
     wearData.mainWeaponInfo.weaponResId = 0
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -15198,7 +30395,15 @@ local function equipSocialHandWeapon(avatar, skinRes)
 
 
 
+
+
+
+
     if not avatar or not skinRes or skinRes <= 0 then return end
+
+
+
+
 
 
 
@@ -15206,7 +30411,15 @@ local function equipSocialHandWeapon(avatar, skinRes)
 
 
 
+
+
+
+
     SOCIAL.lastHandSkin = skinRes
+
+
+
+
 
 
 
@@ -15214,7 +30427,15 @@ local function equipSocialHandWeapon(avatar, skinRes)
 
 
 
+
+
+
+
         avatar:PutonEquipment(skinRes, nil, { bIsUse = true })
+
+
+
+
 
 
 
@@ -15222,7 +30443,19 @@ local function equipSocialHandWeapon(avatar, skinRes)
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -15234,7 +30467,15 @@ local function shouldShowHandWeapon()
 
 
 
+
+
+
+
     local show = true
+
+
+
+
 
 
 
@@ -15242,7 +30483,15 @@ local function shouldShowHandWeapon()
 
 
 
+
+
+
+
         local lds = require("client.slua.logic.wardrobe.logic_display_setting")
+
+
+
+
 
 
 
@@ -15250,7 +30499,15 @@ local function shouldShowHandWeapon()
 
 
 
+
+
+
+
             show = lds.data.OpenGun ~= false
+
+
+
+
 
 
 
@@ -15258,7 +30515,15 @@ local function shouldShowHandWeapon()
 
 
 
+
+
+
+
     end)
+
+
+
+
 
 
 
@@ -15266,7 +30531,19 @@ local function shouldShowHandWeapon()
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -15278,7 +30555,15 @@ local function mergeInjectedOutfitIntoWearData(wearData)
 
 
 
+
+
+
+
     if not _G.LobbyCosmeticEnabled then return end
+
+
+
+
 
 
 
@@ -15286,7 +30571,15 @@ local function mergeInjectedOutfitIntoWearData(wearData)
 
 
 
+
+
+
+
     local outfitRes = resolveLobbyOutfitRes()
+
+
+
+
 
 
 
@@ -15294,7 +30587,15 @@ local function mergeInjectedOutfitIntoWearData(wearData)
 
 
 
+
+
+
+
     rememberLobbyOutfitRes(outfitRes)
+
+
+
+
 
 
 
@@ -15302,7 +30603,15 @@ local function mergeInjectedOutfitIntoWearData(wearData)
 
 
 
+
+
+
+
     local converted = AvatarData.ConvertToAvatarCustom({ outfitRes, 0, 0 })
+
+
+
+
 
 
 
@@ -15310,7 +30619,15 @@ local function mergeInjectedOutfitIntoWearData(wearData)
 
 
 
+
+
+
+
     local newList = {}
+
+
+
+
 
 
 
@@ -15318,7 +30635,15 @@ local function mergeInjectedOutfitIntoWearData(wearData)
 
 
 
+
+
+
+
         if e and e.ItemID and isBodyClothSubType(subType(cfg(e.ItemID))) then
+
+
+
+
 
 
 
@@ -15326,7 +30651,15 @@ local function mergeInjectedOutfitIntoWearData(wearData)
 
 
 
+
+
+
+
             newList[#newList + 1] = e
+
+
+
+
 
 
 
@@ -15334,7 +30667,15 @@ local function mergeInjectedOutfitIntoWearData(wearData)
 
 
 
+
+
+
+
     end
+
+
+
+
 
 
 
@@ -15342,11 +30683,27 @@ local function mergeInjectedOutfitIntoWearData(wearData)
 
 
 
+
+
+
+
     wearData.WearInfoList = newList
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -15358,7 +30715,15 @@ local function mergeInjectedIntoWearData(wearData)
 
 
 
+
+
+
+
     if not wearData then return end
+
+
+
+
 
 
 
@@ -15366,11 +30731,27 @@ local function mergeInjectedIntoWearData(wearData)
 
 
 
+
+
+
+
     mergeInjectedOutfitIntoWearData(wearData)
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -15382,7 +30763,15 @@ local function reapplyLobbyEquipped()
 
 
 
+
+
+
+
     if not _G.LobbyCosmeticEnabled then return end
+
+
+
+
 
 
 
@@ -15390,7 +30779,15 @@ local function reapplyLobbyEquipped()
 
 
 
+
+
+
+
         return
+
+
+
+
 
 
 
@@ -15398,7 +30795,15 @@ local function reapplyLobbyEquipped()
 
 
 
+
+
+
+
     syncWeaponCacheFromLobby()
+
+
+
+
 
 
 
@@ -15410,7 +30815,19 @@ local function reapplyLobbyEquipped()
 
 
 
+
+
+
+
+
+
+
+
     if ENUM_LobbyPageType and curPage == ENUM_LobbyPageType.Left then
+
+
+
+
 
 
 
@@ -15418,11 +30835,27 @@ local function reapplyLobbyEquipped()
 
 
 
+
+
+
+
         return
 
 
 
+
+
+
+
     end
+
+
+
+
+
+
+
+
 
 
 
@@ -15434,7 +30867,15 @@ local function reapplyLobbyEquipped()
 
 
 
+
+
+
+
     if cch.outfitIns and isInjectedIns(cch.outfitIns) then
+
+
+
+
 
 
 
@@ -15442,7 +30883,19 @@ local function reapplyLobbyEquipped()
 
 
 
+
+
+
+
     end
+
+
+
+
+
+
+
+
 
 
 
@@ -15454,7 +30907,15 @@ local function reapplyLobbyEquipped()
 
 
 
+
+
+
+
         wid = tonumber(wid)
+
+
+
+
 
 
 
@@ -15462,7 +30923,15 @@ local function reapplyLobbyEquipped()
 
 
 
+
+
+
+
             if w.insID and isInjectedIns(w.insID) then
+
+
+
+
 
 
 
@@ -15470,7 +30939,15 @@ local function reapplyLobbyEquipped()
 
 
 
+
+
+
+
             else
+
+
+
+
 
 
 
@@ -15478,11 +30955,23 @@ local function reapplyLobbyEquipped()
 
 
 
+
+
+
+
             end
 
 
 
+
+
+
+
         end
+
+
+
+
 
 
 
@@ -15494,7 +30983,19 @@ local function reapplyLobbyEquipped()
 
 
 
+
+
+
+
+
+
+
+
     pcall(function()
+
+
+
+
 
 
 
@@ -15502,7 +31003,15 @@ local function reapplyLobbyEquipped()
 
 
 
+
+
+
+
         local LAM = require("client.logic.avatar.LobbyAvatarManager")
+
+
+
+
 
 
 
@@ -15510,7 +31019,15 @@ local function reapplyLobbyEquipped()
 
 
 
+
+
+
+
         local mainWid = tonumber(DataMgr.Weapon_ID) or 0
+
+
+
+
 
 
 
@@ -15518,7 +31035,15 @@ local function reapplyLobbyEquipped()
 
 
 
+
+
+
+
         if mw and mw.resID and mw.resID > 0 and TAM.GetAvatarByUid(uid) then
+
+
+
+
 
 
 
@@ -15526,11 +31051,27 @@ local function reapplyLobbyEquipped()
 
 
 
+
+
+
+
         end
 
 
 
+
+
+
+
     end)
+
+
+
+
+
+
+
+
 
 
 
@@ -15542,7 +31083,15 @@ local function reapplyLobbyEquipped()
 
 
 
+
+
+
+
         if EventSystem and EVENTTYPE_WARDROBE and EVENTID_WARDROBE_UPDATE_AVATAR_LIST then
+
+
+
+
 
 
 
@@ -15550,7 +31099,15 @@ local function reapplyLobbyEquipped()
 
 
 
+
+
+
+
         end
+
+
+
+
 
 
 
@@ -15558,7 +31115,19 @@ local function reapplyLobbyEquipped()
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -15570,7 +31139,15 @@ local function hookLobbySwipePersistence()
 
 
 
+
+
+
+
     pcall(function()
+
+
+
+
 
 
 
@@ -15578,7 +31155,15 @@ local function hookLobbySwipePersistence()
 
 
 
+
+
+
+
         local oRsp = BD.on_get_avatar_show_rsp
+
+
+
+
 
 
 
@@ -15586,7 +31171,15 @@ local function hookLobbySwipePersistence()
 
 
 
+
+
+
+
             oRsp(self, res, target_uid, data)
+
+
+
+
 
 
 
@@ -15594,7 +31187,15 @@ local function hookLobbySwipePersistence()
 
 
 
+
+
+
+
                 if tonumber(target_uid) == tonumber(DataMgr.roleData.uid) then
+
+
+
+
 
 
 
@@ -15602,7 +31203,15 @@ local function hookLobbySwipePersistence()
 
 
 
+
+
+
+
                 SOCIAL.forceAvatarRedraw = true
+
+
+
+
 
 
 
@@ -15610,7 +31219,15 @@ local function hookLobbySwipePersistence()
 
 
 
+
+
+
+
                 if ENUM_LobbyPageType and getLobbyCurPage() == ENUM_LobbyPageType.Left then
+
+
+
+
 
 
 
@@ -15618,7 +31235,15 @@ local function hookLobbySwipePersistence()
 
 
 
+
+
+
+
                 end
+
+
+
+
 
 
 
@@ -15626,7 +31251,15 @@ local function hookLobbySwipePersistence()
 
 
 
+
+
+
+
         end
+
+
+
+
 
 
 
@@ -15638,7 +31271,19 @@ local function hookLobbySwipePersistence()
 
 
 
+
+
+
+
+
+
+
+
     pcall(function()
+
+
+
+
 
 
 
@@ -15646,7 +31291,15 @@ local function hookLobbySwipePersistence()
 
 
 
+
+
+
+
         local oGetWear = AC.GetWearDataFromRoleData
+
+
+
+
 
 
 
@@ -15654,7 +31307,15 @@ local function hookLobbySwipePersistence()
 
 
 
+
+
+
+
             local wearData = oGetWear(roleData)
+
+
+
+
 
 
 
@@ -15662,11 +31323,23 @@ local function hookLobbySwipePersistence()
 
 
 
+
+
+
+
                 mergeInjectedIntoWearData(wearData)
 
 
 
+
+
+
+
             end
+
+
+
+
 
 
 
@@ -15674,7 +31347,15 @@ local function hookLobbySwipePersistence()
 
 
 
+
+
+
+
         end
+
+
+
+
 
 
 
@@ -15682,7 +31363,15 @@ local function hookLobbySwipePersistence()
 
 
 
+
+
+
+
         AC.UpdateAvatar = function(avatar, wearData, isShowWeapon, isShowHelmet, isShowBag)
+
+
+
+
 
 
 
@@ -15690,7 +31379,15 @@ local function hookLobbySwipePersistence()
 
 
 
+
+
+
+
                 return oUp(avatar, wearData, isShowWeapon, isShowHelmet, isShowBag)
+
+
+
+
 
 
 
@@ -15698,7 +31395,15 @@ local function hookLobbySwipePersistence()
 
 
 
+
+
+
+
             if isMyWearData(wearData) then
+
+
+
+
 
 
 
@@ -15706,7 +31411,15 @@ local function hookLobbySwipePersistence()
 
 
 
+
+
+
+
             end
+
+
+
+
 
 
 
@@ -15714,7 +31427,15 @@ local function hookLobbySwipePersistence()
 
 
 
+
+
+
+
             if wearData and wearData.depot_show_info then
+
+
+
+
 
 
 
@@ -15722,7 +31443,15 @@ local function hookLobbySwipePersistence()
 
 
 
+
+
+
+
             end
+
+
+
+
 
 
 
@@ -15730,7 +31459,15 @@ local function hookLobbySwipePersistence()
 
 
 
+
+
+
+
                 for _, e in ipairs(wearData.WearInfoList or {}) do
+
+
+
+
 
 
 
@@ -15738,7 +31475,15 @@ local function hookLobbySwipePersistence()
 
 
 
+
+
+
+
                         rememberLobbyOutfitRes(e.ItemID)
+
+
+
+
 
 
 
@@ -15746,7 +31491,15 @@ local function hookLobbySwipePersistence()
 
 
 
+
+
+
+
                     end
+
+
+
+
 
 
 
@@ -15754,7 +31507,15 @@ local function hookLobbySwipePersistence()
 
 
 
+
+
+
+
             end
+
+
+
+
 
 
 
@@ -15762,7 +31523,15 @@ local function hookLobbySwipePersistence()
 
 
 
+
+
+
+
             if showGun and isMyWearData(wearData) and avatar
+
+
+
+
 
 
 
@@ -15770,7 +31539,15 @@ local function hookLobbySwipePersistence()
 
 
 
+
+
+
+
                 local skin = tonumber(wearData.mainWeaponInfo and wearData.mainWeaponInfo.weaponSkinId) or 0
+
+
+
+
 
 
 
@@ -15778,7 +31555,15 @@ local function hookLobbySwipePersistence()
 
 
 
+
+
+
+
                 if skin > 0 then equipSocialHandWeapon(avatar, skin) end
+
+
+
+
 
 
 
@@ -15786,11 +31571,23 @@ local function hookLobbySwipePersistence()
 
 
 
+
+
+
+
             return ret
 
 
 
+
+
+
+
         end
+
+
+
+
 
 
 
@@ -15802,7 +31599,19 @@ local function hookLobbySwipePersistence()
 
 
 
+
+
+
+
+
+
+
+
     pcall(function()
+
+
+
+
 
 
 
@@ -15810,7 +31619,15 @@ local function hookLobbySwipePersistence()
 
 
 
+
+
+
+
         local Cfg = require("client.slua.logic.lobby.Left.CoupleAvatarConfig")
+
+
+
+
 
 
 
@@ -15818,7 +31635,15 @@ local function hookLobbySwipePersistence()
 
 
 
+
+
+
+
         if oMulti then
+
+
+
+
 
 
 
@@ -15826,7 +31651,15 @@ local function hookLobbySwipePersistence()
 
 
 
+
+
+
+
                 if not _G.LobbyCosmeticEnabled then
+
+
+
+
 
 
 
@@ -15834,7 +31667,15 @@ local function hookLobbySwipePersistence()
 
 
 
+
+
+
+
                 end
+
+
+
+
 
 
 
@@ -15842,7 +31683,15 @@ local function hookLobbySwipePersistence()
 
 
 
+
+
+
+
                     and self.SelfUID and tostring(self.SelfUID) == tostring(DataMgr.roleData.uid)
+
+
+
+
 
 
 
@@ -15850,7 +31699,15 @@ local function hookLobbySwipePersistence()
 
 
 
+
+
+
+
                     pcall(function()
+
+
+
+
 
 
 
@@ -15858,7 +31715,15 @@ local function hookLobbySwipePersistence()
 
 
 
+
+
+
+
                         local d = BD:GetCacheData(tonumber(self.SelfUID))
+
+
+
+
 
 
 
@@ -15866,7 +31731,15 @@ local function hookLobbySwipePersistence()
 
 
 
+
+
+
+
                     end)
+
+
+
+
 
 
 
@@ -15874,7 +31747,15 @@ local function hookLobbySwipePersistence()
 
 
 
+
+
+
+
                         self.CompareDataCache[avatarType] = nil
+
+
+
+
 
 
 
@@ -15882,11 +31763,23 @@ local function hookLobbySwipePersistence()
 
 
 
+
+
+
+
                     end
 
 
 
+
+
+
+
                 end
+
+
+
+
 
 
 
@@ -15894,7 +31787,15 @@ local function hookLobbySwipePersistence()
 
 
 
+
+
+
+
                 if isSelf and self.isShowWeapon ~= false and shouldShowHandWeapon()
+
+
+
+
 
 
 
@@ -15902,7 +31803,15 @@ local function hookLobbySwipePersistence()
 
 
 
+
+
+
+
                     local skin = resolveLobbyWeaponSkinRes()
+
+
+
+
 
 
 
@@ -15910,7 +31819,15 @@ local function hookLobbySwipePersistence()
 
 
 
+
+
+
+
                 end
+
+
+
+
 
 
 
@@ -15918,7 +31835,15 @@ local function hookLobbySwipePersistence()
 
 
 
+
+
+
+
         end
+
+
+
+
 
 
 
@@ -15926,7 +31851,15 @@ local function hookLobbySwipePersistence()
 
 
 
+
+
+
+
         CA.CheckSelfIsHideAvatar = function(self, nSelfUId, tRoleData)
+
+
+
+
 
 
 
@@ -15934,11 +31867,23 @@ local function hookLobbySwipePersistence()
 
 
 
+
+
+
+
                 return oHideCheck(self, nSelfUId, tRoleData)
 
 
 
+
+
+
+
             end
+
+
+
+
 
 
 
@@ -15946,7 +31891,15 @@ local function hookLobbySwipePersistence()
 
 
 
+
+
+
+
                 return false
+
+
+
+
 
 
 
@@ -15954,11 +31907,27 @@ local function hookLobbySwipePersistence()
 
 
 
+
+
+
+
             return oHideCheck(self, nSelfUId, tRoleData)
 
 
 
+
+
+
+
         end
+
+
+
+
+
+
+
+
 
 
 
@@ -15970,7 +31939,15 @@ local function hookLobbySwipePersistence()
 
 
 
+
+
+
+
         CA.Update = function(self)
+
+
+
+
 
 
 
@@ -15978,7 +31955,15 @@ local function hookLobbySwipePersistence()
 
 
 
+
+
+
+
             local isSelf = self.SelfUID and tostring(self.SelfUID) == tostring(DataMgr.roleData.uid)
+
+
+
+
 
 
 
@@ -15986,7 +31971,15 @@ local function hookLobbySwipePersistence()
 
 
 
+
+
+
+
             if isSelf then
+
+
+
+
 
 
 
@@ -15994,7 +31987,15 @@ local function hookLobbySwipePersistence()
 
 
 
+
+
+
+
             end
+
+
+
+
 
 
 
@@ -16002,11 +32003,27 @@ local function hookLobbySwipePersistence()
 
 
 
+
+
+
+
             CA.HideAvatars = oHide
 
 
 
+
+
+
+
         end
+
+
+
+
+
+
+
+
 
 
 
@@ -16018,7 +32035,15 @@ local function hookLobbySwipePersistence()
 
 
 
+
+
+
+
         CA.OnReceiveData = function(self, uid, data)
+
+
+
+
 
 
 
@@ -16026,11 +32051,23 @@ local function hookLobbySwipePersistence()
 
 
 
+
+
+
+
                 return oRecv(self, uid, data)
 
 
 
+
+
+
+
             end
+
+
+
+
 
 
 
@@ -16038,7 +32075,15 @@ local function hookLobbySwipePersistence()
 
 
 
+
+
+
+
                 if data then
+
+
+
+
 
 
 
@@ -16046,7 +32091,15 @@ local function hookLobbySwipePersistence()
 
 
 
+
+
+
+
                 else
+
+
+
+
 
 
 
@@ -16054,11 +32107,23 @@ local function hookLobbySwipePersistence()
 
 
 
+
+
+
+
                 end
 
 
 
+
+
+
+
             end
+
+
+
+
 
 
 
@@ -16066,7 +32131,15 @@ local function hookLobbySwipePersistence()
 
 
 
+
+
+
+
         end
+
+
+
+
 
 
 
@@ -16078,7 +32151,19 @@ local function hookLobbySwipePersistence()
 
 
 
+
+
+
+
+
+
+
+
     pcall(function()
+
+
+
+
 
 
 
@@ -16086,7 +32171,15 @@ local function hookLobbySwipePersistence()
 
 
 
+
+
+
+
         if EVENTTYPE_LOBBY and EVENTID_SWITCHTO_PAGE_START then
+
+
+
+
 
 
 
@@ -16094,7 +32187,15 @@ local function hookLobbySwipePersistence()
 
 
 
+
+
+
+
                 if not _G.LobbyCosmeticEnabled then return end
+
+
+
+
 
 
 
@@ -16102,11 +32203,23 @@ local function hookLobbySwipePersistence()
 
 
 
+
+
+
+
                     syncWeaponCacheFromLobby()
 
 
 
+
+
+
+
                     SOCIAL.lastHandSkin = nil
+
+
+
+
 
 
 
@@ -16114,7 +32227,15 @@ local function hookLobbySwipePersistence()
 
 
 
+
+
+
+
                     if o then rememberLobbyOutfitRes(o) end
+
+
+
+
 
 
 
@@ -16122,7 +32243,15 @@ local function hookLobbySwipePersistence()
 
 
 
+
+
+
+
                     SOCIAL.forceAvatarRedraw = true
+
+
+
+
 
 
 
@@ -16130,11 +32259,23 @@ local function hookLobbySwipePersistence()
 
 
 
+
+
+
+
             end)
 
 
 
+
+
+
+
         end
+
+
+
+
 
 
 
@@ -16142,11 +32283,23 @@ local function hookLobbySwipePersistence()
 
 
 
+
+
+
+
             EventSystem:registEvent(EVENTTYPE_LOBBY, EVENTID_SWITCHTO_PAGE_END, function(_, _, _, toPage)
 
 
 
+
+
+
+
                 if not _G.LobbyCosmeticEnabled then return end
+
+
+
+
 
 
 
@@ -16154,7 +32307,15 @@ local function hookLobbySwipePersistence()
 
 
 
+
+
+
+
                     syncWeaponCacheFromLobby()
+
+
+
+
 
 
 
@@ -16162,7 +32323,15 @@ local function hookLobbySwipePersistence()
 
 
 
+
+
+
+
                     socialDebounce(0.45, function()
+
+
+
+
 
 
 
@@ -16170,7 +32339,15 @@ local function hookLobbySwipePersistence()
 
 
 
+
+
+
+
                     end)
+
+
+
+
 
 
 
@@ -16178,7 +32355,15 @@ local function hookLobbySwipePersistence()
 
 
 
+
+
+
+
                     SOCIAL.wearPatchKey = nil
+
+
+
+
 
 
 
@@ -16186,7 +32371,15 @@ local function hookLobbySwipePersistence()
 
 
 
+
+
+
+
                 end
+
+
+
+
 
 
 
@@ -16194,7 +32387,15 @@ local function hookLobbySwipePersistence()
 
 
 
+
+
+
+
         end
+
+
+
+
 
 
 
@@ -16202,11 +32403,23 @@ local function hookLobbySwipePersistence()
 
 
 
+
+
+
+
             EventSystem:registEvent(EVENTTYPE_LOBBY_SOCIAL, EVENTID_GOT_SOCIAL_LOBBY_SHOW_DATA, function(_, _, nUId)
 
 
 
+
+
+
+
                 if not _G.LobbyCosmeticEnabled then return end
+
+
+
+
 
 
 
@@ -16214,7 +32427,15 @@ local function hookLobbySwipePersistence()
 
 
 
+
+
+
+
                     socialDebounce(0.2, function() patchSelfWearCache(false) end)
+
+
+
+
 
 
 
@@ -16222,11 +32443,23 @@ local function hookLobbySwipePersistence()
 
 
 
+
+
+
+
             end)
 
 
 
+
+
+
+
         end
+
+
+
+
 
 
 
@@ -16234,7 +32467,15 @@ local function hookLobbySwipePersistence()
 
 
 
+
+
+
+
             EventSystem:registEvent(EVENTTYPE_WARDROBE, EVENTID_WARDROBE_UPDATE_CURRENT_PUT_ON_GUN, function()
+
+
+
+
 
 
 
@@ -16242,7 +32483,15 @@ local function hookLobbySwipePersistence()
 
 
 
+
+
+
+
                 SOCIAL.wearPatchKey = nil
+
+
+
+
 
 
 
@@ -16250,7 +32499,15 @@ local function hookLobbySwipePersistence()
 
 
 
+
+
+
+
                 syncWeaponCacheFromLobby()
+
+
+
+
 
 
 
@@ -16258,7 +32515,15 @@ local function hookLobbySwipePersistence()
 
 
 
+
+
+
+
                     socialDebounce(0.25, function() onSocialWearDirty(true) end)
+
+
+
+
 
 
 
@@ -16266,7 +32531,15 @@ local function hookLobbySwipePersistence()
 
 
 
+
+
+
+
             end)
+
+
+
+
 
 
 
@@ -16274,7 +32547,19 @@ local function hookLobbySwipePersistence()
 
 
 
+
+
+
+
     end)
+
+
+
+
+
+
+
+
 
 
 
@@ -16286,7 +32571,15 @@ local function hookLobbySwipePersistence()
 
 
 
+
+
+
+
         local lds = require("client.slua.logic.wardrobe.logic_display_setting")
+
+
+
+
 
 
 
@@ -16294,7 +32587,15 @@ local function hookLobbySwipePersistence()
 
 
 
+
+
+
+
         lds.SwitchGun = function(...)
+
+
+
+
 
 
 
@@ -16302,7 +32603,15 @@ local function hookLobbySwipePersistence()
 
 
 
+
+
+
+
             SOCIAL.wearPatchKey = nil
+
+
+
+
 
 
 
@@ -16310,7 +32619,15 @@ local function hookLobbySwipePersistence()
 
 
 
+
+
+
+
                 socialDebounce(0.2, function() onSocialWearDirty(true) end)
+
+
+
+
 
 
 
@@ -16318,7 +32635,15 @@ local function hookLobbySwipePersistence()
 
 
 
+
+
+
+
             return r
+
+
+
+
 
 
 
@@ -16326,11 +32651,27 @@ local function hookLobbySwipePersistence()
 
 
 
+
+
+
+
     end)
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -16342,7 +32683,15 @@ local function hookDepotInit()
 
 
 
+
+
+
+
     pcall(function()
+
+
+
+
 
 
 
@@ -16350,7 +32699,15 @@ local function hookDepotInit()
 
 
 
+
+
+
+
         local orig = WDE.InitData
+
+
+
+
 
 
 
@@ -16358,7 +32715,15 @@ local function hookDepotInit()
 
 
 
+
+
+
+
             orig(self, pkg)
+
+
+
+
 
 
 
@@ -16366,7 +32731,15 @@ local function hookDepotInit()
 
 
 
+
+
+
+
             refreshWardrobe()
+
+
+
+
 
 
 
@@ -16374,11 +32747,27 @@ local function hookDepotInit()
 
 
 
+
+
+
+
     end)
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -16390,7 +32779,15 @@ local function hookWardrobeData()
 
 
 
+
+
+
+
     pcall(function()
+
+
+
+
 
 
 
@@ -16398,7 +32795,15 @@ local function hookWardrobeData()
 
 
 
+
+
+
+
         local function wrapGet(name)
+
+
+
+
 
 
 
@@ -16406,7 +32811,15 @@ local function hookWardrobeData()
 
 
 
+
+
+
+
             if not o then return end
+
+
+
+
 
 
 
@@ -16414,7 +32827,15 @@ local function hookWardrobeData()
 
 
 
+
+
+
+
                 insID = tonumber(insID)
+
+
+
+
 
 
 
@@ -16422,7 +32843,15 @@ local function hookWardrobeData()
 
 
 
+
+
+
+
                     local e = getEntity()
+
+
+
+
 
 
 
@@ -16430,7 +32859,15 @@ local function hookWardrobeData()
 
 
 
+
+
+
+
                 end
+
+
+
+
 
 
 
@@ -16438,7 +32875,15 @@ local function hookWardrobeData()
 
 
 
+
+
+
+
             end
+
+
+
+
 
 
 
@@ -16446,7 +32891,15 @@ local function hookWardrobeData()
 
 
 
+
+
+
+
         wrapGet("GetHallDepotItemDataByInsID")
+
+
+
+
 
 
 
@@ -16458,7 +32911,19 @@ local function hookWardrobeData()
 
 
 
+
+
+
+
+
+
+
+
         if wd.GetItemIDByInsID then
+
+
+
+
 
 
 
@@ -16466,7 +32931,15 @@ local function hookWardrobeData()
 
 
 
+
+
+
+
             wd.GetItemIDByInsID = function(self, insID)
+
+
+
+
 
 
 
@@ -16474,7 +32947,15 @@ local function hookWardrobeData()
 
 
 
+
+
+
+
                 if isInjectedIns(insID) then return R.insToRes[insID] end
+
+
+
+
 
 
 
@@ -16482,11 +32963,27 @@ local function hookWardrobeData()
 
 
 
+
+
+
+
             end
 
 
 
+
+
+
+
         end
+
+
+
+
+
+
+
+
 
 
 
@@ -16498,7 +32995,15 @@ local function hookWardrobeData()
 
 
 
+
+
+
+
             local o_gs = wd.GetItemSource
+
+
+
+
 
 
 
@@ -16506,7 +33011,15 @@ local function hookWardrobeData()
 
 
 
+
+
+
+
                 insID = tonumber(insID)
+
+
+
+
 
 
 
@@ -16514,7 +33027,15 @@ local function hookWardrobeData()
 
 
 
+
+
+
+
                 return o_gs(self, insID)
+
+
+
+
 
 
 
@@ -16522,7 +33043,15 @@ local function hookWardrobeData()
 
 
 
+
+
+
+
         end
+
+
+
+
 
 
 
@@ -16530,7 +33059,15 @@ local function hookWardrobeData()
 
 
 
+
+
+
+
             local o = wd[name]
+
+
+
+
 
 
 
@@ -16538,7 +33075,15 @@ local function hookWardrobeData()
 
 
 
+
+
+
+
             wd[name] = function(self, id, ...)
+
+
+
+
 
 
 
@@ -16546,7 +33091,15 @@ local function hookWardrobeData()
 
 
 
+
+
+
+
                 return o(self, id, ...)
+
+
+
+
 
 
 
@@ -16554,7 +33107,15 @@ local function hookWardrobeData()
 
 
 
+
+
+
+
         end
+
+
+
+
 
 
 
@@ -16562,7 +33123,15 @@ local function hookWardrobeData()
 
 
 
+
+
+
+
         wrapBool("HasValidItem")
+
+
+
+
 
 
 
@@ -16570,11 +33139,27 @@ local function hookWardrobeData()
 
 
 
+
+
+
+
     end)
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -16586,7 +33171,15 @@ local function hookPageFilter()
 
 
 
+
+
+
+
     pcall(function()
+
+
+
+
 
 
 
@@ -16594,7 +33187,15 @@ local function hookPageFilter()
 
 
 
+
+
+
+
         local o1 = wl.IsValidCurrentPageItem
+
+
+
+
 
 
 
@@ -16602,7 +33203,15 @@ local function hookPageFilter()
 
 
 
+
+
+
+
             if v and isInjectedRes(v.resID) and mainTab == 1 then
+
+
+
+
 
 
 
@@ -16610,7 +33219,15 @@ local function hookPageFilter()
 
 
 
+
+
+
+
                     local st = v.itemSubType or subType(cfg(v.resID))
+
+
+
+
 
 
 
@@ -16618,7 +33235,15 @@ local function hookPageFilter()
 
 
 
+
+
+
+
                         local full = isFullSuitRes(v.resID, v)
+
+
+
+
 
 
 
@@ -16626,7 +33251,15 @@ local function hookPageFilter()
 
 
 
+
+
+
+
                         if subTab == WARDROBE_TAB_CLOTHES and not full then return true end
+
+
+
+
 
 
 
@@ -16634,7 +33267,15 @@ local function hookPageFilter()
 
 
 
+
+
+
+
                     if v.subTabType == subTab then return true end
+
+
+
+
 
 
 
@@ -16642,7 +33283,15 @@ local function hookPageFilter()
 
 
 
+
+
+
+
             end
+
+
+
+
 
 
 
@@ -16650,7 +33299,15 @@ local function hookPageFilter()
 
 
 
+
+
+
+
         end
+
+
+
+
 
 
 
@@ -16658,11 +33315,23 @@ local function hookPageFilter()
 
 
 
+
+
+
+
         wl.IsCanUse = function(self, resId)
 
 
 
+
+
+
+
             if isInjectedRes(resId) then return true end
+
+
+
+
 
 
 
@@ -16670,7 +33339,15 @@ local function hookPageFilter()
 
 
 
+
+
+
+
         end
+
+
+
+
 
 
 
@@ -16678,7 +33355,15 @@ local function hookPageFilter()
 
 
 
+
+
+
+
         wl.IsCharacterUse = function(self, resId)
+
+
+
+
 
 
 
@@ -16686,11 +33371,23 @@ local function hookPageFilter()
 
 
 
+
+
+
+
             return o3(self, resId)
 
 
 
+
+
+
+
         end
+
+
+
+
 
 
 
@@ -16698,7 +33395,15 @@ local function hookPageFilter()
 
 
 
+
+
+
+
         wl.GetWardrobeInsIdByResId = function(self, resid)
+
+
+
+
 
 
 
@@ -16706,7 +33411,15 @@ local function hookPageFilter()
 
 
 
+
+
+
+
             if isInjectedRes(resid) then return R.resToIns[resid] end
+
+
+
+
 
 
 
@@ -16714,7 +33427,15 @@ local function hookPageFilter()
 
 
 
+
+
+
+
         end
+
+
+
+
 
 
 
@@ -16722,7 +33443,19 @@ local function hookPageFilter()
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -16734,7 +33467,15 @@ local function hookArmory()
 
 
 
+
+
+
+
     pcall(function()
+
+
+
+
 
 
 
@@ -16742,7 +33483,15 @@ local function hookArmory()
 
 
 
+
+
+
+
         local og = Arm.GetSkinListByWeaponID
+
+
+
+
 
 
 
@@ -16750,7 +33499,15 @@ local function hookArmory()
 
 
 
+
+
+
+
             local t = og(wid) or {}
+
+
+
+
 
 
 
@@ -16758,7 +33515,15 @@ local function hookArmory()
 
 
 
+
+
+
+
                 if tonumber(weaponIdFromSkin(resID)) == tonumber(wid) then
+
+
+
+
 
 
 
@@ -16766,11 +33531,23 @@ local function hookArmory()
 
 
 
+
+
+
+
                 end
 
 
 
+
+
+
+
             end
+
+
+
+
 
 
 
@@ -16778,7 +33555,15 @@ local function hookArmory()
 
 
 
+
+
+
+
         end
+
+
+
+
 
 
 
@@ -16786,7 +33571,15 @@ local function hookArmory()
 
 
 
+
+
+
+
         Arm.get_weapon_skin_list_rsp = function(a, b, c, d)
+
+
+
+
 
 
 
@@ -16794,11 +33587,23 @@ local function hookArmory()
 
 
 
+
+
+
+
             for resID, insID in pairs(R.resToIns) do injectArmory(resID, insID) end
 
 
 
+
+
+
+
         end
+
+
+
+
 
 
 
@@ -16806,7 +33611,15 @@ local function hookArmory()
 
 
 
+
+
+
+
         Arm.install_weapon_skin = function(cd, wid, ins)
+
+
+
+
 
 
 
@@ -16814,7 +33627,15 @@ local function hookArmory()
 
 
 
+
+
+
+
             if isInjectedIns(ins) then
+
+
+
+
 
 
 
@@ -16822,7 +33643,15 @@ local function hookArmory()
 
 
 
+
+
+
+
                 equipWeaponSkin(wid, ins)
+
+
+
+
 
 
 
@@ -16830,7 +33659,15 @@ local function hookArmory()
 
 
 
+
+
+
+
             end
+
+
+
+
 
 
 
@@ -16838,11 +33675,23 @@ local function hookArmory()
 
 
 
+
+
+
+
         end
 
 
 
+
+
+
+
     end)
+
+
+
+
 
 
 
@@ -16850,7 +33699,15 @@ local function hookArmory()
 
 
 
+
+
+
+
         local AH = require("client.network.Protocol.ArmoryHandler")
+
+
+
+
 
 
 
@@ -16858,7 +33715,15 @@ local function hookArmory()
 
 
 
+
+
+
+
         AH.send_install_weapon_skin = function(cd, wid, ins)
+
+
+
+
 
 
 
@@ -16866,7 +33731,15 @@ local function hookArmory()
 
 
 
+
+
+
+
             if isInjectedIns(ins) then
+
+
+
+
 
 
 
@@ -16874,7 +33747,15 @@ local function hookArmory()
 
 
 
+
+
+
+
                 equipWeaponSkin(wid, ins)
+
+
+
+
 
 
 
@@ -16882,7 +33763,15 @@ local function hookArmory()
 
 
 
+
+
+
+
             end
+
+
+
+
 
 
 
@@ -16890,7 +33779,15 @@ local function hookArmory()
 
 
 
+
+
+
+
         end
+
+
+
+
 
 
 
@@ -16898,7 +33795,19 @@ local function hookArmory()
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -16910,7 +33819,15 @@ local function hookGunSkinId()
 
 
 
+
+
+
+
     pcall(function()
+
+
+
+
 
 
 
@@ -16918,7 +33835,15 @@ local function hookGunSkinId()
 
 
 
+
+
+
+
         local o = wgl.GetSkinIdByWeaponID
+
+
+
+
 
 
 
@@ -16926,7 +33851,15 @@ local function hookGunSkinId()
 
 
 
+
+
+
+
             local c = cache()
+
+
+
+
 
 
 
@@ -16934,7 +33867,15 @@ local function hookGunSkinId()
 
 
 
+
+
+
+
             if w and isInjectedIns(w.insID) then return w.insID end
+
+
+
+
 
 
 
@@ -16942,7 +33883,15 @@ local function hookGunSkinId()
 
 
 
+
+
+
+
             if Arm.rsp_list and Arm.rsp_list.install_list and Arm.rsp_list.install_list[wid] then
+
+
+
+
 
 
 
@@ -16950,7 +33899,15 @@ local function hookGunSkinId()
 
 
 
+
+
+
+
                 if sid and isInjectedIns(sid) then return sid end
+
+
+
+
 
 
 
@@ -16958,7 +33915,15 @@ local function hookGunSkinId()
 
 
 
+
+
+
+
             return o(self, wid)
+
+
+
+
 
 
 
@@ -16966,11 +33931,27 @@ local function hookGunSkinId()
 
 
 
+
+
+
+
     end)
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -16982,7 +33963,15 @@ local function hookPutOn()
 
 
 
+
+
+
+
     pcall(function()
+
+
+
+
 
 
 
@@ -16990,7 +33979,15 @@ local function hookPutOn()
 
 
 
+
+
+
+
         local o = WRH.send_depot_put_on_req
+
+
+
+
 
 
 
@@ -16998,7 +33995,15 @@ local function hookPutOn()
 
 
 
+
+
+
+
             insID = tonumber(insID)
+
+
+
+
 
 
 
@@ -17006,7 +34011,15 @@ local function hookPutOn()
 
 
 
+
+
+
+
                 local resID = R.insToRes[insID]
+
+
+
+
 
 
 
@@ -17014,7 +34027,15 @@ local function hookPutOn()
 
 
 
+
+
+
+
                 local st = subType(c)
+
+
+
+
 
 
 
@@ -17022,7 +34043,15 @@ local function hookPutOn()
 
 
 
+
+
+
+
                 if kind then
+
+
+
+
 
 
 
@@ -17030,11 +34059,23 @@ local function hookPutOn()
 
 
 
+
+
+
+
                     return
 
 
 
+
+
+
+
                 end
+
+
+
+
 
 
 
@@ -17042,7 +34083,15 @@ local function hookPutOn()
 
 
 
+
+
+
+
                     local wid = weaponIdFromSkin(resID)
+
+
+
+
 
 
 
@@ -17050,11 +34099,23 @@ local function hookPutOn()
 
 
 
+
+
+
+
                     return
 
 
 
+
+
+
+
                 end
+
+
+
+
 
 
 
@@ -17062,7 +34123,15 @@ local function hookPutOn()
 
 
 
+
+
+
+
                     equipWeaponSkin(MELEE_ID, insID)
+
+
+
+
 
 
 
@@ -17070,7 +34139,15 @@ local function hookPutOn()
 
 
 
+
+
+
+
                 end
+
+
+
+
 
 
 
@@ -17078,7 +34155,15 @@ local function hookPutOn()
 
 
 
+
+
+
+
                 local d = wd:GetHallDepotItemDataByInsID(insID)
+
+
+
+
 
 
 
@@ -17086,7 +34171,15 @@ local function hookPutOn()
 
 
 
+
+
+
+
                     WRH.on_depot_put_on_rsp(NET_OK, { res_id = resID, count = 1, instid = insID }, nil, 1, insID, 0, extra)
+
+
+
+
 
 
 
@@ -17094,7 +34187,15 @@ local function hookPutOn()
 
 
 
+
+
+
+
                 return
+
+
+
+
 
 
 
@@ -17102,7 +34203,15 @@ local function hookPutOn()
 
 
 
+
+
+
+
             return o(insID, extra)
+
+
+
+
 
 
 
@@ -17110,11 +34219,27 @@ local function hookPutOn()
 
 
 
+
+
+
+
     end)
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -17126,7 +34251,15 @@ local function hookWeaponWear()
 
 
 
+
+
+
+
     pcall(function()
+
+
+
+
 
 
 
@@ -17134,7 +34267,15 @@ local function hookWeaponWear()
 
 
 
+
+
+
+
         local o = HT.IsWeaponWear
+
+
+
+
 
 
 
@@ -17142,7 +34283,15 @@ local function hookWeaponWear()
 
 
 
+
+
+
+
             insId = tonumber(insId)
+
+
+
+
 
 
 
@@ -17150,7 +34299,15 @@ local function hookWeaponWear()
 
 
 
+
+
+
+
                 local c = cache()
+
+
+
+
 
 
 
@@ -17158,7 +34315,15 @@ local function hookWeaponWear()
 
 
 
+
+
+
+
                 for wid, w in pairs(c.weapons) do
+
+
+
+
 
 
 
@@ -17166,7 +34331,15 @@ local function hookWeaponWear()
 
 
 
+
+
+
+
                         if Arm.rsp_list and Arm.rsp_list.install_list and Arm.rsp_list.install_list[wid] then
+
+
+
+
 
 
 
@@ -17174,7 +34347,15 @@ local function hookWeaponWear()
 
 
 
+
+
+
+
                         end
+
+
+
+
 
 
 
@@ -17182,7 +34363,15 @@ local function hookWeaponWear()
 
 
 
+
+
+
+
                     end
+
+
+
+
 
 
 
@@ -17190,7 +34379,15 @@ local function hookWeaponWear()
 
 
 
+
+
+
+
             end
+
+
+
+
 
 
 
@@ -17198,7 +34395,15 @@ local function hookWeaponWear()
 
 
 
+
+
+
+
         end
+
+
+
+
 
 
 
@@ -17206,7 +34411,19 @@ local function hookWeaponWear()
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -17218,7 +34435,15 @@ local function hookAvatarValid()
 
 
 
+
+
+
+
     pcall(function()
+
+
+
+
 
 
 
@@ -17226,7 +34451,15 @@ local function hookAvatarValid()
 
 
 
+
+
+
+
         local comp = require(path)
+
+
+
+
 
 
 
@@ -17234,7 +34467,15 @@ local function hookAvatarValid()
 
 
 
+
+
+
+
             local o = comp.CheckItemValid
+
+
+
+
 
 
 
@@ -17242,7 +34483,15 @@ local function hookAvatarValid()
 
 
 
+
+
+
+
                 if isInjectedRes(resID) then return true end
+
+
+
+
 
 
 
@@ -17250,7 +34499,15 @@ local function hookAvatarValid()
 
 
 
+
+
+
+
             end
+
+
+
+
 
 
 
@@ -17258,11 +34515,35 @@ local function hookAvatarValid()
 
 
 
+
+
+
+
     end)
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -17282,7 +34563,15 @@ local function getWAC(char)
 
 
 
+
+
+
+
     local w = char and char.GetCurrentWeapon and char:GetCurrentWeapon()
+
+
+
+
 
 
 
@@ -17290,7 +34579,15 @@ local function getWAC(char)
 
 
 
+
+
+
+
         return w.WeaponAvatarComponent
+
+
+
+
 
 
 
@@ -17298,11 +34595,27 @@ local function getWAC(char)
 
 
 
+
+
+
+
     return nil
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -17314,7 +34627,15 @@ local function getDesiredOutfit()
 
 
 
+
+
+
+
     if MATCH_CONFIG.outfitRes and MATCH_CONFIG.outfitRes > 0 then
+
+
+
+
 
 
 
@@ -17322,7 +34643,15 @@ local function getDesiredOutfit()
 
 
 
+
+
+
+
     end
+
+
+
+
 
 
 
@@ -17330,11 +34659,27 @@ local function getDesiredOutfit()
 
 
 
+
+
+
+
     return c.outfitRes
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -17346,7 +34691,15 @@ local function matchApplyOutfit(char)
 
 
 
+
+
+
+
     local outfitRes = getDesiredOutfit()
+
+
+
+
 
 
 
@@ -17354,7 +34707,15 @@ local function matchApplyOutfit(char)
 
 
 
+
+
+
+
     local comp = char.CharacterAvatarComp2_BP
+
+
+
+
 
 
 
@@ -17362,11 +34723,23 @@ local function matchApplyOutfit(char)
 
 
 
+
+
+
+
         return false
 
 
 
+
+
+
+
     end
+
+
+
+
 
 
 
@@ -17374,7 +34747,15 @@ local function matchApplyOutfit(char)
 
 
 
+
+
+
+
     pcall(function()
+
+
+
+
 
 
 
@@ -17382,7 +34763,15 @@ local function matchApplyOutfit(char)
 
 
 
+
+
+
+
         ok = true
+
+
+
+
 
 
 
@@ -17390,7 +34779,15 @@ local function matchApplyOutfit(char)
 
 
 
+
+
+
+
     if not ok then
+
+
+
+
 
 
 
@@ -17398,7 +34795,15 @@ local function matchApplyOutfit(char)
 
 
 
+
+
+
+
             comp:HandleEquipItem(FItemDefineID(4, outfitRes), FAvatarCustomDefault())
+
+
+
+
 
 
 
@@ -17406,7 +34811,15 @@ local function matchApplyOutfit(char)
 
 
 
+
+
+
+
         end)
+
+
+
+
 
 
 
@@ -17414,7 +34827,15 @@ local function matchApplyOutfit(char)
 
 
 
+
+
+
+
     if ok then notify("Outfit OK " .. tostring(outfitRes)) end
+
+
+
+
 
 
 
@@ -17422,7 +34843,19 @@ local function matchApplyOutfit(char)
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -17438,7 +34871,19 @@ local _avatarItemsRegistered = false
 
 
 
+
+
+
+
+
+
+
+
 local function getDesiredWeaponSkins()
+
+
+
+
 
 
 
@@ -17446,7 +34891,15 @@ local function getDesiredWeaponSkins()
 
 
 
+
+
+
+
     local out, seen = {}, {}
+
+
+
+
 
 
 
@@ -17454,7 +34907,15 @@ local function getDesiredWeaponSkins()
 
 
 
+
+
+
+
         res = tonumber(res)
+
+
+
+
 
 
 
@@ -17462,7 +34923,15 @@ local function getDesiredWeaponSkins()
 
 
 
+
+
+
+
     end
+
+
+
+
 
 
 
@@ -17470,11 +34939,23 @@ local function getDesiredWeaponSkins()
 
 
 
+
+
+
+
         if wid ~= MELEE_ID and w.resID then add(w.resID) end
 
 
 
+
+
+
+
     end
+
+
+
+
 
 
 
@@ -17482,7 +34963,15 @@ local function getDesiredWeaponSkins()
 
 
 
+
+
+
+
         for _, res in pairs(MATCH_CONFIG.weaponSkins) do add(res) end
+
+
+
+
 
 
 
@@ -17490,11 +34979,27 @@ local function getDesiredWeaponSkins()
 
 
 
+
+
+
+
     return out
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -17510,7 +35015,19 @@ local GUN_MASTER_SYN_SLOT = 7
 
 
 
+
+
+
+
+
+
+
+
 local function findSkinSlotInSynData(weapon)
+
+
+
+
 
 
 
@@ -17518,7 +35035,15 @@ local function findSkinSlotInSynData(weapon)
 
 
 
+
+
+
+
     local arr = weapon.synData
+
+
+
+
 
 
 
@@ -17526,7 +35051,15 @@ local function findSkinSlotInSynData(weapon)
 
 
 
+
+
+
+
     local count = 0
+
+
+
+
 
 
 
@@ -17534,7 +35067,15 @@ local function findSkinSlotInSynData(weapon)
 
 
 
+
+
+
+
     for i = 0, math.min(count - 1, 15) do
+
+
+
+
 
 
 
@@ -17542,7 +35083,15 @@ local function findSkinSlotInSynData(weapon)
 
 
 
+
+
+
+
         if ok2 and att then
+
+
+
+
 
 
 
@@ -17550,7 +35099,15 @@ local function findSkinSlotInSynData(weapon)
 
 
 
+
+
+
+
             if ok3 and defRef then
+
+
+
+
 
 
 
@@ -17558,7 +35115,15 @@ local function findSkinSlotInSynData(weapon)
 
 
 
+
+
+
+
                 pcall(function() tid = tonumber(defRef.TypeSpecificID) or 0 end)
+
+
+
+
 
 
 
@@ -17566,7 +35131,15 @@ local function findSkinSlotInSynData(weapon)
 
 
 
+
+
+
+
                     return i, tid
+
+
+
+
 
 
 
@@ -17574,7 +35147,15 @@ local function findSkinSlotInSynData(weapon)
 
 
 
+
+
+
+
             end
+
+
+
+
 
 
 
@@ -17582,7 +35163,15 @@ local function findSkinSlotInSynData(weapon)
 
 
 
+
+
+
+
     end
+
+
+
+
 
 
 
@@ -17590,7 +35179,19 @@ local function findSkinSlotInSynData(weapon)
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -17602,7 +35203,15 @@ local function resolveWeaponTypeID(weaponResID)
 
 
 
+
+
+
+
     weaponResID = tonumber(weaponResID) or 0
+
+
+
+
 
 
 
@@ -17610,11 +35219,23 @@ local function resolveWeaponTypeID(weaponResID)
 
 
 
+
+
+
+
     local found = 0
 
 
 
+
+
+
+
     pcall(function()
+
+
+
+
 
 
 
@@ -17622,11 +35243,23 @@ local function resolveWeaponTypeID(weaponResID)
 
 
 
+
+
+
+
         if wc then found = tonumber(wc.WeaponID or wc.WeaponId or wc.weaponID or 0) end
 
 
 
+
+
+
+
     end)
+
+
+
+
 
 
 
@@ -17634,7 +35267,15 @@ local function resolveWeaponTypeID(weaponResID)
 
 
 
+
+
+
+
     pcall(function()
+
+
+
+
 
 
 
@@ -17642,7 +35283,15 @@ local function resolveWeaponTypeID(weaponResID)
 
 
 
+
+
+
+
         if ic then found = tonumber(ic.WeaponID or ic.weaponId or 0) end
+
+
+
+
 
 
 
@@ -17650,11 +35299,27 @@ local function resolveWeaponTypeID(weaponResID)
 
 
 
+
+
+
+
     return found > 0 and found or weaponResID
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -17666,7 +35331,15 @@ local function findTargetSkinForWeaponRes(weaponResID)
 
 
 
+
+
+
+
     weaponResID = tonumber(weaponResID) or 0
+
+
+
+
 
 
 
@@ -17678,7 +35351,19 @@ local function findTargetSkinForWeaponRes(weaponResID)
 
 
 
+
+
+
+
+
+
+
+
     local memSkin = getMatchWeaponSkin(weaponResID)
+
+
+
+
 
 
 
@@ -17686,7 +35371,15 @@ local function findTargetSkinForWeaponRes(weaponResID)
 
 
 
+
+
+
+
     local typeID = resolveWeaponTypeID(weaponResID)
+
+
+
+
 
 
 
@@ -17694,7 +35387,15 @@ local function findTargetSkinForWeaponRes(weaponResID)
 
 
 
+
+
+
+
         memSkin = getMatchWeaponSkin(typeID)
+
+
+
+
 
 
 
@@ -17702,7 +35403,19 @@ local function findTargetSkinForWeaponRes(weaponResID)
 
 
 
+
+
+
+
     end
+
+
+
+
+
+
+
+
 
 
 
@@ -17714,7 +35427,15 @@ local function findTargetSkinForWeaponRes(weaponResID)
 
 
 
+
+
+
+
         local fixed = tonumber(MATCH_CONFIG.weaponSkins[weaponResID])
+
+
+
+
 
 
 
@@ -17722,7 +35443,19 @@ local function findTargetSkinForWeaponRes(weaponResID)
 
 
 
+
+
+
+
     end
+
+
+
+
+
+
+
+
 
 
 
@@ -17734,7 +35467,15 @@ local function findTargetSkinForWeaponRes(weaponResID)
 
 
 
+
+
+
+
         local wid = weaponIdFromSkin(skinRes)
+
+
+
+
 
 
 
@@ -17742,7 +35483,19 @@ local function findTargetSkinForWeaponRes(weaponResID)
 
 
 
+
+
+
+
     end
+
+
+
+
+
+
+
+
 
 
 
@@ -17754,7 +35507,15 @@ local function findTargetSkinForWeaponRes(weaponResID)
 
 
 
+
+
+
+
     if typeID > 0 and typeID ~= weaponResID then
+
+
+
+
 
 
 
@@ -17762,7 +35523,15 @@ local function findTargetSkinForWeaponRes(weaponResID)
 
 
 
+
+
+
+
             local fixed = tonumber(MATCH_CONFIG.weaponSkins[typeID])
+
+
+
+
 
 
 
@@ -17770,7 +35539,15 @@ local function findTargetSkinForWeaponRes(weaponResID)
 
 
 
+
+
+
+
         end
+
+
+
+
 
 
 
@@ -17778,7 +35555,15 @@ local function findTargetSkinForWeaponRes(weaponResID)
 
 
 
+
+
+
+
             local wid = weaponIdFromSkin(skinRes)
+
+
+
+
 
 
 
@@ -17786,11 +35571,27 @@ local function findTargetSkinForWeaponRes(weaponResID)
 
 
 
+
+
+
+
         end
 
 
 
+
+
+
+
     end
+
+
+
+
+
+
+
+
 
 
 
@@ -17802,7 +35603,15 @@ local function findTargetSkinForWeaponRes(weaponResID)
 
 
 
+
+
+
+
     pcall(function()
+
+
+
+
 
 
 
@@ -17810,7 +35619,15 @@ local function findTargetSkinForWeaponRes(weaponResID)
 
 
 
+
+
+
+
         local weaponBase = AU.GetWeaponAvatarParentID(AU.GetBPIDByResID(weaponResID), false)
+
+
+
+
 
 
 
@@ -17818,7 +35635,15 @@ local function findTargetSkinForWeaponRes(weaponResID)
 
 
 
+
+
+
+
         for _, skinRes in ipairs(getDesiredWeaponSkins()) do
+
+
+
+
 
 
 
@@ -17826,7 +35651,15 @@ local function findTargetSkinForWeaponRes(weaponResID)
 
 
 
+
+
+
+
             if skinBase and skinBase > 0 and skinBase == weaponBase then
+
+
+
+
 
 
 
@@ -17834,7 +35667,15 @@ local function findTargetSkinForWeaponRes(weaponResID)
 
 
 
+
+
+
+
                 return
+
+
+
+
 
 
 
@@ -17842,11 +35683,23 @@ local function findTargetSkinForWeaponRes(weaponResID)
 
 
 
+
+
+
+
         end
 
 
 
+
+
+
+
     end)
+
+
+
+
 
 
 
@@ -17858,7 +35711,19 @@ local function findTargetSkinForWeaponRes(weaponResID)
 
 
 
+
+
+
+
+
+
+
+
     local c = cfg(weaponResID)
+
+
+
+
 
 
 
@@ -17866,7 +35731,15 @@ local function findTargetSkinForWeaponRes(weaponResID)
 
 
 
+
+
+
+
     if st and GUN_SUB[st] and MATCH_CONFIG.weaponSkins then
+
+
+
+
 
 
 
@@ -17874,7 +35747,15 @@ local function findTargetSkinForWeaponRes(weaponResID)
 
 
 
+
+
+
+
             local skinWid = weaponIdFromSkin(skinRes)
+
+
+
+
 
 
 
@@ -17882,7 +35763,15 @@ local function findTargetSkinForWeaponRes(weaponResID)
 
 
 
+
+
+
+
                 local sc = cfg(tonumber(skinWid))
+
+
+
+
 
 
 
@@ -17890,7 +35779,15 @@ local function findTargetSkinForWeaponRes(weaponResID)
 
 
 
+
+
+
+
             end
+
+
+
+
 
 
 
@@ -17898,7 +35795,15 @@ local function findTargetSkinForWeaponRes(weaponResID)
 
 
 
+
+
+
+
             if sc and GUN_SUB[subType(sc)] and subType(sc) == st then return skinRes end
+
+
+
+
 
 
 
@@ -17906,7 +35811,19 @@ local function findTargetSkinForWeaponRes(weaponResID)
 
 
 
+
+
+
+
     end
+
+
+
+
+
+
+
+
 
 
 
@@ -17918,7 +35835,19 @@ local function findTargetSkinForWeaponRes(weaponResID)
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -17930,7 +35859,15 @@ local function getSynMasterSkinID(weapon)
 
 
 
+
+
+
+
     if not slua.isValid(weapon) then return 0 end
+
+
+
+
 
 
 
@@ -17938,7 +35875,15 @@ local function getSynMasterSkinID(weapon)
 
 
 
+
+
+
+
     pcall(function()
+
+
+
+
 
 
 
@@ -17946,7 +35891,15 @@ local function getSynMasterSkinID(weapon)
 
 
 
+
+
+
+
         id = tid
+
+
+
+
 
 
 
@@ -17954,7 +35907,15 @@ local function getSynMasterSkinID(weapon)
 
 
 
+
+
+
+
             local arr = weapon.synData
+
+
+
+
 
 
 
@@ -17962,7 +35923,15 @@ local function getSynMasterSkinID(weapon)
 
 
 
+
+
+
+
             local att = arr:Get(GUN_MASTER_SYN_SLOT)
+
+
+
+
 
 
 
@@ -17970,7 +35939,15 @@ local function getSynMasterSkinID(weapon)
 
 
 
+
+
+
+
             id = slua.IndexReference(att, "defineID").TypeSpecificID or 0
+
+
+
+
 
 
 
@@ -17978,7 +35955,15 @@ local function getSynMasterSkinID(weapon)
 
 
 
+
+
+
+
     end)
+
+
+
+
 
 
 
@@ -17986,7 +35971,19 @@ local function getSynMasterSkinID(weapon)
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -17998,7 +35995,19 @@ _G.AddOutfitSkinIdMappings = _G.AddOutfitSkinIdMappings or {}
 
 
 
+
+
+
+
 _G.AddOutfitLastAppliedSkin = _G.AddOutfitLastAppliedSkin or {}
+
+
+
+
+
+
+
+
 
 
 
@@ -18010,7 +36019,15 @@ local function buildSkinMappings()
 
 
 
+
+
+
+
     syncWeaponCacheFromLobby()
+
+
+
+
 
 
 
@@ -18018,7 +36035,15 @@ local function buildSkinMappings()
 
 
 
+
+
+
+
     for k in pairs(m) do m[k] = nil end
+
+
+
+
 
 
 
@@ -18026,7 +36051,15 @@ local function buildSkinMappings()
 
 
 
+
+
+
+
         wid = tonumber(wid)
+
+
+
+
 
 
 
@@ -18034,7 +36067,15 @@ local function buildSkinMappings()
 
 
 
+
+
+
+
             m[wid] = { tonumber(w.resID) }
+
+
+
+
 
 
 
@@ -18042,7 +36083,15 @@ local function buildSkinMappings()
 
 
 
+
+
+
+
     end
+
+
+
+
 
 
 
@@ -18050,7 +36099,15 @@ local function buildSkinMappings()
 
 
 
+
+
+
+
         for weaponKey, skinRes in pairs(MATCH_CONFIG.weaponSkins) do
+
+
+
+
 
 
 
@@ -18058,7 +36115,15 @@ local function buildSkinMappings()
 
 
 
+
+
+
+
             skinRes = tonumber(skinRes)
+
+
+
+
 
 
 
@@ -18066,7 +36131,15 @@ local function buildSkinMappings()
 
 
 
+
+
+
+
                 m[weaponKey] = { skinRes }
+
+
+
+
 
 
 
@@ -18074,7 +36147,15 @@ local function buildSkinMappings()
 
 
 
+
+
+
+
         end
+
+
+
+
 
 
 
@@ -18082,7 +36163,19 @@ local function buildSkinMappings()
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -18094,7 +36187,15 @@ local function get_skin_id(currentGunId, maxIt)
 
 
 
+
+
+
+
     currentGunId = tonumber(currentGunId) or 0
+
+
+
+
 
 
 
@@ -18102,7 +36203,15 @@ local function get_skin_id(currentGunId, maxIt)
 
 
 
+
+
+
+
     if currentGunId <= 0 and maxIt <= 0 then return 0 end
+
+
+
+
 
 
 
@@ -18110,7 +36219,15 @@ local function get_skin_id(currentGunId, maxIt)
 
 
 
+
+
+
+
     if maxIt > 0 then
+
+
+
+
 
 
 
@@ -18118,7 +36235,15 @@ local function get_skin_id(currentGunId, maxIt)
 
 
 
+
+
+
+
         if fromMem then return fromMem end
+
+
+
+
 
 
 
@@ -18126,7 +36251,15 @@ local function get_skin_id(currentGunId, maxIt)
 
 
 
+
+
+
+
     local fromMem2 = getMatchWeaponSkin(resolveWeaponTypeID(currentGunId))
+
+
+
+
 
 
 
@@ -18134,7 +36267,15 @@ local function get_skin_id(currentGunId, maxIt)
 
 
 
+
+
+
+
     local m = _G.AddOutfitSkinIdMappings
+
+
+
+
 
 
 
@@ -18142,7 +36283,15 @@ local function get_skin_id(currentGunId, maxIt)
 
 
 
+
+
+
+
     local list = m[currentGunId]
+
+
+
+
 
 
 
@@ -18150,7 +36299,15 @@ local function get_skin_id(currentGunId, maxIt)
 
 
 
+
+
+
+
     local typeId = resolveWeaponTypeID(currentGunId)
+
+
+
+
 
 
 
@@ -18158,7 +36315,15 @@ local function get_skin_id(currentGunId, maxIt)
 
 
 
+
+
+
+
     local target = findTargetSkinForWeaponRes(maxIt > 0 and maxIt or currentGunId)
+
+
+
+
 
 
 
@@ -18166,7 +36331,15 @@ local function get_skin_id(currentGunId, maxIt)
 
 
 
+
+
+
+
     return currentGunId
+
+
+
+
 
 
 
@@ -18178,7 +36351,19 @@ end
 
 
 
+
+
+
+
+
+
+
+
 local function applySkinToWeaponRef(CurWeapon)
+
+
+
+
 
 
 
@@ -18186,11 +36371,23 @@ local function applySkinToWeaponRef(CurWeapon)
 
 
 
+
+
+
+
     if not slua.isValid(CurWeapon) then return false end
 
 
 
+
+
+
+
     local AttachmentArray = CurWeapon.synData
+
+
+
+
 
 
 
@@ -18202,7 +36399,19 @@ local function applySkinToWeaponRef(CurWeapon)
 
 
 
+
+
+
+
+
+
+
+
     local AttachmentData = AttachmentArray:Get(GUN_MASTER_SYN_SLOT)
+
+
+
+
 
 
 
@@ -18214,7 +36423,19 @@ local function applySkinToWeaponRef(CurWeapon)
 
 
 
+
+
+
+
+
+
+
+
     local current_gunid = 0
+
+
+
+
 
 
 
@@ -18222,11 +36443,23 @@ local function applySkinToWeaponRef(CurWeapon)
 
 
 
+
+
+
+
         current_gunid = slua.IndexReference(AttachmentData, "defineID").TypeSpecificID or 0
 
 
 
+
+
+
+
     end)
+
+
+
+
 
 
 
@@ -18238,7 +36471,19 @@ local function applySkinToWeaponRef(CurWeapon)
 
 
 
+
+
+
+
+
+
+
+
     local MaxIt = 0
+
+
+
+
 
 
 
@@ -18246,7 +36491,15 @@ local function applySkinToWeaponRef(CurWeapon)
 
 
 
+
+
+
+
         if CurWeapon.GetWeaponID then
+
+
+
+
 
 
 
@@ -18254,7 +36507,15 @@ local function applySkinToWeaponRef(CurWeapon)
 
 
 
+
+
+
+
         end
+
+
+
+
 
 
 
@@ -18262,7 +36523,15 @@ local function applySkinToWeaponRef(CurWeapon)
 
 
 
+
+
+
+
             MaxIt = CurWeapon:GetItemDefineID().TypeSpecificID
+
+
+
+
 
 
 
@@ -18270,7 +36539,15 @@ local function applySkinToWeaponRef(CurWeapon)
 
 
 
+
+
+
+
     end)
+
+
+
+
 
 
 
@@ -18278,7 +36555,15 @@ local function applySkinToWeaponRef(CurWeapon)
 
 
 
+
+
+
+
     local tmp_id = get_skin_id(current_gunid, MaxIt)
+
+
+
+
 
 
 
@@ -18286,7 +36571,15 @@ local function applySkinToWeaponRef(CurWeapon)
 
 
 
+
+
+
+
     if tmp_id <= 0 or MaxIt <= 0 then return false end
+
+
+
+
 
 
 
@@ -18298,7 +36591,19 @@ local function applySkinToWeaponRef(CurWeapon)
 
 
 
+
+
+
+
+
+
+
+
     local vWriteVals = _G.AddOutfitSkinIdMappings[MaxIt] or {}
+
+
+
+
 
 
 
@@ -18306,7 +36611,15 @@ local function applySkinToWeaponRef(CurWeapon)
 
 
 
+
+
+
+
     local lastSkin = _G.AddOutfitLastAppliedSkin[MaxIt]
+
+
+
+
 
 
 
@@ -18314,7 +36627,15 @@ local function applySkinToWeaponRef(CurWeapon)
 
 
 
+
+
+
+
         for _, writeVal in ipairs(vWriteVals) do
+
+
+
+
 
 
 
@@ -18322,7 +36643,15 @@ local function applySkinToWeaponRef(CurWeapon)
 
 
 
+
+
+
+
                 isSkinValid = true
+
+
+
+
 
 
 
@@ -18330,11 +36659,23 @@ local function applySkinToWeaponRef(CurWeapon)
 
 
 
+
+
+
+
             end
 
 
 
+
+
+
+
         end
+
+
+
+
 
 
 
@@ -18342,7 +36683,15 @@ local function applySkinToWeaponRef(CurWeapon)
 
 
 
+
+
+
+
         for _, writeVal in ipairs(vWriteVals) do
+
+
+
+
 
 
 
@@ -18350,7 +36699,15 @@ local function applySkinToWeaponRef(CurWeapon)
 
 
 
+
+
+
+
                 isSkinValid = true
+
+
+
+
 
 
 
@@ -18358,7 +36715,15 @@ local function applySkinToWeaponRef(CurWeapon)
 
 
 
+
+
+
+
             end
+
+
+
+
 
 
 
@@ -18366,7 +36731,19 @@ local function applySkinToWeaponRef(CurWeapon)
 
 
 
+
+
+
+
     end
+
+
+
+
+
+
+
+
 
 
 
@@ -18378,7 +36755,15 @@ local function applySkinToWeaponRef(CurWeapon)
 
 
 
+
+
+
+
         local scopeID = 0
+
+
+
+
 
 
 
@@ -18386,7 +36771,15 @@ local function applySkinToWeaponRef(CurWeapon)
 
 
 
+
+
+
+
             if CurWeapon.GetScopeID then scopeID = CurWeapon:GetScopeID(false) or 0 end
+
+
+
+
 
 
 
@@ -18394,7 +36787,15 @@ local function applySkinToWeaponRef(CurWeapon)
 
 
 
+
+
+
+
         if scopeID > 0 then
+
+
+
+
 
 
 
@@ -18402,7 +36803,15 @@ local function applySkinToWeaponRef(CurWeapon)
 
 
 
+
+
+
+
                 local scopeData = AttachmentArray:Get(4)
+
+
+
+
 
 
 
@@ -18410,7 +36819,15 @@ local function applySkinToWeaponRef(CurWeapon)
 
 
 
+
+
+
+
                     slua.IndexReference(scopeData, "defineID").TypeSpecificID = scopeID
+
+
+
+
 
 
 
@@ -18418,7 +36835,15 @@ local function applySkinToWeaponRef(CurWeapon)
 
 
 
+
+
+
+
                 end
+
+
+
+
 
 
 
@@ -18426,11 +36851,27 @@ local function applySkinToWeaponRef(CurWeapon)
 
 
 
+
+
+
+
         end
 
 
 
+
+
+
+
     end
+
+
+
+
+
+
+
+
 
 
 
@@ -18446,7 +36887,19 @@ local function applySkinToWeaponRef(CurWeapon)
 
 
 
+
+
+
+
+
+
+
+
     if tmp_id ~= current_gunid then
+
+
+
+
 
 
 
@@ -18454,7 +36907,15 @@ local function applySkinToWeaponRef(CurWeapon)
 
 
 
+
+
+
+
             local defRef = slua.IndexReference(AttachmentData, "defineID")
+
+
+
+
 
 
 
@@ -18462,7 +36923,15 @@ local function applySkinToWeaponRef(CurWeapon)
 
 
 
+
+
+
+
             local c0 = cfg(tmp_id)
+
+
+
+
 
 
 
@@ -18470,7 +36939,15 @@ local function applySkinToWeaponRef(CurWeapon)
 
 
 
+
+
+
+
                 defRef.Type = c0.ItemType
+
+
+
+
 
 
 
@@ -18478,7 +36955,15 @@ local function applySkinToWeaponRef(CurWeapon)
 
 
 
+
+
+
+
             AttachmentData.operationType = 0
+
+
+
+
 
 
 
@@ -18486,7 +36971,15 @@ local function applySkinToWeaponRef(CurWeapon)
 
 
 
+
+
+
+
         end)
+
+
+
+
 
 
 
@@ -18494,7 +36987,15 @@ local function applySkinToWeaponRef(CurWeapon)
 
 
 
+
+
+
+
             CurWeapon:DelayHandleAvatarMeshChanged()
+
+
+
+
 
 
 
@@ -18502,7 +37003,15 @@ local function applySkinToWeaponRef(CurWeapon)
 
 
 
+
+
+
+
         _G.AddOutfitLastAppliedSkin[MaxIt] = tmp_id
+
+
+
+
 
 
 
@@ -18510,7 +37019,15 @@ local function applySkinToWeaponRef(CurWeapon)
 
 
 
+
+
+
+
     end
+
+
+
+
 
 
 
@@ -18518,7 +37035,19 @@ local function applySkinToWeaponRef(CurWeapon)
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -18530,7 +37059,15 @@ function _G.equip_weapon_avatar(uCharacter)
 
 
 
+
+
+
+
     if not _G.LobbyCosmeticEnabled then return false end
+
+
+
+
 
 
 
@@ -18538,7 +37075,15 @@ function _G.equip_weapon_avatar(uCharacter)
 
 
 
+
+
+
+
     buildSkinMappings()
+
+
+
+
 
 
 
@@ -18546,11 +37091,23 @@ function _G.equip_weapon_avatar(uCharacter)
 
 
 
+
+
+
+
     if not WeaponManager or not slua.isValid(WeaponManager) then return false end
 
 
 
+
+
+
+
     local uWeaponList = WeaponManager:GetAllInventoryWeaponList(false)
+
+
+
+
 
 
 
@@ -18562,7 +37119,19 @@ function _G.equip_weapon_avatar(uCharacter)
 
 
 
+
+
+
+
+
+
+
+
     local appliedAny = false
+
+
+
+
 
 
 
@@ -18570,7 +37139,15 @@ function _G.equip_weapon_avatar(uCharacter)
 
 
 
+
+
+
+
         local CurWeapon = uWeaponList:Get(i)
+
+
+
+
 
 
 
@@ -18578,7 +37155,15 @@ function _G.equip_weapon_avatar(uCharacter)
 
 
 
+
+
+
+
             appliedAny = true
+
+
+
+
 
 
 
@@ -18586,7 +37171,15 @@ function _G.equip_weapon_avatar(uCharacter)
 
 
 
+
+
+
+
     end
+
+
+
+
 
 
 
@@ -18594,7 +37187,19 @@ function _G.equip_weapon_avatar(uCharacter)
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -18606,11 +37211,27 @@ local function equipWeaponAvatarSynData(char)
 
 
 
+
+
+
+
     return _G.equip_weapon_avatar(char)
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -18626,7 +37247,19 @@ local applySkinToWeapon = applySkinToWeaponRef
 
 
 
+
+
+
+
+
+
+
+
 local function registerWeaponAvatarItems(char)
+
+
+
+
 
 
 
@@ -18634,7 +37267,15 @@ local function registerWeaponAvatarItems(char)
 
 
 
+
+
+
+
     if not slua.isValid(pc) then
+
+
+
+
 
 
 
@@ -18642,7 +37283,15 @@ local function registerWeaponAvatarItems(char)
 
 
 
+
+
+
+
     end
+
+
+
+
 
 
 
@@ -18650,7 +37299,15 @@ local function registerWeaponAvatarItems(char)
 
 
 
+
+
+
+
     local BU = import("BackpackUtils")
+
+
+
+
 
 
 
@@ -18662,7 +37319,19 @@ local function registerWeaponAvatarItems(char)
 
 
 
+
+
+
+
+
+
+
+
     for _, resID in ipairs(getDesiredWeaponSkins()) do
+
+
+
+
 
 
 
@@ -18670,7 +37339,15 @@ local function registerWeaponAvatarItems(char)
 
 
 
+
+
+
+
         pcall(function()
+
+
+
+
 
 
 
@@ -18678,7 +37355,15 @@ local function registerWeaponAvatarItems(char)
 
 
 
+
+
+
+
                 pc:AddWeaponAvatarItem(tonumber(resID))
+
+
+
+
 
 
 
@@ -18686,7 +37371,15 @@ local function registerWeaponAvatarItems(char)
 
 
 
+
+
+
+
                 addedCount = addedCount + 1
+
+
+
+
 
 
 
@@ -18694,7 +37387,15 @@ local function registerWeaponAvatarItems(char)
 
 
 
+
+
+
+
         end)
+
+
+
+
 
 
 
@@ -18702,7 +37403,15 @@ local function registerWeaponAvatarItems(char)
 
 
 
+
+
+
+
             pcall(function()
+
+
+
+
 
 
 
@@ -18710,7 +37419,15 @@ local function registerWeaponAvatarItems(char)
 
 
 
+
+
+
+
                 local arr = slua.Array(UEnums.EPropertyClass.Int)
+
+
+
+
 
 
 
@@ -18718,7 +37435,15 @@ local function registerWeaponAvatarItems(char)
 
 
 
+
+
+
+
                 if parents and parents.Num and parents:Num() > 0 and pc.WeaponAvatarItemList then
+
+
+
+
 
 
 
@@ -18726,7 +37451,15 @@ local function registerWeaponAvatarItems(char)
 
 
 
+
+
+
+
                         pc.WeaponAvatarItemList:Add(parentID, skinBPID)
+
+
+
+
 
 
 
@@ -18734,7 +37467,15 @@ local function registerWeaponAvatarItems(char)
 
 
 
+
+
+
+
                     addedCount = addedCount + 1
+
+
+
+
 
 
 
@@ -18742,7 +37483,15 @@ local function registerWeaponAvatarItems(char)
 
 
 
+
+
+
+
             end)
+
+
+
+
 
 
 
@@ -18750,7 +37499,19 @@ local function registerWeaponAvatarItems(char)
 
 
 
+
+
+
+
     end
+
+
+
+
+
+
+
+
 
 
 
@@ -18762,11 +37523,27 @@ local function registerWeaponAvatarItems(char)
 
 
 
+
+
+
+
         return false
 
 
 
+
+
+
+
     end
+
+
+
+
+
+
+
+
 
 
 
@@ -18778,7 +37555,15 @@ local function registerWeaponAvatarItems(char)
 
 
 
+
+
+
+
     pcall(function() if pc.OnWeaponAvatarUpdate then pc:OnWeaponAvatarUpdate() end end)
+
+
+
+
 
 
 
@@ -18786,7 +37571,19 @@ local function registerWeaponAvatarItems(char)
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -18798,7 +37595,15 @@ local function reloadCurrentWeaponAvatar(char)
 
 
 
+
+
+
+
     pcall(function()
+
+
+
+
 
 
 
@@ -18806,7 +37611,15 @@ local function reloadCurrentWeaponAvatar(char)
 
 
 
+
+
+
+
         if not slua.isValid(weapon) then return end
+
+
+
+
 
 
 
@@ -18814,7 +37627,15 @@ local function reloadCurrentWeaponAvatar(char)
 
 
 
+
+
+
+
         if slua.isValid(wac) then
+
+
+
+
 
 
 
@@ -18822,7 +37643,15 @@ local function reloadCurrentWeaponAvatar(char)
 
 
 
+
+
+
+
             pcall(function() wac:ClearMeshPathCacheBySlot(ES.MasterGun) end)
+
+
+
+
 
 
 
@@ -18830,7 +37659,15 @@ local function reloadCurrentWeaponAvatar(char)
 
 
 
+
+
+
+
         end
+
+
+
+
 
 
 
@@ -18838,7 +37675,15 @@ local function reloadCurrentWeaponAvatar(char)
 
 
 
+
+
+
+
             weapon:DelayHandleAvatarMeshChanged()
+
+
+
+
 
 
 
@@ -18846,7 +37691,15 @@ local function reloadCurrentWeaponAvatar(char)
 
 
 
+
+
+
+
             local ESlotDescDiff = import("ESlotDescDiff")
+
+
+
+
 
 
 
@@ -18854,7 +37707,15 @@ local function reloadCurrentWeaponAvatar(char)
 
 
 
+
+
+
+
         end
+
+
+
+
 
 
 
@@ -18862,7 +37723,19 @@ local function reloadCurrentWeaponAvatar(char)
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -18874,11 +37747,23 @@ local _weaponDiagDone = false
 
 
 
+
+
+
+
 local _weaponApplied = false
 
 
 
+
+
+
+
 local _lastWeaponResID = 0
+
+
+
+
 
 
 
@@ -18890,7 +37775,19 @@ local _weaponSpawnHooked = false
 
 
 
+
+
+
+
+
+
+
+
 local function onWeaponLuaInit(_, _, weapon)
+
+
+
+
 
 
 
@@ -18898,7 +37795,15 @@ local function onWeaponLuaInit(_, _, weapon)
 
 
 
+
+
+
+
     local char = getLocalChar()
+
+
+
+
 
 
 
@@ -18906,11 +37811,23 @@ local function onWeaponLuaInit(_, _, weapon)
 
 
 
+
+
+
+
     local owner = nil
 
 
 
+
+
+
+
     pcall(function()
+
+
+
+
 
 
 
@@ -18918,7 +37835,15 @@ local function onWeaponLuaInit(_, _, weapon)
 
 
 
+
+
+
+
     end)
+
+
+
+
 
 
 
@@ -18926,7 +37851,15 @@ local function onWeaponLuaInit(_, _, weapon)
 
 
 
+
+
+
+
     pcall(function()
+
+
+
+
 
 
 
@@ -18934,7 +37867,15 @@ local function onWeaponLuaInit(_, _, weapon)
 
 
 
+
+
+
+
             local c = getLocalChar()
+
+
+
+
 
 
 
@@ -18942,7 +37883,15 @@ local function onWeaponLuaInit(_, _, weapon)
 
 
 
+
+
+
+
                 applySkinToWeapon(weapon)
+
+
+
+
 
 
 
@@ -18950,7 +37899,15 @@ local function onWeaponLuaInit(_, _, weapon)
 
 
 
+
+
+
+
             end
+
+
+
+
 
 
 
@@ -18958,11 +37915,27 @@ local function onWeaponLuaInit(_, _, weapon)
 
 
 
+
+
+
+
     end)
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -18974,7 +37947,15 @@ local function hookWeaponSpawn()
 
 
 
+
+
+
+
     if _weaponSpawnHooked then return end
+
+
+
+
 
 
 
@@ -18982,7 +37963,15 @@ local function hookWeaponSpawn()
 
 
 
+
+
+
+
         if EventSystem and EventSystem.registEvent and EVENTTYPE_PLAYEREVENT_WEAPON and EVENTID_PLAYEREVENT_WEAPON_LUA_INIT then
+
+
+
+
 
 
 
@@ -18990,7 +37979,15 @@ local function hookWeaponSpawn()
 
 
 
+
+
+
+
             _weaponSpawnHooked = true
+
+
+
+
 
 
 
@@ -18998,7 +37995,15 @@ local function hookWeaponSpawn()
 
 
 
+
+
+
+
     end)
+
+
+
+
 
 
 
@@ -19010,7 +38015,19 @@ end
 
 
 
+
+
+
+
+
+
+
+
 local function matchApplyWeaponSkin(char)
+
+
+
+
 
 
 
@@ -19018,11 +38035,27 @@ local function matchApplyWeaponSkin(char)
 
 
 
+
+
+
+
         _avatarItemsRegistered = registerWeaponAvatarItems(char)
 
 
 
+
+
+
+
     end
+
+
+
+
+
+
+
+
 
 
 
@@ -19034,7 +38067,19 @@ local function matchApplyWeaponSkin(char)
 
 
 
+
+
+
+
     if not slua.isValid(curWeapon) then return false end
+
+
+
+
+
+
+
+
 
 
 
@@ -19046,7 +38091,15 @@ local function matchApplyWeaponSkin(char)
 
 
 
+
+
+
+
     pcall(function() curWeaponResID = curWeapon:GetItemDefineID().TypeSpecificID end)
+
+
+
+
 
 
 
@@ -19054,7 +38107,15 @@ local function matchApplyWeaponSkin(char)
 
 
 
+
+
+
+
         _lastWeaponResID = curWeaponResID
+
+
+
+
 
 
 
@@ -19062,11 +38123,27 @@ local function matchApplyWeaponSkin(char)
 
 
 
+
+
+
+
         _weaponDiagDone = false
 
 
 
+
+
+
+
     end
+
+
+
+
+
+
+
+
 
 
 
@@ -19082,7 +38159,19 @@ local function matchApplyWeaponSkin(char)
 
 
 
+
+
+
+
+
+
+
+
     local targetSkin = findTargetSkinForWeaponRes(curWeaponResID)
+
+
+
+
 
 
 
@@ -19090,7 +38179,15 @@ local function matchApplyWeaponSkin(char)
 
 
 
+
+
+
+
     pcall(function()
+
+
+
+
 
 
 
@@ -19098,7 +38195,15 @@ local function matchApplyWeaponSkin(char)
 
 
 
+
+
+
+
         if wac then
+
+
+
+
 
 
 
@@ -19106,7 +38211,15 @@ local function matchApplyWeaponSkin(char)
 
 
 
+
+
+
+
             if loadedSkin <= 0 then
+
+
+
+
 
 
 
@@ -19114,7 +38227,15 @@ local function matchApplyWeaponSkin(char)
 
 
 
+
+
+
+
                 loadedSkin = wac:GetEquippedItemDefineID(ES.MasterGun).TypeSpecificID or 0
+
+
+
+
 
 
 
@@ -19122,11 +38243,27 @@ local function matchApplyWeaponSkin(char)
 
 
 
+
+
+
+
         end
 
 
 
+
+
+
+
     end)
+
+
+
+
+
+
+
+
 
 
 
@@ -19138,7 +38275,15 @@ local function matchApplyWeaponSkin(char)
 
 
 
+
+
+
+
     if targetSkin and (loadedSkin == targetSkin or synSkin == targetSkin) then
+
+
+
+
 
 
 
@@ -19146,11 +38291,27 @@ local function matchApplyWeaponSkin(char)
 
 
 
+
+
+
+
         return true
 
 
 
+
+
+
+
     end
+
+
+
+
+
+
+
+
 
 
 
@@ -19162,7 +38323,19 @@ local function matchApplyWeaponSkin(char)
 
 
 
+
+
+
+
     local okSyn = applySkinToWeapon(curWeapon) or equipWeaponAvatarSynData(char)
+
+
+
+
+
+
+
+
 
 
 
@@ -19174,7 +38347,15 @@ local function matchApplyWeaponSkin(char)
 
 
 
+
+
+
+
         _weaponDiagDone = true
+
+
+
+
 
 
 
@@ -19182,7 +38363,15 @@ local function matchApplyWeaponSkin(char)
 
 
 
+
+
+
+
         notify("Weapon: res=" .. tostring(curWeaponResID)
+
+
+
+
 
 
 
@@ -19190,7 +38379,15 @@ local function matchApplyWeaponSkin(char)
 
 
 
+
+
+
+
             .. " target=" .. tostring(targetSkin)
+
+
+
+
 
 
 
@@ -19198,7 +38395,15 @@ local function matchApplyWeaponSkin(char)
 
 
 
+
+
+
+
             .. " loaded=" .. tostring(loadedSkin)
+
+
+
+
 
 
 
@@ -19206,11 +38411,27 @@ local function matchApplyWeaponSkin(char)
 
 
 
+
+
+
+
             .. " skins=[" .. list .. "]")
 
 
 
+
+
+
+
     end
+
+
+
+
+
+
+
+
 
 
 
@@ -19222,7 +38443,15 @@ local function matchApplyWeaponSkin(char)
 
 
 
+
+
+
+
         pcall(function()
+
+
+
+
 
 
 
@@ -19230,7 +38459,15 @@ local function matchApplyWeaponSkin(char)
 
 
 
+
+
+
+
                 local c = getLocalChar()
+
+
+
+
 
 
 
@@ -19238,7 +38475,15 @@ local function matchApplyWeaponSkin(char)
 
 
 
+
+
+
+
                 local w = c.GetCurrentWeapon and c:GetCurrentWeapon()
+
+
+
+
 
 
 
@@ -19246,7 +38491,15 @@ local function matchApplyWeaponSkin(char)
 
 
 
+
+
+
+
                 local wac2 = w.WeaponAvatarComponent
+
+
+
+
 
 
 
@@ -19254,7 +38507,15 @@ local function matchApplyWeaponSkin(char)
 
 
 
+
+
+
+
                 local cid = wac2.CachedLoadedID or 0
+
+
+
+
 
 
 
@@ -19262,7 +38523,15 @@ local function matchApplyWeaponSkin(char)
 
 
 
+
+
+
+
                 notify("Verify: syn=" .. tostring(synId) .. " cached=" .. tostring(cid) .. " target=" .. tostring(targetSkin))
+
+
+
+
 
 
 
@@ -19270,7 +38539,15 @@ local function matchApplyWeaponSkin(char)
 
 
 
+
+
+
+
                     _weaponApplied = true
+
+
+
+
 
 
 
@@ -19278,7 +38555,15 @@ local function matchApplyWeaponSkin(char)
 
 
 
+
+
+
+
             end)
+
+
+
+
 
 
 
@@ -19286,7 +38571,19 @@ local function matchApplyWeaponSkin(char)
 
 
 
+
+
+
+
     end
+
+
+
+
+
+
+
+
 
 
 
@@ -19298,7 +38595,19 @@ local function matchApplyWeaponSkin(char)
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -19310,7 +38619,19 @@ local _matchTimer = nil
 
 
 
+
+
+
+
 local _matchOutfitDone = false
+
+
+
+
+
+
+
+
 
 
 
@@ -19322,7 +38643,15 @@ local function startMatchWatcher(char)
 
 
 
+
+
+
+
     if _matchTimer then return end
+
+
+
+
 
 
 
@@ -19330,7 +38659,15 @@ local function startMatchWatcher(char)
 
 
 
+
+
+
+
     _avatarItemsRegistered = false
+
+
+
+
 
 
 
@@ -19338,11 +38675,23 @@ local function startMatchWatcher(char)
 
 
 
+
+
+
+
     _weaponApplied = false
 
 
 
+
+
+
+
     _lastWeaponResID = 0
+
+
+
+
 
 
 
@@ -19354,13 +38703,31 @@ local function startMatchWatcher(char)
 
 
 
+
+
+
+
+
+
+
+
         _matchTimer = char:AddGameTimer(1.5, true, function()
+
         _G.LobbyCosmeticEnabled = (_G.HK_GetVal("UnlockWardrobe") == 1)
+
         elapsed = elapsed + 1.5
 
 
 
+
+
+
+
         local cur = getLocalChar()
+
+
+
+
 
 
 
@@ -19372,7 +38739,19 @@ local function startMatchWatcher(char)
 
 
 
+
+
+
+
+
+
+
+
         if not _matchOutfitDone then
+
+
+
+
 
 
 
@@ -19380,7 +38759,15 @@ local function startMatchWatcher(char)
 
 
 
+
+
+
+
         end
+
+
+
+
 
 
 
@@ -19392,7 +38779,19 @@ local function startMatchWatcher(char)
 
 
 
+
+
+
+
+
+
+
+
         if elapsed >= 120 then
+
+
+
+
 
 
 
@@ -19400,7 +38799,15 @@ local function startMatchWatcher(char)
 
 
 
+
+
+
+
                 pcall(function() cur:RemoveGameTimer(_matchTimer) end)
+
+
+
+
 
 
 
@@ -19408,7 +38815,15 @@ local function startMatchWatcher(char)
 
 
 
+
+
+
+
             _matchTimer = nil
+
+
+
+
 
 
 
@@ -19416,11 +38831,27 @@ local function startMatchWatcher(char)
 
 
 
+
+
+
+
     end)
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -19432,7 +38863,15 @@ local function stopMatchWatcher()
 
 
 
+
+
+
+
     if _matchTimer then
+
+
+
+
 
 
 
@@ -19440,7 +38879,15 @@ local function stopMatchWatcher()
 
 
 
+
+
+
+
             local char = getLocalChar()
+
+
+
+
 
 
 
@@ -19448,7 +38895,15 @@ local function stopMatchWatcher()
 
 
 
+
+
+
+
         end)
+
+
+
+
 
 
 
@@ -19456,7 +38911,15 @@ local function stopMatchWatcher()
 
 
 
+
+
+
+
     end
+
+
+
+
 
 
 
@@ -19464,7 +38927,15 @@ local function stopMatchWatcher()
 
 
 
+
+
+
+
     _avatarItemsRegistered = false
+
+
+
+
 
 
 
@@ -19472,7 +38943,15 @@ local function stopMatchWatcher()
 
 
 
+
+
+
+
     _weaponDiagDone = false
+
+
+
+
 
 
 
@@ -19480,7 +38959,19 @@ local function stopMatchWatcher()
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -19492,7 +38983,15 @@ local function hookPutOnRsp()
 
 
 
+
+
+
+
     pcall(function()
+
+
+
+
 
 
 
@@ -19500,7 +38999,15 @@ local function hookPutOnRsp()
 
 
 
+
+
+
+
         local o = wl.on_puton_rsp
+
+
+
+
 
 
 
@@ -19508,7 +39015,15 @@ local function hookPutOnRsp()
 
 
 
+
+
+
+
             o(self, res, item, olditem, index, extra)
+
+
+
+
 
 
 
@@ -19516,7 +39031,15 @@ local function hookPutOnRsp()
 
 
 
+
+
+
+
             local resID = tonumber(item.res_id)
+
+
+
+
 
 
 
@@ -19524,7 +39047,15 @@ local function hookPutOnRsp()
 
 
 
+
+
+
+
             if not resID or not insID then return end
+
+
+
+
 
 
 
@@ -19532,7 +39063,15 @@ local function hookPutOnRsp()
 
 
 
+
+
+
+
             local st = subType(c)
+
+
+
+
 
 
 
@@ -19540,7 +39079,15 @@ local function hookPutOnRsp()
 
 
 
+
+
+
+
                 saveEquip(resID, insID)
+
+
+
+
 
 
 
@@ -19548,7 +39095,15 @@ local function hookPutOnRsp()
 
 
 
+
+
+
+
                 local wid = weaponIdFromSkin(resID)
+
+
+
+
 
 
 
@@ -19556,7 +39111,15 @@ local function hookPutOnRsp()
 
 
 
+
+
+
+
             elseif st == MELEE_ID then
+
+
+
+
 
 
 
@@ -19564,7 +39127,15 @@ local function hookPutOnRsp()
 
 
 
+
+
+
+
             elseif isInjectedIns(insID) then
+
+
+
+
 
 
 
@@ -19572,7 +39143,15 @@ local function hookPutOnRsp()
 
 
 
+
+
+
+
             end
+
+
+
+
 
 
 
@@ -19580,11 +39159,27 @@ local function hookPutOnRsp()
 
 
 
+
+
+
+
     end)
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -19596,7 +39191,15 @@ local function hookLobbyWeaponCache()
 
 
 
+
+
+
+
     pcall(function()
+
+
+
+
 
 
 
@@ -19604,7 +39207,15 @@ local function hookLobbyWeaponCache()
 
 
 
+
+
+
+
         local oRsp = Arm.install_weapon_skin_rsp
+
+
+
+
 
 
 
@@ -19612,11 +39223,23 @@ local function hookLobbyWeaponCache()
 
 
 
+
+
+
+
             oRsp(client_data, errorCode, weapon_id, instanceID)
 
 
 
+
+
+
+
             if not _G.LobbyCosmeticEnabled then return end
+
+
+
+
 
 
 
@@ -19624,7 +39247,15 @@ local function hookLobbyWeaponCache()
 
 
 
+
+
+
+
                 cacheWeaponSkinFromIns(weapon_id, instanceID)
+
+
+
+
 
 
 
@@ -19632,7 +39263,15 @@ local function hookLobbyWeaponCache()
 
 
 
+
+
+
+
         end
+
+
+
+
 
 
 
@@ -19640,7 +39279,15 @@ local function hookLobbyWeaponCache()
 
 
 
+
+
+
+
         Arm.HandleWeaponSkinChange = function(client_data, weapon_id, instanceID)
+
+
+
+
 
 
 
@@ -19648,7 +39295,15 @@ local function hookLobbyWeaponCache()
 
 
 
+
+
+
+
             if not _G.LobbyCosmeticEnabled then return end
+
+
+
+
 
 
 
@@ -19656,7 +39311,15 @@ local function hookLobbyWeaponCache()
 
 
 
+
+
+
+
         end
+
+
+
+
 
 
 
@@ -19664,7 +39327,15 @@ local function hookLobbyWeaponCache()
 
 
 
+
+
+
+
     pcall(function()
+
+
+
+
 
 
 
@@ -19672,7 +39343,15 @@ local function hookLobbyWeaponCache()
 
 
 
+
+
+
+
         local o = wgl.on_put_on_weapon_wear_rsp
+
+
+
+
 
 
 
@@ -19680,7 +39359,15 @@ local function hookLobbyWeaponCache()
 
 
 
+
+
+
+
             o(self, client_data, res, weapon_id, new_skin_id, extra_weapon_list)
+
+
+
+
 
 
 
@@ -19688,7 +39375,15 @@ local function hookLobbyWeaponCache()
 
 
 
+
+
+
+
             if res == 0 or res == NET_OK then
+
+
+
+
 
 
 
@@ -19696,7 +39391,15 @@ local function hookLobbyWeaponCache()
 
 
 
+
+
+
+
             end
+
+
+
+
 
 
 
@@ -19704,7 +39407,15 @@ local function hookLobbyWeaponCache()
 
 
 
+
+
+
+
     end)
+
+
+
+
 
 
 
@@ -19712,7 +39423,15 @@ local function hookLobbyWeaponCache()
 
 
 
+
+
+
+
         if not EventSystem or not EventSystem.registEvent then return end
+
+
+
+
 
 
 
@@ -19720,7 +39439,15 @@ local function hookLobbyWeaponCache()
 
 
 
+
+
+
+
             EventSystem:registEvent(EVENTTYPE_WARDROBE, EVENTID_WARDROBE_UPDATE_CURRENT_PUT_ON_GUN, function(_, _, resOrFlag, weapon_id)
+
+
+
+
 
 
 
@@ -19728,7 +39455,15 @@ local function hookLobbyWeaponCache()
 
 
 
+
+
+
+
                 weapon_id = tonumber(weapon_id)
+
+
+
+
 
 
 
@@ -19736,7 +39471,15 @@ local function hookLobbyWeaponCache()
 
 
 
+
+
+
+
                     pcall(function()
+
+
+
+
 
 
 
@@ -19744,7 +39487,15 @@ local function hookLobbyWeaponCache()
 
 
 
+
+
+
+
                         local insID = tonumber(wgl:GetSkinIdByWeaponID(weapon_id)) or 0
+
+
+
+
 
 
 
@@ -19752,7 +39503,15 @@ local function hookLobbyWeaponCache()
 
 
 
+
+
+
+
                     end)
+
+
+
+
 
 
 
@@ -19760,7 +39519,15 @@ local function hookLobbyWeaponCache()
 
 
 
+
+
+
+
                     pcall(function()
+
+
+
+
 
 
 
@@ -19768,7 +39535,15 @@ local function hookLobbyWeaponCache()
 
 
 
+
+
+
+
                         if wid then
+
+
+
+
 
 
 
@@ -19776,7 +39551,15 @@ local function hookLobbyWeaponCache()
 
 
 
+
+
+
+
                             local ins = wd.GetWardrobeInsIdByResId and wd:GetWardrobeInsIdByResId(resOrFlag)
+
+
+
+
 
 
 
@@ -19784,7 +39567,15 @@ local function hookLobbyWeaponCache()
 
 
 
+
+
+
+
                         end
+
+
+
+
 
 
 
@@ -19792,7 +39583,15 @@ local function hookLobbyWeaponCache()
 
 
 
+
+
+
+
                 end
+
+
+
+
 
 
 
@@ -19800,7 +39599,15 @@ local function hookLobbyWeaponCache()
 
 
 
+
+
+
+
         end
+
+
+
+
 
 
 
@@ -19808,7 +39615,19 @@ local function hookLobbyWeaponCache()
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -19820,7 +39639,15 @@ local function hookWardrobePutOnReq()
 
 
 
+
+
+
+
     pcall(function()
+
+
+
+
 
 
 
@@ -19828,7 +39655,15 @@ local function hookWardrobePutOnReq()
 
 
 
+
+
+
+
         local o = wl.wardrobe_puton_req
+
+
+
+
 
 
 
@@ -19836,7 +39671,15 @@ local function hookWardrobePutOnReq()
 
 
 
+
+
+
+
             insID = tonumber(insID)
+
+
+
+
 
 
 
@@ -19844,7 +39687,15 @@ local function hookWardrobePutOnReq()
 
 
 
+
+
+
+
                 local resID = R.insToRes[insID]
+
+
+
+
 
 
 
@@ -19852,7 +39703,15 @@ local function hookWardrobePutOnReq()
 
 
 
+
+
+
+
                 if getClothKind(resID) then
+
+
+
+
 
 
 
@@ -19860,11 +39719,23 @@ local function hookWardrobePutOnReq()
 
 
 
+
+
+
+
                     return
 
 
 
+
+
+
+
                 end
+
+
+
+
 
 
 
@@ -19872,7 +39743,15 @@ local function hookWardrobePutOnReq()
 
 
 
+
+
+
+
                 if itemCfg and itemCfg.WardrobeMainTab == 6
+
+
+
+
 
 
 
@@ -19880,7 +39759,15 @@ local function hookWardrobePutOnReq()
 
 
 
+
+
+
+
                     and itemCfg.WardrobeTab ~= 11
+
+
+
+
 
 
 
@@ -19888,7 +39775,15 @@ local function hookWardrobePutOnReq()
 
 
 
+
+
+
+
                     local WRH = require("client.network.Protocol.WardRobeHandler")
+
+
+
+
 
 
 
@@ -19896,7 +39791,15 @@ local function hookWardrobePutOnReq()
 
 
 
+
+
+
+
                     return
+
+
+
+
 
 
 
@@ -19904,7 +39807,15 @@ local function hookWardrobePutOnReq()
 
 
 
+
+
+
+
                 local WRH = require("client.network.Protocol.WardRobeHandler")
+
+
+
+
 
 
 
@@ -19912,7 +39823,15 @@ local function hookWardrobePutOnReq()
 
 
 
+
+
+
+
                 return
+
+
+
+
 
 
 
@@ -19920,7 +39839,15 @@ local function hookWardrobePutOnReq()
 
 
 
+
+
+
+
             return o(self, insID, extra)
+
+
+
+
 
 
 
@@ -19928,11 +39855,27 @@ local function hookWardrobePutOnReq()
 
 
 
+
+
+
+
     end)
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -19944,7 +39887,15 @@ local function hookWardrobePutDownReq()
 
 
 
+
+
+
+
     pcall(function()
+
+
+
+
 
 
 
@@ -19952,7 +39903,15 @@ local function hookWardrobePutDownReq()
 
 
 
+
+
+
+
         local o = wl.wardrobe_put_down_req
+
+
+
+
 
 
 
@@ -19960,7 +39919,15 @@ local function hookWardrobePutDownReq()
 
 
 
+
+
+
+
             insID = tonumber(insID)
+
+
+
+
 
 
 
@@ -19968,7 +39935,15 @@ local function hookWardrobePutDownReq()
 
 
 
+
+
+
+
                 local resID = R.insToRes[insID]
+
+
+
+
 
 
 
@@ -19976,7 +39951,15 @@ local function hookWardrobePutDownReq()
 
 
 
+
+
+
+
                 if itemCfg and itemCfg.WardrobeMainTab == 6 then
+
+
+
+
 
 
 
@@ -19984,7 +39967,15 @@ local function hookWardrobePutDownReq()
 
 
 
+
+
+
+
                     local HallThemeUtils = require("client.logic.lobby.hall_theme_utils")
+
+
+
+
 
 
 
@@ -19992,7 +39983,15 @@ local function hookWardrobePutDownReq()
 
 
 
+
+
+
+
                     HallThemeUtils.ShowThemeVehicle()
+
+
+
+
 
 
 
@@ -20000,7 +39999,15 @@ local function hookWardrobePutDownReq()
 
 
 
+
+
+
+
                 end
+
+
+
+
 
 
 
@@ -20008,7 +40015,15 @@ local function hookWardrobePutDownReq()
 
 
 
+
+
+
+
                 local d = wd:GetHallDepotItemDataByInsID(insID)
+
+
+
+
 
 
 
@@ -20016,7 +40031,15 @@ local function hookWardrobePutDownReq()
 
 
 
+
+
+
+
                 local WRH = require("client.network.Protocol.WardRobeHandler")
+
+
+
+
 
 
 
@@ -20024,7 +40047,15 @@ local function hookWardrobePutDownReq()
 
 
 
+
+
+
+
                 return
+
+
+
+
 
 
 
@@ -20032,7 +40063,15 @@ local function hookWardrobePutDownReq()
 
 
 
+
+
+
+
             return o(self, insID)
+
+
+
+
 
 
 
@@ -20040,11 +40079,27 @@ local function hookWardrobePutDownReq()
 
 
 
+
+
+
+
     end)
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -20056,7 +40111,15 @@ local function hookWeaponSkinPersist()
 
 
 
+
+
+
+
     pcall(function()
+
+
+
+
 
 
 
@@ -20064,7 +40127,15 @@ local function hookWeaponSkinPersist()
 
 
 
+
+
+
+
         local o_send_wear = WRH.send_put_on_weapon_wear
+
+
+
+
 
 
 
@@ -20072,7 +40143,15 @@ local function hookWeaponSkinPersist()
 
 
 
+
+
+
+
             if weapon_id and weapon_id > 0 and _weaponSkinCache[weapon_id] then
+
+
+
+
 
 
 
@@ -20080,7 +40159,15 @@ local function hookWeaponSkinPersist()
 
 
 
+
+
+
+
                 if isInjectedIns(cached.insID) then
+
+
+
+
 
 
 
@@ -20088,7 +40175,15 @@ local function hookWeaponSkinPersist()
 
 
 
+
+
+
+
                     gunLogic:on_put_on_weapon_wear_rsp(client_data, 0, weapon_id, cached.insID, extra_weapon_id_list)
+
+
+
+
 
 
 
@@ -20096,7 +40191,15 @@ local function hookWeaponSkinPersist()
 
 
 
+
+
+
+
                 end
+
+
+
+
 
 
 
@@ -20104,7 +40207,15 @@ local function hookWeaponSkinPersist()
 
 
 
+
+
+
+
             return o_send_wear(client_data, weapon_id, extra_weapon_id_list)
+
+
+
+
 
 
 
@@ -20112,11 +40223,27 @@ local function hookWeaponSkinPersist()
 
 
 
+
+
+
+
     end)
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -20132,7 +40259,19 @@ local _bootstrapNotified = false
 
 
 
+
+
+
+
+
+
+
+
 local function bootstrapMatch(char)
+
+
+
+
 
 
 
@@ -20140,7 +40279,15 @@ local function bootstrapMatch(char)
 
 
 
+
+
+
+
     if not char or not slua.isValid(char) then return false end
+
+
+
+
 
 
 
@@ -20148,7 +40295,15 @@ local function bootstrapMatch(char)
 
 
 
+
+
+
+
     _weaponApplied = false
+
+
+
+
 
 
 
@@ -20156,7 +40311,15 @@ local function bootstrapMatch(char)
 
 
 
+
+
+
+
     _matchApplied = false
+
+
+
+
 
 
 
@@ -20164,7 +40327,15 @@ local function bootstrapMatch(char)
 
 
 
+
+
+
+
         _bootstrapNotified = true
+
+
+
+
 
 
 
@@ -20172,7 +40343,15 @@ local function bootstrapMatch(char)
 
 
 
+
+
+
+
         local w = cch.weapons[101004]
+
+
+
+
 
 
 
@@ -20180,7 +40359,15 @@ local function bootstrapMatch(char)
 
 
 
+
+
+
+
     startMatchWatcher(char)
+
+
+
+
 
 
 
@@ -20188,7 +40375,19 @@ local function bootstrapMatch(char)
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -20200,7 +40399,15 @@ local function hookMatchAvatar()
 
 
 
+
+
+
+
     pcall(function()
+
+
+
+
 
 
 
@@ -20208,7 +40415,15 @@ local function hookMatchAvatar()
 
 
 
+
+
+
+
         local o = CAC.OnAvatarAllMeshLoadedLua
+
+
+
+
 
 
 
@@ -20216,7 +40431,15 @@ local function hookMatchAvatar()
 
 
 
+
+
+
+
             o(self)
+
+
+
+
 
 
 
@@ -20224,7 +40447,15 @@ local function hookMatchAvatar()
 
 
 
+
+
+
+
                 if self.IsLobbyActor and self:IsLobbyActor() then return end
+
+
+
+
 
 
 
@@ -20232,11 +40463,23 @@ local function hookMatchAvatar()
 
 
 
+
+
+
+
                 if not isSelf then return end
 
 
 
+
+
+
+
                 local char = getLocalChar()
+
+
+
+
 
 
 
@@ -20244,7 +40487,15 @@ local function hookMatchAvatar()
 
 
 
+
+
+
+
                     char:AddGameTimer(0.5, false, function() bootstrapMatch(char) end)
+
+
+
+
 
 
 
@@ -20252,7 +40503,15 @@ local function hookMatchAvatar()
 
 
 
+
+
+
+
             end)
+
+
+
+
 
 
 
@@ -20260,7 +40519,15 @@ local function hookMatchAvatar()
 
 
 
+
+
+
+
     end)
+
+
+
+
 
 
 
@@ -20268,7 +40535,15 @@ local function hookMatchAvatar()
 
 
 
+
+
+
+
         local WAC = require("GameLua.Mod.Library.GamePlay.Avatar.Component.WeaponAvatarComponent")
+
+
+
+
 
 
 
@@ -20276,7 +40551,15 @@ local function hookMatchAvatar()
 
 
 
+
+
+
+
         WAC.OnWeaponAvatarLoadedLua = function(self, slotID, definedID)
+
+
+
+
 
 
 
@@ -20284,7 +40567,15 @@ local function hookMatchAvatar()
 
 
 
+
+
+
+
             pcall(function()
+
+
+
+
 
 
 
@@ -20292,7 +40583,15 @@ local function hookMatchAvatar()
 
 
 
+
+
+
+
                 local isSelf = self.IsSelf and self:IsSelf()
+
+
+
+
 
 
 
@@ -20300,7 +40599,15 @@ local function hookMatchAvatar()
 
 
 
+
+
+
+
                 local char = getLocalChar()
+
+
+
+
 
 
 
@@ -20308,7 +40615,15 @@ local function hookMatchAvatar()
 
 
 
+
+
+
+
                 bootstrapMatch(char)
+
+
+
+
 
 
 
@@ -20316,7 +40631,15 @@ local function hookMatchAvatar()
 
 
 
+
+
+
+
                 if char.AddGameTimer then
+
+
+
+
 
 
 
@@ -20324,7 +40647,15 @@ local function hookMatchAvatar()
 
 
 
+
+
+
+
                         local c = getLocalChar()
+
+
+
+
 
 
 
@@ -20332,7 +40663,15 @@ local function hookMatchAvatar()
 
 
 
+
+
+
+
                     end)
+
+
+
+
 
 
 
@@ -20340,7 +40679,15 @@ local function hookMatchAvatar()
 
 
 
+
+
+
+
             end)
+
+
+
+
 
 
 
@@ -20348,11 +40695,27 @@ local function hookMatchAvatar()
 
 
 
+
+
+
+
     end)
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -20364,7 +40727,15 @@ local function hookEnterGame()
 
 
 
+
+
+
+
     pcall(function()
+
+
+
+
 
 
 
@@ -20372,7 +40743,15 @@ local function hookEnterGame()
 
 
 
+
+
+
+
             EventSystem:registEvent(EVENTTYPE_LOBBY, EVENTID_ENTER_GAME_BEGIN, function()
+
+
+
+
 
 
 
@@ -20380,7 +40759,15 @@ local function hookEnterGame()
 
 
 
+
+
+
+
                 stopMatchWatcher()
+
+
+
+
 
 
 
@@ -20388,7 +40775,15 @@ local function hookEnterGame()
 
 
 
+
+
+
+
             end)
+
+
+
+
 
 
 
@@ -20396,7 +40791,15 @@ local function hookEnterGame()
 
 
 
+
+
+
+
     end)
+
+
+
+
 
 
 
@@ -20408,9 +40811,23 @@ end
 
 
 
+
+
+
+
+
+
+
+
 local function start()
+
     _G.LobbyCosmeticEnabled = (_G.HK_GetVal("UnlockWardrobe") == 1)
+
     if _G.LoadLobbyWardrobe then _G.LoadLobbyWardrobe() end
+
+
+
+
 
 
 
@@ -20418,7 +40835,15 @@ local function start()
 
 
 
+
+
+
+
     _G.get_skin_id = get_skin_id
+
+
+
+
 
 
 
@@ -20426,7 +40851,15 @@ local function start()
 
 
 
+
+
+
+
     _G.skinIdMappings = _G.AddOutfitSkinIdMappings
+
+
+
+
 
 
 
@@ -20434,7 +40867,15 @@ local function start()
 
 
 
+
+
+
+
     hookWardrobeData()
+
+
+
+
 
 
 
@@ -20442,7 +40883,15 @@ local function start()
 
 
 
+
+
+
+
     hookArmory()
+
+
+
+
 
 
 
@@ -20450,7 +40899,15 @@ local function start()
 
 
 
+
+
+
+
     hookPutOn()
+
+
+
+
 
 
 
@@ -20458,7 +40915,15 @@ local function start()
 
 
 
+
+
+
+
     hookAvatarValid()
+
+
+
+
 
 
 
@@ -20466,7 +40931,15 @@ local function start()
 
 
 
+
+
+
+
     hookLobbyWeaponCache()
+
+
+
+
 
 
 
@@ -20474,7 +40947,15 @@ local function start()
 
 
 
+
+
+
+
     hookWardrobePutOnReq()
+
+
+
+
 
 
 
@@ -20482,7 +40963,15 @@ local function start()
 
 
 
+
+
+
+
     hookWeaponSkinPersist()
+
+
+
+
 
 
 
@@ -20490,7 +40979,15 @@ local function start()
 
 
 
+
+
+
+
     hookWeaponSpawn()
+
+
+
+
 
 
 
@@ -20502,7 +40999,19 @@ local function start()
 
 
 
+
+
+
+
+
+
+
+
     pcall(function()
+
+
+
+
 
 
 
@@ -20510,7 +41019,15 @@ local function start()
 
 
 
+
+
+
+
             local char = getLocalChar()
+
+
+
+
 
 
 
@@ -20518,7 +41035,15 @@ local function start()
 
 
 
+
+
+
+
                 notify("Script injected in match - Starting application")
+
+
+
+
 
 
 
@@ -20526,7 +41051,15 @@ local function start()
 
 
 
+
+
+
+
             end
+
+
+
+
 
 
 
@@ -20534,7 +41067,19 @@ local function start()
 
 
 
+
+
+
+
     end)
+
+
+
+
+
+
+
+
 
 
 
@@ -20546,7 +41091,15 @@ local function start()
 
 
 
+
+
+
+
         refreshWardrobe()
+
+
+
+
 
 
 
@@ -20554,11 +41107,23 @@ local function start()
 
 
 
+
+
+
+
         return
 
 
 
+
+
+
+
     end
+
+
+
+
 
 
 
@@ -20566,7 +41131,15 @@ local function start()
 
 
 
+
+
+
+
     local function retry()
+
+
+
+
 
 
 
@@ -20574,7 +41147,15 @@ local function start()
 
 
 
+
+
+
+
         if injectAll() then
+
+
+
+
 
 
 
@@ -20582,7 +41163,15 @@ local function start()
 
 
 
+
+
+
+
             later(1.0, reapplyLobbyEquipped)
+
+
+
+
 
 
 
@@ -20590,7 +41179,15 @@ local function start()
 
 
 
+
+
+
+
         end
+
+
+
+
 
 
 
@@ -20598,7 +41195,15 @@ local function start()
 
 
 
+
+
+
+
     end
+
+
+
+
 
 
 
@@ -20606,7 +41211,15 @@ local function start()
 
 
 
+
+
+
+
 end
+
+
+
+
 
 
 
@@ -20614,7 +41227,15 @@ pcall(function()
 
 
 
+
+
+
+
     local ModuleManager = require("client.module_framework.ModuleManager")
+
+
+
+
 
 
 
@@ -20622,7 +41243,15 @@ pcall(function()
 
 
 
+
+
+
+
     
+
+
+
+
 
 
 
@@ -20630,7 +41259,15 @@ pcall(function()
 
 
 
+
+
+
+
     logic_profile.IsPlayerBannedOver30day = function(uid) return _G.BanClubEnabled end
+
+
+
+
 
 
 
@@ -20638,7 +41275,15 @@ pcall(function()
 
 
 
+
+
+
+
     
+
+
+
+
 
 
 
@@ -20646,7 +41291,15 @@ pcall(function()
 
 
 
+
+
+
+
     if _G.BanClubEnabled ~= nil then
+
+
+
+
 
 
 
@@ -20654,7 +41307,15 @@ pcall(function()
 
 
 
+
+
+
+
         if ui and ui.Common_Avatar_BP then
+
+
+
+
 
 
 
@@ -20662,7 +41323,15 @@ pcall(function()
 
 
 
+
+
+
+
         end
+
+
+
+
 
 
 
@@ -20670,7 +41339,15 @@ pcall(function()
 
 
 
+
+
+
+
     
+
+
+
+
 
 
 
@@ -20678,11 +41355,23 @@ pcall(function()
 
 
 
+
+
+
+
     require("client.slua.event.EventSystem"):postEvent(2, 10001)
 
 
 
+
+
+
+
     
+
+
+
+
 
 
 
@@ -20694,7 +41383,19 @@ end)
 
 
 
+
+
+
+
+
+
+
+
 function _G.ApplyPlayerLevel()
+
+
+
+
 
 
 
@@ -20702,7 +41403,15 @@ function _G.ApplyPlayerLevel()
 
 
 
+
+
+
+
         DataMgr.roleData.level = _G.PlayerLevel
+
+
+
+
 
 
 
@@ -20710,11 +41419,23 @@ function _G.ApplyPlayerLevel()
 
 
 
+
+
+
+
     end)
 
 
 
+
+
+
+
 end
+
+
+
+
 
 
 
@@ -20726,11 +41447,27 @@ if _G.PlayerLevel then _G.ApplyPlayerLevel() end
 
 
 
+
+
+
+
+
+
+
+
 function _G.ApplyCollectLevel()
 
 
 
+
+
+
+
     pcall(function()
+
+
+
+
 
 
 
@@ -20742,7 +41479,19 @@ function _G.ApplyCollectLevel()
 
 
 
+
+
+
+
+
+
+
+
         local collect_module = ModuleManager.GetModule(ModuleManager.LobbyModuleConfig.collect_module)
+
+
+
+
 
 
 
@@ -20754,7 +41503,19 @@ function _G.ApplyCollectLevel()
 
 
 
+
+
+
+
+
+
+
+
         local FAKE_LEVEL = _G.CollectLevel
+
+
+
+
 
 
 
@@ -20766,11 +41527,27 @@ function _G.ApplyCollectLevel()
 
 
 
+
+
+
+
+
+
+
+
         if not collect_module._hooked_collect then
 
 
 
+
+
+
+
             collect_module._hooked_collect = true
+
+
+
+
 
 
 
@@ -20782,7 +41559,19 @@ function _G.ApplyCollectLevel()
 
 
 
+
+
+
+
+
+
+
+
             collect_module.GetLevelByScore = function(self, score)
+
+
+
+
 
 
 
@@ -20790,7 +41579,19 @@ function _G.ApplyCollectLevel()
 
 
 
+
+
+
+
             end
+
+
+
+
+
+
+
+
 
 
 
@@ -20802,11 +41603,27 @@ function _G.ApplyCollectLevel()
 
 
 
+
+
+
+
                 return FAKE_SCORE, FAKE_LEVEL
 
 
 
+
+
+
+
             end
+
+
+
+
+
+
+
+
 
 
 
@@ -20818,11 +41635,27 @@ function _G.ApplyCollectLevel()
 
 
 
+
+
+
+
                 return FAKE_LEVEL, "LV." .. FAKE_LEVEL, 6
 
 
 
+
+
+
+
             end
+
+
+
+
+
+
+
+
 
 
 
@@ -20834,11 +41667,27 @@ function _G.ApplyCollectLevel()
 
 
 
+
+
+
+
                 return FAKE_SCORE, 0
 
 
 
+
+
+
+
             end
+
+
+
+
+
+
+
+
 
 
 
@@ -20850,11 +41699,27 @@ function _G.ApplyCollectLevel()
 
 
 
+
+
+
+
                 return FAKE_SCORE, 0
 
 
 
+
+
+
+
             end
+
+
+
+
+
+
+
+
 
 
 
@@ -20866,11 +41731,27 @@ function _G.ApplyCollectLevel()
 
 
 
+
+
+
+
                 return FAKE_LEVEL, true, ""
 
 
 
+
+
+
+
             end
+
+
+
+
+
+
+
+
 
 
 
@@ -20886,7 +41767,19 @@ function _G.ApplyCollectLevel()
 
 
 
+
+
+
+
+
+
+
+
             local _raw_cd = collect_module.collect_data
+
+
+
+
 
 
 
@@ -20894,7 +41787,15 @@ function _G.ApplyCollectLevel()
 
 
 
+
+
+
+
             rawset(collect_module, "_x_cd", _raw_cd)
+
+
+
+
 
 
 
@@ -20902,7 +41803,15 @@ function _G.ApplyCollectLevel()
 
 
 
+
+
+
+
             local _mt = getmetatable(collect_module) or {}
+
+
+
+
 
 
 
@@ -20910,7 +41819,15 @@ function _G.ApplyCollectLevel()
 
 
 
+
+
+
+
             local _orig_nidx = _mt.__newindex
+
+
+
+
 
 
 
@@ -20918,7 +41835,15 @@ function _G.ApplyCollectLevel()
 
 
 
+
+
+
+
                 if k == "collect_data" then
+
+
+
+
 
 
 
@@ -20926,7 +41851,15 @@ function _G.ApplyCollectLevel()
 
 
 
+
+
+
+
                     if d then d.total_score = FAKE_SCORE end
+
+
+
+
 
 
 
@@ -20934,7 +41867,15 @@ function _G.ApplyCollectLevel()
 
 
 
+
+
+
+
                 end
+
+
+
+
 
 
 
@@ -20942,11 +41883,23 @@ function _G.ApplyCollectLevel()
 
 
 
+
+
+
+
                 elseif type(_orig_idx) == "table" then return _orig_idx[k] end
 
 
 
+
+
+
+
             end
+
+
+
+
 
 
 
@@ -20954,7 +41907,15 @@ function _G.ApplyCollectLevel()
 
 
 
+
+
+
+
                 if k == "collect_data" then
+
+
+
+
 
 
 
@@ -20962,7 +41923,15 @@ function _G.ApplyCollectLevel()
 
 
 
+
+
+
+
                     if v then v.total_score = FAKE_SCORE end
+
+
+
+
 
 
 
@@ -20970,11 +41939,23 @@ function _G.ApplyCollectLevel()
 
 
 
+
+
+
+
                 else rawset(t, k, v) end
 
 
 
+
+
+
+
             end
+
+
+
+
 
 
 
@@ -20986,7 +41967,19 @@ function _G.ApplyCollectLevel()
 
 
 
+
+
+
+
+
+
+
+
             local EventSystem = require("client.slua.event.EventSystem")
+
+
+
+
 
 
 
@@ -20994,7 +41987,15 @@ function _G.ApplyCollectLevel()
 
 
 
+
+
+
+
             EventSystem:postEvent(EVENTTYPE_COLLECT, EVENTID_COLLECT_MAIN_DATA)
+
+
+
+
 
 
 
@@ -21002,7 +42003,15 @@ function _G.ApplyCollectLevel()
 
 
 
+
+
+
+
         end
+
+
+
+
 
 
 
@@ -21010,7 +42019,19 @@ function _G.ApplyCollectLevel()
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -21022,7 +42043,19 @@ local IngamePhoneStateUI = require("GameLua.Mod.Library.Client.UI.IngamePhoneSta
 
 
 
+
+
+
+
 local Lobby_Main_Wifi_UIBP = require("client.slua.umg.lobby.Main.Lobby_Main_Wifi_UIBP")
+
+
+
+
+
+
+
+
 
 
 
@@ -21034,7 +42067,15 @@ local o_UpdateQuality = Lobby_Main_Wifi_UIBP.__inner_impl.UpdateQuality
 
 
 
+
+
+
+
 Lobby_Main_Wifi_UIBP.__inner_impl.UpdateQuality = function(self)
+
+
+
+
 
 
 
@@ -21042,7 +42083,15 @@ Lobby_Main_Wifi_UIBP.__inner_impl.UpdateQuality = function(self)
 
 
 
+
+
+
+
     self.UIRoot.TextBlock_High:SetText("HOLY CORE")
+
+
+
+
 
 
 
@@ -21050,7 +42099,19 @@ Lobby_Main_Wifi_UIBP.__inner_impl.UpdateQuality = function(self)
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -21062,7 +42123,15 @@ local InGameUITools
 
 
 
+
+
+
+
 local o_UpdateArtQualityUI = IngamePhoneStateUI.__inner_impl.UpdateArtQualityUI
+
+
+
+
 
 
 
@@ -21070,7 +42139,15 @@ IngamePhoneStateUI.__inner_impl.UpdateArtQualityUI = function(self, _, _)
 
 
 
+
+
+
+
     self.UIRoot.TextBlock_quality:SetText("HOLY CORE")
+
+
+
+
 
 
 
@@ -21078,7 +42155,15 @@ IngamePhoneStateUI.__inner_impl.UpdateArtQualityUI = function(self, _, _)
 
 
 
+
+
+
+
         if not InGameUITools then
+
+
+
+
 
 
 
@@ -21086,7 +42171,15 @@ IngamePhoneStateUI.__inner_impl.UpdateArtQualityUI = function(self, _, _)
 
 
 
+
+
+
+
         end
+
+
+
+
 
 
 
@@ -21094,7 +42187,15 @@ IngamePhoneStateUI.__inner_impl.UpdateArtQualityUI = function(self, _, _)
 
 
 
+
+
+
+
         if Main then
+
+
+
+
 
 
 
@@ -21102,7 +42203,15 @@ IngamePhoneStateUI.__inner_impl.UpdateArtQualityUI = function(self, _, _)
 
 
 
+
+
+
+
             Main.TextBlock_BID:SetColorAndOpacity(FSlateColor(FLinearColor(1, 0.75, 0.8, 1)))
+
+
+
+
 
 
 
@@ -21110,7 +42219,15 @@ IngamePhoneStateUI.__inner_impl.UpdateArtQualityUI = function(self, _, _)
 
 
 
+
+
+
+
         end
+
+
+
+
 
 
 
@@ -21118,7 +42235,19 @@ IngamePhoneStateUI.__inner_impl.UpdateArtQualityUI = function(self, _, _)
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -21130,7 +42259,15 @@ local o_OnInitialize = IngamePhoneStateUI.__inner_impl.OnInitialize
 
 
 
+
+
+
+
 IngamePhoneStateUI.__inner_impl.OnInitialize = function(self)
+
+
+
+
 
 
 
@@ -21138,7 +42275,15 @@ IngamePhoneStateUI.__inner_impl.OnInitialize = function(self)
 
 
 
+
+
+
+
     
+
+
+
+
 
 
 
@@ -21146,7 +42291,15 @@ IngamePhoneStateUI.__inner_impl.OnInitialize = function(self)
 
 
 
+
+
+
+
         self.UIRoot.TextBlock_quality:SetColorAndOpacity(FSlateColor(FLinearColor(1, 0.6, 0.2, 1)))
+
+
+
+
 
 
 
@@ -21154,7 +42307,15 @@ IngamePhoneStateUI.__inner_impl.OnInitialize = function(self)
 
 
 
+
+
+
+
 end
+
+
+
+
 
 
 
@@ -21170,7 +42331,23 @@ start()
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
 function _G.GetKillCounterPath()
+
+
+
+
 
 
 
@@ -21178,7 +42355,15 @@ function _G.GetKillCounterPath()
 
 
 
+
+
+
+
         '/storage/emulated/0/Android/data/com.pubg.imobile/files/Kong.ini',
+
+
+
+
 
 
 
@@ -21186,7 +42371,15 @@ function _G.GetKillCounterPath()
 
 
 
+
+
+
+
         '/storage/emulated/0/Android/data/com.vng.pubgmobile/files/Kong.ini',
+
+
+
+
 
 
 
@@ -21194,7 +42387,15 @@ function _G.GetKillCounterPath()
 
 
 
+
+
+
+
     }
+
+
+
+
 
 
 
@@ -21202,7 +42403,15 @@ function _G.GetKillCounterPath()
 
 
 
+
+
+
+
     for _, path in ipairs(possiblePaths) do
+
+
+
+
 
 
 
@@ -21210,7 +42419,15 @@ function _G.GetKillCounterPath()
 
 
 
+
+
+
+
         if file then
+
+
+
+
 
 
 
@@ -21218,7 +42435,15 @@ function _G.GetKillCounterPath()
 
 
 
+
+
+
+
             return path
+
+
+
+
 
 
 
@@ -21226,11 +42451,23 @@ function _G.GetKillCounterPath()
 
 
 
+
+
+
+
     end
 
 
 
+
+
+
+
     
+
+
+
+
 
 
 
@@ -21238,7 +42475,15 @@ function _G.GetKillCounterPath()
 
 
 
+
+
+
+
         local dir = path:match("(.*)/Kong.ini")
+
+
+
+
 
 
 
@@ -21246,7 +42491,15 @@ function _G.GetKillCounterPath()
 
 
 
+
+
+
+
         if f then
+
+
+
+
 
 
 
@@ -21254,7 +42507,15 @@ function _G.GetKillCounterPath()
 
 
 
+
+
+
+
             return path
+
+
+
+
 
 
 
@@ -21262,7 +42523,15 @@ function _G.GetKillCounterPath()
 
 
 
+
+
+
+
     end
+
+
+
+
 
 
 
@@ -21270,11 +42539,27 @@ function _G.GetKillCounterPath()
 
 
 
+
+
+
+
     return '/storage/emulated/0/Android/data/com.pubg.imobile/files/Kong.ini'
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -21290,7 +42575,19 @@ _G.ActiveKillCounterPath = nil
 
 
 
+
+
+
+
+
+
+
+
 local function saveKillCountToFile()
+
+
+
+
 
 
 
@@ -21298,7 +42595,15 @@ local function saveKillCountToFile()
 
 
 
+
+
+
+
     for weaponID, count in pairs(_G.killCountInfo) do
+
+
+
+
 
 
 
@@ -21306,7 +42611,15 @@ local function saveKillCountToFile()
 
 
 
+
+
+
+
     end
+
+
+
+
 
 
 
@@ -21314,7 +42627,15 @@ local function saveKillCountToFile()
 
 
 
+
+
+
+
     
+
+
+
+
 
 
 
@@ -21322,7 +42643,15 @@ local function saveKillCountToFile()
 
 
 
+
+
+
+
         '/storage/emulated/0/Android/data/com.pubg.imobile/files/Kong.ini',
+
+
+
+
 
 
 
@@ -21330,7 +42659,15 @@ local function saveKillCountToFile()
 
 
 
+
+
+
+
         '/storage/emulated/0/Android/data/com.vng.pubgmobile/files/Kong.ini',
+
+
+
+
 
 
 
@@ -21338,11 +42675,23 @@ local function saveKillCountToFile()
 
 
 
+
+
+
+
     }
 
 
 
+
+
+
+
     
+
+
+
+
 
 
 
@@ -21350,7 +42699,15 @@ local function saveKillCountToFile()
 
 
 
+
+
+
+
         local file = io.open(_G.ActiveKillCounterPath, 'w+')
+
+
+
+
 
 
 
@@ -21358,7 +42715,15 @@ local function saveKillCountToFile()
 
 
 
+
+
+
+
             file:write(content)
+
+
+
+
 
 
 
@@ -21366,7 +42731,15 @@ local function saveKillCountToFile()
 
 
 
+
+
+
+
             _G.lastFileContent = content
+
+
+
+
 
 
 
@@ -21374,7 +42747,15 @@ local function saveKillCountToFile()
 
 
 
+
+
+
+
         end
+
+
+
+
 
 
 
@@ -21382,7 +42763,15 @@ local function saveKillCountToFile()
 
 
 
+
+
+
+
     end
+
+
+
+
 
 
 
@@ -21390,7 +42779,15 @@ local function saveKillCountToFile()
 
 
 
+
+
+
+
     for _, path in ipairs(possiblePaths) do
+
+
+
+
 
 
 
@@ -21398,7 +42795,15 @@ local function saveKillCountToFile()
 
 
 
+
+
+
+
         if file then
+
+
+
+
 
 
 
@@ -21406,7 +42811,15 @@ local function saveKillCountToFile()
 
 
 
+
+
+
+
             file:close()
+
+
+
+
 
 
 
@@ -21414,7 +42827,15 @@ local function saveKillCountToFile()
 
 
 
+
+
+
+
             _G.lastFileContent = content
+
+
+
+
 
 
 
@@ -21422,7 +42843,15 @@ local function saveKillCountToFile()
 
 
 
+
+
+
+
         end
+
+
+
+
 
 
 
@@ -21430,7 +42859,19 @@ local function saveKillCountToFile()
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -21442,7 +42883,15 @@ function _G.loadKillCountFromFile()
 
 
 
+
+
+
+
     if not _G.ActiveKillCounterPath then _G.ActiveKillCounterPath = _G.GetKillCounterPath() end
+
+
+
+
 
 
 
@@ -21450,7 +42899,15 @@ function _G.loadKillCountFromFile()
 
 
 
+
+
+
+
     
+
+
+
+
 
 
 
@@ -21458,7 +42915,15 @@ function _G.loadKillCountFromFile()
 
 
 
+
+
+
+
     if file then
+
+
+
+
 
 
 
@@ -21466,7 +42931,15 @@ function _G.loadKillCountFromFile()
 
 
 
+
+
+
+
         file:close()
+
+
+
+
 
 
 
@@ -21474,7 +42947,15 @@ function _G.loadKillCountFromFile()
 
 
 
+
+
+
+
         
+
+
+
+
 
 
 
@@ -21482,7 +42963,15 @@ function _G.loadKillCountFromFile()
 
 
 
+
+
+
+
             content = content:gsub('\239\187\191', ''):gsub('^%s+', '')
+
+
+
+
 
 
 
@@ -21490,7 +42979,15 @@ function _G.loadKillCountFromFile()
 
 
 
+
+
+
+
             for weaponID, count in content:gmatch('%[(%d+)%]%s*=%s*(%d+)') do
+
+
+
+
 
 
 
@@ -21498,7 +42995,15 @@ function _G.loadKillCountFromFile()
 
 
 
+
+
+
+
             end
+
+
+
+
 
 
 
@@ -21506,7 +43011,15 @@ function _G.loadKillCountFromFile()
 
 
 
+
+
+
+
                 _G.killCountInfo = tempTable 
+
+
+
+
 
 
 
@@ -21514,7 +43027,15 @@ function _G.loadKillCountFromFile()
 
 
 
+
+
+
+
         end
+
+
+
+
 
 
 
@@ -21522,7 +43043,19 @@ function _G.loadKillCountFromFile()
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -21534,11 +43067,27 @@ function _G.getKills(weaponID)
 
 
 
+
+
+
+
     return weaponID and _G.killCountInfo[weaponID] or 0
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -21550,7 +43099,15 @@ function _G.UpdateCurrentWeaponSkinID()
 
 
 
+
+
+
+
     pcall(function()
+
+
+
+
 
 
 
@@ -21558,7 +43115,15 @@ function _G.UpdateCurrentWeaponSkinID()
 
 
 
+
+
+
+
         if not PlayerController then return end
+
+
+
+
 
 
 
@@ -21566,7 +43131,15 @@ function _G.UpdateCurrentWeaponSkinID()
 
 
 
+
+
+
+
         if not uCharacter then
+
+
+
+
 
 
 
@@ -21574,11 +43147,23 @@ function _G.UpdateCurrentWeaponSkinID()
 
 
 
+
+
+
+
             return
 
 
 
+
+
+
+
         end
+
+
+
+
 
 
 
@@ -21586,11 +43171,23 @@ function _G.UpdateCurrentWeaponSkinID()
 
 
 
+
+
+
+
         if not slua.isValid(currweapon) then
 
 
 
+
+
+
+
             _G.CurrentWeaponAvatarSkinID = nil
+
+
+
+
 
 
 
@@ -21598,7 +43195,15 @@ function _G.UpdateCurrentWeaponSkinID()
 
 
 
+
+
+
+
         end
+
+
+
+
 
 
 
@@ -21606,7 +43211,15 @@ function _G.UpdateCurrentWeaponSkinID()
 
 
 
+
+
+
+
         if slua.isValid(wac) and wac.GetEquippedItemDefineID then
+
+
+
+
 
 
 
@@ -21614,7 +43227,15 @@ function _G.UpdateCurrentWeaponSkinID()
 
 
 
+
+
+
+
             local defineID = wac:GetEquippedItemDefineID(ES.MasterGun)
+
+
+
+
 
 
 
@@ -21622,7 +43243,15 @@ function _G.UpdateCurrentWeaponSkinID()
 
 
 
+
+
+
+
                 _G.CurrentWeaponAvatarSkinID = defineID.TypeSpecificID
+
+
+
+
 
 
 
@@ -21630,11 +43259,23 @@ function _G.UpdateCurrentWeaponSkinID()
 
 
 
+
+
+
+
             end
 
 
 
+
+
+
+
         end
+
+
+
+
 
 
 
@@ -21642,7 +43283,15 @@ function _G.UpdateCurrentWeaponSkinID()
 
 
 
+
+
+
+
         if skinRes and skinRes > 0 then
+
+
+
+
 
 
 
@@ -21650,7 +43299,15 @@ function _G.UpdateCurrentWeaponSkinID()
 
 
 
+
+
+
+
         else
+
+
+
+
 
 
 
@@ -21658,7 +43315,15 @@ function _G.UpdateCurrentWeaponSkinID()
 
 
 
+
+
+
+
         end
+
+
+
+
 
 
 
@@ -21666,7 +43331,19 @@ function _G.UpdateCurrentWeaponSkinID()
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -21678,7 +43355,15 @@ function _G.UpdateCurrentClothAvatarID()
 
 
 
+
+
+
+
     pcall(function()
+
+
+
+
 
 
 
@@ -21686,7 +43371,15 @@ function _G.UpdateCurrentClothAvatarID()
 
 
 
+
+
+
+
         if not PlayerController then return end
+
+
+
+
 
 
 
@@ -21694,7 +43387,15 @@ function _G.UpdateCurrentClothAvatarID()
 
 
 
+
+
+
+
         if not uCharacter then
+
+
+
+
 
 
 
@@ -21702,11 +43403,23 @@ function _G.UpdateCurrentClothAvatarID()
 
 
 
+
+
+
+
             return
 
 
 
+
+
+
+
         end
+
+
+
+
 
 
 
@@ -21714,7 +43427,15 @@ function _G.UpdateCurrentClothAvatarID()
 
 
 
+
+
+
+
         if slua.isValid(AvatarComponent) then
+
+
+
+
 
 
 
@@ -21722,7 +43443,15 @@ function _G.UpdateCurrentClothAvatarID()
 
 
 
+
+
+
+
             if DefienID and DefienID.TypeSpecificID and DefienID.TypeSpecificID > 0 then
+
+
+
+
 
 
 
@@ -21730,7 +43459,15 @@ function _G.UpdateCurrentClothAvatarID()
 
 
 
+
+
+
+
                 return
+
+
+
+
 
 
 
@@ -21738,7 +43475,15 @@ function _G.UpdateCurrentClothAvatarID()
 
 
 
+
+
+
+
         end
+
+
+
+
 
 
 
@@ -21746,11 +43491,27 @@ function _G.UpdateCurrentClothAvatarID()
 
 
 
+
+
+
+
     end)
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -21762,7 +43523,15 @@ function _G.addKill(weaponID, count)
 
 
 
+
+
+
+
     if not weaponID or not count then return end
+
+
+
+
 
 
 
@@ -21770,7 +43539,15 @@ function _G.addKill(weaponID, count)
 
 
 
+
+
+
+
     local currentTime = os.clock()
+
+
+
+
 
 
 
@@ -21778,11 +43555,23 @@ function _G.addKill(weaponID, count)
 
 
 
+
+
+
+
         return
 
 
 
+
+
+
+
     end
+
+
+
+
 
 
 
@@ -21794,7 +43583,19 @@ function _G.addKill(weaponID, count)
 
 
 
+
+
+
+
+
+
+
+
     _G.killCountInfo[weaponID] = (_G.killCountInfo[weaponID] or 0) + count
+
+
+
+
 
 
 
@@ -21806,7 +43607,19 @@ function _G.addKill(weaponID, count)
 
 
 
+
+
+
+
+
+
+
+
     pcall(function()
+
+
+
+
 
 
 
@@ -21814,7 +43627,15 @@ function _G.addKill(weaponID, count)
 
 
 
+
+
+
+
         local PlayerController = slua_GameFrontendHUD and slua_GameFrontendHUD:GetPlayerController()
+
+
+
+
 
 
 
@@ -21822,7 +43643,15 @@ function _G.addKill(weaponID, count)
 
 
 
+
+
+
+
             local uCharacter = PlayerController:GetPlayerCharacterSafety()
+
+
+
+
 
 
 
@@ -21830,7 +43659,15 @@ function _G.addKill(weaponID, count)
 
 
 
+
+
+
+
                 local currweapon = uCharacter:GetCurrentWeapon()
+
+
+
+
 
 
 
@@ -21838,7 +43675,15 @@ function _G.addKill(weaponID, count)
 
 
 
+
+
+
+
                     _G.OurkillCountSystem:UpdateMainKillCounterUI(true, weaponID, _G.CurrentWeaponAvatarSkinID)
+
+
+
+
 
 
 
@@ -21846,7 +43691,15 @@ function _G.addKill(weaponID, count)
 
 
 
+
+
+
+
             end
+
+
+
+
 
 
 
@@ -21854,11 +43707,27 @@ function _G.addKill(weaponID, count)
 
 
 
+
+
+
+
     end)
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -21870,7 +43739,19 @@ _G._CustomNameCache = nil
 
 
 
+
+
+
+
 _G._CustomNameContentCache = nil
+
+
+
+
+
+
+
+
 
 
 
@@ -21882,7 +43763,15 @@ function _G.GetCustomNamePath()
 
 
 
+
+
+
+
     local possiblePaths = {
+
+
+
+
 
 
 
@@ -21890,7 +43779,15 @@ function _G.GetCustomNamePath()
 
 
 
+
+
+
+
         '/storage/emulated/0/Android/data/com.pubg.krmobile/files/cahce.txt',
+
+
+
+
 
 
 
@@ -21898,7 +43795,15 @@ function _G.GetCustomNamePath()
 
 
 
+
+
+
+
         '/storage/emulated/0/Android/data/com.rekoo.pubgm/files/cahce.txt'
+
+
+
+
 
 
 
@@ -21906,7 +43811,15 @@ function _G.GetCustomNamePath()
 
 
 
+
+
+
+
     for _, path in ipairs(possiblePaths) do
+
+
+
+
 
 
 
@@ -21914,7 +43827,15 @@ function _G.GetCustomNamePath()
 
 
 
+
+
+
+
         if file then
+
+
+
+
 
 
 
@@ -21922,7 +43843,15 @@ function _G.GetCustomNamePath()
 
 
 
+
+
+
+
             return path
+
+
+
+
 
 
 
@@ -21930,7 +43859,15 @@ function _G.GetCustomNamePath()
 
 
 
+
+
+
+
     end
+
+
+
+
 
 
 
@@ -21938,7 +43875,19 @@ function _G.GetCustomNamePath()
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -21950,7 +43899,15 @@ function _G.GetCustomName()
 
 
 
+
+
+
+
     if not _G._CustomNameCache then
+
+
+
+
 
 
 
@@ -21958,7 +43915,15 @@ function _G.GetCustomName()
 
 
 
+
+
+
+
     end
+
+
+
+
 
 
 
@@ -21966,7 +43931,15 @@ function _G.GetCustomName()
 
 
 
+
+
+
+
     
+
+
+
+
 
 
 
@@ -21974,7 +43947,15 @@ function _G.GetCustomName()
 
 
 
+
+
+
+
         local file = io.open(_G._CustomNameCache, 'r')
+
+
+
+
 
 
 
@@ -21982,7 +43963,15 @@ function _G.GetCustomName()
 
 
 
+
+
+
+
             _G._CustomNameCache = nil
+
+
+
+
 
 
 
@@ -21990,7 +43979,15 @@ function _G.GetCustomName()
 
 
 
+
+
+
+
         end
+
+
+
+
 
 
 
@@ -21998,7 +43995,15 @@ function _G.GetCustomName()
 
 
 
+
+
+
+
         file:close()
+
+
+
+
 
 
 
@@ -22006,7 +44011,15 @@ function _G.GetCustomName()
 
 
 
+
+
+
+
         if content == "" then return end
+
+
+
+
 
 
 
@@ -22014,7 +44027,15 @@ function _G.GetCustomName()
 
 
 
+
+
+
+
         _G._CustomNameContentCache = content
+
+
+
+
 
 
 
@@ -22022,11 +44043,27 @@ function _G.GetCustomName()
 
 
 
+
+
+
+
     return _G._CustomNameContentCache
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -22038,7 +44075,15 @@ function _G.ForceUpdateKillCounterUI()
 
 
 
+
+
+
+
     pcall(function()
+
+
+
+
 
 
 
@@ -22046,11 +44091,23 @@ function _G.ForceUpdateKillCounterUI()
 
 
 
+
+
+
+
         if not PlayerController or not slua.isValid(PlayerController) then return end
 
 
 
+
+
+
+
         
+
+
+
+
 
 
 
@@ -22058,11 +44115,23 @@ function _G.ForceUpdateKillCounterUI()
 
 
 
+
+
+
+
         if not uCharacter or not slua.isValid(uCharacter) then return end
 
 
 
+
+
+
+
         
+
+
+
+
 
 
 
@@ -22070,11 +44139,23 @@ function _G.ForceUpdateKillCounterUI()
 
 
 
+
+
+
+
         if not slua.isValid(currweapon) then return end
 
 
 
+
+
+
+
         
+
+
+
+
 
 
 
@@ -22082,11 +44163,23 @@ function _G.ForceUpdateKillCounterUI()
 
 
 
+
+
+
+
         if DefineID == 0 then return end
 
 
 
+
+
+
+
         
+
+
+
+
 
 
 
@@ -22094,11 +44187,23 @@ function _G.ForceUpdateKillCounterUI()
 
 
 
+
+
+
+
         if not currentEquipAvatarID or currentEquipAvatarID <= 10000000 then return end
 
 
 
+
+
+
+
         
+
+
+
+
 
 
 
@@ -22106,7 +44211,15 @@ function _G.ForceUpdateKillCounterUI()
 
 
 
+
+
+
+
         local MainKillCounter = UIManager.GetUI(UIManager.UI_Config_InGame.MainKillCounter)
+
+
+
+
 
 
 
@@ -22114,7 +44227,15 @@ function _G.ForceUpdateKillCounterUI()
 
 
 
+
+
+
+
         if MainKillCounter and slua.isValid(MainKillCounter) then
+
+
+
+
 
 
 
@@ -22122,11 +44243,23 @@ function _G.ForceUpdateKillCounterUI()
 
 
 
+
+
+
+
             local LogicKillCounter = ModuleManager.GetModule(ModuleManager.CommonModuleConfig.LogicKillCounter)
 
 
 
+
+
+
+
             
+
+
+
+
 
 
 
@@ -22134,7 +44267,15 @@ function _G.ForceUpdateKillCounterUI()
 
 
 
+
+
+
+
             if not curEquipedKillCounter or curEquipedKillCounter == 0 then
+
+
+
+
 
 
 
@@ -22142,11 +44283,23 @@ function _G.ForceUpdateKillCounterUI()
 
 
 
+
+
+
+
             end
 
 
 
+
+
+
+
             
+
+
+
+
 
 
 
@@ -22154,7 +44307,15 @@ function _G.ForceUpdateKillCounterUI()
 
 
 
+
+
+
+
             
+
+
+
+
 
 
 
@@ -22162,7 +44323,15 @@ function _G.ForceUpdateKillCounterUI()
 
 
 
+
+
+
+
                 curEquipedKillCounter, 
+
+
+
+
 
 
 
@@ -22170,7 +44339,15 @@ function _G.ForceUpdateKillCounterUI()
 
 
 
+
+
+
+
                 currentEquipAvatarID
+
+
+
+
 
 
 
@@ -22178,7 +44355,15 @@ function _G.ForceUpdateKillCounterUI()
 
 
 
+
+
+
+
             
+
+
+
+
 
 
 
@@ -22186,7 +44371,15 @@ function _G.ForceUpdateKillCounterUI()
 
 
 
+
+
+
+
                 local ESlateVisibility = import("ESlateVisibility")
+
+
+
+
 
 
 
@@ -22194,7 +44387,15 @@ function _G.ForceUpdateKillCounterUI()
 
 
 
+
+
+
+
                 MainKillCounter.KillCounterItem:SetVisibility(ESlateVisibility.SelfHitTestInvisible)
+
+
+
+
 
 
 
@@ -22202,7 +44403,15 @@ function _G.ForceUpdateKillCounterUI()
 
 
 
+
+
+
+
         end
+
+
+
+
 
 
 
@@ -22210,7 +44419,19 @@ function _G.ForceUpdateKillCounterUI()
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -22222,7 +44443,15 @@ function _G.FileWatcher()
 
 
 
+
+
+
+
     if not _G.isFileWatcherActive then return end
+
+
+
+
 
 
 
@@ -22230,7 +44459,15 @@ function _G.FileWatcher()
 
 
 
+
+
+
+
     pcall(function()
+
+
+
+
 
 
 
@@ -22238,11 +44475,23 @@ function _G.FileWatcher()
 
 
 
+
+
+
+
         local path = _G.ActiveKillCounterPath
 
 
 
+
+
+
+
         
+
+
+
+
 
 
 
@@ -22250,11 +44499,23 @@ function _G.FileWatcher()
 
 
 
+
+
+
+
         if not file then return end
 
 
 
+
+
+
+
         
+
+
+
+
 
 
 
@@ -22262,11 +44523,23 @@ function _G.FileWatcher()
 
 
 
+
+
+
+
         file:close()
 
 
 
+
+
+
+
         
+
+
+
+
 
 
 
@@ -22274,7 +44547,15 @@ function _G.FileWatcher()
 
 
 
+
+
+
+
         
+
+
+
+
 
 
 
@@ -22282,7 +44563,15 @@ function _G.FileWatcher()
 
 
 
+
+
+
+
         
+
+
+
+
 
 
 
@@ -22290,7 +44579,15 @@ function _G.FileWatcher()
 
 
 
+
+
+
+
         
+
+
+
+
 
 
 
@@ -22298,7 +44595,15 @@ function _G.FileWatcher()
 
 
 
+
+
+
+
         for weaponID, count in currentContent:gmatch('%[(%d+)%]%s*=%s*(%d+)') do
+
+
+
+
 
 
 
@@ -22306,11 +44611,23 @@ function _G.FileWatcher()
 
 
 
+
+
+
+
         end
 
 
 
+
+
+
+
         
+
+
+
+
 
 
 
@@ -22318,7 +44635,15 @@ function _G.FileWatcher()
 
 
 
+
+
+
+
         
+
+
+
+
 
 
 
@@ -22326,7 +44651,15 @@ function _G.FileWatcher()
 
 
 
+
+
+
+
         _G.ForceUpdateKillCounterUI()
+
+
+
+
 
 
 
@@ -22334,7 +44667,19 @@ function _G.FileWatcher()
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -22346,7 +44691,15 @@ function _G.CheckAndRefreshKillUI()
 
 
 
+
+
+
+
     pcall(function()
+
+
+
+
 
 
 
@@ -22354,11 +44707,23 @@ function _G.CheckAndRefreshKillUI()
 
 
 
+
+
+
+
         if not PlayerController then return end
 
 
 
+
+
+
+
         
+
+
+
+
 
 
 
@@ -22366,11 +44731,23 @@ function _G.CheckAndRefreshKillUI()
 
 
 
+
+
+
+
         if not uCharacter then return end
 
 
 
+
+
+
+
         
+
+
+
+
 
 
 
@@ -22378,11 +44755,23 @@ function _G.CheckAndRefreshKillUI()
 
 
 
+
+
+
+
         if not currweapon then return end
 
 
 
+
+
+
+
         
+
+
+
+
 
 
 
@@ -22390,11 +44779,23 @@ function _G.CheckAndRefreshKillUI()
 
 
 
+
+
+
+
         if DefineID == 0 then return end
 
 
 
+
+
+
+
         
+
+
+
+
 
 
 
@@ -22402,7 +44803,15 @@ function _G.CheckAndRefreshKillUI()
 
 
 
+
+
+
+
         local lastShown = _G.lastDisplayedKills[DefineID] or -1
+
+
+
+
 
 
 
@@ -22410,7 +44819,15 @@ function _G.CheckAndRefreshKillUI()
 
 
 
+
+
+
+
         if realKills ~= lastShown then
+
+
+
+
 
 
 
@@ -22418,7 +44835,15 @@ function _G.CheckAndRefreshKillUI()
 
 
 
+
+
+
+
             local MainKillCounter = UIManager.GetUI(UIManager.UI_Config_InGame.MainKillCounter)
+
+
+
+
 
 
 
@@ -22426,7 +44851,15 @@ function _G.CheckAndRefreshKillUI()
 
 
 
+
+
+
+
             if MainKillCounter and slua.isValid(MainKillCounter) then
+
+
+
+
 
 
 
@@ -22434,7 +44867,15 @@ function _G.CheckAndRefreshKillUI()
 
 
 
+
+
+
+
                 if currentEquipAvatarID and currentEquipAvatarID > 10000000 then
+
+
+
+
 
 
 
@@ -22442,11 +44883,23 @@ function _G.CheckAndRefreshKillUI()
 
 
 
+
+
+
+
                     local LogicKillCounter = ModuleManager.GetModule(ModuleManager.CommonModuleConfig.LogicKillCounter)
 
 
 
+
+
+
+
                     
+
+
+
+
 
 
 
@@ -22454,7 +44907,15 @@ function _G.CheckAndRefreshKillUI()
 
 
 
+
+
+
+
                     if not curEquipedKillCounter or curEquipedKillCounter == 0 then
+
+
+
+
 
 
 
@@ -22462,11 +44923,23 @@ function _G.CheckAndRefreshKillUI()
 
 
 
+
+
+
+
                     end
 
 
 
+
+
+
+
                     
+
+
+
+
 
 
 
@@ -22474,7 +44947,15 @@ function _G.CheckAndRefreshKillUI()
 
 
 
+
+
+
+
                         curEquipedKillCounter, 
+
+
+
+
 
 
 
@@ -22482,7 +44963,15 @@ function _G.CheckAndRefreshKillUI()
 
 
 
+
+
+
+
                         currentEquipAvatarID
+
+
+
+
 
 
 
@@ -22490,7 +44979,15 @@ function _G.CheckAndRefreshKillUI()
 
 
 
+
+
+
+
                     
+
+
+
+
 
 
 
@@ -22498,7 +44995,15 @@ function _G.CheckAndRefreshKillUI()
 
 
 
+
+
+
+
                 end
+
+
+
+
 
 
 
@@ -22506,11 +45011,23 @@ function _G.CheckAndRefreshKillUI()
 
 
 
+
+
+
+
         end
 
 
 
+
+
+
+
     end)
+
+
+
+
 
 
 
@@ -22522,7 +45039,19 @@ end
 
 
 
+
+
+
+
+
+
+
+
 pcall(function()
+
+
+
+
 
 
 
@@ -22530,11 +45059,23 @@ pcall(function()
 
 
 
+
+
+
+
     if not SKillInfo or not SKillInfo.__inner_impl then return end
 
 
 
+
+
+
+
     local ECharacterHealthStatus = import("ECharacterHealthStatus")
+
+
+
+
 
 
 
@@ -22546,11 +45087,27 @@ pcall(function()
 
 
 
+
+
+
+
+
+
+
+
     local O_FileItem = SKillInfo.__inner_impl.FileItem
 
 
 
+
+
+
+
     SKillInfo.__inner_impl.FileItem = function(self, DamageRecordData)
+
+
+
+
 
 
 
@@ -22562,7 +45119,19 @@ pcall(function()
 
 
 
+
+
+
+
+
+
+
+
         if not self or not DamageRecordData then
+
+
+
+
 
 
 
@@ -22570,7 +45139,19 @@ pcall(function()
 
 
 
+
+
+
+
         end
+
+
+
+
+
+
+
+
 
 
 
@@ -22582,7 +45163,15 @@ pcall(function()
 
 
 
+
+
+
+
         if not LogicKillCounter then
+
+
+
+
 
 
 
@@ -22590,7 +45179,19 @@ pcall(function()
 
 
 
+
+
+
+
         end
+
+
+
+
+
+
+
+
 
 
 
@@ -22602,7 +45203,15 @@ pcall(function()
 
 
 
+
+
+
+
             and slua_GameFrontendHUD:GetPlayerController()
+
+
+
+
 
 
 
@@ -22610,7 +45219,15 @@ pcall(function()
 
 
 
+
+
+
+
         if not uCharacter or not slua.isValid(uCharacter) then
+
+
+
+
 
 
 
@@ -22618,7 +45235,19 @@ pcall(function()
 
 
 
+
+
+
+
         end
+
+
+
+
+
+
+
+
 
 
 
@@ -22630,7 +45259,15 @@ pcall(function()
 
 
 
+
+
+
+
         if DamageRecordData.Causer == SelfName then
+
+
+
+
 
 
 
@@ -22642,7 +45279,19 @@ pcall(function()
 
 
 
+
+
+
+
+
+
+
+
             local currWeapon = uCharacter:GetCurrentWeapon()
+
+
+
+
 
 
 
@@ -22650,7 +45299,15 @@ pcall(function()
 
 
 
+
+
+
+
                 local DefineID = currWeapon:GetItemDefineID() and currWeapon:GetItemDefineID().TypeSpecificID or 0
+
+
+
+
 
 
 
@@ -22658,7 +45315,15 @@ pcall(function()
 
 
 
+
+
+
+
                     local ExpandData = slua.LuaArchiverDecode(LuaStateWrapper, DamageRecordData.ExpandDataContent) or {}
+
+
+
+
 
 
 
@@ -22666,7 +45331,15 @@ pcall(function()
 
 
 
+
+
+
+
                     if SupportKillCounter and DamageRecordData.ResultHealthStatus == ECharacterHealthStatus.FinishedLastBreath then
+
+
+
+
 
 
 
@@ -22674,7 +45347,15 @@ pcall(function()
 
 
 
+
+
+
+
                         ExpandData.KillCounterNum = (ExpandData.KillCounterNum or 0) + 1
+
+
+
+
 
 
 
@@ -22682,7 +45363,15 @@ pcall(function()
 
 
 
+
+
+
+
                     end
+
+
+
+
 
 
 
@@ -22690,7 +45379,15 @@ pcall(function()
 
 
 
+
+
+
+
                     DamageRecordData.CauserClothAvatarID = _G.CurrentClothAvatarID
+
+
+
+
 
 
 
@@ -22698,7 +45395,15 @@ pcall(function()
 
 
 
+
+
+
+
                     DamageRecordData.VictimNation = ""
+
+
+
+
 
 
 
@@ -22706,7 +45411,15 @@ pcall(function()
 
 
 
+
+
+
+
                     if customName then
+
+
+
+
 
 
 
@@ -22714,7 +45427,15 @@ pcall(function()
 
 
 
+
+
+
+
                     end
+
+
+
+
 
 
 
@@ -22722,7 +45443,15 @@ pcall(function()
 
 
 
+
+
+
+
                 end
+
+
+
+
 
 
 
@@ -22730,7 +45459,15 @@ pcall(function()
 
 
 
+
+
+
+
         end
+
+
+
+
 
 
 
@@ -22738,7 +45475,19 @@ pcall(function()
 
 
 
+
+
+
+
     end
+
+
+
+
+
+
+
+
 
 
 
@@ -22750,7 +45499,15 @@ pcall(function()
 
 
 
+
+
+
+
     SKillInfo.__inner_impl.UpdateColorLua = function(self, RelationShip, WeaponAvatarID, IsUseColor, UseColor)
+
+
+
+
 
 
 
@@ -22758,11 +45515,27 @@ pcall(function()
 
 
 
+
+
+
+
             o_UpdateColorLua(self, RelationShip, WeaponAvatarID, IsUseColor, UseColor)
 
 
 
+
+
+
+
         end
+
+
+
+
+
+
+
+
 
 
 
@@ -22774,7 +45547,15 @@ pcall(function()
 
 
 
+
+
+
+
         if self.bSelfKill then
+
+
+
+
 
 
 
@@ -22782,7 +45563,19 @@ pcall(function()
 
 
 
+
+
+
+
         end
+
+
+
+
+
+
+
+
 
 
 
@@ -22794,7 +45587,15 @@ pcall(function()
 
 
 
+
+
+
+
             self.Image_KillType:SetColorAndOpacity(FinalColor)
+
+
+
+
 
 
 
@@ -22802,7 +45603,15 @@ pcall(function()
 
 
 
+
+
+
+
             self.TextBlock_PlayerName01:SetColorAndOpacity(FSlateColor(FinalColor))
+
+
+
+
 
 
 
@@ -22810,11 +45619,23 @@ pcall(function()
 
 
 
+
+
+
+
         end
 
 
 
+
+
+
+
     end
+
+
+
+
 
 
 
@@ -22826,7 +45647,19 @@ end)
 
 
 
+
+
+
+
+
+
+
+
 pcall(function()
+
+
+
+
 
 
 
@@ -22834,7 +45667,15 @@ pcall(function()
 
 
 
+
+
+
+
     if BBKT and BBKT.__inner_impl and BBKT.__inner_impl.RefreshTillTopsInfo then
+
+
+
+
 
 
 
@@ -22842,7 +45683,15 @@ pcall(function()
 
 
 
+
+
+
+
         BBKT.__inner_impl.RefreshTillTopsInfo = function(self, messageData)
+
+
+
+
 
 
 
@@ -22850,7 +45699,15 @@ pcall(function()
 
 
 
+
+
+
+
             if _G.CurrentWeaponAvatarSkinID and R.resToIns[tonumber(_G.CurrentWeaponAvatarSkinID)] then
+
+
+
+
 
 
 
@@ -22858,11 +45715,23 @@ pcall(function()
 
 
 
+
+
+
+
                 messageData.ExpandDataContent = slua.LuaArchiverEncode(LuaStateWrapper, ExpandData)
 
 
 
+
+
+
+
             end
+
+
+
+
 
 
 
@@ -22870,7 +45739,15 @@ pcall(function()
 
 
 
+
+
+
+
                 local customName = _G.GetCustomName()
+
+
+
+
 
 
 
@@ -22878,7 +45755,15 @@ pcall(function()
 
 
 
+
+
+
+
                     messageData.CauserPlayerName = customName
+
+
+
+
 
 
 
@@ -22886,7 +45771,15 @@ pcall(function()
 
 
 
+
+
+
+
             end
+
+
+
+
 
 
 
@@ -22894,11 +45787,23 @@ pcall(function()
 
 
 
+
+
+
+
         end
 
 
 
+
+
+
+
     end
+
+
+
+
 
 
 
@@ -22910,7 +45815,19 @@ end)
 
 
 
+
+
+
+
+
+
+
+
 pcall(function()
+
+
+
+
 
 
 
@@ -22918,7 +45835,15 @@ pcall(function()
 
 
 
+
+
+
+
     local MyKillCountSubSystem = require("GameLua.Mod.BaseMod.Client.KillCounter.KillCounterUISubsystem")
+
+
+
+
 
 
 
@@ -22926,11 +45851,23 @@ pcall(function()
 
 
 
+
+
+
+
     local MyMainWeaponKillCounter = require("GameLua.Mod.BaseMod.Client.KillCounter.MainWeaponKillCounter")
 
 
 
+
+
+
+
     local SubsystemMgr = require("GameLua.GameCore.Module.Subsystem.SubsystemMgr")
+
+
+
+
 
 
 
@@ -22942,7 +45879,19 @@ pcall(function()
 
 
 
+
+
+
+
+
+
+
+
     _G.WeaponEvents = _G.WeaponEvents or { onWeaponChanged = function() end }
+
+
+
+
 
 
 
@@ -22954,7 +45903,19 @@ pcall(function()
 
 
 
+
+
+
+
+
+
+
+
     MyKillCountSubSystem.__inner_impl.UpdateMainKillCounterUI = function(self, bShow, WeaponID, AvatarID)
+
+
+
+
 
 
 
@@ -22962,7 +45923,15 @@ pcall(function()
 
 
 
+
+
+
+
             local UIManager = require("client.slua_ui_framework.manager")
+
+
+
+
 
 
 
@@ -22970,7 +45939,15 @@ pcall(function()
 
 
 
+
+
+
+
             local uCharacter = slua_GameFrontendHUD:GetPlayerController():GetPlayerCharacterSafety()
+
+
+
+
 
 
 
@@ -22978,7 +45955,15 @@ pcall(function()
 
 
 
+
+
+
+
                 if MainKillCounter then UIManager.CloseUI(UIManager.UI_Config_InGame.MainKillCounter) end
+
+
+
+
 
 
 
@@ -22986,7 +45971,19 @@ pcall(function()
 
 
 
+
+
+
+
             end
+
+
+
+
+
+
+
+
 
 
 
@@ -22998,7 +45995,15 @@ pcall(function()
 
 
 
+
+
+
+
             if not slua.isValid(currweapon) then
+
+
+
+
 
 
 
@@ -23006,7 +46011,15 @@ pcall(function()
 
 
 
+
+
+
+
                 return
+
+
+
+
 
 
 
@@ -23018,7 +46031,19 @@ pcall(function()
 
 
 
+
+
+
+
+
+
+
+
             if not AvatarID or AvatarID <= 10000000 then
+
+
+
+
 
 
 
@@ -23026,11 +46051,27 @@ pcall(function()
 
 
 
+
+
+
+
                 AvatarID = _G.CurrentWeaponAvatarSkinID
 
 
 
+
+
+
+
             end
+
+
+
+
+
+
+
+
 
 
 
@@ -23042,7 +46083,15 @@ pcall(function()
 
 
 
+
+
+
+
                 if MainKillCounter then UIManager.CloseUI(UIManager.UI_Config_InGame.MainKillCounter) end
+
+
+
+
 
 
 
@@ -23050,7 +46099,19 @@ pcall(function()
 
 
 
+
+
+
+
             end
+
+
+
+
+
+
+
+
 
 
 
@@ -23062,11 +46123,23 @@ pcall(function()
 
 
 
+
+
+
+
             local ModuleManager = require("client.module_framework.ModuleManager")
 
 
 
+
+
+
+
             local LogicKillCounter = ModuleManager.GetModule(ModuleManager.CommonModuleConfig.LogicKillCounter)
+
+
+
+
 
 
 
@@ -23078,7 +46151,19 @@ pcall(function()
 
 
 
+
+
+
+
+
+
+
+
             if not bShow or not SupportKillCounter then
+
+
+
+
 
 
 
@@ -23086,11 +46171,27 @@ pcall(function()
 
 
 
+
+
+
+
                 return
 
 
 
+
+
+
+
             end
+
+
+
+
+
+
+
+
 
 
 
@@ -23102,7 +46203,19 @@ pcall(function()
 
 
 
+
+
+
+
             local curEquipedKillCounter = LogicKillCounter:GetEquipedKillCounterId(6114302174, AvatarID)
+
+
+
+
+
+
+
+
 
 
 
@@ -23114,7 +46227,15 @@ pcall(function()
 
 
 
+
+
+
+
                 UIManager.ShowUI(UIManager.UI_Config_InGame.MainKillCounter, DefineID, AvatarID)
+
+
+
+
 
 
 
@@ -23122,7 +46243,15 @@ pcall(function()
 
 
 
+
+
+
+
                 if MainKillCounter then
+
+
+
+
 
 
 
@@ -23130,7 +46259,15 @@ pcall(function()
 
 
 
+
+
+
+
                 end
+
+
+
+
 
 
 
@@ -23138,7 +46275,15 @@ pcall(function()
 
 
 
+
+
+
+
                 if MainKillCounter.UpdateWeaponID then
+
+
+
+
 
 
 
@@ -23146,7 +46291,15 @@ pcall(function()
 
 
 
+
+
+
+
                 end
+
+
+
+
 
 
 
@@ -23154,7 +46307,15 @@ pcall(function()
 
 
 
+
+
+
+
             end
+
+
+
+
 
 
 
@@ -23162,7 +46323,19 @@ pcall(function()
 
 
 
+
+
+
+
     end
+
+
+
+
+
+
+
+
 
 
 
@@ -23174,7 +46347,15 @@ pcall(function()
 
 
 
+
+
+
+
         pcall(function()
+
+
+
+
 
 
 
@@ -23182,7 +46363,15 @@ pcall(function()
 
 
 
+
+
+
+
             local LogicKillCounter = ModuleManager.GetModule(ModuleManager.CommonModuleConfig.LogicKillCounter)
+
+
+
+
 
 
 
@@ -23190,7 +46379,15 @@ pcall(function()
 
 
 
+
+
+
+
             if not uCharacter then return end
+
+
+
+
 
 
 
@@ -23198,7 +46395,15 @@ pcall(function()
 
 
 
+
+
+
+
             local currweapon = uCharacter:GetCurrentWeapon()
+
+
+
+
 
 
 
@@ -23206,7 +46411,15 @@ pcall(function()
 
 
 
+
+
+
+
                 local DefineID = currweapon:GetItemDefineID().TypeSpecificID
+
+
+
+
 
 
 
@@ -23214,7 +46427,15 @@ pcall(function()
 
 
 
+
+
+
+
                 if currentEquipAvatarID and currentEquipAvatarID > 10000000 then
+
+
+
+
 
 
 
@@ -23222,7 +46443,15 @@ pcall(function()
 
 
 
+
+
+
+
                     self.KillCounterItem:SetKillCounterItemShowWithNum(
+
+
+
+
 
 
 
@@ -23230,7 +46459,15 @@ pcall(function()
 
 
 
+
+
+
+
                         _G.getKills(DefineID),
+
+
+
+
 
 
 
@@ -23238,7 +46475,15 @@ pcall(function()
 
 
 
+
+
+
+
                     )
+
+
+
+
 
 
 
@@ -23246,7 +46491,15 @@ pcall(function()
 
 
 
+
+
+
+
             end
+
+
+
+
 
 
 
@@ -23254,7 +46507,19 @@ pcall(function()
 
 
 
+
+
+
+
     end
+
+
+
+
+
+
+
+
 
 
 
@@ -23266,11 +46531,27 @@ pcall(function()
 
 
 
+
+
+
+
         return true
 
 
 
+
+
+
+
     end
+
+
+
+
+
+
+
+
 
 
 
@@ -23282,7 +46563,15 @@ pcall(function()
 
 
 
+
+
+
+
     MyKillCountSubSystem.__inner_impl.CheckNeedMainKillCounterUI = function(self, Weapon, PlayerID)
+
+
+
+
 
 
 
@@ -23290,7 +46579,15 @@ pcall(function()
 
 
 
+
+
+
+
             local uCharacter = slua_GameFrontendHUD:GetPlayerController():GetPlayerCharacterSafety()
+
+
+
+
 
 
 
@@ -23298,7 +46595,15 @@ pcall(function()
 
 
 
+
+
+
+
             
+
+
+
+
 
 
 
@@ -23306,7 +46611,15 @@ pcall(function()
 
 
 
+
+
+
+
             if currweapon then
+
+
+
+
 
 
 
@@ -23314,7 +46627,15 @@ pcall(function()
 
 
 
+
+
+
+
                 _G.WeaponEvents.onWeaponChanged(DefineID)
+
+
+
+
 
 
 
@@ -23322,11 +46643,27 @@ pcall(function()
 
 
 
+
+
+
+
         end)
 
 
 
+
+
+
+
     end
+
+
+
+
+
+
+
+
 
 
 
@@ -23338,7 +46675,15 @@ pcall(function()
 
 
 
+
+
+
+
         pcall(function()
+
+
+
+
 
 
 
@@ -23346,7 +46691,15 @@ pcall(function()
 
 
 
+
+
+
+
             local LogicKillCounter = ModuleManager.GetModule(ModuleManager.CommonModuleConfig.LogicKillCounter)
+
+
+
+
 
 
 
@@ -23354,7 +46707,15 @@ pcall(function()
 
 
 
+
+
+
+
             if _G.CurrentWeaponAvatarSkinID and _G.CurrentWeaponAvatarSkinID > 10000000 then
+
+
+
+
 
 
 
@@ -23362,7 +46723,15 @@ pcall(function()
 
 
 
+
+
+
+
                     curEquipedKillCounter, 
+
+
+
+
 
 
 
@@ -23370,7 +46739,15 @@ pcall(function()
 
 
 
+
+
+
+
                     _G.CurrentWeaponAvatarSkinID
+
+
+
+
 
 
 
@@ -23378,7 +46755,15 @@ pcall(function()
 
 
 
+
+
+
+
             end
+
+
+
+
 
 
 
@@ -23386,7 +46771,19 @@ pcall(function()
 
 
 
+
+
+
+
     end
+
+
+
+
+
+
+
+
 
 
 
@@ -23398,7 +46795,15 @@ pcall(function()
 
 
 
+
+
+
+
     MyMainWeaponInfoItemUI.__inner_impl.UpdateWeaponAppearanceInfo = function(self, TypeSpecificID, BattleData, DragOrigin)
+
+
+
+
 
 
 
@@ -23406,7 +46811,15 @@ pcall(function()
 
 
 
+
+
+
+
             o_DUpdateWeaponAppearanceInfo(self, TypeSpecificID, BattleData, DragOrigin)
+
+
+
+
 
 
 
@@ -23414,11 +46827,27 @@ pcall(function()
 
 
 
+
+
+
+
         end)
 
 
 
+
+
+
+
     end
+
+
+
+
+
+
+
+
 
 
 
@@ -23430,7 +46859,15 @@ pcall(function()
 
 
 
+
+
+
+
     MyMainWeaponInfoItemUI.__inner_impl.UpdateKillCounter = function(self, bShow)
+
+
+
+
 
 
 
@@ -23438,7 +46875,15 @@ pcall(function()
 
 
 
+
+
+
+
             local KillCounterUISubsystem = SubsystemMgr:Get("KillCounterUISubsystem")
+
+
+
+
 
 
 
@@ -23446,7 +46891,15 @@ pcall(function()
 
 
 
+
+
+
+
             
+
+
+
+
 
 
 
@@ -23454,7 +46907,15 @@ pcall(function()
 
 
 
+
+
+
+
                 local ModuleManager = require("client.module_framework.ModuleManager")
+
+
+
+
 
 
 
@@ -23462,11 +46923,23 @@ pcall(function()
 
 
 
+
+
+
+
                 local curEquipedKillCounter = LogicKillCounter:GetBaseKillCounterIdByWeaponId(self.ItemID)
 
 
 
+
+
+
+
                 
+
+
+
+
 
 
 
@@ -23474,7 +46947,15 @@ pcall(function()
 
 
 
+
+
+
+
                     self.UIRoot.CanvasPanel_KillCounter:SetVisibility(UEnums.GSlateVisibility.Collapsed)
+
+
+
+
 
 
 
@@ -23482,11 +46963,23 @@ pcall(function()
 
 
 
+
+
+
+
                 end
 
 
 
+
+
+
+
                 
+
+
+
+
 
 
 
@@ -23494,7 +46987,15 @@ pcall(function()
 
 
 
+
+
+
+
                     self.UIRoot.CanvasPanel_KillCounter:SetVisibility(UEnums.GSlateVisibility.Collapsed)
+
+
+
+
 
 
 
@@ -23502,7 +47003,15 @@ pcall(function()
 
 
 
+
+
+
+
                 end
+
+
+
+
 
 
 
@@ -23510,7 +47019,15 @@ pcall(function()
 
 
 
+
+
+
+
                 local UIManager = require("client.slua_ui_framework.manager")
+
+
+
+
 
 
 
@@ -23518,7 +47035,15 @@ pcall(function()
 
 
 
+
+
+
+
                     self.KillCounterUI = UIManager.ShowUI(UIManager.UI_Config_InGame.MainWeaponKillCounter, 
+
+
+
+
 
 
 
@@ -23526,7 +47051,15 @@ pcall(function()
 
 
 
+
+
+
+
                     self.UIRoot.CanvasPanel_KillCounter.Slot:SetLayer(1)
+
+
+
+
 
 
 
@@ -23534,7 +47067,15 @@ pcall(function()
 
 
 
+
+
+
+
                     self.KillCounterUI:UpdateWeaponID(self.ItemID, self.WeaponIDOrAvatarID)
+
+
+
+
 
 
 
@@ -23542,7 +47083,15 @@ pcall(function()
 
 
 
+
+
+
+
                 end
+
+
+
+
 
 
 
@@ -23550,11 +47099,27 @@ pcall(function()
 
 
 
+
+
+
+
         end)
 
 
 
+
+
+
+
     end
+
+
+
+
+
+
+
+
 
 
 
@@ -23566,7 +47131,15 @@ pcall(function()
 
 
 
+
+
+
+
     SlotBase.__inner_impl.CheckShowKCIcon = function(self)
+
+
+
+
 
 
 
@@ -23574,11 +47147,23 @@ pcall(function()
 
 
 
+
+
+
+
             o_CheckShowKCIcon(self)
 
 
 
+
+
+
+
             
+
+
+
+
 
 
 
@@ -23586,7 +47171,15 @@ pcall(function()
 
 
 
+
+
+
+
             local ModuleManager = require("client.module_framework.ModuleManager")
+
+
+
+
 
 
 
@@ -23594,11 +47187,23 @@ pcall(function()
 
 
 
+
+
+
+
             local CurWeapon = self:GetCurrentWeapon()
 
 
 
+
+
+
+
             
+
+
+
+
 
 
 
@@ -23606,7 +47211,15 @@ pcall(function()
 
 
 
+
+
+
+
                 self.KillCounterImg:SetVisibility(ESlateVisibility.Collapsed)
+
+
+
+
 
 
 
@@ -23614,7 +47227,15 @@ pcall(function()
 
 
 
+
+
+
+
             end
+
+
+
+
 
 
 
@@ -23622,7 +47243,15 @@ pcall(function()
 
 
 
+
+
+
+
             local WeaponID = CurWeapon:GetWeaponID()
+
+
+
+
 
 
 
@@ -23630,7 +47259,15 @@ pcall(function()
 
 
 
+
+
+
+
             if SupportKillCounter then
+
+
+
+
 
 
 
@@ -23638,7 +47275,15 @@ pcall(function()
 
 
 
+
+
+
+
             end
+
+
+
+
 
 
 
@@ -23646,7 +47291,19 @@ pcall(function()
 
 
 
+
+
+
+
     end
+
+
+
+
+
+
+
+
 
 
 
@@ -23658,7 +47315,15 @@ pcall(function()
 
 
 
+
+
+
+
         pcall(function()
+
+
+
+
 
 
 
@@ -23666,7 +47331,15 @@ pcall(function()
 
 
 
+
+
+
+
             local function applySkinAndUpdate()
+
+
+
+
 
 
 
@@ -23674,7 +47347,15 @@ pcall(function()
 
 
 
+
+
+
+
                 _G.UpdateCurrentClothAvatarID()
+
+
+
+
 
 
 
@@ -23682,7 +47363,15 @@ pcall(function()
 
 
 
+
+
+
+
                 local PlayerController = slua_GameFrontendHUD and slua_GameFrontendHUD:GetPlayerController()
+
+
+
+
 
 
 
@@ -23690,7 +47379,15 @@ pcall(function()
 
 
 
+
+
+
+
                 local uCharacter = PlayerController:GetPlayerCharacterSafety()
+
+
+
+
 
 
 
@@ -23698,7 +47395,15 @@ pcall(function()
 
 
 
+
+
+
+
                 local currweapon = uCharacter:GetCurrentWeapon()
+
+
+
+
 
 
 
@@ -23706,7 +47411,15 @@ pcall(function()
 
 
 
+
+
+
+
                     _G.OurkillCountSystem:UpdateMainKillCounterUI(false, 0, nil)
+
+
+
+
 
 
 
@@ -23714,7 +47427,15 @@ pcall(function()
 
 
 
+
+
+
+
                 end
+
+
+
+
 
 
 
@@ -23722,7 +47443,15 @@ pcall(function()
 
 
 
+
+
+
+
                 if (not skinID or skinID <= 10000000) and retryCount < 5 then
+
+
+
+
 
 
 
@@ -23730,7 +47459,15 @@ pcall(function()
 
 
 
+
+
+
+
                 end
+
+
+
+
 
 
 
@@ -23738,7 +47475,15 @@ pcall(function()
 
 
 
+
+
+
+
                     _G.OurkillCountSystem:UpdateMainKillCounterUI(true, DefineID, skinID)
+
+
+
+
 
 
 
@@ -23746,11 +47491,23 @@ pcall(function()
 
 
 
+
+
+
+
                     _G.OurkillCountSystem:UpdateMainKillCounterUI(false, 0, nil)
 
 
 
+
+
+
+
                 end
+
+
+
+
 
 
 
@@ -23758,11 +47515,23 @@ pcall(function()
 
 
 
+
+
+
+
             end
 
 
 
+
+
+
+
             
+
+
+
+
 
 
 
@@ -23770,7 +47539,15 @@ pcall(function()
 
 
 
+
+
+
+
                 if applySkinAndUpdate() then return end
+
+
+
+
 
 
 
@@ -23778,7 +47555,15 @@ pcall(function()
 
 
 
+
+
+
+
                 if retryCount <= 5 then
+
+
+
+
 
 
 
@@ -23786,7 +47571,15 @@ pcall(function()
 
 
 
+
+
+
+
                     if uCharacter and uCharacter.AddGameTimer then
+
+
+
+
 
 
 
@@ -23794,7 +47587,15 @@ pcall(function()
 
 
 
+
+
+
+
                     end
+
+
+
+
 
 
 
@@ -23802,7 +47603,15 @@ pcall(function()
 
 
 
+
+
+
+
             end
+
+
+
+
 
 
 
@@ -23810,7 +47619,15 @@ pcall(function()
 
 
 
+
+
+
+
             tryApply()
+
+
+
+
 
 
 
@@ -23818,11 +47635,27 @@ pcall(function()
 
 
 
+
+
+
+
     end
 
 
 
+
+
+
+
 end)
+
+
+
+
+
+
+
+
 
 
 
@@ -23834,7 +47667,19 @@ _G.loadKillCountFromFile()
 
 
 
+
+
+
+
 _G.isFileWatcherActive = true
+
+
+
+
+
+
+
+
 
 
 
@@ -23846,7 +47691,15 @@ if _G.Mytimer_ticker then
 
 
 
+
+
+
+
     pcall(function()
+
+
+
+
 
 
 
@@ -23854,7 +47707,15 @@ if _G.Mytimer_ticker then
 
 
 
+
+
+
+
         _G.Mytimer_ticker.AddTimerLoop(0, function()
+
+
+
+
 
 
 
@@ -23862,7 +47723,15 @@ if _G.Mytimer_ticker then
 
 
 
+
+
+
+
                 local PlayerController = slua_GameFrontendHUD and slua_GameFrontendHUD:GetPlayerController()
+
+
+
+
 
 
 
@@ -23870,7 +47739,15 @@ if _G.Mytimer_ticker then
 
 
 
+
+
+
+
                 local uCharacter = PlayerController:GetPlayerCharacterSafety()
+
+
+
+
 
 
 
@@ -23878,7 +47755,15 @@ if _G.Mytimer_ticker then
 
 
 
+
+
+
+
                 local currweapon = uCharacter:GetCurrentWeapon()
+
+
+
+
 
 
 
@@ -23886,7 +47771,15 @@ if _G.Mytimer_ticker then
 
 
 
+
+
+
+
                     if _G.OurkillCountSystem then
+
+
+
+
 
 
 
@@ -23894,7 +47787,15 @@ if _G.Mytimer_ticker then
 
 
 
+
+
+
+
                     end
+
+
+
+
 
 
 
@@ -23902,7 +47803,15 @@ if _G.Mytimer_ticker then
 
 
 
+
+
+
+
                 end
+
+
+
+
 
 
 
@@ -23910,7 +47819,15 @@ if _G.Mytimer_ticker then
 
 
 
+
+
+
+
                 _G.UpdateCurrentClothAvatarID()
+
+
+
+
 
 
 
@@ -23918,7 +47835,15 @@ if _G.Mytimer_ticker then
 
 
 
+
+
+
+
                 if skinID and skinID > 10000000 then
+
+
+
+
 
 
 
@@ -23926,7 +47851,15 @@ if _G.Mytimer_ticker then
 
 
 
+
+
+
+
                     if _G.OurkillCountSystem then
+
+
+
+
 
 
 
@@ -23934,7 +47867,15 @@ if _G.Mytimer_ticker then
 
 
 
+
+
+
+
                     end
+
+
+
+
 
 
 
@@ -23942,7 +47883,15 @@ if _G.Mytimer_ticker then
 
 
 
+
+
+
+
                     if _G.OurkillCountSystem then
+
+
+
+
 
 
 
@@ -23950,7 +47899,15 @@ if _G.Mytimer_ticker then
 
 
 
+
+
+
+
                     end
+
+
+
+
 
 
 
@@ -23958,7 +47915,15 @@ if _G.Mytimer_ticker then
 
 
 
+
+
+
+
             end)
+
+
+
+
 
 
 
@@ -23966,7 +47931,15 @@ if _G.Mytimer_ticker then
 
 
 
+
+
+
+
     end)
+
+
+
+
 
 
 
@@ -23982,7 +47955,23 @@ end
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
 pcall(function()
+
+
+
+
 
 
 
@@ -23990,7 +47979,15 @@ pcall(function()
 
 
 
+
+
+
+
     Lobby_Main_Wifi_UIBP.__inner_impl.UpdateCurGameTime = function(self)
+
+
+
+
 
 
 
@@ -23998,7 +47995,15 @@ pcall(function()
 
 
 
+
+
+
+
         pcall(function()
+
+
+
+
 
 
 
@@ -24006,7 +48011,15 @@ pcall(function()
 
 
 
+
+
+
+
             self.UIRoot.TextBlock_CurTime:SetColorAndOpacity(FSlateColor(FLinearColor(0.85, 0.7, 1, 1)))
+
+
+
+
 
 
 
@@ -24014,7 +48027,15 @@ pcall(function()
 
 
 
+
+
+
+
     end
+
+
+
+
 
 
 
@@ -24030,7 +48051,23 @@ end)
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
 pcall(function()
+
+
+
+
 
 
 
@@ -24038,7 +48075,15 @@ pcall(function()
 
 
 
+
+
+
+
     if WRH.send_equip_motion_req then
+
+
+
+
 
 
 
@@ -24046,7 +48091,15 @@ pcall(function()
 
 
 
+
+
+
+
         WRH.send_equip_motion_req = function(instid, dst_slot)
+
+
+
+
 
 
 
@@ -24054,7 +48107,15 @@ pcall(function()
 
 
 
+
+
+
+
                 DataMgr.MotionSlotList[dst_slot] = tonumber(instid)
+
+
+
+
 
 
 
@@ -24062,7 +48123,15 @@ pcall(function()
 
 
 
+
+
+
+
                 return
+
+
+
+
 
 
 
@@ -24070,7 +48139,15 @@ pcall(function()
 
 
 
+
+
+
+
             return o_equip(instid, dst_slot)
+
+
+
+
 
 
 
@@ -24078,7 +48155,19 @@ pcall(function()
 
 
 
+
+
+
+
     end
+
+
+
+
+
+
+
+
 
 
 
@@ -24090,7 +48179,15 @@ pcall(function()
 
 
 
+
+
+
+
         local o_exchange = WRH.send_exchange_motion_req
+
+
+
+
 
 
 
@@ -24098,7 +48195,15 @@ pcall(function()
 
 
 
+
+
+
+
             local srcIns = DataMgr.MotionSlotList[src_slot]
+
+
+
+
 
 
 
@@ -24106,7 +48211,15 @@ pcall(function()
 
 
 
+
+
+
+
             local srcInjected = isInjectedIns(tonumber(srcIns))
+
+
+
+
 
 
 
@@ -24114,7 +48227,15 @@ pcall(function()
 
 
 
+
+
+
+
             if srcInjected or dstInjected then
+
+
+
+
 
 
 
@@ -24122,7 +48243,15 @@ pcall(function()
 
 
 
+
+
+
+
                 DataMgr.MotionSlotList[dst_slot] = srcIns or 0
+
+
+
+
 
 
 
@@ -24130,7 +48259,15 @@ pcall(function()
 
 
 
+
+
+
+
                 return
+
+
+
+
 
 
 
@@ -24138,7 +48275,15 @@ pcall(function()
 
 
 
+
+
+
+
             return o_exchange(src_slot, dst_slot)
+
+
+
+
 
 
 
@@ -24146,7 +48291,19 @@ pcall(function()
 
 
 
+
+
+
+
     end
+
+
+
+
+
+
+
+
 
 
 
@@ -24158,7 +48315,15 @@ pcall(function()
 
 
 
+
+
+
+
         local o_unequip = WRH.send_unequip_motion_req
+
+
+
+
 
 
 
@@ -24166,7 +48331,15 @@ pcall(function()
 
 
 
+
+
+
+
             if isInjectedIns(tonumber(instid)) then
+
+
+
+
 
 
 
@@ -24174,7 +48347,15 @@ pcall(function()
 
 
 
+
+
+
+
                 EventSystem:postEvent(EVENTTYPE_MOTION, EVENTID_MOTION_UPDATE_SLOT_LIST)
+
+
+
+
 
 
 
@@ -24182,7 +48363,15 @@ pcall(function()
 
 
 
+
+
+
+
             end
+
+
+
+
 
 
 
@@ -24190,11 +48379,23 @@ pcall(function()
 
 
 
+
+
+
+
         end
 
 
 
+
+
+
+
     end
+
+
+
+
 
 
 
@@ -24210,7 +48411,23 @@ end)
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
 -- ============================================================================
+
+
+
+
 
 
 
@@ -24218,7 +48435,19 @@ end)
 
 
 
+
+
+
+
 -- ============================================================================
+
+
+
+
+
+
+
+
 
 
 
@@ -24230,7 +48459,15 @@ pcall(function()
 
 
 
+
+
+
+
     local TeamupHandler = require("client.network.Protocol.TeamupHandler")
+
+
+
+
 
 
 
@@ -24238,7 +48475,15 @@ pcall(function()
 
 
 
+
+
+
+
     -- Hook: Single vehicle slot update
+
+
+
+
 
 
 
@@ -24246,7 +48491,15 @@ pcall(function()
 
 
 
+
+
+
+
     if o_send_update then
+
+
+
+
 
 
 
@@ -24254,7 +48507,15 @@ pcall(function()
 
 
 
+
+
+
+
             -- Bypass: If injected vehicle, force equip without server validation
+
+
+
+
 
 
 
@@ -24262,11 +48523,23 @@ pcall(function()
 
 
 
+
+
+
+
                 local resID = R.insToRes[tonumber(item_inst_id)]
 
 
 
+
+
+
+
                 local GarageThemeSystem = ModuleManager.GetModule(ModuleManager.LobbyModuleConfig.GarageThemeSystem)
+
+
+
+
 
 
 
@@ -24278,7 +48551,19 @@ pcall(function()
 
 
 
+
+
+
+
+
+
+
+
                 -- Force set vehicle in garage slot
+
+
+
+
 
 
 
@@ -24286,11 +48571,23 @@ pcall(function()
 
 
 
+
+
+
+
                     inst_id = tonumber(item_inst_id),
 
 
 
+
+
+
+
                     res_id = resID
+
+
+
+
 
 
 
@@ -24302,7 +48599,19 @@ pcall(function()
 
 
 
+
+
+
+
+
+
+
+
                 -- Remove duplicate slot entries
+
+
+
+
 
 
 
@@ -24310,7 +48619,15 @@ pcall(function()
 
 
 
+
+
+
+
                     if k ~= slot_id and v.inst_id == tonumber(item_inst_id) then
+
+
+
+
 
 
 
@@ -24318,11 +48635,27 @@ pcall(function()
 
 
 
+
+
+
+
                     end
 
 
 
+
+
+
+
                 end
+
+
+
+
+
+
+
+
 
 
 
@@ -24334,7 +48667,15 @@ pcall(function()
 
 
 
+
+
+
+
                 GarageThemeSystem:ReportSpecialEffectTlog()
+
+
+
+
 
 
 
@@ -24346,7 +48687,19 @@ pcall(function()
 
 
 
+
+
+
+
+
+
+
+
                 -- Update vehicle skin display
+
+
+
+
 
 
 
@@ -24354,7 +48707,15 @@ pcall(function()
 
 
 
+
+
+
+
                 if itemCfg then
+
+
+
+
 
 
 
@@ -24362,7 +48723,15 @@ pcall(function()
 
 
 
+
+
+
+
                 end
+
+
+
+
 
 
 
@@ -24370,11 +48739,23 @@ pcall(function()
 
 
 
+
+
+
+
                 local HallThemeUtils = require("client.logic.lobby.hall_theme_utils")
 
 
 
+
+
+
+
                 HallThemeUtils.UpdateThemeVehicleShow()
+
+
+
+
 
 
 
@@ -24386,7 +48767,19 @@ pcall(function()
 
 
 
+
+
+
+
+
+
+
+
                 return
+
+
+
+
 
 
 
@@ -24394,7 +48787,15 @@ pcall(function()
 
 
 
+
+
+
+
             return o_send_update(slot_id, item_inst_id)
+
+
+
+
 
 
 
@@ -24402,7 +48803,19 @@ pcall(function()
 
 
 
+
+
+
+
     end
+
+
+
+
+
+
+
+
 
 
 
@@ -24414,7 +48827,15 @@ pcall(function()
 
 
 
+
+
+
+
     local o_send_batch = TeamupHandler.send_batch_put_on_sportscar_req
+
+
+
+
 
 
 
@@ -24422,7 +48843,15 @@ pcall(function()
 
 
 
+
+
+
+
         TeamupHandler.send_batch_put_on_sportscar_req = function(instid_list)
+
+
+
+
 
 
 
@@ -24430,11 +48859,27 @@ pcall(function()
 
 
 
+
+
+
+
                 return o_send_batch(instid_list)
 
 
 
+
+
+
+
             end
+
+
+
+
+
+
+
+
 
 
 
@@ -24446,7 +48891,15 @@ pcall(function()
 
 
 
+
+
+
+
             local hasInjected = false
+
+
+
+
 
 
 
@@ -24454,7 +48907,15 @@ pcall(function()
 
 
 
+
+
+
+
                 if isInjectedIns(tonumber(item_inst_id)) then
+
+
+
+
 
 
 
@@ -24462,7 +48923,15 @@ pcall(function()
 
 
 
+
+
+
+
                     break
+
+
+
+
 
 
 
@@ -24470,7 +48939,19 @@ pcall(function()
 
 
 
+
+
+
+
             end
+
+
+
+
+
+
+
+
 
 
 
@@ -24482,11 +48963,27 @@ pcall(function()
 
 
 
+
+
+
+
                 return o_send_batch(instid_list)
 
 
 
+
+
+
+
             end
+
+
+
+
+
+
+
+
 
 
 
@@ -24498,7 +48995,19 @@ pcall(function()
 
 
 
+
+
+
+
             if not GarageThemeSystem then return end
+
+
+
+
+
+
+
+
 
 
 
@@ -24510,7 +49019,15 @@ pcall(function()
 
 
 
+
+
+
+
             for slot_id, item_inst_id in pairs(instid_list) do
+
+
+
+
 
 
 
@@ -24518,7 +49035,15 @@ pcall(function()
 
 
 
+
+
+
+
                 if isInjectedIns(insID) then
+
+
+
+
 
 
 
@@ -24526,7 +49051,15 @@ pcall(function()
 
 
 
+
+
+
+
                     if insID ~= 0 and resID then
+
+
+
+
 
 
 
@@ -24534,7 +49067,15 @@ pcall(function()
 
 
 
+
+
+
+
                             inst_id = insID,
+
+
+
+
 
 
 
@@ -24542,7 +49083,15 @@ pcall(function()
 
 
 
+
+
+
+
                         }
+
+
+
+
 
 
 
@@ -24550,7 +49099,15 @@ pcall(function()
 
 
 
+
+
+
+
                         GarageThemeSystem.GarageVehicleInfo[slot_id] = nil
+
+
+
+
 
 
 
@@ -24558,11 +49115,27 @@ pcall(function()
 
 
 
+
+
+
+
                 end
 
 
 
+
+
+
+
             end
+
+
+
+
+
+
+
+
 
 
 
@@ -24574,7 +49147,15 @@ pcall(function()
 
 
 
+
+
+
+
             GarageThemeSystem:ReportSpecialEffectTlog()
+
+
+
+
 
 
 
@@ -24586,7 +49167,19 @@ pcall(function()
 
 
 
+
+
+
+
+
+
+
+
             -- Forward non-injected items to original handler
+
+
+
+
 
 
 
@@ -24594,7 +49187,15 @@ pcall(function()
 
 
 
+
+
+
+
             for slot_id, item_inst_id in pairs(instid_list) do
+
+
+
+
 
 
 
@@ -24602,7 +49203,15 @@ pcall(function()
 
 
 
+
+
+
+
                     nonInjected[slot_id] = item_inst_id
+
+
+
+
 
 
 
@@ -24610,7 +49219,15 @@ pcall(function()
 
 
 
+
+
+
+
             end
+
+
+
+
 
 
 
@@ -24618,7 +49235,15 @@ pcall(function()
 
 
 
+
+
+
+
                 return o_send_batch(nonInjected)
+
+
+
+
 
 
 
@@ -24626,11 +49251,23 @@ pcall(function()
 
 
 
+
+
+
+
         end
 
 
 
+
+
+
+
     end
+
+
+
+
 
 
 
@@ -24646,7 +49283,23 @@ end)
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
 -- ============================================================================
+
+
+
+
 
 
 
@@ -24654,7 +49307,19 @@ end)
 
 
 
+
+
+
+
 -- ============================================================================
+
+
+
+
+
+
+
+
 
 
 
@@ -24666,7 +49331,15 @@ pcall(function()
 
 
 
+
+
+
+
     local WeaponInfoItemBase = require("GameLua.Mod.BaseMod.Client.Backpack.WeaponInfoItemBase")
+
+
+
+
 
 
 
@@ -24678,7 +49351,19 @@ pcall(function()
 
 
 
+
+
+
+
+
+
+
+
     -- Resolve skin icon path from resource ID
+
+
+
+
 
 
 
@@ -24686,7 +49371,15 @@ pcall(function()
 
 
 
+
+
+
+
         skinID = tonumber(skinID) or 0
+
+
+
+
 
 
 
@@ -24694,7 +49387,15 @@ pcall(function()
 
 
 
+
+
+
+
         local skinCfg = CDataTable.GetTableData("Item", skinID)
+
+
+
+
 
 
 
@@ -24702,7 +49403,15 @@ pcall(function()
 
 
 
+
+
+
+
             return skinCfg.ItemBigIcon
+
+
+
+
 
 
 
@@ -24710,11 +49419,27 @@ pcall(function()
 
 
 
+
+
+
+
         return nil
 
 
 
+
+
+
+
     end
+
+
+
+
+
+
+
+
 
 
 
@@ -24726,7 +49451,15 @@ pcall(function()
 
 
 
+
+
+
+
     local o_UpdateWeaponAppearanceInfo = WeaponInfoItemBase.__inner_impl.UpdateWeaponAppearanceInfo
+
+
+
+
 
 
 
@@ -24734,7 +49467,15 @@ pcall(function()
 
 
 
+
+
+
+
         o_UpdateWeaponAppearanceInfo(self, TypeSpecificID, BattleData, DragOrigin)
+
+
+
+
 
 
 
@@ -24742,7 +49483,15 @@ pcall(function()
 
 
 
+
+
+
+
             local skinID = nil
+
+
+
+
 
 
 
@@ -24750,7 +49499,15 @@ pcall(function()
 
 
 
+
+
+
+
             if self.WeaponPropSlot == ESurviveWeaponPropSlot.SWPS_MainShootWeapon1 then
+
+
+
+
 
 
 
@@ -24758,7 +49515,15 @@ pcall(function()
 
 
 
+
+
+
+
             elseif self.WeaponPropSlot == ESurviveWeaponPropSlot.SWPS_MainShootWeapon2 then
+
+
+
+
 
 
 
@@ -24766,7 +49531,15 @@ pcall(function()
 
 
 
+
+
+
+
             end
+
+
+
+
 
 
 
@@ -24774,7 +49547,15 @@ pcall(function()
 
 
 
+
+
+
+
             if skinIcon then
+
+
+
+
 
 
 
@@ -24782,7 +49563,15 @@ pcall(function()
 
 
 
+
+
+
+
             end
+
+
+
+
 
 
 
@@ -24790,7 +49579,15 @@ pcall(function()
 
 
 
+
+
+
+
     end
+
+
+
+
 
 
 
@@ -24798,7 +49595,15 @@ end)
 
 
 
+
+
+
+
 end
+
+
+
+
 
 
 
@@ -24810,7 +49615,19 @@ initFullskin()
 
 
 
+
+
+
+
+
+
+
+
 _G.ReadLiveConfig = function()
+
+
+
+
 
 
 
@@ -24818,7 +49635,19 @@ _G.ReadLiveConfig = function()
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -24830,11 +49659,27 @@ function _G.HK_GetVal(id)
 
 
 
+
+
+
+
     return _G.HK_Settings[id] or 0
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -24846,7 +49691,15 @@ end
 
 
 
+
+
+
+
 function _G.InitModMenuTab()
+
+
+
+
 
 
 
@@ -24854,7 +49707,15 @@ function _G.InitModMenuTab()
 
 
 
+
+
+
+
     if not LocUtil and package.loaded["client.common.LocUtil"] then LocUtil = require("client.common.LocUtil") end
+
+
+
+
 
 
 
@@ -24862,7 +49723,15 @@ function _G.InitModMenuTab()
 
 
 
+
+
+
+
     if LocUtil and not LocUtil._IsModMenuHooked then
+
+
+
+
 
 
 
@@ -24870,7 +49739,15 @@ function _G.InitModMenuTab()
 
 
 
+
+
+
+
         LocUtil.GetLocalizeResStr = function(id)
+
+
+
+
 
 
 
@@ -24878,7 +49755,15 @@ function _G.InitModMenuTab()
 
 
 
+
+
+
+
             return old_get(id)
+
+
+
+
 
 
 
@@ -24886,11 +49771,27 @@ function _G.InitModMenuTab()
 
 
 
+
+
+
+
         LocUtil._IsModMenuHooked = true
 
 
 
+
+
+
+
     end
+
+
+
+
+
+
+
+
 
 
 
@@ -24902,7 +49803,15 @@ function _G.InitModMenuTab()
 
 
 
+
+
+
+
     local SettingCatalog = require("client.logic.NewSetting.SettingCatalog")
+
+
+
+
 
 
 
@@ -24910,7 +49819,15 @@ function _G.InitModMenuTab()
 
 
 
+
+
+
+
     if not SettingPageDefine.ModMenu then
+
+
+
+
 
 
 
@@ -24918,7 +49835,15 @@ function _G.InitModMenuTab()
 
 
 
+
+
+
+
         
+
+
+
+
 
 
 
@@ -24926,7 +49851,15 @@ function _G.InitModMenuTab()
 
 
 
+
+
+
+
             local item = {
+
+
+
+
 
 
 
@@ -24934,7 +49867,15 @@ function _G.InitModMenuTab()
 
 
 
+
+
+
+
                 UI = AliasMap.Slider,
+
+
+
+
 
 
 
@@ -24942,7 +49883,15 @@ function _G.InitModMenuTab()
 
 
 
+
+
+
+
                 MinValue = minVal,
+
+
+
+
 
 
 
@@ -24950,7 +49899,15 @@ function _G.InitModMenuTab()
 
 
 
+
+
+
+
                 Min = minVal,
+
+
+
+
 
 
 
@@ -24958,7 +49915,15 @@ function _G.InitModMenuTab()
 
 
 
+
+
+
+
                 GetFunc = function() return _G.HK_Settings[key] or minVal end,
+
+
+
+
 
 
 
@@ -24966,7 +49931,15 @@ function _G.InitModMenuTab()
 
 
 
+
+
+
+
                     local val = math.floor(tonumber(value) or minVal)
+
+
+
+
 
 
 
@@ -24974,7 +49947,15 @@ function _G.InitModMenuTab()
 
 
 
+
+
+
+
                     if val > maxVal then val = maxVal end
+
+
+
+
 
 
 
@@ -24982,7 +49963,15 @@ function _G.InitModMenuTab()
 
 
 
+
+
+
+
                         _G.HK_Settings[key] = val
+
+
+
+
 
 
 
@@ -24990,7 +49979,15 @@ function _G.InitModMenuTab()
 
 
 
+
+
+
+
                         _G.MagicUpdateVersion = (_G.MagicUpdateVersion or 1) + 1
+
+
+
+
 
 
 
@@ -24998,7 +49995,15 @@ function _G.InitModMenuTab()
 
 
 
+
+
+
+
                     return true
+
+
+
+
 
 
 
@@ -25006,7 +50011,15 @@ function _G.InitModMenuTab()
 
 
 
+
+
+
+
             }
+
+
+
+
 
 
 
@@ -25014,11 +50027,23 @@ function _G.InitModMenuTab()
 
 
 
+
+
+
+
                 item.ExpandHandle = expandHandle
 
 
 
+
+
+
+
             end
+
+
+
+
 
 
 
@@ -25026,7 +50051,15 @@ function _G.InitModMenuTab()
 
 
 
+
+
+
+
         end
+
+
+
+
 
 
 
@@ -25034,7 +50067,15 @@ function _G.InitModMenuTab()
 
 
 
+
+
+
+
         local currentUID = _G.DX_CachedUID or (type(GetHardwareDeviceID) == "function" and GetHardwareDeviceID()) or (type(GetDeviceUID) == "function" and GetDeviceUID()) or "UNKNOWN"
+
+
+
+
 
 
 
@@ -25042,7 +50083,15 @@ function _G.InitModMenuTab()
 
 
 
+
+
+
+
             { UI = AliasMap.Title, Text = "AURA" },
+
+
+
+
 
 
 
@@ -25050,7 +50099,15 @@ function _G.InitModMenuTab()
 
 
 
+
+
+
+
         }
+
+
+
+
 
 
 
@@ -25058,7 +50115,15 @@ function _G.InitModMenuTab()
 
 
 
+
+
+
+
             Key = "ModMenu_Wall_Ex",
+
+
+
+
 
 
 
@@ -25066,7 +50131,15 @@ function _G.InitModMenuTab()
 
 
 
+
+
+
+
             Text = "▶ AURA / WALLHACK (1 Trắng|2 Đỏ|3 Vàng|4 Xanh lá|5 Xanh Ngọc|6Xanh Dương|7 Tím|8 Hồng|9 Đen)",
+
+
+
+
 
 
 
@@ -25074,7 +50147,15 @@ function _G.InitModMenuTab()
 
 
 
+
+
+
+
             GetFunc = function() return _G.HK_Settings.WALLHACK == 1 end,
+
+
+
+
 
 
 
@@ -25082,7 +50163,15 @@ function _G.InitModMenuTab()
 
 
 
+
+
+
+
                 _G.HK_Settings.WALLHACK = value and 1 or 0
+
+
+
+
 
 
 
@@ -25090,7 +50179,15 @@ function _G.InitModMenuTab()
 
 
 
+
+
+
+
                 _G.MagicUpdateVersion = (_G.MagicUpdateVersion or 1) + 1
+
+
+
+
 
 
 
@@ -25098,11 +50195,27 @@ function _G.InitModMenuTab()
 
 
 
+
+
+
+
             end
 
 
 
+
+
+
+
         })
+
+
+
+
+
+
+
+
 
 
 
@@ -25114,7 +50227,15 @@ function _G.InitModMenuTab()
 
 
 
+
+
+
+
         local function ResetWallColorCache()
+
+
+
+
 
 
 
@@ -25122,7 +50243,15 @@ function _G.InitModMenuTab()
 
 
 
+
+
+
+
                 local gd = GameplayData
+
+
+
+
 
 
 
@@ -25130,7 +50259,15 @@ function _G.InitModMenuTab()
 
 
 
+
+
+
+
                 for _, ch in pairs(ac) do
+
+
+
+
 
 
 
@@ -25138,7 +50275,15 @@ function _G.InitModMenuTab()
 
 
 
+
+
+
+
                         ch.WallhackApplied = false
+
+
+
+
 
 
 
@@ -25146,7 +50291,15 @@ function _G.InitModMenuTab()
 
 
 
+
+
+
+
                         ch.LastAuraMeshes = nil
+
+
+
+
 
 
 
@@ -25154,7 +50307,15 @@ function _G.InitModMenuTab()
 
 
 
+
+
+
+
                 end
+
+
+
+
 
 
 
@@ -25162,7 +50323,15 @@ function _G.InitModMenuTab()
 
 
 
+
+
+
+
             _G.EnvRequiresUpdate = true
+
+
+
+
 
 
 
@@ -25170,7 +50339,19 @@ function _G.InitModMenuTab()
 
 
 
+
+
+
+
         end
+
+
+
+
+
+
+
+
 
 
 
@@ -25182,7 +50363,15 @@ function _G.InitModMenuTab()
 
 
 
+
+
+
+
         table.insert(StackESP, {
+
+
+
+
 
 
 
@@ -25190,7 +50379,15 @@ function _G.InitModMenuTab()
 
 
 
+
+
+
+
             UI = AliasMap.Slider or "Slider",
+
+
+
+
 
 
 
@@ -25198,7 +50395,15 @@ function _G.InitModMenuTab()
 
 
 
+
+
+
+
             ExpandHandle = "ModMenu_Wall_Ex",
+
+
+
+
 
 
 
@@ -25206,7 +50411,15 @@ function _G.InitModMenuTab()
 
 
 
+
+
+
+
             MaxValue = 9,
+
+
+
+
 
 
 
@@ -25214,7 +50427,15 @@ function _G.InitModMenuTab()
 
 
 
+
+
+
+
             Max = 9,
+
+
+
+
 
 
 
@@ -25222,7 +50443,15 @@ function _G.InitModMenuTab()
 
 
 
+
+
+
+
             SetFunc = function(_, value)
+
+
+
+
 
 
 
@@ -25230,7 +50459,15 @@ function _G.InitModMenuTab()
 
 
 
+
+
+
+
                 _G.HK_Settings.WALL_VISIBLE_COLOR = math.max(1, math.min(9, v))
+
+
+
+
 
 
 
@@ -25238,7 +50475,15 @@ function _G.InitModMenuTab()
 
 
 
+
+
+
+
                 return true
+
+
+
+
 
 
 
@@ -25246,7 +50491,19 @@ function _G.InitModMenuTab()
 
 
 
+
+
+
+
         })
+
+
+
+
+
+
+
+
 
 
 
@@ -25258,7 +50515,15 @@ function _G.InitModMenuTab()
 
 
 
+
+
+
+
         table.insert(StackESP, {
+
+
+
+
 
 
 
@@ -25266,7 +50531,15 @@ function _G.InitModMenuTab()
 
 
 
+
+
+
+
             UI = AliasMap.Slider or "Slider",
+
+
+
+
 
 
 
@@ -25274,7 +50547,15 @@ function _G.InitModMenuTab()
 
 
 
+
+
+
+
             ExpandHandle = "ModMenu_Wall_Ex",
+
+
+
+
 
 
 
@@ -25282,7 +50563,15 @@ function _G.InitModMenuTab()
 
 
 
+
+
+
+
             MaxValue = 9,
+
+
+
+
 
 
 
@@ -25290,7 +50579,15 @@ function _G.InitModMenuTab()
 
 
 
+
+
+
+
             Max = 9,
+
+
+
+
 
 
 
@@ -25298,7 +50595,15 @@ function _G.InitModMenuTab()
 
 
 
+
+
+
+
             SetFunc = function(_, value)
+
+
+
+
 
 
 
@@ -25306,7 +50611,15 @@ function _G.InitModMenuTab()
 
 
 
+
+
+
+
                 _G.HK_Settings.WALL_OCCLUDED_COLOR = math.max(1, math.min(9, v))
+
+
+
+
 
 
 
@@ -25314,7 +50627,15 @@ function _G.InitModMenuTab()
 
 
 
+
+
+
+
                 return true
+
+
+
+
 
 
 
@@ -25322,7 +50643,19 @@ function _G.InitModMenuTab()
 
 
 
+
+
+
+
         })
+
+
+
+
+
+
+
+
 
 
 
@@ -25334,7 +50667,15 @@ function _G.InitModMenuTab()
 
 
 
+
+
+
+
         table.insert(StackESP, {
+
+
+
+
 
 
 
@@ -25342,7 +50683,15 @@ function _G.InitModMenuTab()
 
 
 
+
+
+
+
             UI = AliasMap.Slider or "Slider",
+
+
+
+
 
 
 
@@ -25350,7 +50699,15 @@ function _G.InitModMenuTab()
 
 
 
+
+
+
+
             ExpandHandle = "ModMenu_Wall_Ex",
+
+
+
+
 
 
 
@@ -25358,7 +50715,15 @@ function _G.InitModMenuTab()
 
 
 
+
+
+
+
             MaxValue = 9,
+
+
+
+
 
 
 
@@ -25366,7 +50731,15 @@ function _G.InitModMenuTab()
 
 
 
+
+
+
+
             Max = 9,
+
+
+
+
 
 
 
@@ -25374,7 +50747,15 @@ function _G.InitModMenuTab()
 
 
 
+
+
+
+
             SetFunc = function(_, value)
+
+
+
+
 
 
 
@@ -25382,7 +50763,15 @@ function _G.InitModMenuTab()
 
 
 
+
+
+
+
                 _G.HK_Settings.WALL_OCCLUDED_AI_COLOR = math.max(1, math.min(9, v))
+
+
+
+
 
 
 
@@ -25390,7 +50779,15 @@ function _G.InitModMenuTab()
 
 
 
+
+
+
+
                 return true
+
+
+
+
 
 
 
@@ -25398,7 +50795,15 @@ function _G.InitModMenuTab()
 
 
 
+
+
+
+
         })
+
+
+
+
 
 
 
@@ -25406,7 +50811,15 @@ function _G.InitModMenuTab()
 
 
 
+
+
+
+
         table.insert(StackESP, {
+
+
+
+
 
 
 
@@ -25414,7 +50827,15 @@ function _G.InitModMenuTab()
 
 
 
+
+
+
+
             UI = AliasMap.TitleSwitcher or "TitleSwitcher",
+
+
+
+
 
 
 
@@ -25422,7 +50843,15 @@ function _G.InitModMenuTab()
 
 
 
+
+
+
+
             GetFunc = function() return _G.HK_Settings.SPECTATOR_HP_BAR == 1 end,
+
+
+
+
 
 
 
@@ -25430,7 +50859,15 @@ function _G.InitModMenuTab()
 
 
 
+
+
+
+
                 _G.HK_Settings.SPECTATOR_HP_BAR = value and 1 or 0
+
+
+
+
 
 
 
@@ -25438,11 +50875,27 @@ function _G.InitModMenuTab()
 
 
 
+
+
+
+
             end
 
 
 
+
+
+
+
         })
+
+
+
+
+
+
+
+
 
 
 
@@ -25454,7 +50907,15 @@ function _G.InitModMenuTab()
 
 
 
+
+
+
+
             Key = "ModMenu", 
+
+
+
+
 
 
 
@@ -25462,7 +50923,15 @@ function _G.InitModMenuTab()
 
 
 
+
+
+
+
             text = "DX-MODS",
+
+
+
+
 
 
 
@@ -25470,7 +50939,15 @@ function _G.InitModMenuTab()
 
 
 
+
+
+
+
             title = "DX-MODS",
+
+
+
+
 
 
 
@@ -25478,7 +50955,15 @@ function _G.InitModMenuTab()
 
 
 
+
+
+
+
             UIKey = "Setting_Page_Privacy", 
+
+
+
+
 
 
 
@@ -25486,7 +50971,15 @@ function _G.InitModMenuTab()
 
 
 
+
+
+
+
                 { Key = "ModMenu_Cat1", loc = "AURA", text = "AURA", Text = "AURA", title = "AURA", Title = "AURA", Stack = StackESP },
+
+
+
+
 
 
 
@@ -25494,7 +50987,15 @@ function _G.InitModMenuTab()
 
 
 
+
+
+
+
                     local StackSkin = { { UI = AliasMap.Title, Text = "DX-MODS SKIN" } }
+
+
+
+
 
 
 
@@ -25502,7 +51003,15 @@ function _G.InitModMenuTab()
 
 
 
+
+
+
+
                         GetFunc = function() return _G.HK_Settings.ModSkin == 1 end,
+
+
+
+
 
 
 
@@ -25510,7 +51019,15 @@ function _G.InitModMenuTab()
 
 
 
+
+
+
+
                     table.insert(StackSkin, { Key = "ModMenu_UnlockWardrobe", UI = AliasMap.TitleSwitcher, Text = "▶ UNLOCK KHO ĐỒ SẢNH (Đầy đủ skin, xe, dù, thú cưng)", ExpandIndex = 0,
+
+
+
+
 
 
 
@@ -25518,7 +51035,15 @@ function _G.InitModMenuTab()
 
 
 
+
+
+
+
                         SetFunc = function(_, v)
+
+
+
+
 
 
 
@@ -25526,7 +51051,15 @@ function _G.InitModMenuTab()
 
 
 
+
+
+
+
                             if v then
+
+
+
+
 
 
 
@@ -25534,7 +51067,15 @@ function _G.InitModMenuTab()
 
 
 
+
+
+
+
                                 pcall(_G.DX_InitUnlockWardrobe)
+
+
+
+
 
 
 
@@ -25542,7 +51083,15 @@ function _G.InitModMenuTab()
 
 
 
+
+
+
+
                             return true
+
+
+
+
 
 
 
@@ -25550,7 +51099,15 @@ function _G.InitModMenuTab()
 
 
 
+
+
+
+
                     -- === Avatar ===
+
+
+
+
 
 
 
@@ -25558,7 +51115,15 @@ function _G.InitModMenuTab()
 
 
 
+
+
+
+
                         GetFunc = function() return _G.HK_Settings.SkinSuit or 1 end,
+
+
+
+
 
 
 
@@ -25566,7 +51131,15 @@ function _G.InitModMenuTab()
 
 
 
+
+
+
+
                     table.insert(StackSkin, { Key = "ModMenu_Skin_Bag", UI = AliasMap.Slider, Text = "   Balo (1-16)", ExpandHandle = "ModMenu_ModSkin", MinValue = 1, MaxValue = 16, Min = 1, Max = 16,
+
+
+
+
 
 
 
@@ -25574,7 +51147,15 @@ function _G.InitModMenuTab()
 
 
 
+
+
+
+
                         SetFunc = function(_, v) _G.HK_Settings.SkinBag = math.floor(v); pcall(_G.DX_RefreshSkinMaps); return true end })
+
+
+
+
 
 
 
@@ -25582,7 +51163,15 @@ function _G.InitModMenuTab()
 
 
 
+
+
+
+
                         GetFunc = function() return _G.HK_Settings.SkinHelmet or 1 end,
+
+
+
+
 
 
 
@@ -25590,7 +51179,15 @@ function _G.InitModMenuTab()
 
 
 
+
+
+
+
                     -- === Weapon ===
+
+
+
+
 
 
 
@@ -25598,7 +51195,15 @@ function _G.InitModMenuTab()
 
 
 
+
+
+
+
                         GetFunc = function() return _G.HK_Settings.SkinM416 or 1 end,
+
+
+
+
 
 
 
@@ -25606,7 +51211,15 @@ function _G.InitModMenuTab()
 
 
 
+
+
+
+
                     table.insert(StackSkin, { Key = "ModMenu_Skin_AKM", UI = AliasMap.Slider, Text = "   Súng AKM (1-8)", ExpandHandle = "ModMenu_ModSkin", MinValue = 1, MaxValue = 8, Min = 1, Max = 8,
+
+
+
+
 
 
 
@@ -25614,7 +51227,15 @@ function _G.InitModMenuTab()
 
 
 
+
+
+
+
                         SetFunc = function(_, v) _G.HK_Settings.SkinAKM = math.floor(v); pcall(_G.DX_RefreshSkinMaps); return true end })
+
+
+
+
 
 
 
@@ -25622,7 +51243,15 @@ function _G.InitModMenuTab()
 
 
 
+
+
+
+
                         GetFunc = function() return _G.HK_Settings.SkinSCAR or 1 end,
+
+
+
+
 
 
 
@@ -25630,7 +51259,15 @@ function _G.InitModMenuTab()
 
 
 
+
+
+
+
                     table.insert(StackSkin, { Key = "ModMenu_Skin_M762", UI = AliasMap.Slider, Text = "   Súng M762 (1-6)", ExpandHandle = "ModMenu_ModSkin", MinValue = 1, MaxValue = 6, Min = 1, Max = 6,
+
+
+
+
 
 
 
@@ -25638,7 +51275,15 @@ function _G.InitModMenuTab()
 
 
 
+
+
+
+
                         SetFunc = function(_, v) _G.HK_Settings.SkinM762 = math.floor(v); pcall(_G.DX_RefreshSkinMaps); return true end })
+
+
+
+
 
 
 
@@ -25646,7 +51291,15 @@ function _G.InitModMenuTab()
 
 
 
+
+
+
+
                         GetFunc = function() return _G.HK_Settings.SkinAUG or 1 end,
+
+
+
+
 
 
 
@@ -25654,7 +51307,15 @@ function _G.InitModMenuTab()
 
 
 
+
+
+
+
                     table.insert(StackSkin, { Key = "ModMenu_Skin_UMP", UI = AliasMap.Slider, Text = "   Súng UMP45 (1-5)", ExpandHandle = "ModMenu_ModSkin", MinValue = 1, MaxValue = 5, Min = 1, Max = 5,
+
+
+
+
 
 
 
@@ -25662,7 +51323,15 @@ function _G.InitModMenuTab()
 
 
 
+
+
+
+
                         SetFunc = function(_, v) _G.HK_Settings.SkinUMP = math.floor(v); pcall(_G.DX_RefreshSkinMaps); return true end })
+
+
+
+
 
 
 
@@ -25670,7 +51339,15 @@ function _G.InitModMenuTab()
 
 
 
+
+
+
+
                         GetFunc = function() return _G.HK_Settings.SkinUZI or 1 end,
+
+
+
+
 
 
 
@@ -25678,7 +51355,15 @@ function _G.InitModMenuTab()
 
 
 
+
+
+
+
                     table.insert(StackSkin, { Key = "ModMenu_Skin_Groza", UI = AliasMap.Slider, Text = "   Súng Groza (1-3)", ExpandHandle = "ModMenu_ModSkin", MinValue = 1, MaxValue = 3, Min = 1, Max = 3,
+
+
+
+
 
 
 
@@ -25686,7 +51371,15 @@ function _G.InitModMenuTab()
 
 
 
+
+
+
+
                         SetFunc = function(_, v) _G.HK_Settings.SkinGroza = math.floor(v); pcall(_G.DX_RefreshSkinMaps); return true end })
+
+
+
+
 
 
 
@@ -25694,7 +51387,15 @@ function _G.InitModMenuTab()
 
 
 
+
+
+
+
                     table.insert(StackSkin, { Key = "ModMenu_Skin_Dacia", UI = AliasMap.Slider, Text = "   Xe Dacia (1-70)", ExpandHandle = "ModMenu_ModSkin", MinValue = 1, MaxValue = 70, Min = 1, Max = 70,
+
+
+
+
 
 
 
@@ -25702,7 +51403,15 @@ function _G.InitModMenuTab()
 
 
 
+
+
+
+
                         SetFunc = function(_, v) _G.HK_Settings.SkinDacia = math.floor(v); pcall(_G.DX_RefreshSkinMaps); return true end })
+
+
+
+
 
 
 
@@ -25710,7 +51419,15 @@ function _G.InitModMenuTab()
 
 
 
+
+
+
+
                         GetFunc = function() return _G.HK_Settings.SkinUAZ or 1 end,
+
+
+
+
 
 
 
@@ -25718,7 +51435,15 @@ function _G.InitModMenuTab()
 
 
 
+
+
+
+
                     table.insert(StackSkin, { Key = "ModMenu_Skin_Coupe", UI = AliasMap.Slider, Text = "   Xe Coupe RB (1-70)", ExpandHandle = "ModMenu_ModSkin", MinValue = 1, MaxValue = 70, Min = 1, Max = 70,
+
+
+
+
 
 
 
@@ -25726,7 +51451,15 @@ function _G.InitModMenuTab()
 
 
 
+
+
+
+
                         SetFunc = function(_, v) _G.HK_Settings.SkinCoupe = math.floor(v); pcall(_G.DX_RefreshSkinMaps); return true end })
+
+
+
+
 
 
 
@@ -25734,7 +51467,15 @@ function _G.InitModMenuTab()
 
 
 
+
+
+
+
                         GetFunc = function() return _G.HK_Settings.SkinBuggy or 1 end,
+
+
+
+
 
 
 
@@ -25742,7 +51483,15 @@ function _G.InitModMenuTab()
 
 
 
+
+
+
+
                     table.insert(StackSkin, { Key = "ModMenu_Skin_Mirado", UI = AliasMap.Slider, Text = "   Xe Mirado (1-27)", ExpandHandle = "ModMenu_ModSkin", MinValue = 1, MaxValue = 27, Min = 1, Max = 27,
+
+
+
+
 
 
 
@@ -25750,7 +51499,15 @@ function _G.InitModMenuTab()
 
 
 
+
+
+
+
                         SetFunc = function(_, v) _G.HK_Settings.SkinMirado = math.floor(v); pcall(_G.DX_RefreshSkinMaps); return true end })
+
+
+
+
 
 
 
@@ -25758,7 +51515,15 @@ function _G.InitModMenuTab()
 
 
 
+
+
+
+
                 end)() }
+
+
+
+
 
 
 
@@ -25766,7 +51531,15 @@ function _G.InitModMenuTab()
 
 
 
+
+
+
+
         }
+
+
+
+
 
 
 
@@ -25774,7 +51547,15 @@ function _G.InitModMenuTab()
 
 
 
+
+
+
+
     end
+
+
+
+
 
 
 
@@ -25782,7 +51563,15 @@ function _G.InitModMenuTab()
 
 
 
+
+
+
+
     if UIManager and not UIManager._IsModMenuHooked then
+
+
+
+
 
 
 
@@ -25790,7 +51579,15 @@ function _G.InitModMenuTab()
 
 
 
+
+
+
+
         UIManager.ShowUI = function(config, ...)
+
+
+
+
 
 
 
@@ -25798,7 +51595,15 @@ function _G.InitModMenuTab()
 
 
 
+
+
+
+
             local n = select('#', ...)
+
+
+
+
 
 
 
@@ -25806,7 +51611,15 @@ function _G.InitModMenuTab()
 
 
 
+
+
+
+
                 local catalog = args[1]
+
+
+
+
 
 
 
@@ -25814,7 +51627,15 @@ function _G.InitModMenuTab()
 
 
 
+
+
+
+
                     local hasModMenu = false
+
+
+
+
 
 
 
@@ -25822,7 +51643,15 @@ function _G.InitModMenuTab()
 
 
 
+
+
+
+
                     for _, page in ipairs(catalog) do
+
+
+
+
 
 
 
@@ -25830,11 +51659,23 @@ function _G.InitModMenuTab()
 
 
 
+
+
+
+
                         if type(page) == "table" and page.Key == "ModMenu" then hasModMenu = true end
 
 
 
+
+
+
+
                     end
+
+
+
+
 
 
 
@@ -25842,7 +51683,15 @@ function _G.InitModMenuTab()
 
 
 
+
+
+
+
                         table.insert(newCatalog, 1, SettingPageDefine.ModMenu)
+
+
+
+
 
 
 
@@ -25850,7 +51699,15 @@ function _G.InitModMenuTab()
 
 
 
+
+
+
+
                     end
+
+
+
+
 
 
 
@@ -25858,7 +51715,15 @@ function _G.InitModMenuTab()
 
 
 
+
+
+
+
             end
+
+
+
+
 
 
 
@@ -25866,7 +51731,15 @@ function _G.InitModMenuTab()
 
 
 
+
+
+
+
             return old_ShowUI(config, table_unpack(args, 1, n))
+
+
+
+
 
 
 
@@ -25874,7 +51747,15 @@ function _G.InitModMenuTab()
 
 
 
+
+
+
+
         UIManager._IsModMenuHooked = true
+
+
+
+
 
 
 
@@ -25882,7 +51763,19 @@ function _G.InitModMenuTab()
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -25894,7 +51787,15 @@ end
 
 
 
+
+
+
+
 local slua_isValid = slua and slua.isValid
+
+
+
+
 
 
 
@@ -25902,7 +51803,15 @@ local string_lower = string.lower
 
 
 
+
+
+
+
 local string_find = string.find
+
+
+
+
 
 
 
@@ -25910,7 +51819,15 @@ local os_clock = os.clock
 
 
 
+
+
+
+
 local math_abs = math.abs
+
+
+
+
 
 
 
@@ -25918,11 +51835,23 @@ local math_random = math.random
 
 
 
+
+
+
+
 local math_sqrt = math.sqrt
 
 
 
+
+
+
+
 local math_floor = math.floor
+
+
+
+
 
 
 
@@ -25934,7 +51863,19 @@ local math_max = math.max
 
 
 
+
+
+
+
+
+
+
+
 local function GetRecoilWeaponKey(weaponName)
+
+
+
+
 
 
 
@@ -25942,7 +51883,15 @@ local function GetRecoilWeaponKey(weaponName)
 
 
 
+
+
+
+
     local n = string.lower(weaponName)
+
+
+
+
 
 
 
@@ -25950,7 +51899,15 @@ local function GetRecoilWeaponKey(weaponName)
 
 
 
+
+
+
+
     elseif n:find("akm") and not n:find("ace") then return "REC_W_AKM"
+
+
+
+
 
 
 
@@ -25958,7 +51915,15 @@ local function GetRecoilWeaponKey(weaponName)
 
 
 
+
+
+
+
     elseif n:find("groza") then return "REC_W_Groza"
+
+
+
+
 
 
 
@@ -25966,7 +51931,15 @@ local function GetRecoilWeaponKey(weaponName)
 
 
 
+
+
+
+
     elseif n:find("qbz") then return "REC_W_QBZ"
+
+
+
+
 
 
 
@@ -25974,7 +51947,15 @@ local function GetRecoilWeaponKey(weaponName)
 
 
 
+
+
+
+
     elseif n:find("g36") then return "REC_W_G36C"
+
+
+
+
 
 
 
@@ -25982,7 +51963,15 @@ local function GetRecoilWeaponKey(weaponName)
 
 
 
+
+
+
+
     elseif n:find("ace32") then return "REC_W_ACE32"
+
+
+
+
 
 
 
@@ -25990,7 +51979,15 @@ local function GetRecoilWeaponKey(weaponName)
 
 
 
+
+
+
+
     elseif n:find("sks") then return "REC_W_SKS"
+
+
+
+
 
 
 
@@ -25998,7 +51995,15 @@ local function GetRecoilWeaponKey(weaponName)
 
 
 
+
+
+
+
     elseif n:find("mini") then return "REC_W_Mini14"
+
+
+
+
 
 
 
@@ -26006,7 +52011,15 @@ local function GetRecoilWeaponKey(weaponName)
 
 
 
+
+
+
+
     elseif n:find("qbu") then return "REC_W_QBU"
+
+
+
+
 
 
 
@@ -26014,7 +52027,15 @@ local function GetRecoilWeaponKey(weaponName)
 
 
 
+
+
+
+
     elseif n:find("vss") then return "REC_W_VSS"
+
+
+
+
 
 
 
@@ -26022,7 +52043,15 @@ local function GetRecoilWeaponKey(weaponName)
 
 
 
+
+
+
+
     elseif n:find("ump") then return "REC_W_UMP45"
+
+
+
+
 
 
 
@@ -26030,7 +52059,15 @@ local function GetRecoilWeaponKey(weaponName)
 
 
 
+
+
+
+
     elseif n:find("tommy") then return "REC_W_Tommy"
+
+
+
+
 
 
 
@@ -26038,7 +52075,15 @@ local function GetRecoilWeaponKey(weaponName)
 
 
 
+
+
+
+
     elseif n:find("mp5") then return "REC_W_MP5K"
+
+
+
+
 
 
 
@@ -26046,7 +52091,15 @@ local function GetRecoilWeaponKey(weaponName)
 
 
 
+
+
+
+
     elseif n:find("dp28") then return "REC_W_DP28"
+
+
+
+
 
 
 
@@ -26054,7 +52107,15 @@ local function GetRecoilWeaponKey(weaponName)
 
 
 
+
+
+
+
     elseif n:find("mg3") then return "REC_W_MG3"
+
+
+
+
 
 
 
@@ -26062,11 +52123,27 @@ local function GetRecoilWeaponKey(weaponName)
 
 
 
+
+
+
+
     return nil
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -26078,7 +52155,15 @@ local function GetScopeWeaponKey(weaponName)
 
 
 
+
+
+
+
     if not weaponName or weaponName == "" then return nil end
+
+
+
+
 
 
 
@@ -26086,7 +52171,15 @@ local function GetScopeWeaponKey(weaponName)
 
 
 
+
+
+
+
     if n:find("m416") then return "REC_SS_W_M416"
+
+
+
+
 
 
 
@@ -26094,7 +52187,15 @@ local function GetScopeWeaponKey(weaponName)
 
 
 
+
+
+
+
     elseif n:find("scar") then return "REC_SS_W_SCAR"
+
+
+
+
 
 
 
@@ -26102,7 +52203,15 @@ local function GetScopeWeaponKey(weaponName)
 
 
 
+
+
+
+
     elseif n:find("aug") then return "REC_SS_W_AUG"
+
+
+
+
 
 
 
@@ -26110,7 +52219,15 @@ local function GetScopeWeaponKey(weaponName)
 
 
 
+
+
+
+
     elseif n:find("m762") then return "REC_SS_W_M762"
+
+
+
+
 
 
 
@@ -26118,7 +52235,15 @@ local function GetScopeWeaponKey(weaponName)
 
 
 
+
+
+
+
     elseif n:find("famas") then return "REC_SS_W_FAMAS"
+
+
+
+
 
 
 
@@ -26126,7 +52251,15 @@ local function GetScopeWeaponKey(weaponName)
 
 
 
+
+
+
+
     elseif n:find("honey") then return "REC_SS_W_Honey"
+
+
+
+
 
 
 
@@ -26134,7 +52267,15 @@ local function GetScopeWeaponKey(weaponName)
 
 
 
+
+
+
+
     elseif n:find("slr") then return "REC_SS_W_SLR"
+
+
+
+
 
 
 
@@ -26142,7 +52283,15 @@ local function GetScopeWeaponKey(weaponName)
 
 
 
+
+
+
+
     elseif n:find("mk14") then return "REC_SS_W_Mk14"
+
+
+
+
 
 
 
@@ -26150,7 +52299,15 @@ local function GetScopeWeaponKey(weaponName)
 
 
 
+
+
+
+
     elseif n:find("mk12") then return "REC_SS_W_Mk12"
+
+
+
+
 
 
 
@@ -26158,7 +52315,15 @@ local function GetScopeWeaponKey(weaponName)
 
 
 
+
+
+
+
     elseif n:find("uzi") then return "REC_SS_W_UZI"
+
+
+
+
 
 
 
@@ -26166,7 +52331,15 @@ local function GetScopeWeaponKey(weaponName)
 
 
 
+
+
+
+
     elseif n:find("vector") then return "REC_SS_W_Vector"
+
+
+
+
 
 
 
@@ -26174,7 +52347,15 @@ local function GetScopeWeaponKey(weaponName)
 
 
 
+
+
+
+
     elseif n:find("bizon") then return "REC_SS_W_Bizon"
+
+
+
+
 
 
 
@@ -26182,7 +52363,15 @@ local function GetScopeWeaponKey(weaponName)
 
 
 
+
+
+
+
     elseif n:find("p90") then return "REC_SS_W_P90"
+
+
+
+
 
 
 
@@ -26190,7 +52379,15 @@ local function GetScopeWeaponKey(weaponName)
 
 
 
+
+
+
+
     elseif n:find("m249") then return "REC_SS_W_M249"
+
+
+
+
 
 
 
@@ -26198,7 +52395,15 @@ local function GetScopeWeaponKey(weaponName)
 
 
 
+
+
+
+
     end
+
+
+
+
 
 
 
@@ -26206,7 +52411,19 @@ local function GetScopeWeaponKey(weaponName)
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -26218,7 +52435,15 @@ local FVecZero = FVector(0,0,0)
 
 
 
+
+
+
+
 local COLOR_CYAN    = {R=0, G=255, B=255, A=255}
+
+
+
+
 
 
 
@@ -26226,7 +52451,15 @@ local COLOR_YELLOW  = {R=255, G=255, B=0, A=255}
 
 
 
+
+
+
+
 local COLOR_RED     = {R=255, G=0, B=0, A=255}
+
+
+
+
 
 
 
@@ -26238,7 +52471,19 @@ local COLOR_GREEN   = {R=0, G=255, B=0, A=255}
 
 
 
+
+
+
+
+
+
+
+
 local function AuraColor(r, g, b, a)
+
+
+
+
 
 
 
@@ -26246,11 +52491,27 @@ local function AuraColor(r, g, b, a)
 
 
 
+
+
+
+
     return {R=r, G=g, B=b, A=a, r=r, g=g, b=b, a=a}
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -26262,7 +52523,15 @@ end
 
 
 
+
+
+
+
 -- Các giá trị RGB đã được nhân với hệ số phát sáng 3.5 để tạo hiệu ứng Glow/Bloom
+
+
+
+
 
 
 
@@ -26270,7 +52539,15 @@ local WALL_COLOR_PRESETS = {
 
 
 
+
+
+
+
     [1] = {3.5, 3.5, 3.5, 1.0},  -- Trắng phát sáng   (Emissive White)
+
+
+
+
 
 
 
@@ -26278,7 +52555,15 @@ local WALL_COLOR_PRESETS = {
 
 
 
+
+
+
+
     [3] = {3.5, 3.15, 0.0, 1.0}, -- Vàng phát sáng   (Emissive Yellow)
+
+
+
+
 
 
 
@@ -26286,7 +52571,15 @@ local WALL_COLOR_PRESETS = {
 
 
 
+
+
+
+
     [5] = {0.0, 3.5, 3.15, 1.0}, -- Xanh Ngọc phát sáng (Emissive Cyan)
+
+
+
+
 
 
 
@@ -26294,7 +52587,15 @@ local WALL_COLOR_PRESETS = {
 
 
 
+
+
+
+
     [7] = {0.829, 0.229, 3.829, 1.0}, -- Tím phát sáng    (Emissive Purple)
+
+
+
+
 
 
 
@@ -26302,7 +52603,15 @@ local WALL_COLOR_PRESETS = {
 
 
 
+
+
+
+
     [9] = {0.0, 0.0, 0.0, 1.0},  -- Đen (Không phát sáng vì các giá trị gốc bằng 0)
+
+
+
+
 
 
 
@@ -26310,7 +52619,15 @@ local WALL_COLOR_PRESETS = {
 
 
 
+
+
+
+
 local function GetWallColorByIndex(idx)
+
+
+
+
 
 
 
@@ -26318,11 +52635,23 @@ local function GetWallColorByIndex(idx)
 
 
 
+
+
+
+
     return AuraColor(p[1], p[2], p[3], 1.0)
 
 
 
+
+
+
+
 end
+
+
+
+
 
 
 
@@ -26330,11 +52659,23 @@ local function GetCurrentWallVisibleColor()
 
 
 
+
+
+
+
     return GetWallColorByIndex((_G.HK_Settings and _G.HK_Settings.WALL_VISIBLE_COLOR) or 3)
 
 
 
+
+
+
+
 end
+
+
+
+
 
 
 
@@ -26342,7 +52683,15 @@ local function GetCurrentWallOccludedColor(isAI)
 
 
 
+
+
+
+
     if isAI then
+
+
+
+
 
 
 
@@ -26350,7 +52699,15 @@ local function GetCurrentWallOccludedColor(isAI)
 
 
 
+
+
+
+
     else
+
+
+
+
 
 
 
@@ -26358,11 +52715,27 @@ local function GetCurrentWallOccludedColor(isAI)
 
 
 
+
+
+
+
     end
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -26374,7 +52747,15 @@ local COLOR_AURA_VISIBLE = AuraColor(10.0, 10.0, 0.0, 1.0)
 
 
 
+
+
+
+
 local COLOR_AURA_PLAYER  = AuraColor(10.0, 0.0, 0.0, 1.0)
+
+
+
+
 
 
 
@@ -26386,7 +52767,19 @@ local COLOR_AURA_AI      = AuraColor(0.829, 0.229, 3.829, 1.0)
 
 
 
+
+
+
+
+
+
+
+
 local function ApplyAuraToMeshComponent(mesh, visibleColor, occludedColor)
+
+
+
+
 
 
 
@@ -26394,7 +52787,15 @@ local function ApplyAuraToMeshComponent(mesh, visibleColor, occludedColor)
 
 
 
+
+
+
+
     if slua_isValid and not slua_isValid(mesh) then return end
+
+
+
+
 
 
 
@@ -26402,7 +52803,15 @@ local function ApplyAuraToMeshComponent(mesh, visibleColor, occludedColor)
 
 
 
+
+
+
+
         mesh:SetDrawDyeing(true)
+
+
+
+
 
 
 
@@ -26410,7 +52819,15 @@ local function ApplyAuraToMeshComponent(mesh, visibleColor, occludedColor)
 
 
 
+
+
+
+
         mesh:SetVisibleDyeingColor(visibleColor)
+
+
+
+
 
 
 
@@ -26418,7 +52835,15 @@ local function ApplyAuraToMeshComponent(mesh, visibleColor, occludedColor)
 
 
 
+
+
+
+
         mesh:SetDyeingColorFadeDistance(99999.0)
+
+
+
+
 
 
 
@@ -26426,7 +52851,15 @@ local function ApplyAuraToMeshComponent(mesh, visibleColor, occludedColor)
 
 
 
+
+
+
+
         mesh:SetDrawHighlight(true)
+
+
+
+
 
 
 
@@ -26434,7 +52867,15 @@ local function ApplyAuraToMeshComponent(mesh, visibleColor, occludedColor)
 
 
 
+
+
+
+
         mesh:SetCustomDepthStencilValue(255)
+
+
+
+
 
 
 
@@ -26442,7 +52883,19 @@ local function ApplyAuraToMeshComponent(mesh, visibleColor, occludedColor)
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -26454,7 +52907,15 @@ local function ResetMeshAuraComponent(mesh)
 
 
 
+
+
+
+
     if not mesh then return end
+
+
+
+
 
 
 
@@ -26462,7 +52923,15 @@ local function ResetMeshAuraComponent(mesh)
 
 
 
+
+
+
+
     pcall(function()
+
+
+
+
 
 
 
@@ -26470,7 +52939,15 @@ local function ResetMeshAuraComponent(mesh)
 
 
 
+
+
+
+
         mesh:SetDrawHighlight(false)
+
+
+
+
 
 
 
@@ -26478,7 +52955,15 @@ local function ResetMeshAuraComponent(mesh)
 
 
 
+
+
+
+
         mesh:SetCustomDepthStencilValue(0)
+
+
+
+
 
 
 
@@ -26486,7 +52971,19 @@ local function ResetMeshAuraComponent(mesh)
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -26498,7 +52995,15 @@ local function IsParachuteComponent(comp)
 
 
 
+
+
+
+
     if not comp then return false end
+
+
+
+
 
 
 
@@ -26506,7 +53011,15 @@ local function IsParachuteComponent(comp)
 
 
 
+
+
+
+
         local name = comp.GetName and string.lower(tostring(comp:GetName())) or ""
+
+
+
+
 
 
 
@@ -26514,7 +53027,15 @@ local function IsParachuteComponent(comp)
 
 
 
+
+
+
+
         local path = comp.GetPathName and string.lower(tostring(comp:GetPathName())) or ""
+
+
+
+
 
 
 
@@ -26522,7 +53043,15 @@ local function IsParachuteComponent(comp)
 
 
 
+
+
+
+
         return false
+
+
+
+
 
 
 
@@ -26530,11 +53059,31 @@ local function IsParachuteComponent(comp)
 
 
 
+
+
+
+
     return ok and res or false
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -26550,7 +53099,15 @@ local function Valid(obj)
 
 
 
+
+
+
+
     if not obj then return false end
+
+
+
+
 
 
 
@@ -26558,11 +53115,23 @@ local function Valid(obj)
 
 
 
+
+
+
+
         return slua.isValid(obj)
 
 
 
+
+
+
+
     end
+
+
+
+
 
 
 
@@ -26570,7 +53139,15 @@ local function Valid(obj)
 
 
 
+
+
+
+
         return slua_isValid(obj)
+
+
+
+
 
 
 
@@ -26578,11 +53155,27 @@ local function Valid(obj)
 
 
 
+
+
+
+
     return true
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -26594,7 +53187,15 @@ local function CheckIsAI(pawn)
 
 
 
+
+
+
+
     if not Valid(pawn) then return false end
+
+
+
+
 
 
 
@@ -26602,7 +53203,15 @@ local function CheckIsAI(pawn)
 
 
 
+
+
+
+
     
+
+
+
+
 
 
 
@@ -26610,7 +53219,15 @@ local function CheckIsAI(pawn)
 
 
 
+
+
+
+
     local hasChecked = false
+
+
+
+
 
 
 
@@ -26618,7 +53235,15 @@ local function CheckIsAI(pawn)
 
 
 
+
+
+
+
     pcall(function()
+
+
+
+
 
 
 
@@ -26626,11 +53251,23 @@ local function CheckIsAI(pawn)
 
 
 
+
+
+
+
             isAI = pawn.bEnsure
 
 
 
+
+
+
+
             hasChecked = true
+
+
+
+
 
 
 
@@ -26638,7 +53275,15 @@ local function CheckIsAI(pawn)
 
 
 
+
+
+
+
             isAI = pawn:GetMEnsure()
+
+
+
+
 
 
 
@@ -26646,7 +53291,19 @@ local function CheckIsAI(pawn)
 
 
 
+
+
+
+
         end
+
+
+
+
+
+
+
+
 
 
 
@@ -26658,7 +53315,15 @@ local function CheckIsAI(pawn)
 
 
 
+
+
+
+
             if pawn.bIsAI == true or pawn.IsAI == true then 
+
+
+
+
 
 
 
@@ -26666,7 +53331,15 @@ local function CheckIsAI(pawn)
 
 
 
+
+
+
+
                 hasChecked = true
+
+
+
+
 
 
 
@@ -26674,11 +53347,23 @@ local function CheckIsAI(pawn)
 
 
 
+
+
+
+
                 isAI = true
 
 
 
+
+
+
+
                 hasChecked = true
+
+
+
+
 
 
 
@@ -26686,7 +53371,15 @@ local function CheckIsAI(pawn)
 
 
 
+
+
+
+
                 isAI = true
+
+
+
+
 
 
 
@@ -26694,11 +53387,23 @@ local function CheckIsAI(pawn)
 
 
 
+
+
+
+
             end
 
 
 
+
+
+
+
             
+
+
+
+
 
 
 
@@ -26706,7 +53411,15 @@ local function CheckIsAI(pawn)
 
 
 
+
+
+
+
                 isAI = true
+
+
+
+
 
 
 
@@ -26714,11 +53427,23 @@ local function CheckIsAI(pawn)
 
 
 
+
+
+
+
             end
 
 
 
+
+
+
+
             
+
+
+
+
 
 
 
@@ -26726,7 +53451,15 @@ local function CheckIsAI(pawn)
 
 
 
+
+
+
+
             if Valid(pState) then
+
+
+
+
 
 
 
@@ -26734,11 +53467,23 @@ local function CheckIsAI(pawn)
 
 
 
+
+
+
+
                 if pState.bIsABot == true or pState.bIsBot == true then
 
 
 
+
+
+
+
                     isAI = true
+
+
+
+
 
 
 
@@ -26746,7 +53491,15 @@ local function CheckIsAI(pawn)
 
 
 
+
+
+
+
                     isAI = true
+
+
+
+
 
 
 
@@ -26754,7 +53507,15 @@ local function CheckIsAI(pawn)
 
 
 
+
+
+
+
             end
+
+
+
+
 
 
 
@@ -26762,7 +53523,15 @@ local function CheckIsAI(pawn)
 
 
 
+
+
+
+
             if not isAI then
+
+
+
+
 
 
 
@@ -26770,7 +53539,15 @@ local function CheckIsAI(pawn)
 
 
 
+
+
+
+
                 if name ~= "" then
+
+
+
+
 
 
 
@@ -26778,7 +53555,15 @@ local function CheckIsAI(pawn)
 
 
 
+
+
+
+
                         isAI = true
+
+
+
+
 
 
 
@@ -26786,7 +53571,15 @@ local function CheckIsAI(pawn)
 
 
 
+
+
+
+
                     hasChecked = true
+
+
+
+
 
 
 
@@ -26794,7 +53587,15 @@ local function CheckIsAI(pawn)
 
 
 
+
+
+
+
             end
+
+
+
+
 
 
 
@@ -26802,11 +53603,23 @@ local function CheckIsAI(pawn)
 
 
 
+
+
+
+
     end)
 
 
 
+
+
+
+
     
+
+
+
+
 
 
 
@@ -26814,7 +53627,15 @@ local function CheckIsAI(pawn)
 
 
 
+
+
+
+
         pawn.HK_IsAICached = isAI
+
+
+
+
 
 
 
@@ -26822,7 +53643,15 @@ local function CheckIsAI(pawn)
 
 
 
+
+
+
+
     
+
+
+
+
 
 
 
@@ -26830,7 +53659,23 @@ local function CheckIsAI(pawn)
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -26846,7 +53691,15 @@ local function GetActorBoneWorldPos(actor, boneName, boneIdx)
 
 
 
+
+
+
+
     if not slua_isValid(actor) then return nil end
+
+
+
+
 
 
 
@@ -26854,11 +53707,23 @@ local function GetActorBoneWorldPos(actor, boneName, boneIdx)
 
 
 
+
+
+
+
     local pos = nil
 
 
 
+
+
+
+
     
+
+
+
+
 
 
 
@@ -26866,7 +53731,15 @@ local function GetActorBoneWorldPos(actor, boneName, boneIdx)
 
 
 
+
+
+
+
         local getSocketLocation = mesh.GetSocketLocation
+
+
+
+
 
 
 
@@ -26874,11 +53747,23 @@ local function GetActorBoneWorldPos(actor, boneName, boneIdx)
 
 
 
+
+
+
+
             pos = getSocketLocation(mesh, boneName)
 
 
 
+
+
+
+
         end
+
+
+
+
 
 
 
@@ -26886,7 +53771,15 @@ local function GetActorBoneWorldPos(actor, boneName, boneIdx)
 
 
 
+
+
+
+
             local getBonePosition = mesh.GetBonePosition
+
+
+
+
 
 
 
@@ -26894,7 +53787,15 @@ local function GetActorBoneWorldPos(actor, boneName, boneIdx)
 
 
 
+
+
+
+
                 pos = getBonePosition(mesh, boneName)
+
+
+
+
 
 
 
@@ -26902,7 +53803,15 @@ local function GetActorBoneWorldPos(actor, boneName, boneIdx)
 
 
 
+
+
+
+
         end
+
+
+
+
 
 
 
@@ -26910,7 +53819,15 @@ local function GetActorBoneWorldPos(actor, boneName, boneIdx)
 
 
 
+
+
+
+
     
+
+
+
+
 
 
 
@@ -26918,7 +53835,15 @@ local function GetActorBoneWorldPos(actor, boneName, boneIdx)
 
 
 
+
+
+
+
         local getBonePos = actor.GetBonePos
+
+
+
+
 
 
 
@@ -26926,7 +53851,15 @@ local function GetActorBoneWorldPos(actor, boneName, boneIdx)
 
 
 
+
+
+
+
             pos = getBonePos(actor, boneName, {X=0, Y=0, Z=0})
+
+
+
+
 
 
 
@@ -26934,7 +53867,15 @@ local function GetActorBoneWorldPos(actor, boneName, boneIdx)
 
 
 
+
+
+
+
             local getSocketLocation = actor.GetSocketLocation
+
+
+
+
 
 
 
@@ -26942,7 +53883,15 @@ local function GetActorBoneWorldPos(actor, boneName, boneIdx)
 
 
 
+
+
+
+
                 pos = getSocketLocation(actor, boneName)
+
+
+
+
 
 
 
@@ -26950,7 +53899,15 @@ local function GetActorBoneWorldPos(actor, boneName, boneIdx)
 
 
 
+
+
+
+
         end
+
+
+
+
 
 
 
@@ -26958,7 +53915,15 @@ local function GetActorBoneWorldPos(actor, boneName, boneIdx)
 
 
 
+
+
+
+
     
+
+
+
+
 
 
 
@@ -26966,7 +53931,15 @@ local function GetActorBoneWorldPos(actor, boneName, boneIdx)
 
 
 
+
+
+
+
         local k2_GetActorLocation = actor.K2_GetActorLocation
+
+
+
+
 
 
 
@@ -26974,7 +53947,15 @@ local function GetActorBoneWorldPos(actor, boneName, boneIdx)
 
 
 
+
+
+
+
             pos = k2_GetActorLocation(actor)
+
+
+
+
 
 
 
@@ -26982,7 +53963,15 @@ local function GetActorBoneWorldPos(actor, boneName, boneIdx)
 
 
 
+
+
+
+
                 local heightOffset = 0
+
+
+
+
 
 
 
@@ -26990,7 +53979,15 @@ local function GetActorBoneWorldPos(actor, boneName, boneIdx)
 
 
 
+
+
+
+
                 if not isCrouching then
+
+
+
+
 
 
 
@@ -26998,7 +53995,15 @@ local function GetActorBoneWorldPos(actor, boneName, boneIdx)
 
 
 
+
+
+
+
                     if isCrouchingFunc then isCrouching = isCrouchingFunc(actor) end
+
+
+
+
 
 
 
@@ -27006,7 +54011,15 @@ local function GetActorBoneWorldPos(actor, boneName, boneIdx)
 
 
 
+
+
+
+
                 
+
+
+
+
 
 
 
@@ -27014,7 +54027,15 @@ local function GetActorBoneWorldPos(actor, boneName, boneIdx)
 
 
 
+
+
+
+
                 if not isProning then
+
+
+
+
 
 
 
@@ -27022,11 +54043,23 @@ local function GetActorBoneWorldPos(actor, boneName, boneIdx)
 
 
 
+
+
+
+
                     if isProningFunc then isProning = isProningFunc(actor) end
 
 
 
+
+
+
+
                 end
+
+
+
+
 
 
 
@@ -27034,7 +54067,15 @@ local function GetActorBoneWorldPos(actor, boneName, boneIdx)
 
 
 
+
+
+
+
                 if boneIdx == 1 then
+
+
+
+
 
 
 
@@ -27042,7 +54083,15 @@ local function GetActorBoneWorldPos(actor, boneName, boneIdx)
 
 
 
+
+
+
+
                 elseif boneIdx == 2 then
+
+
+
+
 
 
 
@@ -27050,7 +54099,15 @@ local function GetActorBoneWorldPos(actor, boneName, boneIdx)
 
 
 
+
+
+
+
                 elseif boneIdx == 3 then
+
+
+
+
 
 
 
@@ -27058,7 +54115,15 @@ local function GetActorBoneWorldPos(actor, boneName, boneIdx)
 
 
 
+
+
+
+
                 elseif boneIdx == 4 then
+
+
+
+
 
 
 
@@ -27066,7 +54131,15 @@ local function GetActorBoneWorldPos(actor, boneName, boneIdx)
 
 
 
+
+
+
+
                 end
+
+
+
+
 
 
 
@@ -27074,11 +54147,23 @@ local function GetActorBoneWorldPos(actor, boneName, boneIdx)
 
 
 
+
+
+
+
             end
 
 
 
+
+
+
+
         end
+
+
+
+
 
 
 
@@ -27086,7 +54171,15 @@ local function GetActorBoneWorldPos(actor, boneName, boneIdx)
 
 
 
+
+
+
+
     
+
+
+
+
 
 
 
@@ -27094,6 +54187,10 @@ local function GetActorBoneWorldPos(actor, boneName, boneIdx)
 
 
 
+
+
+
+
 end
 
 
@@ -27102,7 +54199,19 @@ end
 
 
 
+
+
+
+
+
+
+
+
 -- ========================================== 
+
+
+
+
 
 
 
@@ -27110,7 +54219,15 @@ end
 
 
 
+
+
+
+
 -- ========================================== 
+
+
+
+
 
 
 
@@ -27118,7 +54235,15 @@ local function SafeAddMark(id, pos, z, str, size, actor)
 
 
 
+
+
+
+
     local mark = nil
+
+
+
+
 
 
 
@@ -27126,7 +54251,15 @@ local function SafeAddMark(id, pos, z, str, size, actor)
 
 
 
+
+
+
+
         local InGameMarkTools = require("GameLua.Mod.BaseMod.Common.InGameMarkTools")
+
+
+
+
 
 
 
@@ -27134,7 +54267,15 @@ local function SafeAddMark(id, pos, z, str, size, actor)
 
 
 
+
+
+
+
             mark = InGameMarkTools.ClientAddMapMark(id, pos, z, str, size, actor)
+
+
+
+
 
 
 
@@ -27142,7 +54283,15 @@ local function SafeAddMark(id, pos, z, str, size, actor)
 
 
 
+
+
+
+
                 if not _G.LexusState then _G.LexusState = {} end
+
+
+
+
 
 
 
@@ -27150,7 +54299,15 @@ local function SafeAddMark(id, pos, z, str, size, actor)
 
 
 
+
+
+
+
                 _G.LexusState.TrackedMarks[mark] = true
+
+
+
+
 
 
 
@@ -27158,7 +54315,15 @@ local function SafeAddMark(id, pos, z, str, size, actor)
 
 
 
+
+
+
+
         end
+
+
+
+
 
 
 
@@ -27166,11 +54331,27 @@ local function SafeAddMark(id, pos, z, str, size, actor)
 
 
 
+
+
+
+
     return mark
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -27182,7 +54363,15 @@ local function SafeRemoveMark(mark)
 
 
 
+
+
+
+
     if not mark then return end
+
+
+
+
 
 
 
@@ -27190,7 +54379,15 @@ local function SafeRemoveMark(mark)
 
 
 
+
+
+
+
         local InGameMarkTools = require("GameLua.Mod.BaseMod.Common.InGameMarkTools")
+
+
+
+
 
 
 
@@ -27198,11 +54395,23 @@ local function SafeRemoveMark(mark)
 
 
 
+
+
+
+
             InGameMarkTools.HideMapMark(mark)
 
 
 
+
+
+
+
         end
+
+
+
+
 
 
 
@@ -27210,7 +54419,15 @@ local function SafeRemoveMark(mark)
 
 
 
+
+
+
+
             InGameMarkTools.RemoveMapMark(mark)
+
+
+
+
 
 
 
@@ -27218,7 +54435,15 @@ local function SafeRemoveMark(mark)
 
 
 
+
+
+
+
     end)
+
+
+
+
 
 
 
@@ -27226,7 +54451,15 @@ local function SafeRemoveMark(mark)
 
 
 
+
+
+
+
         _G.LexusState.TrackedMarks[mark] = nil
+
+
+
+
 
 
 
@@ -27234,7 +54467,19 @@ local function SafeRemoveMark(mark)
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -27246,7 +54491,15 @@ local function InitializeNativeESP()
 
 
 
+
+
+
+
     if _G.LexusState and _G.LexusState.NativeESPReady then return end
+
+
+
+
 
 
 
@@ -27254,7 +54507,15 @@ local function InitializeNativeESP()
 
 
 
+
+
+
+
         local GamePlayTools = require("GameLua.Mod.BaseMod.Common.GamePlayTools") 
+
+
+
+
 
 
 
@@ -27262,7 +54523,15 @@ local function InitializeNativeESP()
 
 
 
+
+
+
+
         local function ApplyCfg(cfg)
+
+
+
+
 
 
 
@@ -27270,7 +54539,15 @@ local function InitializeNativeESP()
 
 
 
+
+
+
+
             if cfg[1006] then 
+
+
+
+
 
 
 
@@ -27278,7 +54555,15 @@ local function InitializeNativeESP()
 
 
 
+
+
+
+
                 cfg[1006].bBindOutScreen = true 
+
+
+
+
 
 
 
@@ -27286,7 +54571,15 @@ local function InitializeNativeESP()
 
 
 
+
+
+
+
                 cfg[1006].MaxShowDistance = 6000000 
+
+
+
+
 
 
 
@@ -27294,7 +54587,15 @@ local function InitializeNativeESP()
 
 
 
+
+
+
+
                 cfg[1006].BindSocketName = "root" 
+
+
+
+
 
 
 
@@ -27302,7 +54603,15 @@ local function InitializeNativeESP()
 
 
 
+
+
+
+
                 cfg[1006].WorldPositionOffset = FVector(0, 0, -30) 
+
+
+
+
 
 
 
@@ -27310,7 +54619,15 @@ local function InitializeNativeESP()
 
 
 
+
+
+
+
         end 
+
+
+
+
 
 
 
@@ -27318,7 +54635,15 @@ local function InitializeNativeESP()
 
 
 
+
+
+
+
         for k, cfg in pairs(package.loaded) do 
+
+
+
+
 
 
 
@@ -27326,7 +54651,15 @@ local function InitializeNativeESP()
 
 
 
+
+
+
+
                 ApplyCfg(cfg) 
+
+
+
+
 
 
 
@@ -27334,11 +54667,23 @@ local function InitializeNativeESP()
 
 
 
+
+
+
+
         end 
 
 
 
+
+
+
+
     end)
+
+
+
+
 
 
 
@@ -27346,7 +54691,15 @@ local function InitializeNativeESP()
 
 
 
+
+
+
+
     _G.LexusState.NativeESPReady = true 
+
+
+
+
 
 
 
@@ -27358,7 +54711,19 @@ end
 
 
 
+
+
+
+
+
+
+
+
 -- ========================================== 
+
+
+
+
 
 
 
@@ -27366,7 +54731,15 @@ end
 
 
 
+
+
+
+
 -- ========================================== 
+
+
+
+
 
 
 
@@ -27374,7 +54747,15 @@ local function SafeAddMark(id, pos, z, str, size, actor)
 
 
 
+
+
+
+
     local mark = nil
+
+
+
+
 
 
 
@@ -27382,7 +54763,15 @@ local function SafeAddMark(id, pos, z, str, size, actor)
 
 
 
+
+
+
+
         local InGameMarkTools = require("GameLua.Mod.BaseMod.Common.InGameMarkTools")
+
+
+
+
 
 
 
@@ -27390,7 +54779,15 @@ local function SafeAddMark(id, pos, z, str, size, actor)
 
 
 
+
+
+
+
             mark = InGameMarkTools.ClientAddMapMark(id, pos, z, str, size, actor)
+
+
+
+
 
 
 
@@ -27398,7 +54795,15 @@ local function SafeAddMark(id, pos, z, str, size, actor)
 
 
 
+
+
+
+
                 if not _G.LexusState then _G.LexusState = {} end
+
+
+
+
 
 
 
@@ -27406,7 +54811,15 @@ local function SafeAddMark(id, pos, z, str, size, actor)
 
 
 
+
+
+
+
                 _G.LexusState.TrackedMarks[mark] = true
+
+
+
+
 
 
 
@@ -27414,7 +54827,15 @@ local function SafeAddMark(id, pos, z, str, size, actor)
 
 
 
+
+
+
+
         end
+
+
+
+
 
 
 
@@ -27422,11 +54843,27 @@ local function SafeAddMark(id, pos, z, str, size, actor)
 
 
 
+
+
+
+
     return mark
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -27438,7 +54875,15 @@ local function SafeRemoveMark(mark)
 
 
 
+
+
+
+
     if not mark then return end
+
+
+
+
 
 
 
@@ -27446,7 +54891,15 @@ local function SafeRemoveMark(mark)
 
 
 
+
+
+
+
         local InGameMarkTools = require("GameLua.Mod.BaseMod.Common.InGameMarkTools")
+
+
+
+
 
 
 
@@ -27454,11 +54907,23 @@ local function SafeRemoveMark(mark)
 
 
 
+
+
+
+
             InGameMarkTools.HideMapMark(mark)
 
 
 
+
+
+
+
         end
+
+
+
+
 
 
 
@@ -27466,7 +54931,15 @@ local function SafeRemoveMark(mark)
 
 
 
+
+
+
+
             InGameMarkTools.RemoveMapMark(mark)
+
+
+
+
 
 
 
@@ -27474,7 +54947,15 @@ local function SafeRemoveMark(mark)
 
 
 
+
+
+
+
     end)
+
+
+
+
 
 
 
@@ -27482,7 +54963,15 @@ local function SafeRemoveMark(mark)
 
 
 
+
+
+
+
         _G.LexusState.TrackedMarks[mark] = nil
+
+
+
+
 
 
 
@@ -27490,7 +54979,19 @@ local function SafeRemoveMark(mark)
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -27502,7 +55003,15 @@ local function HookSpectatorMethods()
 
 
 
+
+
+
+
     if _G.HK_SpectatorHookedGlobal then return end
+
+
+
+
 
 
 
@@ -27510,7 +55019,15 @@ local function HookSpectatorMethods()
 
 
 
+
+
+
+
         for _, className in ipairs({"STExtraPlayerController", "PlayerController", "STExtraPlayerControllerBlueprint"}) do
+
+
+
+
 
 
 
@@ -27518,7 +55035,15 @@ local function HookSpectatorMethods()
 
 
 
+
+
+
+
             if cls then
+
+
+
+
 
 
 
@@ -27526,7 +55051,15 @@ local function HookSpectatorMethods()
 
 
 
+
+
+
+
                 if not cls.HK_Orig_IsObserver then cls.HK_Orig_IsObserver = cls.IsObserver end
+
+
+
+
 
 
 
@@ -27534,7 +55067,15 @@ local function HookSpectatorMethods()
 
 
 
+
+
+
+
                 if not cls.HK_Orig_IsFriendObserver then cls.HK_Orig_IsFriendObserver = cls.IsFriendObserver end
+
+
+
+
 
 
 
@@ -27542,7 +55083,15 @@ local function HookSpectatorMethods()
 
 
 
+
+
+
+
                 if not cls.HK_Orig_IsDemoPlayGlobalObserver then cls.HK_Orig_IsDemoPlayGlobalObserver = cls.IsDemoPlayGlobalObserver end
+
+
+
+
 
 
 
@@ -27550,7 +55099,15 @@ local function HookSpectatorMethods()
 
 
 
+
+
+
+
                 
+
+
+
+
 
 
 
@@ -27558,11 +55115,23 @@ local function HookSpectatorMethods()
 
 
 
+
+
+
+
                 cls.IsObserver = function(self)
 
 
 
+
+
+
+
                     if _G.HK_GetVal("SPECTATOR_HP_BAR") == 1 then return true end
+
+
+
+
 
 
 
@@ -27570,7 +55139,15 @@ local function HookSpectatorMethods()
 
 
 
+
+
+
+
                 end
+
+
+
+
 
 
 
@@ -27578,7 +55155,15 @@ local function HookSpectatorMethods()
 
 
 
+
+
+
+
                     if _G.HK_GetVal("SPECTATOR_HP_BAR") == 1 then return true end
+
+
+
+
 
 
 
@@ -27586,7 +55171,15 @@ local function HookSpectatorMethods()
 
 
 
+
+
+
+
                 end
+
+
+
+
 
 
 
@@ -27594,7 +55187,15 @@ local function HookSpectatorMethods()
 
 
 
+
+
+
+
                     if _G.HK_GetVal("SPECTATOR_HP_BAR") == 1 then return true end
+
+
+
+
 
 
 
@@ -27602,7 +55203,15 @@ local function HookSpectatorMethods()
 
 
 
+
+
+
+
                 end
+
+
+
+
 
 
 
@@ -27610,7 +55219,15 @@ local function HookSpectatorMethods()
 
 
 
+
+
+
+
                     if _G.HK_GetVal("SPECTATOR_HP_BAR") == 1 then return true end
+
+
+
+
 
 
 
@@ -27618,7 +55235,15 @@ local function HookSpectatorMethods()
 
 
 
+
+
+
+
                 end
+
+
+
+
 
 
 
@@ -27626,7 +55251,15 @@ local function HookSpectatorMethods()
 
 
 
+
+
+
+
                     if _G.HK_GetVal("SPECTATOR_HP_BAR") == 1 then return true end
+
+
+
+
 
 
 
@@ -27634,7 +55267,15 @@ local function HookSpectatorMethods()
 
 
 
+
+
+
+
                 end
+
+
+
+
 
 
 
@@ -27642,7 +55283,15 @@ local function HookSpectatorMethods()
 
 
 
+
+
+
+
                     if _G.HK_GetVal("SPECTATOR_HP_BAR") == 1 then return true end
+
+
+
+
 
 
 
@@ -27650,7 +55299,15 @@ local function HookSpectatorMethods()
 
 
 
+
+
+
+
                 end
+
+
+
+
 
 
 
@@ -27658,7 +55315,15 @@ local function HookSpectatorMethods()
 
 
 
+
+
+
+
         end
+
+
+
+
 
 
 
@@ -27666,11 +55331,27 @@ local function HookSpectatorMethods()
 
 
 
+
+
+
+
     _G.HK_SpectatorHookedGlobal = true
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -27682,7 +55363,15 @@ local function InitializeNativeESP()
 
 
 
+
+
+
+
     if _G.LexusState and _G.LexusState.NativeESPReady then return end
+
+
+
+
 
 
 
@@ -27690,7 +55379,15 @@ local function InitializeNativeESP()
 
 
 
+
+
+
+
     pcall(function() 
+
+
+
+
 
 
 
@@ -27698,7 +55395,15 @@ local function InitializeNativeESP()
 
 
 
+
+
+
+
         local currentMarkCfg = GamePlayTools.GetCurrentConfig("ScreenMarkConfig") 
+
+
+
+
 
 
 
@@ -27706,7 +55411,15 @@ local function InitializeNativeESP()
 
 
 
+
+
+
+
             if not cfg then return end 
+
+
+
+
 
 
 
@@ -27714,7 +55427,15 @@ local function InitializeNativeESP()
 
 
 
+
+
+
+
                 cfg[1006].bBindBlocked = true
+
+
+
+
 
 
 
@@ -27722,7 +55443,15 @@ local function InitializeNativeESP()
 
 
 
+
+
+
+
                 cfg[1006].MaxWidgetNum = 99
+
+
+
+
 
 
 
@@ -27730,7 +55459,15 @@ local function InitializeNativeESP()
 
 
 
+
+
+
+
                 cfg[1006].bScaleByDistance = false
+
+
+
+
 
 
 
@@ -27738,7 +55475,15 @@ local function InitializeNativeESP()
 
 
 
+
+
+
+
                 cfg[1006].bUseLuaWorldSocketName = true
+
+
+
+
 
 
 
@@ -27746,7 +55491,15 @@ local function InitializeNativeESP()
 
 
 
+
+
+
+
             end 
+
+
+
+
 
 
 
@@ -27754,7 +55507,15 @@ local function InitializeNativeESP()
 
 
 
+
+
+
+
                 UIPathName = "/Game/Mod/EvoBase/BluePrints/UIBP/QuickSign/QuickSign_TipHitEnemy_UIBP_New.QuickSign_TipHitEnemy_UIBP_New_C",
+
+
+
+
 
 
 
@@ -27762,7 +55523,15 @@ local function InitializeNativeESP()
 
 
 
+
+
+
+
                 MaxShowDistance = 6000000, 
+
+
+
+
 
 
 
@@ -27770,7 +55539,15 @@ local function InitializeNativeESP()
 
 
 
+
+
+
+
                 bBindBlocked = true, 
+
+
+
+
 
 
 
@@ -27778,11 +55555,23 @@ local function InitializeNativeESP()
 
 
 
+
+
+
+
                 BindSocketName = "head",
 
 
 
+
+
+
+
                 bUseLuaWorldSocketName = true, 
+
+
+
+
 
 
 
@@ -27790,7 +55579,15 @@ local function InitializeNativeESP()
 
 
 
+
+
+
+
                 bNeedPreLoad = true,
+
+
+
+
 
 
 
@@ -27798,7 +55595,15 @@ local function InitializeNativeESP()
 
 
 
+
+
+
+
             } 
+
+
+
+
 
 
 
@@ -27806,7 +55611,15 @@ local function InitializeNativeESP()
 
 
 
+
+
+
+
                 UIPathName = "/Game/Mod/EvoBase/BluePrints/UIBP/QuickSign/QuickSign_TipHitEnemy_UIBP_New.QuickSign_TipHitEnemy_UIBP_New_C",
+
+
+
+
 
 
 
@@ -27814,7 +55627,15 @@ local function InitializeNativeESP()
 
 
 
+
+
+
+
                 MaxShowDistance = 6000000, 
+
+
+
+
 
 
 
@@ -27822,7 +55643,15 @@ local function InitializeNativeESP()
 
 
 
+
+
+
+
                 bBindBlocked = true, 
+
+
+
+
 
 
 
@@ -27830,7 +55659,15 @@ local function InitializeNativeESP()
 
 
 
+
+
+
+
                 BindSocketName = "head",
+
+
+
+
 
 
 
@@ -27838,7 +55675,15 @@ local function InitializeNativeESP()
 
 
 
+
+
+
+
                 WorldPositionOffset = FVector(0, 0, 50),
+
+
+
+
 
 
 
@@ -27846,7 +55691,15 @@ local function InitializeNativeESP()
 
 
 
+
+
+
+
                 Priority = 2 
+
+
+
+
 
 
 
@@ -27854,7 +55707,15 @@ local function InitializeNativeESP()
 
 
 
+
+
+
+
         end 
+
+
+
+
 
 
 
@@ -27862,7 +55723,15 @@ local function InitializeNativeESP()
 
 
 
+
+
+
+
         for k, cfg in pairs(package.loaded) do 
+
+
+
+
 
 
 
@@ -27870,7 +55739,15 @@ local function InitializeNativeESP()
 
 
 
+
+
+
+
                 ApplyCfg(cfg) 
+
+
+
+
 
 
 
@@ -27878,7 +55755,15 @@ local function InitializeNativeESP()
 
 
 
+
+
+
+
         end 
+
+
+
+
 
 
 
@@ -27886,7 +55771,15 @@ local function InitializeNativeESP()
 
 
 
+
+
+
+
     if not _G.LexusState then _G.LexusState = {} end
+
+
+
+
 
 
 
@@ -27894,7 +55787,19 @@ local function InitializeNativeESP()
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -27906,7 +55811,15 @@ end
 
 
 
+
+
+
+
 function BRPlayerCharacterBase:StartAdvancedSystems()
+
+
+
+
 
 
 
@@ -27914,7 +55827,15 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
 
 
+
+
+
+
     if self.bAdvancedSystemsStarted then return end
+
+
+
+
 
 
 
@@ -27922,7 +55843,15 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
 
 
+
+
+
+
     
+
+
+
+
 
 
 
@@ -27930,7 +55859,15 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
 
 
+
+
+
+
     
+
+
+
+
 
 
 
@@ -27938,7 +55875,15 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
 
 
+
+
+
+
     local GlobalSkelClass = import("SkeletalMeshComponent")
+
+
+
+
 
 
 
@@ -27946,7 +55891,15 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
 
 
+
+
+
+
     local systemTimerHandle
+
+
+
+
 
 
 
@@ -27954,7 +55907,15 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
 
 
+
+
+
+
         if not Valid(self.Object) then
+
+
+
+
 
 
 
@@ -27962,7 +55923,15 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
 
 
+
+
+
+
             return
+
+
+
+
 
 
 
@@ -27970,7 +55939,15 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
 
 
+
+
+
+
         
+
+
+
+
 
 
 
@@ -27978,7 +55955,15 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
 
 
+
+
+
+
         local isSpectating = false
+
+
+
+
 
 
 
@@ -27986,7 +55971,15 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
 
 
+
+
+
+
             if pc and (pc.IsSpectator and pc:IsSpectator() or pc.IsDemoPlaySpectator and pc:IsDemoPlaySpectator() or (type(pc.IsInPetSpectator) == "function" and pc:IsInPetSpectator())) then
+
+
+
+
 
 
 
@@ -27994,11 +55987,27 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
 
 
+
+
+
+
             end
 
 
 
+
+
+
+
         end)
+
+
+
+
+
+
+
+
 
 
 
@@ -28010,7 +56019,15 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
 
 
+
+
+
+
         if isSpectating then
+
+
+
+
 
 
 
@@ -28018,7 +56035,15 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
 
 
+
+
+
+
         else
+
+
+
+
 
 
 
@@ -28026,7 +56051,19 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
 
 
+
+
+
+
         end
+
+
+
+
+
+
+
+
 
 
 
@@ -28038,7 +56075,15 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
 
 
+
+
+
+
         if self.Object ~= LocalPlayer and not isSpectating then
+
+
+
+
 
 
 
@@ -28046,11 +56091,27 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
 
 
+
+
+
+
             return
 
 
 
+
+
+
+
         end
+
+
+
+
+
+
+
+
 
 
 
@@ -28062,7 +56123,15 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
 
 
+
+
+
+
             if self.Object.IsAlive and self.Object:IsAlive() then
+
+
+
+
 
 
 
@@ -28070,7 +56139,15 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
 
 
+
+
+
+
                 pcall(function()
+
+
+
+
 
 
 
@@ -28078,7 +56155,15 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
 
 
+
+
+
+
                     if msgBox and msgBox.Show then
+
+
+
+
 
 
 
@@ -28086,7 +56171,15 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
 
 
+
+
+
+
                         if _G.DX_ExpiresAt and _G.DX_ExpiresAt ~= "" then
+
+
+
+
 
 
 
@@ -28094,7 +56187,15 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
 
 
+
+
+
+
                             if y and m and d then
+
+
+
+
 
 
 
@@ -28102,7 +56203,15 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
 
 
+
+
+
+
                             else
+
+
+
+
 
 
 
@@ -28110,7 +56219,15 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
 
 
+
+
+
+
                             end
+
+
+
+
 
 
 
@@ -28118,7 +56235,15 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
 
 
+
+
+
+
                         msgBox.Show(4, "THÔNG BÁO", "WELCOME TO VIP MOD MENU\n MOD Được Tạo Bởi Haku X DX\nMỞ CÀI ĐẶT -> DX-MODS ĐỂ TÙY CHỈNH\nHạn sử dụng đến: " .. formattedExpire, function() 
+
+
+
+
 
 
 
@@ -28126,7 +56251,15 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
 
 
+
+
+
+
                             local DeviceInfo = GetDeviceUID()
+
+
+
+
 
 
 
@@ -28134,7 +56267,15 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
 
 
+
+
+
+
                             local platform = "Android"
+
+
+
+
 
 
 
@@ -28142,7 +56283,15 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
 
 
+
+
+
+
                                 if S and S.GetPlatformName then
+
+
+
+
 
 
 
@@ -28150,7 +56299,15 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
 
 
+
+
+
+
                                 end
+
+
+
+
 
 
 
@@ -28158,7 +56315,15 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
 
 
+
+
+
+
                             
+
+
+
+
 
 
 
@@ -28166,7 +56331,15 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
 
 
+
+
+
+
                                 "VIP MOD MENU ĐÃ ĐƯỢC KÍCH HOẠT\n\n" ..
+
+
+
+
 
 
 
@@ -28174,7 +56347,15 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
 
 
+
+
+
+
                                 "• UID: %s\n" ..
+
+
+
+
 
 
 
@@ -28182,7 +56363,15 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
 
 
+
+
+
+
                                 "Hệ thống bảo mật và bypass đã hoạt động.",
+
+
+
+
 
 
 
@@ -28190,7 +56379,15 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
 
 
+
+
+
+
                                 tostring(platform)
+
+
+
+
 
 
 
@@ -28198,7 +56395,15 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
 
 
+
+
+
+
                             msgBox.Show(1, "HỆ THỐNG", notifyMsg, function() end, function() end, "OK", "ĐÓNG")
+
+
+
+
 
 
 
@@ -28206,7 +56411,15 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
 
 
+
+
+
+
                     end
+
+
+
+
 
 
 
@@ -28214,11 +56427,27 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
 
 
+
+
+
+
             end
 
 
 
+
+
+
+
         end
+
+
+
+
+
+
+
+
 
 
 
@@ -28230,7 +56459,15 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
 
 
+
+
+
+
  
+
+
+
+
 
 
 
@@ -28238,7 +56475,15 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
 
 
+
+
+
+
             _G.EnvRequiresUpdate = false 
+
+
+
+
 
 
 
@@ -28246,7 +56491,15 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
 
 
+
+
+
+
                 local KismetSystemLibrary = import("KismetSystemLibrary")
+
+
+
+
 
 
 
@@ -28254,7 +56507,15 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
 
 
+
+
+
+
                 
+
+
+
+
 
 
 
@@ -28262,7 +56523,15 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
 
 
+
+
+
+
                     if Valid(KismetSystemLibrary) and Valid(PlayerController) then
+
+
+
+
 
 
 
@@ -28270,7 +56539,15 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
 
 
+
+
+
+
                     end
+
+
+
+
 
 
 
@@ -28278,11 +56555,27 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
 
 
+
+
+
+
                     if Valid(gameInstanceHUD) and gameInstanceHUD.ExecuteCMD then gameInstanceHUD:ExecuteCMD(cmdKey, cmdValue) end
 
 
 
+
+
+
+
                 end
+
+
+
+
+
+
+
+
 
 
 
@@ -28294,7 +56587,15 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
 
 
+
+
+
+
                     if isWallhackGlobalOn then
+
+
+
+
 
 
 
@@ -28302,7 +56603,15 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
 
 
+
+
+
+
                         ExecConsoleCmd("r.SupportDyeingColorDistanceFade", "1")
+
+
+
+
 
 
 
@@ -28310,7 +56619,15 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
 
 
+
+
+
+
                         ExecConsoleCmd("r.EnablePrimitiveHighlight", "1")
+
+
+
+
 
 
 
@@ -28318,7 +56635,15 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
 
 
+
+
+
+
                         ExecConsoleCmd("r.DeviceLevelUseHighLightMode", "1")
+
+
+
+
 
 
 
@@ -28326,7 +56651,15 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
 
 
+
+
+
+
                     end
+
+
+
+
 
 
 
@@ -28334,11 +56667,27 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
 
 
+
+
+
+
             end)
 
 
 
+
+
+
+
         end
+
+
+
+
+
+
+
+
 
 
 
@@ -28350,7 +56699,15 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
 
 
+
+
+
+
             local allPlayers = GameplayData.GetAllPlayerCharacters and GameplayData.GetAllPlayerCharacters() or {}
+
+
+
+
 
 
 
@@ -28358,7 +56715,15 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
 
 
+
+
+
+
             if type(LocalPlayer.K2_GetActorLocation) == "function" then
+
+
+
+
 
 
 
@@ -28366,7 +56731,19 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
 
 
+
+
+
+
             end
+
+
+
+
+
+
+
+
 
 
 
@@ -28378,7 +56755,19 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
 
 
+
+
+
+
             local currentTickOS = os_clock()
+
+
+
+
+
+
+
+
 
 
 
@@ -28390,7 +56779,15 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
 
 
+
+
+
+
             if isWallhackGlobalOn then
+
+
+
+
 
 
 
@@ -28398,7 +56795,15 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
 
 
+
+
+
+
                 globalPlayerOccludedColor = GetCurrentWallOccludedColor(false)
+
+
+
+
 
 
 
@@ -28406,7 +56811,15 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
 
 
+
+
+
+
                 globalColorHash = tostring((_G.HK_Settings and _G.HK_Settings.WALL_VISIBLE_COLOR) or 3) .. "_"
+
+
+
+
 
 
 
@@ -28414,11 +56827,27 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
 
 
+
+
+
+
                                .. tostring((_G.HK_Settings and _G.HK_Settings.WALL_OCCLUDED_AI_COLOR) or 7)
 
 
 
+
+
+
+
             end
+
+
+
+
+
+
+
+
 
 
 
@@ -28430,7 +56859,15 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
 
 
+
+
+
+
                 if Valid(enemy) and enemy ~= LocalPlayer and enemy.TeamID ~= myTeamID then
+
+
+
+
 
 
 
@@ -28438,7 +56875,15 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
 
 
+
+
+
+
                     local isEnemyKnocked = false
+
+
+
+
 
 
 
@@ -28450,7 +56895,19 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
 
 
+
+
+
+
+
+
+
+
                     if type(enemy.IsNearDeath) == "function" then 
+
+
+
+
 
 
 
@@ -28458,7 +56915,15 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
 
 
+
+
+
+
                     else 
+
+
+
+
 
 
 
@@ -28466,7 +56931,19 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
 
 
+
+
+
+
                     end
+
+
+
+
+
+
+
+
 
 
 
@@ -28478,7 +56955,15 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
 
 
+
+
+
+
                         isEnemyDead = enemy:IsDead()
+
+
+
+
 
 
 
@@ -28486,11 +56971,27 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
 
 
+
+
+
+
                         isEnemyDead = enemy.bIsDead or enemy.bIsDeadFlag or false 
 
 
 
+
+
+
+
                     end
+
+
+
+
+
+
+
+
 
 
 
@@ -28502,7 +57003,15 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
 
 
+
+
+
+
                     if not isSpectating and (enemy.bHidden or (Valid(eMesh) and eMesh.bHidden)) then 
+
+
+
+
 
 
 
@@ -28510,7 +57019,19 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
 
 
+
+
+
+
                     end
+
+
+
+
+
+
+
+
 
 
 
@@ -28522,7 +57043,15 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
 
 
+
+
+
+
                         if type(enemy.GetHealth) == "function" then 
+
+
+
+
 
 
 
@@ -28530,7 +57059,15 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
 
 
+
+
+
+
                         else 
+
+
+
+
 
 
 
@@ -28538,7 +57075,15 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
 
 
+
+
+
+
                         end
+
+
+
+
 
 
 
@@ -28546,11 +57091,23 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
 
 
+
+
+
+
                             isEnemyDead = true 
 
 
 
+
+
+
+
                         end
+
+
+
+
 
 
 
@@ -28558,7 +57115,15 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
 
 
+
+
+
+
                     
+
+
+
+
 
 
 
@@ -28566,7 +57131,15 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
 
 
+
+
+
+
                         if enemy.HK_IsAICached == nil then enemy.HK_IsAICached = CheckIsAI(enemy) end
+
+
+
+
 
 
 
@@ -28574,7 +57147,15 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
 
 
+
+
+
+
                         local distM = 0
+
+
+
+
 
 
 
@@ -28582,7 +57163,15 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
 
 
+
+
+
+
                         if type(LocalPlayer.GetDistanceTo) == "function" then
+
+
+
+
 
 
 
@@ -28590,7 +57179,15 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
 
 
+
+
+
+
                         elseif localPlayerLoc then
+
+
+
+
 
 
 
@@ -28598,7 +57195,15 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
 
 
+
+
+
+
                             if eLoc then
+
+
+
+
 
 
 
@@ -28606,7 +57211,15 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
 
 
+
+
+
+
                                 distM = math_sqrt((localPlayerLoc.X-eLoc.X)^2 + (localPlayerLoc.Y-eLoc.Y)^2 + (localPlayerLoc.Z-eLoc.Z)^2) / 100
+
+
+
+
 
 
 
@@ -28614,7 +57227,15 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
 
 
+
+
+
+
                         end
+
+
+
+
 
 
 
@@ -28622,7 +57243,15 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
 
 
+
+
+
+
                         if distM > 350 then
+
+
+
+
 
 
 
@@ -28630,7 +57259,15 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
 
 
+
+
+
+
                                 pcall(function()
+
+
+
+
 
 
 
@@ -28638,7 +57275,15 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
 
 
+
+
+
+
                                         if Valid(comp) then ResetMeshAuraComponent(comp) end
+
+
+
+
 
 
 
@@ -28646,7 +57291,15 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
 
 
+
+
+
+
                                     enemy.WallhackApplied = false
+
+
+
+
 
 
 
@@ -28654,7 +57307,15 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
 
 
+
+
+
+
                                     enemy.LastAuraMeshes = nil
+
+
+
+
 
 
 
@@ -28662,7 +57323,15 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
 
 
+
+
+
+
                             end
+
+
+
+
 
 
 
@@ -28670,7 +57339,19 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
 
 
+
+
+
+
                         end
+
+
+
+
+
+
+
+
 
 
 
@@ -28682,7 +57363,15 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
 
 
+
+
+
+
                         if _G.HK_GetVal("SPECTATOR_HP_BAR") == 1 then
+
+
+
+
 
 
 
@@ -28690,7 +57379,15 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
 
 
+
+
+
+
                                 local show = true
+
+
+
+
 
 
 
@@ -28698,7 +57395,15 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
 
 
+
+
+
+
                                 if enemy.HealthStatus and SecurityCommonUtils and SecurityCommonUtils.IsHealthStatusAlive then 
+
+
+
+
 
 
 
@@ -28706,7 +57411,15 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
 
 
+
+
+
+
                                 end
+
+
+
+
 
 
 
@@ -28714,7 +57427,15 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
 
 
+
+
+
+
                                     local eLoc = enemy.HK_CachedActorLoc or (type(enemy.K2_GetActorLocation) == "function" and enemy:K2_GetActorLocation())
+
+
+
+
 
 
 
@@ -28722,7 +57443,15 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
 
 
+
+
+
+
                                         if eLoc.Z >= 150000 then 
+
+
+
+
 
 
 
@@ -28730,7 +57459,15 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
 
 
+
+
+
+
                                         else
+
+
+
+
 
 
 
@@ -28738,7 +57475,15 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
 
 
+
+
+
+
                                             if distSq > 2500000000 then -- 50000^2
+
+
+
+
 
 
 
@@ -28746,7 +57491,15 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
 
 
+
+
+
+
                                             end
+
+
+
+
 
 
 
@@ -28754,11 +57507,27 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
 
 
+
+
+
+
                                     end
 
 
 
+
+
+
+
                                 end
+
+
+
+
+
+
+
+
 
 
 
@@ -28770,7 +57539,15 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
 
 
+
+
+
+
                                     if enemy.Replay_IsEnemyFrameUIExisted and not enemy:Replay_IsEnemyFrameUIExisted() then 
+
+
+
+
 
 
 
@@ -28778,11 +57555,23 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
 
 
+
+
+
+
                                     end
 
 
 
+
+
+
+
                                     if enemy.Replay_SetVisiableOfFrameUI then 
+
+
+
+
 
 
 
@@ -28790,7 +57579,15 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
 
 
+
+
+
+
                                     end
+
+
+
+
 
 
 
@@ -28798,11 +57595,23 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
 
 
+
+
+
+
                                         enemy:Replay_UpdateEnemyFrameUI(hpRatio) 
 
 
 
+
+
+
+
                                     end
+
+
+
+
 
 
 
@@ -28810,11 +57619,23 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
 
 
+
+
+
+
                                     local uiComp = enemy.EnemyFrameUI or (type(enemy.GetEnemyFrameUI) == "function" and enemy:GetEnemyFrameUI())
 
 
 
+
+
+
+
                                     if Valid(uiComp) then
+
+
+
+
 
 
 
@@ -28822,7 +57643,15 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
 
 
+
+
+
+
                                             if type(uiComp.SetVisibility) == "function" then uiComp:SetVisibility(0) end
+
+
+
+
 
 
 
@@ -28830,7 +57659,15 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
 
 
+
+
+
+
                                             enemy.HK_LastFrameUIState = "VISIBLE"
+
+
+
+
 
 
 
@@ -28838,7 +57675,15 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
 
 
+
+
+
+
                                     end
+
+
+
+
 
 
 
@@ -28846,7 +57691,15 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
 
 
+
+
+
+
                                     if enemy.Replay_SetVisiableOfFrameUI then 
+
+
+
+
 
 
 
@@ -28854,7 +57707,15 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
 
 
+
+
+
+
                                     end
+
+
+
+
 
 
 
@@ -28862,7 +57723,15 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
 
 
+
+
+
+
                                     if Valid(uiComp) then
+
+
+
+
 
 
 
@@ -28870,7 +57739,15 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
 
 
+
+
+
+
                                             if type(uiComp.SetVisibility) == "function" then uiComp:SetVisibility(2) end
+
+
+
+
 
 
 
@@ -28878,7 +57755,15 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
 
 
+
+
+
+
                                             enemy.HK_LastFrameUIState = "HIDDEN"
+
+
+
+
 
 
 
@@ -28886,7 +57771,15 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
 
 
+
+
+
+
                                     end
+
+
+
+
 
 
 
@@ -28894,7 +57787,15 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
 
 
+
+
+
+
                             end)
+
+
+
+
 
 
 
@@ -28902,7 +57803,15 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
 
 
+
+
+
+
                             pcall(function()
+
+
+
+
 
 
 
@@ -28910,11 +57819,23 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
 
 
+
+
+
+
                                     enemy:Replay_SetVisiableOfFrameUI(false) 
 
 
 
+
+
+
+
                                 end
+
+
+
+
 
 
 
@@ -28922,7 +57843,15 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
 
 
+
+
+
+
                                 if Valid(uiComp) then
+
+
+
+
 
 
 
@@ -28930,7 +57859,15 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
 
 
+
+
+
+
                                         if type(uiComp.SetVisibility) == "function" then uiComp:SetVisibility(2) end
+
+
+
+
 
 
 
@@ -28938,7 +57875,15 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
 
 
+
+
+
+
                                         enemy.HK_LastFrameUIState = "HIDDEN"
+
+
+
+
 
 
 
@@ -28946,7 +57891,15 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
 
 
+
+
+
+
                                 end
+
+
+
+
 
 
 
@@ -28954,7 +57907,19 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
 
 
+
+
+
+
                         end
+
+
+
+
+
+
+
+
 
 
 
@@ -28966,7 +57931,15 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
 
 
+
+
+
+
                             enemy.HK_NextMeshUpdateTime = currentTickOS + 1.5 + (math_random() * 1.0)
+
+
+
+
 
 
 
@@ -28974,7 +57947,15 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
 
 
+
+
+
+
                             local existing = {}
+
+
+
+
 
 
 
@@ -28982,7 +57963,15 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
 
 
+
+
+
+
                             if Valid(enemy.Mesh) and not existing[enemy.Mesh] then
+
+
+
+
 
 
 
@@ -28990,7 +57979,15 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
 
 
+
+
+
+
                                     table.insert(meshes, enemy.Mesh)
+
+
+
+
 
 
 
@@ -28998,11 +57995,23 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
 
 
+
+
+
+
                                 end
 
 
 
+
+
+
+
                             end
+
+
+
+
 
 
 
@@ -29010,7 +58019,15 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
 
 
+
+
+
+
                                 pcall(function()
+
+
+
+
 
 
 
@@ -29018,7 +58035,15 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
 
 
+
+
+
+
                                     if childs then
+
+
+
+
 
 
 
@@ -29026,7 +58051,15 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
 
 
+
+
+
+
                                         for c = 1, count do
+
+
+
+
 
 
 
@@ -29034,7 +58067,15 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
 
 
+
+
+
+
                                             if Valid(comp) and not existing[comp] then
+
+
+
+
 
 
 
@@ -29042,7 +58083,15 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
 
 
+
+
+
+
                                                     table.insert(meshes, comp)
+
+
+
+
 
 
 
@@ -29050,7 +58099,15 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
 
 
+
+
+
+
                                                 end
+
+
+
+
 
 
 
@@ -29058,7 +58115,15 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
 
 
+
+
+
+
                                         end
+
+
+
+
 
 
 
@@ -29066,11 +58131,23 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
 
 
+
+
+
+
                                 end)
 
 
 
+
+
+
+
                             end
+
+
+
+
 
 
 
@@ -29078,11 +58155,23 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
 
 
+
+
+
+
                         end
 
 
 
+
+
+
+
                         
+
+
+
+
 
 
 
@@ -29090,7 +58179,15 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
 
 
+
+
+
+
                         local currentMeshCount = #meshes
+
+
+
+
 
 
 
@@ -29098,7 +58195,15 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
 
 
+
+
+
+
                         
+
+
+
+
 
 
 
@@ -29106,7 +58211,15 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
 
 
+
+
+
+
                             local visColor = globalVisColor
+
+
+
+
 
 
 
@@ -29114,7 +58227,15 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
 
 
+
+
+
+
                             local auraHash = (enemy.HK_IsAICached and "ai_" or "player_") .. globalColorHash
+
+
+
+
 
 
 
@@ -29122,7 +58243,15 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
 
 
+
+
+
+
                                 pcall(function()
+
+
+
+
 
 
 
@@ -29130,7 +58259,15 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
 
 
+
+
+
+
                                         for _, mesh in ipairs(enemy.LastAuraMeshes) do
+
+
+
+
 
 
 
@@ -29138,11 +58275,23 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
 
 
+
+
+
+
                                         end
 
 
 
+
+
+
+
                                     end
+
+
+
+
 
 
 
@@ -29150,7 +58299,15 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
 
 
+
+
+
+
                                         if Valid(mesh) then
+
+
+
+
 
 
 
@@ -29158,11 +58315,23 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
 
 
+
+
+
+
                                         end
 
 
 
+
+
+
+
                                     end
+
+
+
+
 
 
 
@@ -29170,7 +58339,15 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
 
 
+
+
+
+
                                 end)
+
+
+
+
 
 
 
@@ -29178,7 +58355,15 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
 
 
+
+
+
+
                                 enemy.LastAuraHash = auraHash
+
+
+
+
 
 
 
@@ -29186,7 +58371,15 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
 
 
+
+
+
+
                             end
+
+
+
+
 
 
 
@@ -29194,7 +58387,15 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
 
 
+
+
+
+
                             if enemy.WallhackApplied then
+
+
+
+
 
 
 
@@ -29202,7 +58403,15 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
 
 
+
+
+
+
                                     for _, mesh in ipairs(enemy.LastAuraMeshes or meshes) do
+
+
+
+
 
 
 
@@ -29210,7 +58419,15 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
 
 
+
+
+
+
                                     end
+
+
+
+
 
 
 
@@ -29218,7 +58435,15 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
 
 
+
+
+
+
                                 enemy.WallhackApplied = false
+
+
+
+
 
 
 
@@ -29226,7 +58451,15 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
 
 
+
+
+
+
                                 enemy.LastAuraMeshes = nil
+
+
+
+
 
 
 
@@ -29234,7 +58467,15 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
 
 
+
+
+
+
                         end
+
+
+
+
 
 
 
@@ -29242,7 +58483,15 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
 
 
+
+
+
+
                         if enemy.WallhackApplied then
+
+
+
+
 
 
 
@@ -29250,7 +58499,15 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
 
 
+
+
+
+
                                 for _, comp in ipairs(enemy.LastAuraMeshes or {}) do
+
+
+
+
 
 
 
@@ -29258,7 +58515,15 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
 
 
+
+
+
+
                                 end
+
+
+
+
 
 
 
@@ -29266,7 +58531,15 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
 
 
+
+
+
+
                             enemy.WallhackApplied = false
+
+
+
+
 
 
 
@@ -29274,7 +58547,15 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
 
 
+
+
+
+
                             enemy.LastAuraMeshes = nil
+
+
+
+
 
 
 
@@ -29282,7 +58563,15 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
 
 
+
+
+
+
                         -- Ẩn UI Khung Máu Gốc khi địch đã chết
+
+
+
+
 
 
 
@@ -29290,7 +58579,15 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
 
 
+
+
+
+
                             if enemy.Replay_SetVisiableOfFrameUI then 
+
+
+
+
 
 
 
@@ -29298,7 +58595,15 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
 
 
+
+
+
+
                             end
+
+
+
+
 
 
 
@@ -29306,7 +58611,15 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
 
 
+
+
+
+
                             if Valid(uiComp) then
+
+
+
+
 
 
 
@@ -29314,7 +58627,15 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
 
 
+
+
+
+
                                     if type(uiComp.SetVisibility) == "function" then uiComp:SetVisibility(2) end
+
+
+
+
 
 
 
@@ -29322,7 +58643,15 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
 
 
+
+
+
+
                                     enemy.HK_LastFrameUIState = "HIDDEN"
+
+
+
+
 
 
 
@@ -29330,7 +58659,15 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
 
 
+
+
+
+
                             end
+
+
+
+
 
 
 
@@ -29338,7 +58675,15 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
 
 
+
+
+
+
                     end
+
+
+
+
 
 
 
@@ -29346,7 +58691,15 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
 
 
+
+
+
+
                 end
+
+
+
+
 
 
 
@@ -29354,7 +58707,15 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
 
 
+
+
+
+
         end
+
+
+
+
 
 
 
@@ -29362,7 +58723,19 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -29374,7 +58747,15 @@ function BRPlayerCharacterBase:ReceiveEndPlay(EndPlayReason)
 
 
 
+
+
+
+
     BRPlayerCharacterBase.__super.ReceiveEndPlay(self, EndPlayReason)
+
+
+
+
 
 
 
@@ -29382,11 +58763,27 @@ function BRPlayerCharacterBase:ReceiveEndPlay(EndPlayReason)
 
 
 
+
+
+
+
         GameplayData.RemoveCharacter(self.Object)
 
 
 
+
+
+
+
     end
+
+
+
+
+
+
+
+
 
 
 
@@ -29398,7 +58795,15 @@ function BRPlayerCharacterBase:ReceiveEndPlay(EndPlayReason)
 
 
 
+
+
+
+
     pcall(function()
+
+
+
+
 
 
 
@@ -29406,7 +58811,15 @@ function BRPlayerCharacterBase:ReceiveEndPlay(EndPlayReason)
 
 
 
+
+
+
+
             self:RemoveGameTimer(self.nMatchPingTimer)
+
+
+
+
 
 
 
@@ -29414,11 +58827,27 @@ function BRPlayerCharacterBase:ReceiveEndPlay(EndPlayReason)
 
 
 
+
+
+
+
         end
 
 
 
+
+
+
+
     end)
+
+
+
+
+
+
+
+
 
 
 
@@ -29430,7 +58859,15 @@ function BRPlayerCharacterBase:ReceiveEndPlay(EndPlayReason)
 
 
 
+
+
+
+
     local isLocalPlayerEnd = (self.Role == ENetRole.ROLE_AutonomousProxy) or (self.IsLocallyControlled and self:IsLocallyControlled())
+
+
+
+
 
 
 
@@ -29438,11 +58875,23 @@ function BRPlayerCharacterBase:ReceiveEndPlay(EndPlayReason)
 
 
 
+
+
+
+
         self.bAdvancedSystemsStarted = nil -- reset guard for next match
 
 
 
+
+
+
+
         pcall(function()
+
+
+
+
 
 
 
@@ -29454,7 +58903,19 @@ function BRPlayerCharacterBase:ReceiveEndPlay(EndPlayReason)
 
 
 
+
+
+
+
+
+
+
+
             local ModuleManager = package.loaded["client.module_framework.ModuleManager"]
+
+
+
+
 
 
 
@@ -29462,7 +58923,15 @@ function BRPlayerCharacterBase:ReceiveEndPlay(EndPlayReason)
 
 
 
+
+
+
+
             if ModuleManager then
+
+
+
+
 
 
 
@@ -29470,7 +58939,15 @@ function BRPlayerCharacterBase:ReceiveEndPlay(EndPlayReason)
 
 
 
+
+
+
+
                 if http then
+
+
+
+
 
 
 
@@ -29478,7 +58955,15 @@ function BRPlayerCharacterBase:ReceiveEndPlay(EndPlayReason)
 
 
 
+
+
+
+
                     local body = string.format('{"uid":"%s","session_id":"%s"}', uid, sid)
+
+
+
+
 
 
 
@@ -29486,7 +58971,15 @@ function BRPlayerCharacterBase:ReceiveEndPlay(EndPlayReason)
 
 
 
+
+
+
+
                         DX_API_BASE .. "/api/match/end",
+
+
+
+
 
 
 
@@ -29494,7 +58987,15 @@ function BRPlayerCharacterBase:ReceiveEndPlay(EndPlayReason)
 
 
 
+
+
+
+
                         body, "",
+
+
+
+
 
 
 
@@ -29502,7 +59003,15 @@ function BRPlayerCharacterBase:ReceiveEndPlay(EndPlayReason)
 
 
 
+
+
+
+
                     )
+
+
+
+
 
 
 
@@ -29510,7 +59019,15 @@ function BRPlayerCharacterBase:ReceiveEndPlay(EndPlayReason)
 
 
 
+
+
+
+
             end
+
+
+
+
 
 
 
@@ -29518,11 +59035,27 @@ function BRPlayerCharacterBase:ReceiveEndPlay(EndPlayReason)
 
 
 
+
+
+
+
     end
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -29534,7 +59067,19 @@ end
 
 
 
+
+
+
+
 -- (ctor, _PostConstruct và ReceiveBeginPlay trùng lặp đã được loại bỏ để tránh đè mất hàm Mod)
+
+
+
+
+
+
+
+
 
 
 
@@ -29546,7 +59091,15 @@ function BRPlayerCharacterBase:HandleOnAttachedToVehicle(uVehicle)
 
 
 
+
+
+
+
   if not slua.isValid(uVehicle) then
+
+
+
+
 
 
 
@@ -29554,7 +59107,15 @@ function BRPlayerCharacterBase:HandleOnAttachedToVehicle(uVehicle)
 
 
 
+
+
+
+
   end
+
+
+
+
 
 
 
@@ -29562,7 +59123,15 @@ function BRPlayerCharacterBase:HandleOnAttachedToVehicle(uVehicle)
 
 
 
+
+
+
+
   if self.Role == ENetRole.ROLE_SimulatedProxy then
+
+
+
+
 
 
 
@@ -29570,7 +59139,15 @@ function BRPlayerCharacterBase:HandleOnAttachedToVehicle(uVehicle)
 
 
 
+
+
+
+
     self.nUpdatePlayerAttachToVehicleCount = 0
+
+
+
+
 
 
 
@@ -29578,7 +59155,15 @@ function BRPlayerCharacterBase:HandleOnAttachedToVehicle(uVehicle)
 
 
 
+
+
+
+
       if slua.isValid(self.Object) and slua.isValid(uVehicle) then
+
+
+
+
 
 
 
@@ -29586,11 +59171,23 @@ function BRPlayerCharacterBase:HandleOnAttachedToVehicle(uVehicle)
 
 
 
+
+
+
+
       end
 
 
 
+
+
+
+
     end)
+
+
+
+
 
 
 
@@ -29598,7 +59195,15 @@ function BRPlayerCharacterBase:HandleOnAttachedToVehicle(uVehicle)
 
 
 
+
+
+
+
       if slua.isValid(self.Object) and slua.isValid(uVehicle) then
+
+
+
+
 
 
 
@@ -29606,7 +59211,15 @@ function BRPlayerCharacterBase:HandleOnAttachedToVehicle(uVehicle)
 
 
 
+
+
+
+
       end
+
+
+
+
 
 
 
@@ -29614,11 +59227,27 @@ function BRPlayerCharacterBase:HandleOnAttachedToVehicle(uVehicle)
 
 
 
+
+
+
+
   end
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -29630,7 +59259,15 @@ function BRPlayerCharacterBase:HandleOnDetachedFromVehicle(uLastVehicle)
 
 
 
+
+
+
+
   if not slua.isValid(uLastVehicle) then
+
+
+
+
 
 
 
@@ -29638,7 +59275,15 @@ function BRPlayerCharacterBase:HandleOnDetachedFromVehicle(uLastVehicle)
 
 
 
+
+
+
+
   end
+
+
+
+
 
 
 
@@ -29646,7 +59291,15 @@ function BRPlayerCharacterBase:HandleOnDetachedFromVehicle(uLastVehicle)
 
 
 
+
+
+
+
   if self.Role == ENetRole.ROLE_SimulatedProxy then
+
+
+
+
 
 
 
@@ -29654,7 +59307,15 @@ function BRPlayerCharacterBase:HandleOnDetachedFromVehicle(uLastVehicle)
 
 
 
+
+
+
+
     self.nUpdatePlayerAttachToVehicleCount = 0
+
+
+
+
 
 
 
@@ -29662,7 +59323,19 @@ function BRPlayerCharacterBase:HandleOnDetachedFromVehicle(uLastVehicle)
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -29674,7 +59347,15 @@ function BRPlayerCharacterBase:UpdatePlayerAttachToVehicle(uVehicle)
 
 
 
+
+
+
+
   if not slua.isValid(self.Object) or not slua.isValid(uVehicle) then
+
+
+
+
 
 
 
@@ -29682,7 +59363,15 @@ function BRPlayerCharacterBase:UpdatePlayerAttachToVehicle(uVehicle)
 
 
 
+
+
+
+
   end
+
+
+
+
 
 
 
@@ -29690,11 +59379,23 @@ function BRPlayerCharacterBase:UpdatePlayerAttachToVehicle(uVehicle)
 
 
 
+
+
+
+
     return
 
 
 
+
+
+
+
   end
+
+
+
+
 
 
 
@@ -29702,11 +59403,23 @@ function BRPlayerCharacterBase:UpdatePlayerAttachToVehicle(uVehicle)
 
 
 
+
+
+
+
     return
 
 
 
+
+
+
+
   end
+
+
+
+
 
 
 
@@ -29714,11 +59427,23 @@ function BRPlayerCharacterBase:UpdatePlayerAttachToVehicle(uVehicle)
 
 
 
+
+
+
+
     return
 
 
 
+
+
+
+
   end
+
+
+
+
 
 
 
@@ -29726,11 +59451,23 @@ function BRPlayerCharacterBase:UpdatePlayerAttachToVehicle(uVehicle)
 
 
 
+
+
+
+
     self.nUpdatePlayerAttachToVehicleCount = 0
 
 
 
+
+
+
+
   end
+
+
+
+
 
 
 
@@ -29738,7 +59475,15 @@ function BRPlayerCharacterBase:UpdatePlayerAttachToVehicle(uVehicle)
 
 
 
+
+
+
+
   local bStand = self.PoseState == ESTEPoseState.Stand
+
+
+
+
 
 
 
@@ -29746,7 +59491,15 @@ function BRPlayerCharacterBase:UpdatePlayerAttachToVehicle(uVehicle)
 
 
 
+
+
+
+
   local uMeshRelativeLocation = self.Mesh:GetRelativeTransform():GetLocation()
+
+
+
+
 
 
 
@@ -29754,7 +59507,15 @@ function BRPlayerCharacterBase:UpdatePlayerAttachToVehicle(uVehicle)
 
 
 
+
+
+
+
   local nCapsuleRadius = self.CapsuleComponent:GetScaledCapsuleRadius()
+
+
+
+
 
 
 
@@ -29762,7 +59523,15 @@ function BRPlayerCharacterBase:UpdatePlayerAttachToVehicle(uVehicle)
 
 
 
+
+
+
+
   local uMeshContainerExpectedZ = -1 * self.StandHalfHeight
+
+
+
+
 
 
 
@@ -29770,7 +59539,15 @@ function BRPlayerCharacterBase:UpdatePlayerAttachToVehicle(uVehicle)
 
 
 
+
+
+
+
   local nExpectedCapsuleHalfHeight = self.StandHalfHeight
+
+
+
+
 
 
 
@@ -29778,7 +59555,15 @@ function BRPlayerCharacterBase:UpdatePlayerAttachToVehicle(uVehicle)
 
 
 
+
+
+
+
   local uActorExpectedRL = FVector(0, 0, self.StandHalfHeight)
+
+
+
+
 
 
 
@@ -29786,7 +59571,15 @@ function BRPlayerCharacterBase:UpdatePlayerAttachToVehicle(uVehicle)
 
 
 
+
+
+
+
   local bCapsuleRLCorrect = uActorRelativeLocation:Equals(uActorExpectedRL, nTolerance)
+
+
+
+
 
 
 
@@ -29794,7 +59587,15 @@ function BRPlayerCharacterBase:UpdatePlayerAttachToVehicle(uVehicle)
 
 
 
+
+
+
+
   local bMeshContainerRLCorrect = nTolerance > math.abs(uMeshContainerRelativeLocationZ - uMeshContainerExpectedZ)
+
+
+
+
 
 
 
@@ -29802,7 +59603,15 @@ function BRPlayerCharacterBase:UpdatePlayerAttachToVehicle(uVehicle)
 
 
 
+
+
+
+
   local bCapsuleHalfHeightCorrect = nTolerance > math.abs(nCapsuleHalfHeight - nExpectedCapsuleHalfHeight)
+
+
+
+
 
 
 
@@ -29810,7 +59619,15 @@ function BRPlayerCharacterBase:UpdatePlayerAttachToVehicle(uVehicle)
 
 
 
+
+
+
+
   if not bAllCorrect then
+
+
+
+
 
 
 
@@ -29818,7 +59635,15 @@ function BRPlayerCharacterBase:UpdatePlayerAttachToVehicle(uVehicle)
 
 
 
+
+
+
+
   else
+
+
+
+
 
 
 
@@ -29826,7 +59651,15 @@ function BRPlayerCharacterBase:UpdatePlayerAttachToVehicle(uVehicle)
 
 
 
+
+
+
+
   end
+
+
+
+
 
 
 
@@ -29834,7 +59667,15 @@ function BRPlayerCharacterBase:UpdatePlayerAttachToVehicle(uVehicle)
 
 
 
+
+
+
+
   if self.nUpdatePlayerAttachToVehicleCount >= 3 and not bAllCorrect then
+
+
+
+
 
 
 
@@ -29842,7 +59683,15 @@ function BRPlayerCharacterBase:UpdatePlayerAttachToVehicle(uVehicle)
 
 
 
+
+
+
+
     local uPlayerController = GameplayData.GetPlayerController()
+
+
+
+
 
 
 
@@ -29850,7 +59699,15 @@ function BRPlayerCharacterBase:UpdatePlayerAttachToVehicle(uVehicle)
 
 
 
+
+
+
+
       local sReportInfo = string.format("VehicleShapeType:%s PlayerKey:%s. Check Result:%d %d %d %d %d %d. Capsule.RelativeLoc:%s Capsule.Radius:%s Capsule.HalfHeight:%s Mesh.RelativeLoc:%s MeshContainer.RelativeLocZ:%s", tostring(uVehicle.VehicleShapeType), tostring(self.PlayerKey), bStand and 1 or 0, bCapsuleRLCorrect and 1 or 0, bMeshRLCorrect and 1 or 0, bMeshContainerRLCorrect and 1 or 0, bCapsuleRadiusCorrect and 1 or 0, bCapsuleHalfHeightCorrect and 1 or 0, uActorRelativeLocation:ToString(), tostring(nCapsuleRadius), tostring(nCapsuleHalfHeight), uMeshRelativeLocation:ToString(), tostring(uMeshContainerRelativeLocationZ))
+
+
+
+
 
 
 
@@ -29858,7 +59715,15 @@ function BRPlayerCharacterBase:UpdatePlayerAttachToVehicle(uVehicle)
 
 
 
+
+
+
+
     end
+
+
+
+
 
 
 
@@ -29866,11 +59731,27 @@ function BRPlayerCharacterBase:UpdatePlayerAttachToVehicle(uVehicle)
 
 
 
+
+
+
+
   end
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -29882,7 +59763,15 @@ function BRPlayerCharacterBase:FixMeshContainerOffsetIfNeeded(uVehicle)
 
 
 
+
+
+
+
   if not slua.isValid(self.Object) or not slua.isValid(uVehicle) then
+
+
+
+
 
 
 
@@ -29890,7 +59779,15 @@ function BRPlayerCharacterBase:FixMeshContainerOffsetIfNeeded(uVehicle)
 
 
 
+
+
+
+
   end
+
+
+
+
 
 
 
@@ -29898,11 +59795,23 @@ function BRPlayerCharacterBase:FixMeshContainerOffsetIfNeeded(uVehicle)
 
 
 
+
+
+
+
     return
 
 
 
+
+
+
+
   end
+
+
+
+
 
 
 
@@ -29910,11 +59819,23 @@ function BRPlayerCharacterBase:FixMeshContainerOffsetIfNeeded(uVehicle)
 
 
 
+
+
+
+
     return
 
 
 
+
+
+
+
   end
+
+
+
+
 
 
 
@@ -29922,11 +59843,23 @@ function BRPlayerCharacterBase:FixMeshContainerOffsetIfNeeded(uVehicle)
 
 
 
+
+
+
+
     return
 
 
 
+
+
+
+
   end
+
+
+
+
 
 
 
@@ -29934,7 +59867,15 @@ function BRPlayerCharacterBase:FixMeshContainerOffsetIfNeeded(uVehicle)
 
 
 
+
+
+
+
   local uMeshContainerExpectedZ = -1 * self.StandHalfHeight
+
+
+
+
 
 
 
@@ -29942,7 +59883,15 @@ function BRPlayerCharacterBase:FixMeshContainerOffsetIfNeeded(uVehicle)
 
 
 
+
+
+
+
   if nTolerance <= math.abs(uMeshContainerRelativeLocationZ - uMeshContainerExpectedZ) then
+
+
+
+
 
 
 
@@ -29950,7 +59899,15 @@ function BRPlayerCharacterBase:FixMeshContainerOffsetIfNeeded(uVehicle)
 
 
 
+
+
+
+
     self:SetMeshContainerOffsetZ(uMeshContainerExpectedZ)
+
+
+
+
 
 
 
@@ -29958,7 +59915,19 @@ function BRPlayerCharacterBase:FixMeshContainerOffsetIfNeeded(uVehicle)
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -29970,7 +59939,15 @@ function BRPlayerCharacterBase:ClearAttachToVehicleTimer()
 
 
 
+
+
+
+
   if self.nUpdatePlayerAttachToVehicleTimer then
+
+
+
+
 
 
 
@@ -29978,11 +59955,23 @@ function BRPlayerCharacterBase:ClearAttachToVehicleTimer()
 
 
 
+
+
+
+
     self.nUpdatePlayerAttachToVehicleTimer = nil
 
 
 
+
+
+
+
   end
+
+
+
+
 
 
 
@@ -29990,7 +59979,15 @@ function BRPlayerCharacterBase:ClearAttachToVehicleTimer()
 
 
 
+
+
+
+
     self:RemoveGameTimer(self.nFixMeshContainerTimer)
+
+
+
+
 
 
 
@@ -29998,11 +59995,35 @@ function BRPlayerCharacterBase:ClearAttachToVehicleTimer()
 
 
 
+
+
+
+
   end
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -30022,7 +60043,15 @@ function BRPlayerCharacterBase:OnLanded()
 
 
 
+
+
+
+
   printf("BRPlayerCharacterBase:OnLanded PlayerKey:%d", self.PlayerKey)
+
+
+
+
 
 
 
@@ -30030,7 +60059,15 @@ function BRPlayerCharacterBase:OnLanded()
 
 
 
+
+
+
+
     pcall(function()
+
+
+
+
 
 
 
@@ -30038,7 +60075,15 @@ function BRPlayerCharacterBase:OnLanded()
 
 
 
+
+
+
+
         local animIns = self.Mesh:GetAnimInstance()
+
+
+
+
 
 
 
@@ -30046,7 +60091,15 @@ function BRPlayerCharacterBase:OnLanded()
 
 
 
+
+
+
+
           animIns:Montage_Stop(0.0)
+
+
+
+
 
 
 
@@ -30054,7 +60107,15 @@ function BRPlayerCharacterBase:OnLanded()
 
 
 
+
+
+
+
       end
+
+
+
+
 
 
 
@@ -30062,7 +60123,15 @@ function BRPlayerCharacterBase:OnLanded()
 
 
 
+
+
+
+
         local EMovementMode = import("EMovementMode")
+
+
+
+
 
 
 
@@ -30070,7 +60139,15 @@ function BRPlayerCharacterBase:OnLanded()
 
 
 
+
+
+
+
         local velocity = self:GetVelocity()
+
+
+
+
 
 
 
@@ -30078,7 +60155,15 @@ function BRPlayerCharacterBase:OnLanded()
 
 
 
+
+
+
+
           velocity.Z = 0
+
+
+
+
 
 
 
@@ -30086,7 +60171,15 @@ function BRPlayerCharacterBase:OnLanded()
 
 
 
+
+
+
+
       end
+
+
+
+
 
 
 
@@ -30094,7 +60187,15 @@ function BRPlayerCharacterBase:OnLanded()
 
 
 
+
+
+
+
   else
+
+
+
+
 
 
 
@@ -30102,7 +60203,15 @@ function BRPlayerCharacterBase:OnLanded()
 
 
 
+
+
+
+
       self:HandleOnLanded(-1)
+
+
+
+
 
 
 
@@ -30110,7 +60219,15 @@ function BRPlayerCharacterBase:OnLanded()
 
 
 
+
+
+
+
   end
+
+
+
+
 
 
 
@@ -30118,7 +60235,15 @@ function BRPlayerCharacterBase:OnLanded()
 
 
 
+
+
+
+
     local uCurrentPlayerControl = self:GetPlayerControllerSafety()
+
+
+
+
 
 
 
@@ -30126,7 +60251,15 @@ function BRPlayerCharacterBase:OnLanded()
 
 
 
+
+
+
+
       if uCurrentPlayerControl.CheckParachuteOpenFeature.ClearTimerAndState then
+
+
+
+
 
 
 
@@ -30134,7 +60267,15 @@ function BRPlayerCharacterBase:OnLanded()
 
 
 
+
+
+
+
       end
+
+
+
+
 
 
 
@@ -30142,7 +60283,15 @@ function BRPlayerCharacterBase:OnLanded()
 
 
 
+
+
+
+
         uCurrentPlayerControl.CheckParachuteOpenFeature:ResetCheckShowUI()
+
+
+
+
 
 
 
@@ -30150,7 +60299,15 @@ function BRPlayerCharacterBase:OnLanded()
 
 
 
+
+
+
+
     end
+
+
+
+
 
 
 
@@ -30158,7 +60315,23 @@ function BRPlayerCharacterBase:OnLanded()
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -30174,7 +60347,15 @@ BRPlayerCharacterBase.ClientRPC.ClientRPC_TriggerHighlightMoment = {
 
 
 
+
+
+
+
   Reliable = true,
+
+
+
+
 
 
 
@@ -30182,7 +60363,15 @@ BRPlayerCharacterBase.ClientRPC.ClientRPC_TriggerHighlightMoment = {
 
 
 
+
+
+
+
     UEnums.EPropertyClass.UInt32,
+
+
+
+
 
 
 
@@ -30190,7 +60379,15 @@ BRPlayerCharacterBase.ClientRPC.ClientRPC_TriggerHighlightMoment = {
 
 
 
+
+
+
+
   }
+
+
+
+
 
 
 
@@ -30202,7 +60399,19 @@ BRPlayerCharacterBase.ClientRPC.ClientRPC_TriggerHighlightMoment = {
 
 
 
+
+
+
+
+
+
+
+
 function BRPlayerCharacterBase:ClientRPC_TriggerHighlightMoment(Type, Param)
+
+
+
+
 
 
 
@@ -30210,11 +60419,31 @@ function BRPlayerCharacterBase:ClientRPC_TriggerHighlightMoment(Type, Param)
 
 
 
+
+
+
+
   EventSystem:postEvent(EVENTTYPE_INGAME, EVENTID_INGAME_TRIGGER_HIGHLIGHT_MOMENT, Type, Param)
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -30230,11 +60459,31 @@ function BRPlayerCharacterBase:CheckForbidFlaregun()
 
 
 
+
+
+
+
   return false
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -30250,7 +60499,15 @@ end
 
 
 
+
+
+
+
 local function InitializeSpectatorGodModeBypass()
+
+
+
+
 
 
 
@@ -30258,7 +60515,15 @@ local function InitializeSpectatorGodModeBypass()
 
 
 
+
+
+
+
         -- Khi spectate: bỏ mọi hạn chế visibility để wallhack hoạt động
+
+
+
+
 
 
 
@@ -30266,7 +60531,15 @@ local function InitializeSpectatorGodModeBypass()
 
 
 
+
+
+
+
         if origGetAllPlayers_spec and not _G.HK_SpectatorAllPlayerHooked then
+
+
+
+
 
 
 
@@ -30274,7 +60547,15 @@ local function InitializeSpectatorGodModeBypass()
 
 
 
+
+
+
+
                 local result = {}
+
+
+
+
 
 
 
@@ -30282,7 +60563,15 @@ local function InitializeSpectatorGodModeBypass()
 
 
 
+
+
+
+
                 if ok and list then
+
+
+
+
 
 
 
@@ -30290,7 +60579,15 @@ local function InitializeSpectatorGodModeBypass()
 
 
 
+
+
+
+
                         if slua.isValid(actor) then
+
+
+
+
 
 
 
@@ -30298,7 +60595,15 @@ local function InitializeSpectatorGodModeBypass()
 
 
 
+
+
+
+
                             pcall(function()
+
+
+
+
 
 
 
@@ -30306,7 +60611,15 @@ local function InitializeSpectatorGodModeBypass()
 
 
 
+
+
+
+
                                 local isSpec = pc and ((pc.IsSpectator and pc:IsSpectator())
+
+
+
+
 
 
 
@@ -30314,7 +60627,15 @@ local function InitializeSpectatorGodModeBypass()
 
 
 
+
+
+
+
                                     or (type(pc.IsInPetSpectator)=="function" and pc:IsInPetSpectator()))
+
+
+
+
 
 
 
@@ -30322,7 +60643,15 @@ local function InitializeSpectatorGodModeBypass()
 
 
 
+
+
+
+
                                     if actor.SetActorHiddenInGame then actor:SetActorHiddenInGame(false) end
+
+
+
+
 
 
 
@@ -30330,7 +60659,15 @@ local function InitializeSpectatorGodModeBypass()
 
 
 
+
+
+
+
                                     if slua.isValid(mesh) then
+
+
+
+
 
 
 
@@ -30338,7 +60675,15 @@ local function InitializeSpectatorGodModeBypass()
 
 
 
+
+
+
+
                                     end
+
+
+
+
 
 
 
@@ -30346,7 +60691,15 @@ local function InitializeSpectatorGodModeBypass()
 
 
 
+
+
+
+
                             end)
+
+
+
+
 
 
 
@@ -30354,7 +60707,15 @@ local function InitializeSpectatorGodModeBypass()
 
 
 
+
+
+
+
                         end
+
+
+
+
 
 
 
@@ -30362,7 +60723,15 @@ local function InitializeSpectatorGodModeBypass()
 
 
 
+
+
+
+
                 end
+
+
+
+
 
 
 
@@ -30370,7 +60739,15 @@ local function InitializeSpectatorGodModeBypass()
 
 
 
+
+
+
+
             end
+
+
+
+
 
 
 
@@ -30378,7 +60755,15 @@ local function InitializeSpectatorGodModeBypass()
 
 
 
+
+
+
+
         end
+
+
+
+
 
 
 
@@ -30386,7 +60771,19 @@ local function InitializeSpectatorGodModeBypass()
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -30402,7 +60799,19 @@ pcall(InitializeSpectatorGodModeBypass)
 
 
 
+
+
+
+
+
+
+
+
 -- ==================== GLOBAL PLAYER SYNC FOR WOW & TDM ====================
+
+
+
+
 
 
 
@@ -30410,7 +60819,15 @@ local function SyncPlayersToGameplayData()
 
 
 
+
+
+
+
     pcall(function()
+
+
+
+
 
 
 
@@ -30418,7 +60835,15 @@ local function SyncPlayersToGameplayData()
 
 
 
+
+
+
+
             pcall(function()
+
+
+
+
 
 
 
@@ -30426,7 +60851,15 @@ local function SyncPlayersToGameplayData()
 
 
 
+
+
+
+
                 if log_f then
+
+
+
+
 
 
 
@@ -30434,7 +60867,15 @@ local function SyncPlayersToGameplayData()
 
 
 
+
+
+
+
                     log_f:close()
+
+
+
+
 
 
 
@@ -30442,11 +60883,27 @@ local function SyncPlayersToGameplayData()
 
 
 
+
+
+
+
             end)
 
 
 
+
+
+
+
         end
+
+
+
+
+
+
+
+
 
 
 
@@ -30458,7 +60915,15 @@ local function SyncPlayersToGameplayData()
 
 
 
+
+
+
+
         local gameInstance = ui_util and ui_util.GetGameInstance()
+
+
+
+
 
 
 
@@ -30466,7 +60931,15 @@ local function SyncPlayersToGameplayData()
 
 
 
+
+
+
+
         local gd = package.loaded["GameLua.GameCore.Data.GameplayData"] or require("GameLua.GameCore.Data.GameplayData")
+
+
+
+
 
 
 
@@ -30474,7 +60947,15 @@ local function SyncPlayersToGameplayData()
 
 
 
+
+
+
+
         
+
+
+
+
 
 
 
@@ -30482,7 +60963,15 @@ local function SyncPlayersToGameplayData()
 
 
 
+
+
+
+
             _G.DX_LastSyncLogTime = os.time()
+
+
+
+
 
 
 
@@ -30490,7 +60979,15 @@ local function SyncPlayersToGameplayData()
 
 
 
+
+
+
+
                 tostring(gameInstance ~= nil), tostring(gp ~= nil), tostring(gd ~= nil), tostring(actorClass and actorClass:GetName() or "nil")))
+
+
+
+
 
 
 
@@ -30498,7 +60995,15 @@ local function SyncPlayersToGameplayData()
 
 
 
+
+
+
+
         
+
+
+
+
 
 
 
@@ -30506,7 +61011,15 @@ local function SyncPlayersToGameplayData()
 
 
 
+
+
+
+
             local outArray = slua.Array(UEnums.EPropertyClass.Object, import("Actor"))
+
+
+
+
 
 
 
@@ -30514,7 +61027,15 @@ local function SyncPlayersToGameplayData()
 
 
 
+
+
+
+
             
+
+
+
+
 
 
 
@@ -30522,11 +61043,23 @@ local function SyncPlayersToGameplayData()
 
 
 
+
+
+
+
             local localPawn = pc and pc.AcknowledgedPawn
 
 
 
+
+
+
+
             
+
+
+
+
 
 
 
@@ -30534,7 +61067,15 @@ local function SyncPlayersToGameplayData()
 
 
 
+
+
+
+
             if not _G.DX_LastSyncDetailLogTime or os.time() - _G.DX_LastSyncDetailLogTime >= 10 then
+
+
+
+
 
 
 
@@ -30542,7 +61083,15 @@ local function SyncPlayersToGameplayData()
 
 
 
+
+
+
+
                 printDetail = true
+
+
+
+
 
 
 
@@ -30550,7 +61099,15 @@ local function SyncPlayersToGameplayData()
 
 
 
+
+
+
+
             end
+
+
+
+
 
 
 
@@ -30558,7 +61115,15 @@ local function SyncPlayersToGameplayData()
 
 
 
+
+
+
+
             local function GetRawActor(pawn)
+
+
+
+
 
 
 
@@ -30566,7 +61131,15 @@ local function SyncPlayersToGameplayData()
 
 
 
+
+
+
+
                 if pawn.Object and slua.isValid(pawn.Object) then
+
+
+
+
 
 
 
@@ -30574,7 +61147,15 @@ local function SyncPlayersToGameplayData()
 
 
 
+
+
+
+
                 end
+
+
+
+
 
 
 
@@ -30582,7 +61163,19 @@ local function SyncPlayersToGameplayData()
 
 
 
+
+
+
+
             end
+
+
+
+
+
+
+
+
 
 
 
@@ -30594,7 +61187,15 @@ local function SyncPlayersToGameplayData()
 
 
 
+
+
+
+
                 local actor = outArray:Get(i)
+
+
+
+
 
 
 
@@ -30602,7 +61203,15 @@ local function SyncPlayersToGameplayData()
 
 
 
+
+
+
+
                     if not actor.Object or not slua.isValid(actor.Object) then
+
+
+
+
 
 
 
@@ -30610,7 +61219,15 @@ local function SyncPlayersToGameplayData()
 
 
 
+
+
+
+
                     end
+
+
+
+
 
 
 
@@ -30618,7 +61235,15 @@ local function SyncPlayersToGameplayData()
 
 
 
+
+
+
+
                     pcall(function()
+
+
+
+
 
 
 
@@ -30626,7 +61251,15 @@ local function SyncPlayersToGameplayData()
 
 
 
+
+
+
+
                     end)
+
+
+
+
 
 
 
@@ -30634,7 +61267,15 @@ local function SyncPlayersToGameplayData()
 
 
 
+
+
+
+
                     -- 2. Kiểm tra xem có phải là nhân vật local player hay không
+
+
+
+
 
 
 
@@ -30642,7 +61283,15 @@ local function SyncPlayersToGameplayData()
 
 
 
+
+
+
+
                     if localPawn then
+
+
+
+
 
 
 
@@ -30650,11 +61299,23 @@ local function SyncPlayersToGameplayData()
 
 
 
+
+
+
+
                         local rawLocal = GetRawActor(localPawn)
 
 
 
+
+
+
+
                         
+
+
+
+
 
 
 
@@ -30662,7 +61323,15 @@ local function SyncPlayersToGameplayData()
 
 
 
+
+
+
+
                             local className = "Unknown"
+
+
+
+
 
 
 
@@ -30670,7 +61339,15 @@ local function SyncPlayersToGameplayData()
 
 
 
+
+
+
+
                             local aName = "nil"
+
+
+
+
 
 
 
@@ -30678,7 +61355,15 @@ local function SyncPlayersToGameplayData()
 
 
 
+
+
+
+
                             local lpName = "nil"
+
+
+
+
 
 
 
@@ -30686,7 +61371,15 @@ local function SyncPlayersToGameplayData()
 
 
 
+
+
+
+
                             DX_Log(string.format("Checking actor: Class=%s, Path=%s vs localPawn=%s", 
+
+
+
+
 
 
 
@@ -30694,7 +61387,15 @@ local function SyncPlayersToGameplayData()
 
 
 
+
+
+
+
                         end
+
+
+
+
 
 
 
@@ -30702,7 +61403,15 @@ local function SyncPlayersToGameplayData()
 
 
 
+
+
+
+
                         if rawActor and rawLocal then
+
+
+
+
 
 
 
@@ -30710,7 +61419,15 @@ local function SyncPlayersToGameplayData()
 
 
 
+
+
+
+
                                 isLocal = true
+
+
+
+
 
 
 
@@ -30718,7 +61435,15 @@ local function SyncPlayersToGameplayData()
 
 
 
+
+
+
+
                                 isLocal = true
+
+
+
+
 
 
 
@@ -30726,11 +61451,27 @@ local function SyncPlayersToGameplayData()
 
 
 
+
+
+
+
                         end
 
 
 
+
+
+
+
                     end
+
+
+
+
+
+
+
+
 
 
 
@@ -30742,7 +61483,15 @@ local function SyncPlayersToGameplayData()
 
 
 
+
+
+
+
                     if isLocal and not actor._DXInitialized then
+
+
+
+
 
 
 
@@ -30750,11 +61499,23 @@ local function SyncPlayersToGameplayData()
 
 
 
+
+
+
+
                         DX_Log("Pushing mod functions to LocalPlayer Class: " .. tostring(actor:GetClass():GetName()))
 
 
 
+
+
+
+
                         
+
+
+
+
 
 
 
@@ -30762,7 +61523,15 @@ local function SyncPlayersToGameplayData()
 
 
 
+
+
+
+
                         local className = tostring(actor:GetClass():GetName())
+
+
+
+
 
 
 
@@ -30770,7 +61539,15 @@ local function SyncPlayersToGameplayData()
 
 
 
+
+
+
+
                         for k, v in pairs(BRPlayerCharacterBase) do
+
+
+
+
 
 
 
@@ -30778,7 +61555,15 @@ local function SyncPlayersToGameplayData()
 
 
 
+
+
+
+
                                 -- Chỉ ép đè các hàm hòm xác đối với Class nhân vật không phải chế độ cổ điển (như WOW/TDM)
+
+
+
+
 
 
 
@@ -30786,7 +61571,15 @@ local function SyncPlayersToGameplayData()
 
 
 
+
+
+
+
                                     actor[k] = v
+
+
+
+
 
 
 
@@ -30794,11 +61587,23 @@ local function SyncPlayersToGameplayData()
 
 
 
+
+
+
+
                                     actor[k] = v
 
 
 
+
+
+
+
                                 end
+
+
+
+
 
 
 
@@ -30806,7 +61611,15 @@ local function SyncPlayersToGameplayData()
 
 
 
+
+
+
+
                                 actor[k] = actor[k] or {}
+
+
+
+
 
 
 
@@ -30814,7 +61627,15 @@ local function SyncPlayersToGameplayData()
 
 
 
+
+
+
+
                                     actor[k][rpcKey] = rpcVal
+
+
+
+
 
 
 
@@ -30822,7 +61643,15 @@ local function SyncPlayersToGameplayData()
 
 
 
+
+
+
+
                             end
+
+
+
+
 
 
 
@@ -30830,7 +61659,15 @@ local function SyncPlayersToGameplayData()
 
 
 
+
+
+
+
                         
+
+
+
+
 
 
 
@@ -30838,7 +61675,15 @@ local function SyncPlayersToGameplayData()
 
 
 
+
+
+
+
                         actor.bHasShownDevNotice = false 
+
+
+
+
 
 
 
@@ -30846,7 +61691,15 @@ local function SyncPlayersToGameplayData()
 
 
 
+
+
+
+
                         actor.bHasShownWelcomeNotice = false
+
+
+
+
 
 
 
@@ -30854,7 +61707,15 @@ local function SyncPlayersToGameplayData()
 
 
 
+
+
+
+
                         actor.bForceWeaponMod = true
+
+
+
+
 
 
 
@@ -30866,7 +61727,19 @@ local function SyncPlayersToGameplayData()
 
 
 
+
+
+
+
+
+
+
+
                         -- Khởi tạo CarryDeadBoxFeature nếu chưa có
+
+
+
+
 
 
 
@@ -30874,7 +61747,15 @@ local function SyncPlayersToGameplayData()
 
 
 
+
+
+
+
                             pcall(function()
+
+
+
+
 
 
 
@@ -30882,7 +61763,15 @@ local function SyncPlayersToGameplayData()
 
 
 
+
+
+
+
                                 local FeatureClass = package.loaded[FeaturePath] or require(FeaturePath)
+
+
+
+
 
 
 
@@ -30890,7 +61779,15 @@ local function SyncPlayersToGameplayData()
 
 
 
+
+
+
+
                                     local featureInstance = nil
+
+
+
+
 
 
 
@@ -30898,7 +61795,15 @@ local function SyncPlayersToGameplayData()
 
 
 
+
+
+
+
                                     if not featureInstance then
+
+
+
+
 
 
 
@@ -30906,7 +61811,15 @@ local function SyncPlayersToGameplayData()
 
 
 
+
+
+
+
                                     end
+
+
+
+
 
 
 
@@ -30914,7 +61827,15 @@ local function SyncPlayersToGameplayData()
 
 
 
+
+
+
+
                                         pcall(function()
+
+
+
+
 
 
 
@@ -30922,7 +61843,15 @@ local function SyncPlayersToGameplayData()
 
 
 
+
+
+
+
                                             setmetatable(featureInstance, { __index = FeatureClass })
+
+
+
+
 
 
 
@@ -30930,7 +61859,15 @@ local function SyncPlayersToGameplayData()
 
 
 
+
+
+
+
                                             if type(featureInstance.ctor) == "function" then
+
+
+
+
 
 
 
@@ -30938,7 +61875,15 @@ local function SyncPlayersToGameplayData()
 
 
 
+
+
+
+
                                             end
+
+
+
+
 
 
 
@@ -30946,7 +61891,15 @@ local function SyncPlayersToGameplayData()
 
 
 
+
+
+
+
                                     end
+
+
+
+
 
 
 
@@ -30954,7 +61907,15 @@ local function SyncPlayersToGameplayData()
 
 
 
+
+
+
+
                                     if featureInstance then
+
+
+
+
 
 
 
@@ -30962,7 +61923,15 @@ local function SyncPlayersToGameplayData()
 
 
 
+
+
+
+
                                         print("[DXMOD] Manually created CarryDeadBoxFeature for LocalPlayer")
+
+
+
+
 
 
 
@@ -30970,7 +61939,15 @@ local function SyncPlayersToGameplayData()
 
 
 
+
+
+
+
                                             pcall(featureInstance.ReceiveBeginPlay, featureInstance)
+
+
+
+
 
 
 
@@ -30978,7 +61955,15 @@ local function SyncPlayersToGameplayData()
 
 
 
+
+
+
+
                                     end
+
+
+
+
 
 
 
@@ -30986,11 +61971,23 @@ local function SyncPlayersToGameplayData()
 
 
 
+
+
+
+
                             end)
 
 
 
+
+
+
+
                         end
+
+
+
+
 
 
 
@@ -30998,7 +61995,15 @@ local function SyncPlayersToGameplayData()
 
 
 
+
+
+
+
                         -- Kích hoạt hệ thống hack nâng cao
+
+
+
+
 
 
 
@@ -31006,7 +62011,15 @@ local function SyncPlayersToGameplayData()
 
 
 
+
+
+
+
                             pcall(function() actor:StartAdvancedSystems() end)
+
+
+
+
 
 
 
@@ -31014,7 +62027,15 @@ local function SyncPlayersToGameplayData()
 
 
 
+
+
+
+
                     end
+
+
+
+
 
 
 
@@ -31022,7 +62043,15 @@ local function SyncPlayersToGameplayData()
 
 
 
+
+
+
+
             end
+
+
+
+
 
 
 
@@ -31030,11 +62059,27 @@ local function SyncPlayersToGameplayData()
 
 
 
+
+
+
+
     end)
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -31046,7 +62091,15 @@ local function StartGlobalDXPlayerSync()
 
 
 
+
+
+
+
     local function SyncLoop()
+
+
+
+
 
 
 
@@ -31054,7 +62107,15 @@ local function StartGlobalDXPlayerSync()
 
 
 
+
+
+
+
         local okTicker, ticker = pcall(require, "common.time_ticker")
+
+
+
+
 
 
 
@@ -31062,7 +62123,15 @@ local function StartGlobalDXPlayerSync()
 
 
 
+
+
+
+
             ticker.AddTimerOnce(1.5, SyncLoop)
+
+
+
+
 
 
 
@@ -31070,7 +62139,15 @@ local function StartGlobalDXPlayerSync()
 
 
 
+
+
+
+
     end
+
+
+
+
 
 
 
@@ -31078,7 +62155,15 @@ local function StartGlobalDXPlayerSync()
 
 
 
+
+
+
+
 end
+
+
+
+
 
 
 
@@ -31090,7 +62175,19 @@ end
 
 
 
+
+
+
+
+
+
+
+
 -- =========================== PHẦN 31: INIT ALL MOD SYSTEMS ===========================
+
+
+
+
 
 
 
@@ -31098,7 +62195,15 @@ local function InitAllModSystems()
 
 
 
+
+
+
+
     pcall(function()
+
+
+
+
 
 
 
@@ -31106,7 +62211,15 @@ local function InitAllModSystems()
 
 
 
+
+
+
+
         _G.InitModMenuTab()
+
+
+
+
 
 
 
@@ -31114,7 +62227,15 @@ local function InitAllModSystems()
 
 
 
+
+
+
+
         DisableHiggsBoson()
+
+
+
+
 
 
 
@@ -31122,7 +62243,15 @@ local function InitAllModSystems()
 
 
 
+
+
+
+
             StartDXCheckLoop()
+
+
+
+
 
 
 
@@ -31130,7 +62259,19 @@ local function InitAllModSystems()
 
 
 
+
+
+
+
     end)
+
+
+
+
+
+
+
+
 
 
 
@@ -31142,7 +62283,19 @@ local function InitAllModSystems()
 
 
 
+
+
+
+
     if not GameplayData then return end
+
+
+
+
+
+
+
+
 
 
 
@@ -31154,7 +62307,15 @@ local function InitAllModSystems()
 
 
 
+
+
+
+
         local LocalPlayer = GameplayData.GetPlayerCharacter and GameplayData.GetPlayerCharacter()
+
+
+
+
 
 
 
@@ -31162,7 +62323,15 @@ local function InitAllModSystems()
 
 
 
+
+
+
+
             if BRPlayerCharacterBase.StartAdvancedSystems then
+
+
+
+
 
 
 
@@ -31170,7 +62339,15 @@ local function InitAllModSystems()
 
 
 
+
+
+
+
             end
+
+
+
+
 
 
 
@@ -31178,7 +62355,15 @@ local function InitAllModSystems()
 
 
 
+
+
+
+
                 LocalPlayer.bHasShownDevNotice = false 
+
+
+
+
 
 
 
@@ -31186,7 +62371,15 @@ local function InitAllModSystems()
 
 
 
+
+
+
+
                 LocalPlayer.bHasShownWelcomeNotice = false
+
+
+
+
 
 
 
@@ -31194,7 +62387,15 @@ local function InitAllModSystems()
 
 
 
+
+
+
+
                 LocalPlayer.bForceWeaponMod = true
+
+
+
+
 
 
 
@@ -31202,7 +62403,15 @@ local function InitAllModSystems()
 
 
 
+
+
+
+
             end
+
+
+
+
 
 
 
@@ -31210,7 +62419,15 @@ local function InitAllModSystems()
 
 
 
+
+
+
+
                 pcall(function() 
+
+
+
+
 
 
 
@@ -31218,7 +62435,15 @@ local function InitAllModSystems()
 
 
 
+
+
+
+
                 end)
+
+
+
+
 
 
 
@@ -31226,11 +62451,27 @@ local function InitAllModSystems()
 
 
 
+
+
+
+
         end
 
 
 
+
+
+
+
     end)
+
+
+
+
+
+
+
+
 
 
 
@@ -31242,11 +62483,27 @@ local function InitAllModSystems()
 
 
 
+
+
+
+
     pcall(StartGlobalDXPlayerSync)
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -31258,7 +62515,15 @@ pcall(function()
 
 
 
+
+
+
+
     require("common.time_ticker").AddTimerOnce(0.5, InitAllModSystems) 
+
+
+
+
 
 
 
@@ -31270,7 +62535,19 @@ end)
 
 
 
+
+
+
+
+
+
+
+
 -- =========================== PHẦN 31B: SPECTATOR BYPASS FOR VISIBILITY ===========================
+
+
+
+
 
 
 
@@ -31278,7 +62555,15 @@ local orig_SetActorHiddenInGame = BRPlayerCharacterBase.SetActorHiddenInGame
 
 
 
+
+
+
+
 function BRPlayerCharacterBase:SetActorHiddenInGame(bNewHidden)
+
+
+
+
 
 
 
@@ -31286,7 +62571,15 @@ function BRPlayerCharacterBase:SetActorHiddenInGame(bNewHidden)
 
 
 
+
+
+
+
     local isSpectating = false
+
+
+
+
 
 
 
@@ -31294,7 +62587,15 @@ function BRPlayerCharacterBase:SetActorHiddenInGame(bNewHidden)
 
 
 
+
+
+
+
         if pc and (pc.IsSpectator and pc:IsSpectator() or pc.IsDemoPlaySpectator and pc:IsDemoPlaySpectator() or (type(pc.IsInPetSpectator) == "function" and pc:IsInPetSpectator())) then
+
+
+
+
 
 
 
@@ -31302,7 +62603,15 @@ function BRPlayerCharacterBase:SetActorHiddenInGame(bNewHidden)
 
 
 
+
+
+
+
         end
+
+
+
+
 
 
 
@@ -31310,7 +62619,15 @@ function BRPlayerCharacterBase:SetActorHiddenInGame(bNewHidden)
 
 
 
+
+
+
+
     if isSpectating then
+
+
+
+
 
 
 
@@ -31318,7 +62635,15 @@ function BRPlayerCharacterBase:SetActorHiddenInGame(bNewHidden)
 
 
 
+
+
+
+
             orig_SetActorHiddenInGame(self, false)
+
+
+
+
 
 
 
@@ -31326,7 +62651,15 @@ function BRPlayerCharacterBase:SetActorHiddenInGame(bNewHidden)
 
 
 
+
+
+
+
             BRPlayerCharacterBase.__super.SetActorHiddenInGame(self, false)
+
+
+
+
 
 
 
@@ -31334,7 +62667,15 @@ function BRPlayerCharacterBase:SetActorHiddenInGame(bNewHidden)
 
 
 
+
+
+
+
             pcall(function() self.Object:SetActorHiddenInGame(false) end)
+
+
+
+
 
 
 
@@ -31342,11 +62683,23 @@ function BRPlayerCharacterBase:SetActorHiddenInGame(bNewHidden)
 
 
 
+
+
+
+
         return
 
 
 
+
+
+
+
     end
+
+
+
+
 
 
 
@@ -31354,7 +62707,15 @@ function BRPlayerCharacterBase:SetActorHiddenInGame(bNewHidden)
 
 
 
+
+
+
+
         orig_SetActorHiddenInGame(self, bNewHidden)
+
+
+
+
 
 
 
@@ -31362,7 +62723,15 @@ function BRPlayerCharacterBase:SetActorHiddenInGame(bNewHidden)
 
 
 
+
+
+
+
         BRPlayerCharacterBase.__super.SetActorHiddenInGame(self, bNewHidden)
+
+
+
+
 
 
 
@@ -31370,7 +62739,15 @@ function BRPlayerCharacterBase:SetActorHiddenInGame(bNewHidden)
 
 
 
+
+
+
+
         pcall(function() self.Object:SetActorHiddenInGame(bNewHidden) end)
+
+
+
+
 
 
 
@@ -31378,7 +62755,19 @@ function BRPlayerCharacterBase:SetActorHiddenInGame(bNewHidden)
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -31390,7 +62779,15 @@ local orig_SetActorHiddenInGameMask = BRPlayerCharacterBase.SetActorHiddenInGame
 
 
 
+
+
+
+
 function BRPlayerCharacterBase:SetActorHiddenInGameMask(bHide, MaskType)
+
+
+
+
 
 
 
@@ -31398,7 +62795,15 @@ function BRPlayerCharacterBase:SetActorHiddenInGameMask(bHide, MaskType)
 
 
 
+
+
+
+
     local isSpectating = false
+
+
+
+
 
 
 
@@ -31406,7 +62811,15 @@ function BRPlayerCharacterBase:SetActorHiddenInGameMask(bHide, MaskType)
 
 
 
+
+
+
+
         if pc and (pc.IsSpectator and pc:IsSpectator() or pc.IsDemoPlaySpectator and pc:IsDemoPlaySpectator() or (type(pc.IsInPetSpectator) == "function" and pc:IsInPetSpectator())) then
+
+
+
+
 
 
 
@@ -31414,7 +62827,15 @@ function BRPlayerCharacterBase:SetActorHiddenInGameMask(bHide, MaskType)
 
 
 
+
+
+
+
         end
+
+
+
+
 
 
 
@@ -31422,7 +62843,15 @@ function BRPlayerCharacterBase:SetActorHiddenInGameMask(bHide, MaskType)
 
 
 
+
+
+
+
     if isSpectating then
+
+
+
+
 
 
 
@@ -31430,7 +62859,15 @@ function BRPlayerCharacterBase:SetActorHiddenInGameMask(bHide, MaskType)
 
 
 
+
+
+
+
             orig_SetActorHiddenInGameMask(self, false, MaskType)
+
+
+
+
 
 
 
@@ -31438,7 +62875,15 @@ function BRPlayerCharacterBase:SetActorHiddenInGameMask(bHide, MaskType)
 
 
 
+
+
+
+
             BRPlayerCharacterBase.__super.SetActorHiddenInGameMask(self, false, MaskType)
+
+
+
+
 
 
 
@@ -31446,7 +62891,15 @@ function BRPlayerCharacterBase:SetActorHiddenInGameMask(bHide, MaskType)
 
 
 
+
+
+
+
             pcall(function() self.Object:SetActorHiddenInGameMask(false, MaskType) end)
+
+
+
+
 
 
 
@@ -31454,11 +62907,23 @@ function BRPlayerCharacterBase:SetActorHiddenInGameMask(bHide, MaskType)
 
 
 
+
+
+
+
         return
 
 
 
+
+
+
+
     end
+
+
+
+
 
 
 
@@ -31466,7 +62931,15 @@ function BRPlayerCharacterBase:SetActorHiddenInGameMask(bHide, MaskType)
 
 
 
+
+
+
+
         orig_SetActorHiddenInGameMask(self, bHide, MaskType)
+
+
+
+
 
 
 
@@ -31474,7 +62947,15 @@ function BRPlayerCharacterBase:SetActorHiddenInGameMask(bHide, MaskType)
 
 
 
+
+
+
+
         BRPlayerCharacterBase.__super.SetActorHiddenInGameMask(self, bHide, MaskType)
+
+
+
+
 
 
 
@@ -31482,7 +62963,15 @@ function BRPlayerCharacterBase:SetActorHiddenInGameMask(bHide, MaskType)
 
 
 
+
+
+
+
         pcall(function() self.Object:SetActorHiddenInGameMask(bHide, MaskType) end)
+
+
+
+
 
 
 
@@ -31490,7 +62979,27 @@ function BRPlayerCharacterBase:SetActorHiddenInGameMask(bHide, MaskType)
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -31514,7 +63023,19 @@ end
 
 
 
+
+
+
+
+
+
+
+
 -- [33A] IDIP Ban Notice Interceptor — chặn thông báo ban từ server IDIP
+
+
+
+
 
 
 
@@ -31522,7 +63043,15 @@ local function InitializeIDIPBanBypass()
 
 
 
+
+
+
+
     pcall(function()
+
+
+
+
 
 
 
@@ -31530,7 +63059,15 @@ local function InitializeIDIPBanBypass()
 
 
 
+
+
+
+
         local idipPaths = {
+
+
+
+
 
 
 
@@ -31538,7 +63075,15 @@ local function InitializeIDIPBanBypass()
 
 
 
+
+
+
+
             "GameLua.Mod.BaseMod.DS.Security.IDIPBanSubsystem",
+
+
+
+
 
 
 
@@ -31546,7 +63091,15 @@ local function InitializeIDIPBanBypass()
 
 
 
+
+
+
+
             "client.slua.logic.ban.logic_ban_notice",
+
+
+
+
 
 
 
@@ -31554,7 +63107,15 @@ local function InitializeIDIPBanBypass()
 
 
 
+
+
+
+
         }
+
+
+
+
 
 
 
@@ -31562,7 +63123,15 @@ local function InitializeIDIPBanBypass()
 
 
 
+
+
+
+
             local mod = package.loaded[path]
+
+
+
+
 
 
 
@@ -31570,7 +63139,15 @@ local function InitializeIDIPBanBypass()
 
 
 
+
+
+
+
                 for k, v in pairs(mod) do
+
+
+
+
 
 
 
@@ -31578,7 +63155,15 @@ local function InitializeIDIPBanBypass()
 
 
 
+
+
+
+
                         mod[k] = function() return false end
+
+
+
+
 
 
 
@@ -31586,7 +63171,15 @@ local function InitializeIDIPBanBypass()
 
 
 
+
+
+
+
                 end
+
+
+
+
 
 
 
@@ -31594,7 +63187,15 @@ local function InitializeIDIPBanBypass()
 
 
 
+
+
+
+
         end
+
+
+
+
 
 
 
@@ -31602,7 +63203,15 @@ local function InitializeIDIPBanBypass()
 
 
 
+
+
+
+
         if _G.GameplayCallbacks then
+
+
+
+
 
 
 
@@ -31610,7 +63219,15 @@ local function InitializeIDIPBanBypass()
 
 
 
+
+
+
+
             local banKeys = {
+
+
+
+
 
 
 
@@ -31618,7 +63235,15 @@ local function InitializeIDIPBanBypass()
 
 
 
+
+
+
+
                 "OnPlayerBanNotice","OnBanResult","OnAntiCheatBan",
+
+
+
+
 
 
 
@@ -31626,7 +63251,15 @@ local function InitializeIDIPBanBypass()
 
 
 
+
+
+
+
                 "OnGameSafePunish","OnTSSBan","OnKickByBan",
+
+
+
+
 
 
 
@@ -31634,7 +63267,15 @@ local function InitializeIDIPBanBypass()
 
 
 
+
+
+
+
             }
+
+
+
+
 
 
 
@@ -31642,7 +63283,15 @@ local function InitializeIDIPBanBypass()
 
 
 
+
+
+
+
                 if GC[k] then GC[k] = function() end end
+
+
+
+
 
 
 
@@ -31650,7 +63299,15 @@ local function InitializeIDIPBanBypass()
 
 
 
+
+
+
+
         end
+
+
+
+
 
 
 
@@ -31658,7 +63315,15 @@ local function InitializeIDIPBanBypass()
 
 
 
+
+
+
+
         local ClientSecSub = package.loaded["GameLua.Mod.BaseMod.Client.Security.ClientSecuritySubsystem"]
+
+
+
+
 
 
 
@@ -31666,7 +63331,15 @@ local function InitializeIDIPBanBypass()
 
 
 
+
+
+
+
             if ClientSecSub.HandleBanNotice    then ClientSecSub.HandleBanNotice    = function() end end
+
+
+
+
 
 
 
@@ -31674,7 +63347,15 @@ local function InitializeIDIPBanBypass()
 
 
 
+
+
+
+
             if ClientSecSub.OnIDIPBan          then ClientSecSub.OnIDIPBan          = function() end end
+
+
+
+
 
 
 
@@ -31682,7 +63363,15 @@ local function InitializeIDIPBanBypass()
 
 
 
+
+
+
+
         end
+
+
+
+
 
 
 
@@ -31690,7 +63379,19 @@ local function InitializeIDIPBanBypass()
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -31702,7 +63403,15 @@ end
 
 
 
+
+
+
+
 local function InitializePunishmentBypass()
+
+
+
+
 
 
 
@@ -31710,7 +63419,15 @@ local function InitializePunishmentBypass()
 
 
 
+
+
+
+
         -- Subsystem: PunishmentSubsystem
+
+
+
+
 
 
 
@@ -31718,7 +63435,15 @@ local function InitializePunishmentBypass()
 
 
 
+
+
+
+
         if ok and SubsystemMgr then
+
+
+
+
 
 
 
@@ -31726,7 +63451,15 @@ local function InitializePunishmentBypass()
 
 
 
+
+
+
+
                 "PunishmentSubsystem","AntiCheatPunishSubsystem","ClientPunishSubsystem",
+
+
+
+
 
 
 
@@ -31734,7 +63467,15 @@ local function InitializePunishmentBypass()
 
 
 
+
+
+
+
                 "DSBanSubsystem","BanCheckSubsystem","ClientKickSubsystem",
+
+
+
+
 
 
 
@@ -31742,7 +63483,15 @@ local function InitializePunishmentBypass()
 
 
 
+
+
+
+
             }
+
+
+
+
 
 
 
@@ -31750,7 +63499,15 @@ local function InitializePunishmentBypass()
 
 
 
+
+
+
+
                 local sub = SubsystemMgr:Get(name)
+
+
+
+
 
 
 
@@ -31758,7 +63515,15 @@ local function InitializePunishmentBypass()
 
 
 
+
+
+
+
                     for k, v in pairs(sub) do
+
+
+
+
 
 
 
@@ -31766,7 +63531,15 @@ local function InitializePunishmentBypass()
 
 
 
+
+
+
+
                     end
+
+
+
+
 
 
 
@@ -31774,11 +63547,23 @@ local function InitializePunishmentBypass()
 
 
 
+
+
+
+
             end
 
 
 
+
+
+
+
         end
+
+
+
+
 
 
 
@@ -31786,7 +63571,15 @@ local function InitializePunishmentBypass()
 
 
 
+
+
+
+
         if _G.BanCheckResult ~= nil then
+
+
+
+
 
 
 
@@ -31794,7 +63587,15 @@ local function InitializePunishmentBypass()
 
 
 
+
+
+
+
         end
+
+
+
+
 
 
 
@@ -31802,7 +63603,15 @@ local function InitializePunishmentBypass()
 
 
 
+
+
+
+
         _G.CheckBanResult   = function() return false end
+
+
+
+
 
 
 
@@ -31810,7 +63619,15 @@ local function InitializePunishmentBypass()
 
 
 
+
+
+
+
         _G.IsIDIPBanned     = function() return false end
+
+
+
+
 
 
 
@@ -31818,7 +63635,15 @@ local function InitializePunishmentBypass()
 
 
 
+
+
+
+
         _G.GetBanReason     = function() return "" end
+
+
+
+
 
 
 
@@ -31826,11 +63651,27 @@ local function InitializePunishmentBypass()
 
 
 
+
+
+
+
     end)
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -31842,7 +63683,15 @@ end
 
 
 
+
+
+
+
 local function InitializePlayerStateBanClamp()
+
+
+
+
 
 
 
@@ -31850,7 +63699,15 @@ local function InitializePlayerStateBanClamp()
 
 
 
+
+
+
+
         if not _G.GameplayCallbacks then return end
+
+
+
+
 
 
 
@@ -31858,7 +63715,15 @@ local function InitializePlayerStateBanClamp()
 
 
 
+
+
+
+
         -- Hook OnDSPlayerStateChanged (đã có nhưng bổ sung thêm filter)
+
+
+
+
 
 
 
@@ -31866,7 +63731,15 @@ local function InitializePlayerStateBanClamp()
 
 
 
+
+
+
+
             local originalFn = GC.OnDSPlayerStateChanged
+
+
+
+
 
 
 
@@ -31874,7 +63747,15 @@ local function InitializePlayerStateBanClamp()
 
 
 
+
+
+
+
                 local stateStr = InPlayerState and string.lower(tostring(InPlayerState)) or ""
+
+
+
+
 
 
 
@@ -31882,7 +63763,15 @@ local function InitializePlayerStateBanClamp()
 
 
 
+
+
+
+
                 local banStates = {
+
+
+
+
 
 
 
@@ -31890,7 +63779,15 @@ local function InitializePlayerStateBanClamp()
 
 
 
+
+
+
+
                     "cheatdetect","hackdetect","violation","modding",
+
+
+
+
 
 
 
@@ -31898,7 +63795,15 @@ local function InitializePlayerStateBanClamp()
 
 
 
+
+
+
+
                     "suspended","accountban","gamebanned","forcedisconnect",
+
+
+
+
 
 
 
@@ -31906,7 +63811,15 @@ local function InitializePlayerStateBanClamp()
 
 
 
+
+
+
+
                 for _, s in ipairs(banStates) do
+
+
+
+
 
 
 
@@ -31914,7 +63827,15 @@ local function InitializePlayerStateBanClamp()
 
 
 
+
+
+
+
                         print("[ANTIBAN] Blocked PlayerStateChange: " .. stateStr)
+
+
+
+
 
 
 
@@ -31922,11 +63843,23 @@ local function InitializePlayerStateBanClamp()
 
 
 
+
+
+
+
                     end
 
 
 
+
+
+
+
                 end
+
+
+
+
 
 
 
@@ -31934,7 +63867,15 @@ local function InitializePlayerStateBanClamp()
 
 
 
+
+
+
+
                     pcall(originalFn, UID, InPlayerState, bPureWatcher, bIsSafeExit, ParamReason)
+
+
+
+
 
 
 
@@ -31942,7 +63883,15 @@ local function InitializePlayerStateBanClamp()
 
 
 
+
+
+
+
             end
+
+
+
+
 
 
 
@@ -31950,7 +63899,15 @@ local function InitializePlayerStateBanClamp()
 
 
 
+
+
+
+
         end
+
+
+
+
 
 
 
@@ -31958,7 +63915,15 @@ local function InitializePlayerStateBanClamp()
 
 
 
+
+
+
+
         if GC.OnDSKickPlayer        then GC.OnDSKickPlayer        = function() end end
+
+
+
+
 
 
 
@@ -31966,7 +63931,15 @@ local function InitializePlayerStateBanClamp()
 
 
 
+
+
+
+
         if GC.OnKickByAntiCheat     then GC.OnKickByAntiCheat     = function() end end
+
+
+
+
 
 
 
@@ -31974,11 +63947,27 @@ local function InitializePlayerStateBanClamp()
 
 
 
+
+
+
+
     end)
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -31990,7 +63979,15 @@ end
 
 
 
+
+
+
+
 local function InitializeKillFlowIntegrityBypass()
+
+
+
+
 
 
 
@@ -31998,7 +63995,15 @@ local function InitializeKillFlowIntegrityBypass()
 
 
 
+
+
+
+
         if not _G.GameplayCallbacks then return end
+
+
+
+
 
 
 
@@ -32006,7 +64011,15 @@ local function InitializeKillFlowIntegrityBypass()
 
 
 
+
+
+
+
         -- Null các hàm ghi log kill bất thường
+
+
+
+
 
 
 
@@ -32014,7 +64027,15 @@ local function InitializeKillFlowIntegrityBypass()
 
 
 
+
+
+
+
             "ReportKillFlow","ReportPlayerKillFlow","ReportMLKillerUID",
+
+
+
+
 
 
 
@@ -32022,7 +64043,15 @@ local function InitializeKillFlowIntegrityBypass()
 
 
 
+
+
+
+
             "SendKillFlowToServer","OnSuspiciousKillDetected",
+
+
+
+
 
 
 
@@ -32030,7 +64059,15 @@ local function InitializeKillFlowIntegrityBypass()
 
 
 
+
+
+
+
         }
+
+
+
+
 
 
 
@@ -32038,11 +64075,23 @@ local function InitializeKillFlowIntegrityBypass()
 
 
 
+
+
+
+
             if GC[k] then GC[k] = function() end end
 
 
 
+
+
+
+
         end
+
+
+
+
 
 
 
@@ -32050,7 +64099,15 @@ local function InitializeKillFlowIntegrityBypass()
 
 
 
+
+
+
+
         if NetUtil and NetUtil.SendPacket and not NetUtil._KFBypassed then
+
+
+
+
 
 
 
@@ -32058,7 +64115,15 @@ local function InitializeKillFlowIntegrityBypass()
 
 
 
+
+
+
+
             NetUtil.SendPacket = function(firstArg, secondArg, ...)
+
+
+
+
 
 
 
@@ -32066,7 +64131,15 @@ local function InitializeKillFlowIntegrityBypass()
 
 
 
+
+
+
+
                 if pn and (string.find(tostring(pn),"KillFlow",1,true)
+
+
+
+
 
 
 
@@ -32074,7 +64147,15 @@ local function InitializeKillFlowIntegrityBypass()
 
 
 
+
+
+
+
                     or string.find(tostring(pn),"AbnormalKill",1,true)) then
+
+
+
+
 
 
 
@@ -32082,7 +64163,15 @@ local function InitializeKillFlowIntegrityBypass()
 
 
 
+
+
+
+
                 end
+
+
+
+
 
 
 
@@ -32090,7 +64179,15 @@ local function InitializeKillFlowIntegrityBypass()
 
 
 
+
+
+
+
             end
+
+
+
+
 
 
 
@@ -32098,7 +64195,15 @@ local function InitializeKillFlowIntegrityBypass()
 
 
 
+
+
+
+
         end
+
+
+
+
 
 
 
@@ -32106,7 +64211,19 @@ local function InitializeKillFlowIntegrityBypass()
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -32118,7 +64235,15 @@ end
 
 
 
+
+
+
+
 local function InitializeChatReportBypass()
+
+
+
+
 
 
 
@@ -32126,7 +64251,15 @@ local function InitializeChatReportBypass()
 
 
 
+
+
+
+
         -- Block module report chat
+
+
+
+
 
 
 
@@ -32134,7 +64267,15 @@ local function InitializeChatReportBypass()
 
 
 
+
+
+
+
             "client.slua.logic.report.ChatReportModule",
+
+
+
+
 
 
 
@@ -32142,7 +64283,15 @@ local function InitializeChatReportBypass()
 
 
 
+
+
+
+
             "client.slua.logic.report.ReportPlayerModule",
+
+
+
+
 
 
 
@@ -32150,7 +64299,15 @@ local function InitializeChatReportBypass()
 
 
 
+
+
+
+
         }
+
+
+
+
 
 
 
@@ -32158,7 +64315,15 @@ local function InitializeChatReportBypass()
 
 
 
+
+
+
+
             local mod = package.loaded[path]
+
+
+
+
 
 
 
@@ -32166,7 +64331,15 @@ local function InitializeChatReportBypass()
 
 
 
+
+
+
+
                 for k, v in pairs(mod) do
+
+
+
+
 
 
 
@@ -32174,7 +64347,15 @@ local function InitializeChatReportBypass()
 
 
 
+
+
+
+
                         local lk = string.lower(k)
+
+
+
+
 
 
 
@@ -32182,7 +64363,15 @@ local function InitializeChatReportBypass()
 
 
 
+
+
+
+
                         or string.find(lk,"send",1,true) or string.find(lk,"upload",1,true) then
+
+
+
+
 
 
 
@@ -32190,7 +64379,15 @@ local function InitializeChatReportBypass()
 
 
 
+
+
+
+
                         end
+
+
+
+
 
 
 
@@ -32198,7 +64395,15 @@ local function InitializeChatReportBypass()
 
 
 
+
+
+
+
                 end
+
+
+
+
 
 
 
@@ -32206,7 +64411,15 @@ local function InitializeChatReportBypass()
 
 
 
+
+
+
+
         end
+
+
+
+
 
 
 
@@ -32214,7 +64427,15 @@ local function InitializeChatReportBypass()
 
 
 
+
+
+
+
         if _G.GameplayCallbacks then
+
+
+
+
 
 
 
@@ -32222,7 +64443,15 @@ local function InitializeChatReportBypass()
 
 
 
+
+
+
+
             local reportRPCKeys = {
+
+
+
+
 
 
 
@@ -32230,7 +64459,15 @@ local function InitializeChatReportBypass()
 
 
 
+
+
+
+
                 "SendPlayerReport","SubmitChatReport","OnReportConfirmed",
+
+
+
+
 
 
 
@@ -32238,7 +64475,15 @@ local function InitializeChatReportBypass()
 
 
 
+
+
+
+
             }
+
+
+
+
 
 
 
@@ -32246,7 +64491,15 @@ local function InitializeChatReportBypass()
 
 
 
+
+
+
+
                 if GC[k] then GC[k] = function() end end
+
+
+
+
 
 
 
@@ -32254,7 +64507,15 @@ local function InitializeChatReportBypass()
 
 
 
+
+
+
+
         end
+
+
+
+
 
 
 
@@ -32262,7 +64523,19 @@ local function InitializeChatReportBypass()
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -32274,7 +64547,15 @@ end
 
 
 
+
+
+
+
 local function InitializeLobbyBanCheckBypass()
+
+
+
+
 
 
 
@@ -32282,7 +64563,15 @@ local function InitializeLobbyBanCheckBypass()
 
 
 
+
+
+
+
         local lobbyBanPaths = {
+
+
+
+
 
 
 
@@ -32290,7 +64579,15 @@ local function InitializeLobbyBanCheckBypass()
 
 
 
+
+
+
+
             "client.slua.logic.lobby.logic_lobby_ban",
+
+
+
+
 
 
 
@@ -32298,7 +64595,15 @@ local function InitializeLobbyBanCheckBypass()
 
 
 
+
+
+
+
         }
+
+
+
+
 
 
 
@@ -32306,7 +64611,15 @@ local function InitializeLobbyBanCheckBypass()
 
 
 
+
+
+
+
             local mod = package.loaded[path]
+
+
+
+
 
 
 
@@ -32314,7 +64627,15 @@ local function InitializeLobbyBanCheckBypass()
 
 
 
+
+
+
+
                 if mod.CheckBan        then mod.CheckBan        = function() return false end end
+
+
+
+
 
 
 
@@ -32322,7 +64643,15 @@ local function InitializeLobbyBanCheckBypass()
 
 
 
+
+
+
+
                 if mod.GetBanInfo      then mod.GetBanInfo      = function() return nil end end
+
+
+
+
 
 
 
@@ -32330,7 +64659,15 @@ local function InitializeLobbyBanCheckBypass()
 
 
 
+
+
+
+
                 if mod.OnBanCheck      then mod.OnBanCheck      = function() return false end end
+
+
+
+
 
 
 
@@ -32338,11 +64675,23 @@ local function InitializeLobbyBanCheckBypass()
 
 
 
+
+
+
+
             end
 
 
 
+
+
+
+
         end
+
+
+
+
 
 
 
@@ -32350,7 +64699,15 @@ local function InitializeLobbyBanCheckBypass()
 
 
 
+
+
+
+
         local LobbyData = package.loaded["client.logic.data.data_lobby"]
+
+
+
+
 
 
 
@@ -32358,7 +64715,15 @@ local function InitializeLobbyBanCheckBypass()
 
 
 
+
+
+
+
             if LobbyData.bIsBanned ~= nil then LobbyData.bIsBanned = false end
+
+
+
+
 
 
 
@@ -32366,7 +64731,15 @@ local function InitializeLobbyBanCheckBypass()
 
 
 
+
+
+
+
             if LobbyData.nBanLevel ~= nil then LobbyData.nBanLevel = 0     end
+
+
+
+
 
 
 
@@ -32374,11 +64747,27 @@ local function InitializeLobbyBanCheckBypass()
 
 
 
+
+
+
+
     end)
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -32390,7 +64779,15 @@ end
 
 
 
+
+
+
+
 local function InitializeAntiBanPacketBlock()
+
+
+
+
 
 
 
@@ -32398,7 +64795,15 @@ local function InitializeAntiBanPacketBlock()
 
 
 
+
+
+
+
         if NetUtil and NetUtil.SendPacket and not NetUtil._ABPBypassed then
+
+
+
+
 
 
 
@@ -32406,7 +64811,15 @@ local function InitializeAntiBanPacketBlock()
 
 
 
+
+
+
+
             local banPackets = {
+
+
+
+
 
 
 
@@ -32414,7 +64827,15 @@ local function InitializeAntiBanPacketBlock()
 
 
 
+
+
+
+
                 ["punish_player"]=1,   ["punish_notify"]=1, ["ban_notify"]=1,
+
+
+
+
 
 
 
@@ -32422,7 +64843,15 @@ local function InitializeAntiBanPacketBlock()
 
 
 
+
+
+
+
                 ["account_ban_notify"]=1, ["game_ban_notify"]=1,
+
+
+
+
 
 
 
@@ -32430,7 +64859,15 @@ local function InitializeAntiBanPacketBlock()
 
 
 
+
+
+
+
                 ["ban_check_result"]=1, ["punishment_result"]=1,
+
+
+
+
 
 
 
@@ -32438,7 +64875,15 @@ local function InitializeAntiBanPacketBlock()
 
 
 
+
+
+
+
             NetUtil.SendPacket = function(firstArg, secondArg, ...)
+
+
+
+
 
 
 
@@ -32446,7 +64891,15 @@ local function InitializeAntiBanPacketBlock()
 
 
 
+
+
+
+
                 if pn and banPackets[tostring(pn)] then
+
+
+
+
 
 
 
@@ -32454,7 +64907,15 @@ local function InitializeAntiBanPacketBlock()
 
 
 
+
+
+
+
                     return
+
+
+
+
 
 
 
@@ -32462,7 +64923,15 @@ local function InitializeAntiBanPacketBlock()
 
 
 
+
+
+
+
                 return origSP(firstArg, secondArg, ...)
+
+
+
+
 
 
 
@@ -32470,7 +64939,15 @@ local function InitializeAntiBanPacketBlock()
 
 
 
+
+
+
+
             NetUtil._ABPBypassed = true
+
+
+
+
 
 
 
@@ -32478,11 +64955,27 @@ local function InitializeAntiBanPacketBlock()
 
 
 
+
+
+
+
     end)
 
 
 
+
+
+
+
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -32494,7 +64987,15 @@ end
 
 
 
+
+
+
+
 local function StartAntiBanRecoveryLoop()
+
+
+
+
 
 
 
@@ -32502,7 +65003,15 @@ local function StartAntiBanRecoveryLoop()
 
 
 
+
+
+
+
     _G.AntiBanLoopActive = true
+
+
+
+
 
 
 
@@ -32510,7 +65019,15 @@ local function StartAntiBanRecoveryLoop()
 
 
 
+
+
+
+
         pcall(InitializeIDIPBanBypass)
+
+
+
+
 
 
 
@@ -32518,7 +65035,15 @@ local function StartAntiBanRecoveryLoop()
 
 
 
+
+
+
+
         pcall(InitializePlayerStateBanClamp)
+
+
+
+
 
 
 
@@ -32526,7 +65051,15 @@ local function StartAntiBanRecoveryLoop()
 
 
 
+
+
+
+
         pcall(InitializeChatReportBypass)
+
+
+
+
 
 
 
@@ -32534,7 +65067,15 @@ local function StartAntiBanRecoveryLoop()
 
 
 
+
+
+
+
         pcall(InitializeAntiBanPacketBlock)
+
+
+
+
 
 
 
@@ -32542,7 +65083,15 @@ local function StartAntiBanRecoveryLoop()
 
 
 
+
+
+
+
         pcall(function()
+
+
+
+
 
 
 
@@ -32550,7 +65099,15 @@ local function StartAntiBanRecoveryLoop()
 
 
 
+
+
+
+
             if TssSdk then
+
+
+
+
 
 
 
@@ -32558,7 +65115,15 @@ local function StartAntiBanRecoveryLoop()
 
 
 
+
+
+
+
                 if TssSdk.GetDeviceRisk   then TssSdk.GetDeviceRisk   = function() return 0 end end
+
+
+
+
 
 
 
@@ -32566,7 +65131,15 @@ local function StartAntiBanRecoveryLoop()
 
 
 
+
+
+
+
                 if TssSdk.IsRooted        then TssSdk.IsRooted        = function() return false end end
+
+
+
+
 
 
 
@@ -32574,7 +65147,15 @@ local function StartAntiBanRecoveryLoop()
 
 
 
+
+
+
+
                 if TssSdk.IsDebugged      then TssSdk.IsDebugged      = function() return false end end
+
+
+
+
 
 
 
@@ -32582,7 +65163,15 @@ local function StartAntiBanRecoveryLoop()
 
 
 
+
+
+
+
         end)
+
+
+
+
 
 
 
@@ -32590,7 +65179,15 @@ local function StartAntiBanRecoveryLoop()
 
 
 
+
+
+
+
             local ok, ticker = pcall(require, "common.time_ticker")
+
+
+
+
 
 
 
@@ -32598,7 +65195,15 @@ local function StartAntiBanRecoveryLoop()
 
 
 
+
+
+
+
                 ticker.AddTimerOnce(15.0, AntiBanLoop)
+
+
+
+
 
 
 
@@ -32606,7 +65211,15 @@ local function StartAntiBanRecoveryLoop()
 
 
 
+
+
+
+
         end)
+
+
+
+
 
 
 
@@ -32614,7 +65227,15 @@ local function StartAntiBanRecoveryLoop()
 
 
 
+
+
+
+
     pcall(function()
+
+
+
+
 
 
 
@@ -32622,7 +65243,15 @@ local function StartAntiBanRecoveryLoop()
 
 
 
+
+
+
+
         if ok and ticker and ticker.AddTimerOnce then
+
+
+
+
 
 
 
@@ -32630,11 +65259,23 @@ local function StartAntiBanRecoveryLoop()
 
 
 
+
+
+
+
         end
 
 
 
+
+
+
+
     end)
+
+
+
+
 
 
 
@@ -32646,7 +65287,19 @@ end
 
 
 
+
+
+
+
+
+
+
+
 -- Khởi động tất cả anti-ban ngay lập tức
+
+
+
+
 
 
 
@@ -32654,7 +65307,15 @@ pcall(InitializeIDIPBanBypass)
 
 
 
+
+
+
+
 pcall(InitializePunishmentBypass)
+
+
+
+
 
 
 
@@ -32662,7 +65323,15 @@ pcall(InitializePlayerStateBanClamp)
 
 
 
+
+
+
+
 pcall(InitializeKillFlowIntegrityBypass)
+
+
+
+
 
 
 
@@ -32670,11 +65339,23 @@ pcall(InitializeChatReportBypass)
 
 
 
+
+
+
+
 pcall(InitializeLobbyBanCheckBypass)
 
 
 
+
+
+
+
 pcall(InitializeAntiBanPacketBlock)
+
+
+
+
 
 
 
@@ -32686,7 +65367,19 @@ pcall(StartAntiBanRecoveryLoop)
 
 
 
+
+
+
+
+
+
+
+
 -- =========================== PHẦN 32: INJECT TO ORIGINAL CLASS ===========================
+
+
+
+
 
 
 
@@ -32694,7 +65387,15 @@ pcall(StartAntiBanRecoveryLoop)
 
 
 
+
+
+
+
 pcall(function()
+
+
+
+
 
 
 
@@ -32702,7 +65403,15 @@ pcall(function()
 
 
 
+
+
+
+
         for k, v in pairs(BRPlayerCharacterBase) do
+
+
+
+
 
 
 
@@ -32710,7 +65419,15 @@ pcall(function()
 
 
 
+
+
+
+
                 OriginalClass[k] = v
+
+
+
+
 
 
 
@@ -32718,7 +65435,15 @@ pcall(function()
 
 
 
+
+
+
+
                 OriginalClass[k] = OriginalClass[k] or {}
+
+
+
+
 
 
 
@@ -32726,7 +65451,15 @@ pcall(function()
 
 
 
+
+
+
+
                     OriginalClass[k][rpcKey] = rpcVal
+
+
+
+
 
 
 
@@ -32734,7 +65467,15 @@ pcall(function()
 
 
 
+
+
+
+
             end
+
+
+
+
 
 
 
@@ -32742,7 +65483,15 @@ pcall(function()
 
 
 
+
+
+
+
     end
+
+
+
+
 
 
 
@@ -32754,7 +65503,19 @@ end)
 
 
 
+
+
+
+
+
+
+
+
 return true
+
+
+
+
 
 
 
