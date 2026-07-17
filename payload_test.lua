@@ -5024,62 +5024,52 @@ _G.DX_ApplyWeaponSkins = function(PlayerCharacter)
 
 end
 
-_G.DX_ApplyVehicleSkins = function(PlayerCharacter)
-
-    pcall(function()
-
-        if not slua.isValid(PlayerCharacter) then return end
-
-        local Vehicle = PlayerCharacter:GetCurrentVehicle()
-
-        if not slua.isValid(Vehicle) then _G.DX_LastVehicle = nil; return end
-
-        if _G.DX_LastVehicle == Vehicle and _G.DX_CurVehicleSkinID ~= nil then return end
-
-        local VehicleAvatar = Vehicle.VehicleAvatar or Vehicle.VehicleAvatarComponent_BP
-
-        if not slua.isValid(VehicleAvatar) then
-
-            pcall(function() VehicleAvatar = Vehicle:GetAvatarComponent() end)
-
-        end
-
-        if not slua.isValid(VehicleAvatar) then return end
-
-        local defId = tostring(VehicleAvatar:GetDefaultAvatarID() or "")
-
-        local applySkinId = 0
-
-        for baseMapId, targetSkin in pairs(_G.VehicleSkinMap) do
-
-            if defId:find(tostring(baseMapId)) then applySkinId = targetSkin; break end
-
-        end
-
-        if applySkinId and applySkinId > 0 then
-
-            if not _G.skinIdCache[applySkinId] then
-
-                pcall(DX_DownloadGameItem, applySkinId)
-
-                _G.skinIdCache[applySkinId] = true
-
-            end
-
-            VehicleAvatar.curSwitchEffectId = 7303001
-
-            if VehicleAvatar.ChangeItemAvatar then VehicleAvatar:ChangeItemAvatar(applySkinId, true) end
-
-            _G.DX_CurVehicleSkinID = applySkinId
-
-            _G.DX_LastVehicle = Vehicle
-
-        end
-
-    end)
-
-end
-
+_G.DX_ApplyVehicleSkins = function(PlayerCharacter)
+    pcall(function()
+        if not slua.isValid(PlayerCharacter) then return end
+        local Vehicle = PlayerCharacter:GetCurrentVehicle()
+        if not slua.isValid(Vehicle) then 
+            _G.DX_LastVehicle = nil
+            return 
+        end
+        
+        if _G.DX_LastVehicle == Vehicle and _G.DX_CurVehicleSkinID ~= nil then
+            return
+        end
+
+        local VehicleAvatar = Vehicle.VehicleAvatar or Vehicle.VehicleAvatarComponent_BP
+        if not slua.isValid(VehicleAvatar) then
+            pcall(function() VehicleAvatar = Vehicle:GetAvatarComponent() end)
+        end
+        if not slua.isValid(VehicleAvatar) then return end
+
+        local defId = tostring(VehicleAvatar:GetDefaultAvatarID() or Vehicle.VehicleID or "")
+        local currentId = tostring(Vehicle:GetAvatarId() or "")
+        local applySkinId = 0
+        
+        for baseMapId, targetSkin in pairs(_G.VehicleSkinMap) do
+            if defId:find(tostring(baseMapId)) or currentId:find(tostring(baseMapId)) then 
+                applySkinId = targetSkin
+                break 
+            end
+        end
+
+        if applySkinId and applySkinId > 0 then
+            _G.skinIdCache = _G.skinIdCache or {}
+            if not _G.skinIdCache[applySkinId] then 
+                pcall(DX_DownloadGameItem, applySkinId)
+                _G.skinIdCache[applySkinId] = true 
+            end
+
+            VehicleAvatar.curSwitchEffectId = 7303001
+            if VehicleAvatar.ChangeItemAvatar then VehicleAvatar:ChangeItemAvatar(applySkinId, true) end
+            
+            _G.DX_CurVehicleSkinID = applySkinId
+            _G.DX_LastVehicle = Vehicle
+        end
+    end)
+end
+
 _G.DX_RefreshSkinMaps = function()
 
     pcall(function()
