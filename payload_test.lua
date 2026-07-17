@@ -10772,6 +10772,17 @@ function F.hookPutOn()
         local o = WRH.send_depot_put_on_req
         WRH.send_depot_put_on_req = function(insID, extra)
             insID = tonumber(insID)
+            -- Lưu cache ngay lập tức (trước khi server phản hồi)
+            pcall(function()
+                if insID and insID > 0 then
+                    local wd = require("client.slua.logic.wardrobe.wardrobe_data")
+                    local d = wd and (wd:GetHallDepotItemDataByInsID(insID))
+                    local resID = d and tonumber(d.resID or d.res_id)
+                    if resID and resID > 0 then
+                        F.saveEquip(resID, insID)
+                    end
+                end
+            end)
             if F.tryLocalWearByIns(insID) then return end
             return o(insID, extra)
         end
@@ -12521,8 +12532,8 @@ function F.hookLobbyWeaponCache()
                     olditem.valid_hours = 0
                 end
                 oRsp(err, item, olditem, slot, insID, oldIns)
-                -- Cập nhật cache và reset flag trận sau khi mặc
-                if item and (err == 0 or err == NET_OK or err == nil) then
+                -- Luôn cập nhật cache bất kể server phản hồi gì (err != 0 khi item hết hạn)
+                if item then
                     local resID = tonumber(item.res_id or item.resID)
                     local iID   = tonumber(item.instid or item.ins_id or insID)
                     if resID and resID > 0 and iID then
