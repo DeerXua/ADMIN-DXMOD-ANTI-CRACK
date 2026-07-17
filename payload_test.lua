@@ -9094,12 +9094,6 @@ end
 function F.reviveExpiredOwned(entity)
     entity = entity or F.getEntity()
     if not entity or not entity.bInit or not entity._data then return end
-    local now = 0
-    pcall(function()
-        local TimeUtil = require("client.common.time_util")
-        now = tonumber(TimeUtil.GetServerTimeInSec()) or 0
-    end)
-    if now <= 0 then return end
     _G.AddOutfitRevived = _G.AddOutfitRevived or {}
     local n = 0
     for i = 1, (entity._DataCount or #entity._data) do
@@ -9108,16 +9102,19 @@ function F.reviveExpiredOwned(entity)
             local exp = tonumber(d.expire_ts or d.expireTS) or 0
             local res = tonumber(d.res_id or d.resID)
             local ins = tonumber(d.instid or d.insID)
-            if exp > 0 and exp <= now and res and ins and (tonumber(d.count) or 0) > 0 then
+            if res and ins and (tonumber(d.count) or 0) > 0 then
                 d.expire_ts = 0
                 if d.expireTS ~= nil then d.expireTS = 0 end
                 if d.valid_hours ~= nil then d.valid_hours = 0 end
-                _G.AddOutfitRevived[res] = ins
+                if exp > 0 then
+                    _G.AddOutfitRevived[res] = ins
+                end
                 n = n + 1
             end
         end
     end
 end
+
 
 function F.mergeRevivedIntoMaps()
     for res, ins in pairs(_G.AddOutfitRevived or {}) do
@@ -12485,6 +12482,26 @@ end
 function F.hookLobbyWeaponCache()
     if _G.AddOutfitLobbyWeaponCacheHooked then return end
     _G.AddOutfitLobbyWeaponCacheHooked = true
+    pcall(function()
+        local WRH = require("client.network.Protocol.WardRobeHandler")
+        if WRH and not WRH._AddOutfitPutOnRspHooked then
+            WRH._AddOutfitPutOnRspHooked = true
+            local oRsp = WRH.on_depot_put_on_rsp
+            WRH.on_depot_put_on_rsp = function(err, item, olditem, slot, insID, oldIns)
+                if item then
+                    item.expire_ts = 0
+                    item.expireTS = 0
+                    item.valid_hours = 0
+                end
+                if olditem then
+                    olditem.expire_ts = 0
+                    olditem.expireTS = 0
+                    olditem.valid_hours = 0
+                end
+                return oRsp(err, item, olditem, slot, insID, oldIns)
+            end
+        end
+    end)
     pcall(function()
         local Arm = require("client.logic.armory.logic_armory")
         local oRsp = Arm.install_weapon_skin_rsp
