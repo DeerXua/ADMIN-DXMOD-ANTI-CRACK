@@ -2234,6 +2234,37 @@ _G.LastConfigSaveStr = ""
 _G.HK_Settings = _G.HK_Settings or {
     ESP_HITMARK_1 = 0, ESP_HITMARK_2 = 0, WALLHACK = 0, WHITE_BODY = 0,
     ESP_WEAPON = 0, ESP_COUNT = 0, ESP_BOX = 0, EspLoai5 = 0,
+    
+    -- Mod Skin Configs
+    ModSkin = 0,
+    SkinDeadBox = 0,
+    KillMessageEnable = 0,
+    SkinEnable_Suit = 0, SkinSuit = 0,
+    SkinEnable_Top = 0, SkinTop = 0,
+    SkinEnable_Gloves = 0, SkinGloves = 0,
+    SkinEnable_Bottom = 0, SkinBottom = 0,
+    SkinEnable_Shoes = 0, SkinShoes = 0,
+    SkinEnable_Bag = 0, SkinBag = 1,
+    SkinEnable_Helmet = 0, SkinHelmet = 1,
+    SkinEnable_Parachute = 0, SkinParachute = 1,
+    SkinEnable_M416 = 0, SkinM416 = 1,
+    SkinEnable_AKM = 0, SkinAKM = 1,
+    SkinEnable_SCAR = 0, SkinSCAR = 1,
+    SkinEnable_M762 = 0, SkinM762 = 1,
+    SkinEnable_AUG = 0, SkinAUG = 1,
+    SkinEnable_UMP = 0, SkinUMP = 1,
+    SkinEnable_UZI = 0, SkinUZI = 1,
+    SkinEnable_Groza = 0, SkinGroza = 1,
+    SkinEnable_S12K = 0, SkinS12K = 1,
+    SkinEnable_DBS = 0, SkinDBS = 1,
+    SkinEnable_Dacia = 0, SkinDacia = 1,
+    SkinEnable_UAZ = 0, SkinUAZ = 1,
+    SkinEnable_Coupe = 0, SkinCoupe = 1,
+    SkinEnable_Buggy = 0, SkinBuggy = 1,
+    SkinEnable_Mirado = 0, SkinMirado = 1,
+    WeaponGlow = 0,
+    WeaponGlowColor = 5,
+    WeaponGlowThickness = 3,
     AIMBOT = 0, SPEED_AIMBOT = 0, FOV_AIMBOT = 0, THU_TAM = 0,
     NO_RECOIL_100 = 0, GIAM_RUNG_SCOPE = 0,
 
@@ -2581,6 +2612,206 @@ function _G.InitModMenuTab()
                 return true
             end
         })
+
+        local StackSkin = {
+            { UI = AliasMap.Title, Text = "MOD SKIN & HIỆU ỨNG" },
+        }
+        
+        table.insert(StackSkin, {
+            Key = "ModMenu_ModSkin",
+            UI = AliasMap.TitleSwitcher or "TitleSwitcher",
+            Text = "▶ BẬT MOD SKIN & HIỆU ỨNG",
+            GetFunc = function() return _G.HK_Settings.ModSkin == 1 end,
+            SetFunc = function(_, value)
+                _G.HK_Settings.ModSkin = value and 1 or 0
+                _G.EnvRequiresUpdate = true
+                _G.MagicUpdateVersion = (_G.MagicUpdateVersion or 1) + 1
+                return true
+            end
+        })
+
+        table.insert(StackSkin, {
+            Key = "ModMenu_KillMessageEnable",
+            UI = AliasMap.TitleSwitcher or "TitleSwitcher",
+            Text = "   Hiện thông báo hạ gục góc trái",
+            GetFunc = function() return _G.HK_Settings.KillMessageEnable == 1 end,
+            SetFunc = function(_, value)
+                _G.HK_Settings.KillMessageEnable = value and 1 or 0
+                return true
+            end
+        })
+
+        table.insert(StackSkin, {
+            Key = "ModMenu_SkinDeadBox",
+            UI = AliasMap.TitleSwitcher or "TitleSwitcher",
+            Text = "   Hiện hòm xác nâng cấp khi hạ gục",
+            GetFunc = function() return _G.HK_Settings.SkinDeadBox == 1 end,
+            SetFunc = function(_, value)
+                _G.HK_Settings.SkinDeadBox = value and 1 or 0
+                return true
+            end
+        })
+
+        -- Glow súng
+        table.insert(StackSkin, {
+            Key = "ModMenu_WeaponGlow",
+            UI = AliasMap.TitleSwitcher or "TitleSwitcher",
+            Text = "▶ BẬT VIỀN SÚNG PHÁT SÁNG (GLOW)",
+            GetFunc = function() return _G.HK_Settings.WeaponGlow == 1 end,
+            SetFunc = function(_, value)
+                _G.HK_Settings.WeaponGlow = value and 1 or 0
+                return true
+            end
+        })
+        table.insert(StackSkin, {
+            Key = "ModMenu_WeaponGlowColor",
+            UI = AliasMap.Slider or "Slider",
+            Text = "   Màu viền súng (1 Đỏ | 2 Xanh lá | 3 Lam | 4 Vàng | 5 RGB)",
+            MinValue = 1, MaxValue = 5, Min = 1, Max = 5,
+            GetFunc = function() return _G.HK_Settings.WeaponGlowColor or 5 end,
+            SetFunc = function(_, value)
+                local v = math.floor(tonumber(value) or 5)
+                _G.HK_Settings.WeaponGlowColor = math.max(1, math.min(5, v))
+                return true
+            end
+        })
+        table.insert(StackSkin, {
+            Key = "ModMenu_WeaponGlowThickness",
+            UI = AliasMap.Slider or "Slider",
+            Text = "   Độ dày viền súng (1-10)",
+            MinValue = 1, MaxValue = 10, Min = 1, Max = 10,
+            GetFunc = function() return _G.HK_Settings.WeaponGlowThickness or 3 end,
+            SetFunc = function(_, value)
+                local v = math.floor(tonumber(value) or 3)
+                _G.HK_Settings.WeaponGlowThickness = math.max(1, math.min(10, v))
+                return true
+            end
+        })
+
+        -- Đồ bộ
+        table.insert(StackSkin, {
+            Key = "ModMenu_SkinEnable_Suit",
+            UI = AliasMap.TitleSwitcher or "TitleSwitcher",
+            Text = "▶ Đổi Đồ Bộ (Suit)",
+            GetFunc = function() return _G.HK_Settings.SkinEnable_Suit == 1 end,
+            SetFunc = function(_, value)
+                _G.HK_Settings.SkinEnable_Suit = value and 1 or 0
+                _G.EnvRequiresUpdate = true
+                return true
+            end
+        })
+        table.insert(StackSkin, {
+            Key = "ModMenu_SkinSuit",
+            UI = AliasMap.Slider or "Slider",
+            Text = "   Chọn Skin Đồ Bộ (1-63)",
+            MinValue = 1, MaxValue = 63, Min = 1, Max = 63,
+            GetFunc = function() return _G.HK_Settings.SkinSuit or 1 end,
+            SetFunc = function(_, value)
+                local v = math.floor(tonumber(value) or 1)
+                _G.HK_Settings.SkinSuit = math.max(1, math.min(63, v))
+                _G.EnvRequiresUpdate = true
+                return true
+            end
+        })
+
+        -- Balo
+        table.insert(StackSkin, {
+            Key = "ModMenu_SkinEnable_Bag",
+            UI = AliasMap.TitleSwitcher or "TitleSwitcher",
+            Text = "▶ Đổi Skin Balo (Backpack)",
+            GetFunc = function() return _G.HK_Settings.SkinEnable_Bag == 1 end,
+            SetFunc = function(_, value)
+                _G.HK_Settings.SkinEnable_Bag = value and 1 or 0
+                _G.EnvRequiresUpdate = true
+                return true
+            end
+        })
+        table.insert(StackSkin, {
+            Key = "ModMenu_SkinBag",
+            UI = AliasMap.Slider or "Slider",
+            Text = "   Chọn Skin Balo (1-2)",
+            MinValue = 1, MaxValue = 2, Min = 1, Max = 2,
+            GetFunc = function() return _G.HK_Settings.SkinBag or 1 end,
+            SetFunc = function(_, value)
+                local v = math.floor(tonumber(value) or 1)
+                _G.HK_Settings.SkinBag = math.max(1, math.min(2, v))
+                _G.EnvRequiresUpdate = true
+                return true
+            end
+        })
+
+        -- Súng
+        local function AddGunSkinConfig(gunName, gunKey, maxSkinIdx)
+            table.insert(StackSkin, {
+                Key = "ModMenu_SkinEnable_" .. gunKey,
+                UI = AliasMap.TitleSwitcher or "TitleSwitcher",
+                Text = "▶ Mod Skin Súng " .. gunName,
+                GetFunc = function() return _G.HK_Settings["SkinEnable_" .. gunKey] == 1 end,
+                SetFunc = function(_, value)
+                    _G.HK_Settings["SkinEnable_" .. gunKey] = value and 1 or 0
+                    _G.EnvRequiresUpdate = true
+                    return true
+                end
+            })
+            table.insert(StackSkin, {
+                Key = "ModMenu_Skin" .. gunKey,
+                UI = AliasMap.Slider or "Slider",
+                Text = "   Chọn Skin " .. gunName .. " (1-" .. maxSkinIdx .. ")",
+                MinValue = 1, MaxValue = maxSkinIdx, Min = 1, Max = maxSkinIdx,
+                GetFunc = function() return _G.HK_Settings["Skin" .. gunKey] or 1 end,
+                SetFunc = function(_, value)
+                    local v = math.floor(tonumber(value) or 1)
+                    _G.HK_Settings["Skin" .. gunKey] = math.max(1, math.min(maxSkinIdx, v))
+                    _G.EnvRequiresUpdate = true
+                    return true
+                end
+            })
+        end
+
+        AddGunSkinConfig("M416", "M416", 13)
+        AddGunSkinConfig("AKM", "AKM", 17)
+        AddGunSkinConfig("SCAR-L", "SCAR", 12)
+        AddGunSkinConfig("M762", "M762", 13)
+        AddGunSkinConfig("AUG", "AUG", 6)
+        AddGunSkinConfig("UMP45", "UMP", 12)
+        AddGunSkinConfig("UZI", "UZI", 9)
+        AddGunSkinConfig("Groza", "Groza", 8)
+        AddGunSkinConfig("S12K", "S12K", 1)
+        AddGunSkinConfig("DBS", "DBS", 2)
+
+        -- Xe cộ
+        local function AddCarSkinConfig(carName, carKey, maxSkinIdx)
+            table.insert(StackSkin, {
+                Key = "ModMenu_SkinEnable_" .. carKey,
+                UI = AliasMap.TitleSwitcher or "TitleSwitcher",
+                Text = "▶ Mod Skin Xe " .. carName,
+                GetFunc = function() return _G.HK_Settings["SkinEnable_" .. carKey] == 1 end,
+                SetFunc = function(_, value)
+                    _G.HK_Settings["SkinEnable_" .. carKey] = value and 1 or 0
+                    _G.EnvRequiresUpdate = true
+                    return true
+                end
+            })
+            table.insert(StackSkin, {
+                Key = "ModMenu_Skin" .. carKey,
+                UI = AliasMap.Slider or "Slider",
+                Text = "   Chọn Skin " .. carName .. " (1-" .. maxSkinIdx .. ")",
+                MinValue = 1, MaxValue = maxSkinIdx, Min = 1, Max = maxSkinIdx,
+                GetFunc = function() return _G.HK_Settings["Skin" .. carKey] or 1 end,
+                SetFunc = function(_, value)
+                    local v = math.floor(tonumber(value) or 1)
+                    _G.HK_Settings["Skin" .. carKey] = math.max(1, math.min(maxSkinIdx, v))
+                    _G.EnvRequiresUpdate = true
+                    return true
+                end
+            })
+        end
+
+        AddCarSkinConfig("Dacia (McLaren)", "Dacia", 24)
+        AddCarSkinConfig("UAZ (Koenigsegg/Lambo)", "UAZ", 20)
+        AddCarSkinConfig("Coupe RB", "Coupe", 70)
+        AddCarSkinConfig("Buggy (Lambo/B.Duck)", "Buggy", 3)
+        AddCarSkinConfig("Mirado (Tesla)", "Mirado", 7)
         
         SettingPageDefine.ModMenu = {
             Key = "ModMenu", 
@@ -2592,6 +2823,7 @@ function _G.InitModMenuTab()
             UIKey = "Setting_Page_Privacy", 
             Category = {
                 { Key = "ModMenu_Cat1", loc = "AURA", text = "AURA", Text = "AURA", title = "AURA", Title = "AURA", Stack = StackESP },
+                { Key = "ModMenu_Cat2", loc = "SKIN", text = "SKIN", Text = "SKIN", title = "SKIN", Title = "SKIN", Stack = StackSkin },
             }
         }
         table.insert(SettingCatalog, 1, SettingPageDefine.ModMenu)
@@ -2787,6 +3019,807 @@ local function IsParachuteComponent(comp)
     return ok and res or false
 end
 
+-- =========================== PHẦN 28B: MOD SKIN & EFFECTS SYSTEMS ===========================
+_G.VIP_Attachments = {
+    [1101004236]={1010042307,1010042306,1010042308,1010042304,1010042300,1010042305,1010042299,1010042298,1010042297,1010042296,1010042295,1010042294,0,1010042314,1010042309,1010042316,1010042317,1010042318,1010042310,1010042315,1010042319,0},
+    [1101001116]={1010011106,1010011107,1010011108,0,1010011109,1010011112,1010011105,1010011104,1010011103,0,1010011102,0,0,0,0,0,0,0,0,0,0,0},
+    [1101001128]={1010011232,1010011233,1010011234,1010011228,1010011227,1010011229,1010011226,1010011225,1010011224,1010011223,1010011222,0,0,0,0,0,0,0,0,0,0,0},
+    [1101001154]={1010011487,1010011488,1010011489,1010011493,1010011490,1010011494,1010011486,1010011485,1010011484,1010011483,1010011482,1010011497,0,0,0,0,0,0,0,0,1010011498,0},
+    [1101001174]={1010011667,1010011668,1010011669,1010011673,1010011670,1010011674,1010011666,1010011665,1010011664,1010011663,1010011662,0,0,0,0,0,0,0,0,0,0,0},
+    [1101001213]={1010012067,1010012068,1010012069,1010012072,1010012070,1010012073,1010012066,1010012065,1010012064,1010012063,1010012062,0,0,0,0,0,0,0,0,0,1010012074,0},
+    [1101001231]={1010012267,1010012268,1010012269,1010012273,1010012272,1010012274,1010012266,1010012265,1010012264,1010012263,1010012262,1010012075,0,0,0,0,0,0,0,0,1010012275,0},
+    [1101001242]={1010012357,1010012358,1010012359,1010012363,1010012362,1010012364,1010012356,1010012355,1010012354,1010012353,1010012352,1010012276,0,0,0,0,0,0,0,0,1010012365,0},
+    [1101001249]={1010012437,1010012438,1010012439,1010012443,1010012442,1010012444,1010012436,1010012435,1010012434,1010012433,1010012432,1010012366,0,0,0,0,0,0,0,0,1010012445,0},
+    [1101001256]={1010012588,1010012589,1010012590,1010012593,1010012592,1010012594,1010012587,1010012586,1010012585,1010012584,1010012583,1010012582,0,0,0,0,0,0,0,0,1010012595,0},
+    [1101001265]={1010012698,1010012699,1010012700,1010012703,1010012702,1010012704,1010012697,1010012696,1010012695,1010012694,1010012693,1010012692,0,0,0,0,0,0,0,0,1010012705,0},
+    [1101001276]={1010012698,1010012699,1010012700,1010012703,1010012702,1010012704,1010012697,1010012696,1010012695,1010012694,1010012693,1010012692,0,0,0,0,0,0,0,0,1010012705,0},
+    [1101002029]={1010020249,1010020250,1010020255,1010020247,1010020246,1010020248,1010020240,1010020239,1010020238,1010020237,1010020236,1010020235,0,0,0,0,0,0,0,1010020257,1010020256,1010020258},
+    [1101002056]={1010020519,0,0,1010020517,1010020516,1010020518,1010020500,1010020509,1010020508,1010020507,1010020506,1010020505,0,0,0,0,0,0,0,0,0,0},
+    [1101002081]={1010020768,1010020769,1010020770,1010020766,1010020760,1010020767,1010020759,1010020758,1010020757,1010020756,1010020755,1010020776,0,0,0,0,0,0,0,1010020775,1010020777,1010020778},
+    [1101003070]={1010030654,1010030653,1010030655,1010030649,1010030648,1010030650,1010030647,1010030646,1010030645,1010030644,1010030643,1010030642,0,1010030658,1010030656,1010030660,1010030662,1010030659,1010030657,0,1010030663,0},
+    [1101003080]={1010030754,1010030753,1010030755,1010030749,1010030748,1010030750,1010030747,1010030746,1010030745,1010030744,1010030743,1010030742,0,1010030758,1010030756,1010030760,1010030762,1010030759,1010030757,0,1010030763,0},
+    [1101003099]={1010030943,1010030944,1010030945,1010030939,1010030938,1010030942,1010030937,1010030936,1010030935,1010030934,1010030933,1010030932,0,1010030947,1010030946,1010030948,1010030949,1010030953,1010030952,0,1010030955,0},
+    [1101003119]={1010031139,1010031140,1010031142,1010031138,1010031137,1010031146,1010031136,1010031135,1010031134,1010031133,1010031132,0,0,1010031144,1010031143,0,0,0,1010031145,0,0,0},
+    [1101003146]={1010031229,1010031230,1010031237,1010031228,1010031227,1010031242,1010031226,1010031225,1010031224,1010031223,1010031222,0,0,1010031239,1010031238,0,0,0,1010031240,0,0,0},
+    [1101003167]={1010031609,1010031610,1010031613,1010031608,1010031607,1010031617,1010031606,1010031605,1010031604,1010031603,1010031602,1010031618,0,1010031615,1010031614,1010031620,1010031622,1010031619,1010031616,0,1010031623,0},
+    [1101003181]={1010031765,1010031764,1010031766,1010031759,1010031758,1010031763,1010031757,1010031756,1010031755,1010031754,1010031753,1010031752,0,1010031769,1010031767,1010031773,1010031774,1010031772,1010031768,0,1010031775,0},
+    [1101003195]={1010031912,1010031911,1010031913,1010031908,1010031907,1010031909,1010031906,1010031905,1010031904,1010031903,1010031902,1010031901,0,1010031916,1010031914,1010031918,1010031919,1010031917,1010031915,0,1010031921,0},
+    [1101003208]={1010032034,1010032033,1010032045,1010032029,1010032028,1010032032,1010032027,1010032026,1010032025,1010032024,1010032023,1010032022,0,1010032038,1010032036,1010032042,1010032043,1010032039,1010032037,0,1010032044,0},
+    [1101004046]={1010040474,1010040475,1010040476,1010040472,1010040471,1010040473,1010040470,1010040469,1010040468,1010040467,1010040466,1010040481,0,1010040479,1010040477,1010040482,1010040483,1010040484,1010040478,1010040480,1010040485,0},
+    [1101004062]={1010040578,1010040577,1010040579,1010040575,1010040570,1010040576,1010040569,1010040568,1010040567,1010040566,1010040565,1010040564,0,1010040585,1010040580,1010040587,1010040588,1010040589,1010040584,1010040586,1010040590,1010040594},
+    [1101004098]={1010040924,1010040926,1010040925,0,1010040937,1010040938,1010040935,1010040934,1010040929,1010040928,1010040927,0,0,1010040939,1010040945,0,0,0,1010040944,1010040936,0,0},
+    [1101004138]={1010041136,1010041137,1010041138,1010041134,1010041129,1010041135,1010041128,1010041127,1010041126,1010041125,1010041124,0,0,1010041145,1010041139,0,0,0,1010041144,1010041146,0,0},
+    [1101004163]={1010041570,1010041574,1010041575,1010041568,1010041567,1010041569,1010041566,1010041565,1010041564,1010041560,1010041554,0,0,1010041578,1010041576,0,0,0,1010041577,1010041579,0,0},
+    [1101004201]={1010041956,1010041957,1010041958,1010041950,1010041949,1010041955,1010041948,1010041947,1010041946,1010041945,1010041944,1010041967,0,1010041965,1010041959,0,0,0,1010041960,1010041966,0,0},
+    [1101004209]={1010042038,1010042037,1010042039,1010042035,1010042034,1010042036,1010042029,1010042028,1010042027,1010042026,1010042025,1010042024,0,1010042046,1010042044,1010042048,1010042049,1010042054,1010042045,1010042047,1010042055,0},
+    [1101004218]={1010042128,1010042127,1010042129,1010042125,1010042124,1010042126,1010042119,1010042118,1010042117,1010042116,1010042115,1010042114,0,1010042136,1010042134,1010042138,1010042139,1010042144,1010042135,1010042137,1010042145,0},
+    [1101004226]={1010042238,1010042237,1010042239,1010042235,1010042234,1010042236,1010042233,1010042232,1010042231,1010042219,1010042218,1010042217,0,1010042243,1010042241,1010042245,1010042246,1010042247,1010042242,1010042244,1010042248,0},
+    [1101004246]={1010042406,1010042407,1010042408,1010042404,1010042400,1010042405,1010042399,1010042398,1010042397,1010042396,1010042395,1010042394,0,1010042414,1010042409,1010042416,1010042417,1010042418,1010042410,1010042415,1010042419,1010042420},
+    [1101005038]={0,0,1010050327,1010050329,1010050328,1010050330,1010050326,1010050325,1010050324,1010050323,1010050322,1010050334,0,0,0,0,0,0,0,0,0,0},
+    [1101005052]={0,0,1010050467,1010050469,1010050468,1010050470,1010050466,1010050465,1010050464,1010050463,1010050462,1010050473,0,0,0,0,0,0,0,0,0,0},
+    [1101005098]={0,0,1010050928,1010050930,1010050929,1010050932,1010050927,1010050926,1010050925,1010050924,1010050923,1010050922,0,0,0,0,0,0,0,0,0,0},
+    [1101006062]={1010060573,1010060572,1010060574,1010060564,1010060563,1010060571,1010060562,1010060561,1010060554,1010060553,1010060552,1010060551,0,1010060583,1010060581,1010060591,1010060592,1010060584,1010060582,0,1010060593,0},
+    [1101006075]={1010060702,1010060701,1010060703,1010060698,1010060697,1010060699,1010060696,1010060695,1010060694,1010060693,1010060692,1010060691,0,1010060706,1010060704,1010060708,1010060709,1010060707,1010060705,0,1010060711,0},
+    [1101006085]={1010060796,1010060795,1010060797,1010060793,1010060789,1010060794,1010060788,1010060787,1010060786,1010060785,1010060784,1010060783,0,1010060800,1010060798,1010060804,1010060805,1010060803,1010060799,0,1010060806,0},
+    [1101007046]={1010070410,1010070413,1010070414,1010070408,1010070407,1010070409,1010070406,1010070405,1010070404,1010070403,1010070402,1010070418,0,1010070417,1010070415,1010070420,1010070422,1010070419,1010070416,0,1010070423,0},
+    [1101007062]={1010070579,1010070578,1010070581,1010070576,1010070575,1010070577,1010070574,1010070573,1010070572,1010070571,1010070569,1010070568,0,1010070584,1010070582,1010070585,1010070586,1010070587,1010070583,0,1010070588,0},
+    [1101007071]={1010070663,1010070662,1010070664,1010070659,1010070658,1010070660,1010070657,1010070656,1010070655,1010070654,1010070653,1010070652,0,1010070667,1010070665,1010070668,1010070669,1010070670,1010070666,0,1010070672,0},
+    [1101008051]={1010080463,1010080464,1010080465,1010080459,1010080458,1010080462,1010080457,1010080456,1010080455,1010080454,1010080453,1010080452,0,1010080467,1010080466,1010080468,1010080469,1010080473,1010080472,0,1010080475,0},
+    [1101008061]={1010080563,1010080564,1010080565,1010080559,1010080558,1010080562,1010080557,1010080556,1010080555,1010080554,1010080553,0,0,1010080567,1010080566,0,0,0,1010080572,0,0,0},
+    [1101008070]={1010080609,1010080612,1010080613,1010080608,1010080607,1010080617,1010080606,1010080605,1010080604,1010080603,1010080602,0,0,1010080615,1010080614,0,0,0,1010080616,0,0,0},
+    [1101008081]={1010080740,1010080743,1010080745,1010080738,1010080737,1010080739,1010080736,1010080735,1010080734,1010080733,1010080732,1010080748,0,1010080747,1010080746,1010080750,1010080752,1010080749,1010080744,0,1010080753,0},
+    [1101008104]={1010080980,1010080982,1010080984,1010080978,1010080977,1010080979,1010080976,1010080975,1010080974,1010080973,1010080972,1010080992,0,1010080986,1010080985,1010080989,1010080987,1010080993,1010080983,0,1010080988,0},
+    [1101008116]={1010081110,1010081112,1010081114,1010081108,1010081107,1010081109,1010081106,1010081105,1010081104,1010081103,1010081102,0,0,1010081116,1010081115,0,0,0,1010081113,0,0,0},
+    [1101008126]={1010081210,1010081225,1010081226,1010081208,1010081207,1010081209,1010081206,1010081205,1010081204,1010081203,1010081202,1010081218,0,1010081217,1010081216,1010081219,1010081220,1010081222,1010081214,1010081228,1010081227,1010081229},
+    [1101008136]={1010081314,1010081315,1010081316,1010081312,1010081308,1010081313,1010081307,1010081306,1010081305,1010081304,1010081303,1010081302,0,1010081318,1010081317,1010081322,1010081323,1010081325,1010081324,0,1010081326,0},
+    [1101008146]={1010081401,1010081402,1010081403,1010081398,1010081397,1010081399,1010081396,1010081395,1010081394,1010081393,1010081392,1010081391,0,1010081405,1010081404,1010081406,1010081407,1010081409,1010081408,0,1010081411,0},
+    [1101008154]={1010081531,1010081532,1010081533,1010081528,1010081527,1010081529,1010081526,1010081525,1010081524,1010081523,1010081522,1010081521,0,1010081541,1010081534,1010081542,1010081543,1010081545,1010081544,0,1010081546,0},
+    [1101008163]={1010081582,1010081583,1010081584,1010081579,1010081578,1010081580,1010081577,1010081576,1010081575,1010081574,1010081573,1010081572,0,1010081586,1010081585,1010081587,1010081588,1010081590,1010081589,0,1010081592,0},
+    [1101102017]={1011020027,1011020028,1011020029,1011020025,1011020024,1011020026,1011020019,1011020018,1011020017,1011020016,1011020015,1011020014,0,1011020036,1011020034,1011020038,1011020039,1011020044,1011020035,1011020037,1011020045,1011020047},
+    [1101102025]={1011020127,1011020128,1011020129,1011020125,1011020124,1011020126,1011020119,1011020118,1011020117,1011020116,1011020115,1011020114,0,1011020136,1011020134,1011020138,1011020139,1011020144,1011020135,1011020137,1011020145,0},
+    [1101102041]={1011020214,1011020215,1011020216,1011020212,1011020211,1011020213,1011020209,1011020208,1011020207,1011020206,1011020205,1011020204,0,1011020219,1011020217,1011020222,1011020223,1011020224,1011020218,1011020221,1011020225,1011020229},
+    [1101102049]={1011020356,1011020357,1011020358,1011020354,1011020350,1011020355,1011020349,1011020348,1011020347,1011020346,1011020345,1011020344,0,1011020364,1011020359,1011020366,1011020367,1011020368,1011020360,1011020365,1011020369,1011020370},
+    [1101101007]={1011020436,1011020437,1011020438,1011020434,1011020430,1011020435,1011020429,1011020428,1011020427,1011020426,1011020425,1011020424,0,1011020444,1011020439,1011020446,1011020447,1011020448,1011020440,1011020445,1011020449,1011020450},
+    [1102002043]={1020020372,1020020374,1020020373,1020020383,1020020380,1020020384,1020020379,1020020378,1020020377,1020020376,1020020375,1020020388,0,1020020385,1020020387,0,0,0,1020020386,0,0,0},
+    [1102002061]={1020020552,1020020554,1020020553,1020020563,1020020562,1020020564,1020020559,1020020558,1020020557,1020020556,1020020555,1020020578,0,1020020565,1020020567,1020020573,1020020574,1020020572,1020020566,0,1020020569,0},
+    [1102002136]={1020021314,1020021313,1020021315,1020021309,1020021308,1020021312,1020021307,1020021306,1020021305,1020021304,1020021303,1020021302,0,1020021318,1020021316,1020021323,1020021324,1020021322,1020021317,0,1020021325,0},
+    [1102002424]={1020024193,1020024192,1020024194,1020024189,1020024188,1020024190,1020024187,1020024186,1020024185,1020024184,1020024183,1020024182,0,1020024197,1020024195,1020024199,1020024200,1020024198,1020024196,0,1020024202,0},
+    [1102003100]={1020030956,1020030957,1020030958,1020030954,1020030950,1020030955,1020030949,1020030948,1020030947,1020030946,1020030945,1020030944,0,1020030964,0,1020030960,1020030959,1020030965,0,1020030967,1020030966,1020030968},
+    [1103002030]={1030020245,1030020246,1030020247,1030020252,1030020249,1030020253,1030020258,1030020257,1030020256,1030020255,1030020244,1030020243,1030020242,0,0,0,0,0,0,1030020248,0,0},
+    [1103002059]={1030020544,1030020545,1030020546,1030020542,1030020539,1030020543,1030020538,1030020537,1030020536,1030020535,1030020534,1030020533,1030020532,0,0,0,0,0,0,1030020547,1030020548,0},
+    [1103002106]={1030021009,1030021010,1030021012,1030021015,1030021014,1030021016,1030021008,1030021007,1030021006,1030021005,1030021004,1030021003,1030021002,0,0,0,0,0,0,1030021013,1030021017,0},
+    [1103002113]={1030021079,1030021080,1030021082,1030021085,1030021084,1030021086,1030021078,1030021077,1030021076,1030021075,1030021074,1030021073,1030021072,0,0,0,0,0,0,1030021083,1030021087,0},
+    [1103003030]={1030030256,1030030257,1030030258,1030030254,1030030253,1030030255,1030030248,1030030247,1030030246,1030030245,1030030244,1030030243,1030030242,0,0,0,0,0,0,1030030259,1030030249,0},
+    [1103003079]={1030030744,1030030745,1030030746,1030030742,1030030740,1030030743,1030030738,1030030737,1030030736,1030030735,1030030734,1030030733,1030030732,0,0,0,0,0,0,1030030747,1030030739,0},
+    [1103003087]={1030030825,1030030826,1030030827,1030030823,1030030824,1030030824,1030030818,1030030817,1030030816,1030030815,1030030814,1030030813,1030030812,0,0,0,0,0,0,1030030828,1030030819,0},
+    [1103007028]={1030070233,1030070234,1030070235,1030070226,1030070225,1030070227,1030070218,1030070217,1030070216,1030070215,1030070214,1030070213,1030070212,0,0,0,0,0,0,1030070236,1030070219,0},
+    [1103102007]={1031020026,1031020027,1031020028,1031020024,1031020023,1031020025,1031020019,1031020018,1031020017,1031020016,1031020015,1031020014,1031020013,0,0,0,0,0,0,1031020029,0,0}
+}
+
+_G.BaseAttachToIndex = {
+    [201010]=1, [201005]=1, [201004]=1, [201009]=2, [201003]=2, [201002]=2, 
+    [201011]=3, [201007]=3, [201006]=3, [204012]=4, [204005]=4, [204008]=4, 
+    [204011]=5, [204004]=5, [204007]=5, [204013]=6, [204006]=6, [204009]=6, 
+    [203001]=7, [203002]=8, [203003]=9, [203014]=10, [203004]=11, [203015]=12, [203005]=13, 
+    [202002]=14, [202001]=15, [202004]=16, [202005]=17, [202007]=18, [202006]=19, 
+    [205002]=20, [205003]=20, [205001]=20, [203018]=21, [204014]=22 
+}
+
+_G.VipAttachToIndex = {}
+for skinId, attachList in pairs(_G.VIP_Attachments) do
+    for index, attachId in ipairs(attachList) do
+        if attachId > 0 then
+            _G.VipAttachToIndex[attachId] = index
+        end
+    end
+end
+
+_G.WeaponSkinMap = _G.WeaponSkinMap or {}
+_G.VehicleSkinMap = _G.VehicleSkinMap or {}
+_G.OutfitMap = _G.OutfitMap or {}
+_G.skinIdCache = _G.skinIdCache or {}
+_G.skinIdCache2 = _G.skinIdCache2 or {}
+
+_G.OutfitSkins = {
+    Suit = {
+        1407895, 1407856, 1407870, 1407871, 1407812, 1407758, 1407286, 1407329, 1407391,
+        1407392, 1407387, 1407440, 1406985, 1407470, 1407471, 1407522, 1407330, 1407523,
+        1407558, 1407559, 1407572, 1407682, 1407695, 1407696, 1407632, 1407573, 1406398,
+        1406399, 1406482, 1406483, 1406555, 1406573, 1406574, 1406656, 1406657, 1406742,
+        1406744, 1406789, 1406823, 1406824, 1406897, 1405628, 1406469, 1405870, 1407140,
+        1407142, 1407141, 1407550, 1406638, 1406641, 1406872, 1406971, 1407103, 1407219,
+        1407366, 1407512, 1407625, 1407667, 1407277, 1406891, 1405623, 1400687, 1407618,
+    },
+    Top = {
+        1400569, 1404000, 1404049, 1404043, 1400053, 1400708, 403183, 1404448,
+    },
+    Gloves = {
+        452001, 452002, 452003
+    },
+    Bottom = {
+        1400650, 1404002, 1404050, 1404191, 1400050, 1404441, 1404323,
+    },
+    Shoes = {
+        1400651, 1404003, 1404050, 1400371, 1400127, 1405953,
+    },
+    Bag = {
+        {1501001174, 1501002174, 1501003174},
+        {1501001024, 1501002024, 1501003024}
+    },
+    Helmet = {
+        {1502001014, 1502002014, 1502003014}
+    },
+    Parachute = {
+        4151123, 4151131, 4151141
+    }
+}
+
+_G.skinIdMappings = {
+    [101004] = {1101004236, 1101004226, 1101004218, 1101004209, 1101004201, 1101004163, 1101004138, 1101004098, 1101004086, 1101004078, 1101004062, 1101004046, 1101004246},
+    [101001] = {1101001042, 1101001063, 1101001068, 1101001089, 1101001103, 1101001116, 1101001128, 1101001143, 1101001154, 1101001174, 1101001213, 1101001231, 1101001242, 1101001249, 1101001256, 1101001265, 1101001276},
+    [101003] = {1101003057, 1101003070, 1101003080, 1101003099, 1101003119, 1101003146, 1101003167, 1101003181, 1101003188, 1101003195, 1101003208, 1101003227},
+    [102002] = {1102002043, 1102002053, 1102002061, 1102002070, 1102002090, 1102002112, 1102002117, 1102002124, 1102002129, 1102002136, 1102002143, 1102002424},
+    [101008] = {1101008026, 1101008036, 1101008051, 1101008061, 1101008070, 1101008081, 1101008104, 1101008116, 1101008126, 1101008136, 1101008146, 1101008154, 1101008163},
+    [101006] = {1101006033, 1101006044, 1101006062, 1101006067, 1101006075, 1101006085},
+    [102001] = {1102001024, 1102001036, 1102001058, 1102001069, 1102001089, 1102001102, 1102001103, 1102001120, 1102001130},
+    [101005] = {1101005019, 1101005025, 1101005038, 1101005043, 1101005052, 1101005082, 1101005090, 1101005098},
+    [104003] = {1104003037},
+    [104004] = {1104004035, 1104004041}
+}
+
+_G.VehicleSkins = {
+    [1961001] = {
+        1961007, 1961010, 1961012, 1961013, 1961014, 1961015, 1961016, 1961017,
+        1961018, 1961020, 19610200, 1961021, 19610210, 1961024, 19610240, 1961025,
+        19610250, 1961144, 19611440, 1961145, 19611450, 1961029, 1961030, 1961031,
+        1961032, 1961036, 1961136, 1961037, 1961050, 1961150, 1961038, 1961039,
+        1961040, 1961041, 1961042, 1961043, 1961044, 1961045, 1961046, 1961047,
+        1961151, 1961152, 1961153, 1961048, 1961049, 1961051, 1961052, 1961053,
+        1961054, 1961055, 1961056, 1961057, 1961058, 1961059, 1961060, 1961061,
+        1961062, 1961063, 1961064, 1961065, 1961066, 1961067, 1961137, 1961138,
+        1961139, 1961140, 1961141, 1961142, 1961143, 1961147, 1961148, 1961149,
+    },
+    [1903001] = {
+        1903071, 1903072, 1903073, 1903074, 1903075, 1903076, 1903079, 19030790,
+        1903080, 19030800, 1903088, 1903089, 1903189, 1903090, 1903190, 1903200,
+        19032000, 1903201, 1903210, 1903211, 1903218, 1903219, 1903220, 1903221,
+        1903222, 1903223,
+    },
+    [1915001] = {
+        1915005, 1915006, 1915007, 1915008, 1915009, 1915021, 1915022
+    },
+    [1908001] = {
+        1908066, 19080660, 1908067, 19080670, 1908075, 1908076, 1908077, 1908078,
+        1908084, 1908085, 1908086, 1908088, 1908188, 1908089, 1908189, 1908094,
+        1908095, 19080951, 1908108, 1908109,
+    },
+    [1907001] = {
+        1907054, 1907058, 1907059
+    }
+}
+
+_G.CustSlotType = { 
+    TopEquipemtSlot=3, 
+    BottomEquipemtSlot=4, 
+    ClothesEquipemtSlot=5, 
+    ShoesEquipemtSlot=6, 
+    GlovesEquipemtSlot=7, 
+    BackpackEquipemtSlot=8, 
+    HelmetEquipemtSlot=9, 
+    ParachuteEquipemtSlot=11, 
+    GlideEquipemtSlot=15 
+}
+
+local function DownloadGameItem(id)
+    local puffer_manager = require('client.slua.logic.download.puffer.puffer_manager')
+    local puffer_const = require('client.slua.logic.download.puffer_const')
+    if puffer_manager and puffer_const and puffer_manager.GetState(puffer_const.ENUM_DownloadType.ODPTD, {id}) ~= puffer_const.ENUM_DownloadState.Done then
+        puffer_manager.Download(puffer_const.ENUM_DownloadType.ODPTD, {id})
+    end
+end
+_G.download_item = DownloadGameItem
+
+_G.get_skin_id = function(weaponID)
+    if not weaponID then return nil end
+    local targetSkinId = _G.WeaponSkinMap and _G.WeaponSkinMap[weaponID]
+    if targetSkinId and targetSkinId > 0 then
+        if not _G.skinIdCache2[targetSkinId] then
+            if _G.download_item then pcall(_G.download_item, targetSkinId) end
+            _G.skinIdCache2[targetSkinId] = true
+        end
+        return targetSkinId
+    end
+    return weaponID
+end
+
+_G.equip_character_avatar = function(Character)
+    if not Character or not slua.isValid(Character) or not Character.AvatarComponent2 then return end
+    local BackpackUtils = import("BackpackUtils")
+    local SlotSyncData = Character.AvatarComponent2.NetAvatarData and Character.AvatarComponent2.NetAvatarData.SlotSyncData
+    if not SlotSyncData or not slua.isValid(SlotSyncData) or not BackpackUtils then return end
+    
+    local function EnsureSlotExists(targetSlotID)
+        local hasSlot = false
+        for i = 0, SlotSyncData:Num() - 1 do
+            local slotData = SlotSyncData:Get(i)
+            if slotData and slotData.SlotID == targetSlotID then 
+                hasSlot = true
+                break 
+            end
+        end
+        if not hasSlot then SlotSyncData:Add({ SlotID = targetSlotID, ItemId = 0 }) end
+    end
+
+    EnsureSlotExists(_G.CustSlotType.TopEquipemtSlot)
+    EnsureSlotExists(_G.CustSlotType.GlovesEquipemtSlot)
+    EnsureSlotExists(_G.CustSlotType.BottomEquipemtSlot)
+    EnsureSlotExists(_G.CustSlotType.ShoesEquipemtSlot)
+    EnsureSlotExists(_G.CustSlotType.ClothesEquipemtSlot)
+    EnsureSlotExists(_G.CustSlotType.GlideEquipemtSlot)
+
+    local function EquipAvatar(ApplyDataIdx, mappedSkin, ApplyEquipSlot, isLevelDependent, levelFunc)
+        local slotData = SlotSyncData:Get(ApplyDataIdx)
+        if slotData and slotData.SlotID == ApplyEquipSlot then
+            local applyItemId = mappedSkin or 0
+            if isLevelDependent and type(mappedSkin) == "table" then
+                local level = levelFunc(slotData.AdditionalItemID) or 1
+                if level < 1 then level = 1 end
+                if level > 3 then level = 3 end
+                applyItemId = mappedSkin[level] or mappedSkin[1]
+            end
+
+            if slotData.ItemId == applyItemId then return end
+
+            if applyItemId > 0 and not _G.skinIdCache[applyItemId] then
+                if _G.download_item then pcall(_G.download_item, applyItemId) end
+                _G.skinIdCache[applyItemId] = true
+            end
+
+            slotData.ItemId = applyItemId
+            SlotSyncData:Set(ApplyDataIdx, slotData)
+            Character.AvatarComponent2:OnRep_BodySlotStateChanged()
+        end
+    end
+
+    for i = 0, SlotSyncData:Num() - 1 do
+        local useSuit = (_G.OutfitMap.Suit and _G.OutfitMap.Suit ~= 0)
+        local useTop = (_G.OutfitMap.Top and _G.OutfitMap.Top ~= 0)
+        
+        if useSuit then
+            EquipAvatar(i, _G.OutfitMap.Suit, _G.CustSlotType.ClothesEquipemtSlot, false)
+            EquipAvatar(i, 0, _G.CustSlotType.TopEquipemtSlot, false)
+        elseif useTop then
+            EquipAvatar(i, _G.OutfitMap.Top, _G.CustSlotType.ClothesEquipemtSlot, false)
+            EquipAvatar(i, 0, _G.CustSlotType.TopEquipemtSlot, false)
+        end
+        
+        if _G.OutfitMap.Gloves and _G.OutfitMap.Gloves ~= 0 and not useSuit then
+            EquipAvatar(i, _G.OutfitMap.Gloves, _G.CustSlotType.GlovesEquipemtSlot, false)
+        end
+        if _G.OutfitMap.Bottom and _G.OutfitMap.Bottom ~= 0 and not useSuit then
+            EquipAvatar(i, _G.OutfitMap.Bottom, _G.CustSlotType.BottomEquipemtSlot, false)
+        end
+        if _G.OutfitMap.Shoes and _G.OutfitMap.Shoes ~= 0 and not useSuit then
+            EquipAvatar(i, _G.OutfitMap.Shoes, _G.CustSlotType.ShoesEquipemtSlot, false)
+        end
+
+        if _G.OutfitMap.Bag and _G.OutfitMap.Bag ~= 0 then
+            EquipAvatar(i, _G.OutfitMap.Bag, _G.CustSlotType.BackpackEquipemtSlot, true, BackpackUtils.GetEquipmentBagLevel)
+        end
+        if _G.OutfitMap.Helmet and _G.OutfitMap.Helmet ~= 0 then
+            EquipAvatar(i, _G.OutfitMap.Helmet, _G.CustSlotType.HelmetEquipemtSlot, true, BackpackUtils.GetEquipmentHelmetLevel)
+        end
+        
+        if _G.HK_GetVal("SkinEnable_Parachute") == 1 and _G.OutfitMap.Parachute and _G.OutfitMap.Parachute ~= 0 then
+            EquipAvatar(i, _G.OutfitMap.Parachute, _G.CustSlotType.ParachuteEquipemtSlot, false)
+        end
+    end
+end
+
+_G.ApplyWeaponSkins = function(PlayerCharacter)
+    pcall(function()
+        local WeaponManager = PlayerCharacter:GetWeaponManager()
+        if not slua.isValid(WeaponManager) then return end
+        
+        for slot = 1, 3 do
+            local Weapon = WeaponManager:GetInventoryWeaponByPropSlot(slot)
+            if slua.isValid(Weapon) and slua.isValid(Weapon.synData) then
+                local WeaponID = Weapon:GetWeaponID()
+                local SkinID = _G.get_skin_id(WeaponID) or WeaponID
+                local isModified = false
+                
+                local SkinData = Weapon.synData:Get(7) 
+                if SkinData and SkinData.defineID and SkinData.defineID.TypeSpecificID ~= SkinID then
+                    SkinData.defineID.TypeSpecificID = SkinID
+                    Weapon.synData:Set(7, SkinData)
+                    if Weapon.SetWeaponAvatarID then pcall(function() Weapon:SetWeaponAvatarID(SkinID) end) end
+                    if not _G.skinIdCache[SkinID] then 
+                        _G.download_item(SkinID)
+                        _G.skinIdCache[SkinID] = true 
+                    end
+                    isModified = true
+                end
+                
+                if SkinID >= 10000000 and _G.VIP_Attachments and _G.VIP_Attachments[SkinID] then
+                    for AttachIdx = 0, 5 do 
+                        local attachData = Weapon.synData:Get(AttachIdx)
+                        if attachData then
+                            local defineIDRef = slua.IndexReference(attachData, "defineID")
+                            if defineIDRef then
+                                local attachmentId = defineIDRef.TypeSpecificID
+                                if attachmentId and attachmentId > 0 then
+                                    local mapIndex = _G.BaseAttachToIndex[attachmentId] or _G.VipAttachToIndex[attachmentId]
+                                    if mapIndex and _G.VIP_Attachments[SkinID][mapIndex] and _G.VIP_Attachments[SkinID][mapIndex] > 0 then
+                                        local targetAttachId = _G.VIP_Attachments[SkinID][mapIndex]
+                                        if targetAttachId ~= attachmentId then
+                                            attachData.defineID.TypeSpecificID = targetAttachId
+                                            Weapon.synData:Set(AttachIdx, attachData)
+                                            if not _G.skinIdCache2[targetAttachId] then 
+                                                if _G.download_item then pcall(_G.download_item, targetAttachId) end
+                                                _G.skinIdCache2[targetAttachId] = true 
+                                            end
+                                            isModified = true
+                                        end
+                                    end
+                                end
+                            end
+                        end
+                    end
+                end
+                
+                if isModified then
+                    if Weapon.DelayHandleAvatarMeshChanged then pcall(function() Weapon:DelayHandleAvatarMeshChanged() end) end
+                    if Weapon.OnRep_synData then pcall(function() Weapon:OnRep_synData() end) end
+                end
+            end
+        end
+    end)
+end
+
+_G.ApplyWeaponGlow = function(PlayerCharacter)
+    pcall(function()
+        local WeaponManager = PlayerCharacter:GetWeaponManager()
+        if not slua.isValid(WeaponManager) then return end
+
+        local isGlowEnabled = _G.HK_GetVal("WeaponGlow") == 1
+        local LinearColorClass = import("LinearColor") or _G.FLinearColor
+        
+        local glowIntensity = 80.0 
+        local thickness = _G.HK_GetVal("WeaponGlowThickness")
+        if thickness == 0 then thickness = 3 end
+        local colorMode = _G.HK_GetVal("WeaponGlowColor")
+        if colorMode == 0 then colorMode = 5 end
+        
+        local r, g, b = 1.0, 1.0, 0.0
+        if colorMode == 1 then r, g, b = 1.0, 0.0, 0.0
+        elseif colorMode == 2 then r, g, b = 0.0, 1.0, 0.0
+        elseif colorMode == 3 then r, g, b = 0.0, 0.0, 1.0
+        elseif colorMode == 4 then r, g, b = 1.0, 1.0, 0.0
+        elseif colorMode == 5 then 
+            local time = os_clock() * 2.0
+            r = (math.sin(time) + 1) / 2
+            g = (math.sin(time + 2) + 1) / 2
+            b = (math.sin(time + 4) + 1) / 2
+        end
+
+        local finalColor = LinearColorClass and LinearColorClass(r * glowIntensity, g * glowIntensity, b * glowIntensity, 1.0) or { R = r * 255 * glowIntensity, G = g * 255 * glowIntensity, B = b * 255 * glowIntensity, A = 255 }
+
+        for slot = 1, 3 do
+            local Weapon = WeaponManager:GetInventoryWeaponByPropSlot(slot)
+            if slua.isValid(Weapon) then
+                local ok, meshComponent = pcall(function() return import("/Script/Engine.MeshComponent") end)
+                if ok then
+                    local ok2, components = pcall(function() return Weapon:GetComponentsByClass(meshComponent) end)
+                    if ok2 and components then
+                        local count = type(components.Num) == "function" and components:Num() or #components
+                        for i = 1, count do
+                            local comp = type(components.Get) == "function" and components:Get(i-1) or components[i]
+                            if slua.isValid(comp) then
+                                if isGlowEnabled then
+                                    pcall(function()
+                                        comp.UseScopeDistanceCulling = false
+                                        comp.PrimitiveShadingStrategy = 1
+                                        comp.ShadingRate = 6
+                                        if comp.SetDrawIdeaOutline then
+                                            comp:SetDrawIdeaOutline(true)
+                                            if comp.OverrideIdeaOutlineColor then comp:OverrideIdeaOutlineColor(true, finalColor) end
+                                            if comp.OverrideIdeaOutlineThickness then comp:OverrideIdeaOutlineThickness(true, thickness) end
+                                        elseif comp.SetRenderCustomDepth then
+                                            comp:SetRenderCustomDepth(true)
+                                        end
+                                    end)
+                                else
+                                    pcall(function()
+                                        if comp.SetDrawIdeaOutline then comp:SetDrawIdeaOutline(false)
+                                        elseif comp.SetRenderCustomDepth then comp:SetRenderCustomDepth(false) end
+                                    end)
+                                end
+                            end
+                        end
+                    end
+                end
+            end
+        end
+    end)
+end
+
+_G.ApplyVehicleSkins = function(PlayerCharacter)
+    pcall(function()
+        local Vehicle = PlayerCharacter:GetCurrentVehicle()
+        if not slua.isValid(Vehicle) then 
+            _G.LastVehicleEntity = nil
+            return 
+        end
+        
+        local VehicleAvatar = Vehicle.VehicleAvatar or Vehicle.VehicleAvatarComponent_BP or Vehicle:GetAvatarComponent()
+        if not slua.isValid(VehicleAvatar) then return end
+
+        local defId = tostring(VehicleAvatar:GetDefaultAvatarID() or Vehicle.VehicleID or "")
+        local currentId = tostring(Vehicle:GetAvatarId() or "")
+        local applySkinId = 0
+        
+        for baseMapId, targetSkin in pairs(_G.VehicleSkinMap) do
+            if defId:find(tostring(baseMapId)) or currentId:find(tostring(baseMapId)) then 
+                applySkinId = targetSkin
+                break 
+            end
+        end
+
+        if _G.LastVehicleEntity == Vehicle and _G.CurrentEquipVehicleID == applySkinId then
+            return
+        end
+
+        if applySkinId and applySkinId > 0 then
+            _G.skinIdCache = _G.skinIdCache or {}
+            if not _G.skinIdCache[applySkinId] then 
+                if _G.download_item then pcall(_G.download_item, applySkinId) end
+                _G.skinIdCache[applySkinId] = true 
+            end
+
+            VehicleAvatar.curSwitchEffectId = 7303001
+            if VehicleAvatar.ChangeItemAvatar then VehicleAvatar:ChangeItemAvatar(applySkinId, true) end
+            
+            _G.CurrentEquipVehicleID = applySkinId
+            _G.LastVehicleEntity = Vehicle
+        end
+    end)
+end
+
+_G.HandlePetLogic = function()
+    pcall(function()
+        local petSkin = _G.OutfitMap.Pet
+        if not petSkin or petSkin == 0 or petSkin == 50000 or petSkin == _G.LastAppliedPet then return end
+        
+        _G.skinIdCache = _G.skinIdCache or {}
+        if not _G.skinIdCache[petSkin] then 
+            if _G.download_item then pcall(_G.download_item, petSkin) end
+            _G.skinIdCache[petSkin] = true 
+        end
+        
+        local ModuleManager = require("client.module_framework.ModuleManager")
+        if ModuleManager then
+            local logic_pet = ModuleManager.GetModule(ModuleManager.CommonModuleConfig.logic_pet)
+            if logic_pet then
+                if logic_pet.SetCurPetID then logic_pet:SetCurPetID(petSkin) end
+                if logic_pet.EquipPet then logic_pet:EquipPet(petSkin) end
+            end
+        end
+        _G.LastAppliedPet = petSkin
+    end)
+end
+
+_G.ForceRefreshSkinMaps = function()
+    pcall(function()
+        _G.OutfitMap = {}
+        _G.WeaponSkinMap = {}
+        _G.VehicleSkinMap = {}
+
+        if _G.OutfitSkins then
+            _G.OutfitMap.Suit = (_G.HK_GetVal("SkinEnable_Suit") == 1 and _G.HK_GetVal("SkinSuit") > 0 and _G.OutfitSkins.Suit[_G.HK_GetVal("SkinSuit")]) or 0
+            _G.OutfitMap.Top = (_G.HK_GetVal("SkinEnable_Top") == 1 and _G.HK_GetVal("SkinTop") > 0 and _G.OutfitSkins.Top[_G.HK_GetVal("SkinTop")]) or 0
+            _G.OutfitMap.Gloves = (_G.HK_GetVal("SkinEnable_Gloves") == 1 and _G.HK_GetVal("SkinGloves") > 0 and _G.OutfitSkins.Gloves[_G.HK_GetVal("SkinGloves")]) or 0
+            _G.OutfitMap.Bottom = (_G.HK_GetVal("SkinEnable_Bottom") == 1 and _G.HK_GetVal("SkinBottom") > 0 and _G.OutfitSkins.Bottom[_G.HK_GetVal("SkinBottom")]) or 0
+            _G.OutfitMap.Shoes = (_G.HK_GetVal("SkinEnable_Shoes") == 1 and _G.HK_GetVal("SkinShoes") > 0 and _G.OutfitSkins.Shoes[_G.HK_GetVal("SkinShoes")]) or 0
+            
+            if _G.HK_GetVal("SkinEnable_Bag") == 1 and _G.OutfitSkins.Bag[_G.HK_GetVal("SkinBag")] then _G.OutfitMap.Bag = _G.OutfitSkins.Bag[_G.HK_GetVal("SkinBag")] end
+            if _G.HK_GetVal("SkinEnable_Helmet") == 1 and _G.OutfitSkins.Helmet[_G.HK_GetVal("SkinHelmet")] then _G.OutfitMap.Helmet = _G.OutfitSkins.Helmet[_G.HK_GetVal("SkinHelmet")] end
+            if _G.HK_GetVal("SkinEnable_Parachute") == 1 and _G.OutfitSkins.Parachute[_G.HK_GetVal("SkinParachute")] then _G.OutfitMap.Parachute = _G.OutfitSkins.Parachute[_G.HK_GetVal("SkinParachute")] end
+        end
+
+        if _G.skinIdMappings then
+            if _G.HK_GetVal("SkinEnable_M416") == 1 and _G.skinIdMappings[101004] and _G.skinIdMappings[101004][_G.HK_GetVal("SkinM416")] then _G.WeaponSkinMap[101004] = _G.skinIdMappings[101004][_G.HK_GetVal("SkinM416")] end
+            if _G.HK_GetVal("SkinEnable_AKM") == 1 and _G.skinIdMappings[101001] and _G.skinIdMappings[101001][_G.HK_GetVal("SkinAKM")] then _G.WeaponSkinMap[101001] = _G.skinIdMappings[101001][_G.HK_GetVal("SkinAKM")] end
+            if _G.HK_GetVal("SkinEnable_SCAR") == 1 and _G.skinIdMappings[101003] and _G.skinIdMappings[101003][_G.HK_GetVal("SkinSCAR")] then _G.WeaponSkinMap[101003] = _G.skinIdMappings[101003][_G.HK_GetVal("SkinSCAR")] end
+            if _G.HK_GetVal("SkinEnable_M762") == 1 and _G.skinIdMappings[101008] and _G.skinIdMappings[101008][_G.HK_GetVal("SkinM762")] then _G.WeaponSkinMap[101008] = _G.skinIdMappings[101008][_G.HK_GetVal("SkinM762")] end
+            if _G.HK_GetVal("SkinEnable_AUG") == 1 and _G.skinIdMappings[101006] and _G.skinIdMappings[101006][_G.HK_GetVal("SkinAUG")] then _G.WeaponSkinMap[101006] = _G.skinIdMappings[101006][_G.HK_GetVal("SkinAUG")] end
+            if _G.HK_GetVal("SkinEnable_UMP") == 1 and _G.skinIdMappings[102002] and _G.skinIdMappings[102002][_G.HK_GetVal("SkinUMP")] then _G.WeaponSkinMap[102002] = _G.skinIdMappings[102002][_G.HK_GetVal("SkinUMP")] end
+            if _G.HK_GetVal("SkinEnable_UZI") == 1 and _G.skinIdMappings[102001] and _G.skinIdMappings[102001][_G.HK_GetVal("SkinUZI")] then _G.WeaponSkinMap[102001] = _G.skinIdMappings[102001][_G.HK_GetVal("SkinUZI")] end
+            if _G.HK_GetVal("SkinEnable_Groza") == 1 and _G.skinIdMappings[101005] and _G.skinIdMappings[101005][_G.HK_GetVal("SkinGroza")] then _G.WeaponSkinMap[101005] = _G.skinIdMappings[101005][_G.HK_GetVal("SkinGroza")] end
+            if _G.HK_GetVal("SkinEnable_S12K") == 1 and _G.skinIdMappings[104003] and _G.skinIdMappings[104003][_G.HK_GetVal("SkinS12K")] then _G.WeaponSkinMap[104003] = _G.skinIdMappings[104003][_G.HK_GetVal("SkinS12K")] end
+            if _G.HK_GetVal("SkinEnable_DBS") == 1 and _G.skinIdMappings[104004] and _G.skinIdMappings[104004][_G.HK_GetVal("SkinDBS")] then _G.WeaponSkinMap[104004] = _G.skinIdMappings[104004][_G.HK_GetVal("SkinDBS")] end
+        end
+
+        if _G.VehicleSkins then
+            if _G.HK_GetVal("SkinEnable_Dacia") == 1 and _G.VehicleSkins[1903001] and _G.VehicleSkins[1903001][_G.HK_GetVal("SkinDacia")] then 
+                local targetId = _G.VehicleSkins[1903001][_G.HK_GetVal("SkinDacia")]
+                for _, id in ipairs({1903001, 1903002, 1903003, 1903004}) do _G.VehicleSkinMap[id] = targetId end 
+            end
+            if _G.HK_GetVal("SkinEnable_UAZ") == 1 and _G.VehicleSkins[1908001] and _G.VehicleSkins[1908001][_G.HK_GetVal("SkinUAZ")] then 
+                local targetId = _G.VehicleSkins[1908001][_G.HK_GetVal("SkinUAZ")]
+                for _, id in ipairs({1908001, 1909001}) do _G.VehicleSkinMap[id] = targetId end 
+            end
+            if _G.HK_GetVal("SkinEnable_Coupe") == 1 and _G.VehicleSkins[1961001] and _G.VehicleSkins[1961001][_G.HK_GetVal("SkinCoupe")] then 
+                _G.VehicleSkinMap[1961001] = _G.VehicleSkins[1961001][_G.HK_GetVal("SkinCoupe")] 
+            end
+            if _G.HK_GetVal("SkinEnable_Buggy") == 1 and _G.VehicleSkins[1907001] and _G.VehicleSkins[1907001][_G.HK_GetVal("SkinBuggy")] then 
+                local targetId = _G.VehicleSkins[1907001][_G.HK_GetVal("SkinBuggy")]
+                for _, id in ipairs({1907001, 1907002, 1907003, 1907004, 1907005, 1907006}) do _G.VehicleSkinMap[id] = targetId end 
+            end
+            if _G.HK_GetVal("SkinEnable_Mirado") == 1 and _G.VehicleSkins[1915001] and _G.VehicleSkins[1915001][_G.HK_GetVal("SkinMirado")] then 
+                local targetId = _G.VehicleSkins[1915001][_G.HK_GetVal("SkinMirado")]
+                for _, id in ipairs({1914001, 1914002, 1914003, 1914004, 1915001, 1915002, 1915003, 1915004}) do _G.VehicleSkinMap[id] = targetId end 
+            end
+        end
+    end)
+end
+
+_G.NeedCheckDeadBoxTimer = 0
+_G.DeadBox_TemperRequest = function(PlayerController)
+    if _G.NeedCheckDeadBoxTimer <= 0 then return end
+    
+    local curTime = os_clock()
+    if _G.LastCheckDeadBoxTime and (curTime - _G.LastCheckDeadBoxTime) < 2.0 then return end
+    _G.LastCheckDeadBoxTime = curTime
+    
+    _G.NeedCheckDeadBoxTimer = _G.NeedCheckDeadBoxTimer - 1
+
+    local PlayerCharacter = PlayerController:GetPlayerCharacterSafety()
+    if not slua.isValid(PlayerCharacter) then return end
+    
+    local cached_GameplayStatics = import("GameplayStatics")
+    local cached_ActorClass = import("Actor")
+    local cached_PlayerTombBox = import("PlayerTombBox")
+    
+    if not _G.CachedActorArray then
+        _G.CachedActorArray = slua.Array(UEnums.EPropertyClass.Object, cached_ActorClass)
+    end
+    
+    local UI_Util = require("client.common.ui_util")
+    local GameInstance = UI_Util and UI_Util.GetGameInstance()
+    if not GameInstance or not cached_GameplayStatics then return end
+
+    local deadBoxes = cached_GameplayStatics.GetAllActorsOfClass(GameInstance, cached_PlayerTombBox, _G.CachedActorArray)
+    
+    for _, deadBoxActor in pairs(deadBoxes) do
+        if slua.isValid(deadBoxActor) and not deadBoxActor.bIsTDSkinApplied then
+            local damageCauser = deadBoxActor.DamageCauser
+            if damageCauser and damageCauser.PlayerKey == PlayerController.PlayerKey then
+                local DeadBoxAvatarComponent = deadBoxActor.DeadBoxAvatarComponent_BP
+                if slua.isValid(DeadBoxAvatarComponent) then
+                    local currentBoxSkinId = 0
+                    if PlayerCharacter.CurrentVehicle and _G.CurrentEquipVehicleID and _G.CurrentEquipVehicleID ~= 0 then
+                        currentBoxSkinId = tonumber(tostring(_G.CurrentEquipVehicleID) .. "1") or 0
+                    else
+                        local currentWeapon = PlayerCharacter:GetCurrentWeapon()
+                        if slua.isValid(currentWeapon) and currentWeapon.synData then
+                            local weaponSkinData = currentWeapon.synData:Get(7)
+                            if weaponSkinData and weaponSkinData.defineID then
+                                currentBoxSkinId = weaponSkinData.defineID.TypeSpecificID
+                            end
+                        end
+                    end
+                    
+                    if currentBoxSkinId ~= 0 then
+                        pcall(function()
+                            DeadBoxAvatarComponent:ResetItemAvatar()
+                            DeadBoxAvatarComponent:PreChangeItemAvatar(currentBoxSkinId)
+                            DeadBoxAvatarComponent:SyncChangeItemAvatar(currentBoxSkinId)
+                        end)
+                    end
+                    deadBoxActor.bIsTDSkinApplied = true
+                end
+            end
+        end
+    end
+end
+
+_G.TDFTDeKillCounts = _G.TDFTDeKillCounts or {}
+local CACHED_UI_Manager = nil
+
+_G.ForceEnableKillCounterUI = function()
+    pcall(function()
+        local KillCounterUISubsystem = package.loaded["GameLua.Mod.BaseMod.Client.KillCounter.KillCounterUISubsystem"] or require("GameLua.Mod.BaseMod.Client.KillCounter.KillCounterUISubsystem")
+        if KillCounterUISubsystem and KillCounterUISubsystem.__inner_impl and not _G.KCUISystemHacked2 then
+            local kcImpl = KillCounterUISubsystem.__inner_impl
+            kcImpl.CheckSupportKCUI = function() return true end
+            kcImpl.CheckNeedMainKillCounterUI = function(self, PlayerWeapon, PlayerID)
+                if slua.isValid(PlayerWeapon) then
+                    local WeaponID = PlayerWeapon:GetWeaponID()
+                    self:UpdateMainKillCounterUI(true, WeaponID, _G.get_skin_id(WeaponID) or WeaponID)
+                else self:UpdateMainKillCounterUI(false) end
+            end
+            local originalUpdateMainKillCounterUI = kcImpl.UpdateMainKillCounterUI
+            kcImpl.UpdateMainKillCounterUI = function(self, bShow, WeaponID, AvatarID)
+                if bShow then AvatarID = _G.get_skin_id(WeaponID) or AvatarID end
+                if originalUpdateMainKillCounterUI then originalUpdateMainKillCounterUI(self, bShow, WeaponID, AvatarID) end
+            end
+            _G.KCUISystemHacked2 = true
+        end
+
+        local ModuleManager = require("client.module_framework.ModuleManager")
+        if ModuleManager and not _G.KCLogicHacked2 then
+            local LogicKillCounter = ModuleManager.GetModule(ModuleManager.CommonModuleConfig.LogicKillCounter)
+            if LogicKillCounter then
+                LogicKillCounter.CheckSupportKC = function() return true end
+                LogicKillCounter.CheckSupportKillCounterAvatar = function() return true end
+                LogicKillCounter.CheckHasWeaponKillCounter = function() return true end
+                LogicKillCounter.GetBaseKillCounterIdByWeaponId = function() return 2100004 end
+                LogicKillCounter.GetEquipedKillCounterId = function() return 2100004 end
+                LogicKillCounter.GetMyEquipedKillCounterId = function() return 2100004 end
+                LogicKillCounter.GetOneWeaponKillCountInBattle = function(self, uid, weaponId) return _G.TDFTDeKillCounts[weaponId] or 0 end
+                LogicKillCounter.GetWeaponKillCountByUid = function(self, uid, weaponId) return _G.TDFTDeKillCounts[weaponId] or 0 end
+                _G.KCLogicHacked2 = true
+            end
+        end
+
+        local ESlateVisibility = import("ESlateVisibility")
+        local SwitchModes = {
+            "GameLua.Mod.BaseMod.Client.MainControlUI.SwitchWeaponSlotMode1",
+            "GameLua.Mod.BaseMod.Client.MainControlUI.SwitchWeaponSlotMode2",
+            "GameLua.Mod.BaseMod.Client.MainControlUI.SwitchWeaponSlotMode3",
+            "GameLua.Mod.BaseMod.Client.MainControlUI.SwitchWeaponSlotBase"
+        }
+        for _, modePath in ipairs(SwitchModes) do
+            local s, mode = pcall(require, modePath)
+            if s and mode and mode.__inner_impl and not mode.__inner_impl._KCIconHidden then
+                mode.__inner_impl.CheckShowKCIcon = function(self)
+                    if slua.isValid(self.KillCounterImg) then 
+                        self.KillCounterImg:SetVisibility(ESlateVisibility.Collapsed) 
+                    end
+                    if slua.isValid(self.KillCounterText) then 
+                        self.KillCounterText:SetVisibility(ESlateVisibility.Collapsed) 
+                    end
+                end
+                mode.__inner_impl._KCIconHidden = true
+            end
+        end
+    end)
+end
+
+_G.ForceEnableKillMessage = function()
+    pcall(function()
+        local killInfoPath = "GameLua.Mod.BaseMod.Client.KillInfoTips.KillInfo"
+        local KillInfo = package.loaded[killInfoPath] or require(killInfoPath)
+        
+        if KillInfo and KillInfo.__inner_impl and not _G.KillMessageHacked then
+            local originalFileItem = KillInfo.__inner_impl.FileItem
+            KillInfo.__inner_impl.FileItem = function(self, DamageRecordData)
+                pcall(function()
+                    local LocalPlayer = require("GameLua.GameCore.Data.GameplayData").GetPlayerCharacter()
+                    if slua.isValid(LocalPlayer) and DamageRecordData.Causer == LocalPlayer:GetPlayerNameSafety() then 
+                        local currentWeapon = LocalPlayer:GetCurrentWeapon()
+                        if slua.isValid(currentWeapon) then
+                            local weaponID = currentWeapon:GetWeaponID()
+                            local skinID = _G.get_skin_id(weaponID)
+                            
+                            if _G.HK_GetVal("KillMessageEnable") == 1 then
+                                if skinID then DamageRecordData.CauserWeaponAvatarID = skinID end
+                                if _G.OutfitMap.Suit and _G.OutfitMap.Suit ~= 0 then DamageRecordData.CauserClothAvatarID = _G.OutfitMap.Suit end
+                            end
+
+                            if DamageRecordData.ResultHealthStatus == 2 then 
+                                _G.TDFTDeKillCounts[weaponID] = (_G.TDFTDeKillCounts[weaponID] or 0) + 1
+                                
+                                if not CACHED_UI_Manager then CACHED_UI_Manager = require("client.slua_ui_framework.manager") end
+                                local uiMainKillCounter = CACHED_UI_Manager.GetUI(CACHED_UI_Manager.UI_Config_InGame.MainKillCounter)
+                                
+                                if uiMainKillCounter and uiMainKillCounter.UpdateWeaponID then
+                                    local mainAvatarID = skinID or currentWeapon:GetWeaponMainAvatarID()
+                                    uiMainKillCounter:UpdateWeaponID(weaponID, mainAvatarID)
+                                    
+                                    local ModuleManager = require("client.module_framework.ModuleManager")
+                                    if ModuleManager then
+                                        local kcModule = ModuleManager.GetModule(ModuleManager.CommonModuleConfig.LogicKillCounter)
+                                        if kcModule then
+                                            local kcItemID = kcModule:GetEquipedKillCounterId(0, mainAvatarID)
+                                            uiMainKillCounter:SetKillCounterItemShowWithNum(kcItemID, _G.TDFTDeKillCounts[weaponID], mainAvatarID)
+                                        end
+                                    end
+                                end
+                            end
+                        end
+                    end
+                end)
+                
+                if originalFileItem then return originalFileItem(self, DamageRecordData) end
+            end
+            _G.KillMessageHacked = true
+        end
+    end)
+end
+
+function _G.InitializeSkinModSystem()
+    pcall(function()
+        local LobbyAvatar = package.loaded["client.logic.avatar.LobbyAvatar"] or require("client.logic.avatar.LobbyAvatar")
+        if LobbyAvatar and not _G.LobbyBypassHacked then
+            local originalPutonEquipment = LobbyAvatar.PutonEquipment
+            LobbyAvatar.PutonEquipment = function(self, itemID, tAvatarCustom, tExtraData)
+                local attachIndex = _G.BaseAttachToIndex and _G.BaseAttachToIndex[itemID]
+                if attachIndex then
+                    local holdingWeaponSkinID = self.GetCurHoldingWeaponSkinID and self:GetCurHoldingWeaponSkinID()
+                    if holdingWeaponSkinID and holdingWeaponSkinID >= 10000000 and _G.VIP_Attachments and _G.VIP_Attachments[holdingWeaponSkinID] then
+                        local vipAttachID = _G.VIP_Attachments[holdingWeaponSkinID][attachIndex]
+                        if vipAttachID and vipAttachID > 0 then
+                            if self.HandleDownload then self:HandleDownload(vipAttachID, nil, nil, false) end
+                            itemID = vipAttachID
+                        end
+                    end
+                end
+                if originalPutonEquipment then return originalPutonEquipment(self, itemID, tAvatarCustom, tExtraData) end
+            end
+
+            local originalCharEquipWeaponByResId = LobbyAvatar.CharEquipWeaponByResId
+            LobbyAvatar.CharEquipWeaponByResId = function(self, resID, isUse, isAsync, SocketName)
+                local retValue = originalCharEquipWeaponByResId and originalCharEquipWeaponByResId(self, resID, isUse, isAsync, SocketName) or nil
+                if isUse and self.GetEquipments then
+                    local equipments = self:GetEquipments()
+                    for _, equip in ipairs(equipments) do
+                        if _G.BaseAttachToIndex and _G.BaseAttachToIndex[equip.itemID] then
+                            self:PutonEquipment(equip.itemID, equip.CustomInfo, {bIsUse = false})
+                        end
+                    end
+                end
+                return retValue
+            end
+            _G.LobbyBypassHacked = true
+        end
+    end)
+    
+    pcall(function()
+        local Common_Items_UIBP = package.loaded["client.slua.component.item.ItemChildren.Common_Items_UIBP"] or require("client.slua.component.item.ItemChildren.Common_Items_UIBP")
+        if Common_Items_UIBP and not _G.IconBaloHacked then
+        local originalInitView = Common_Items_UIBP.InitView
+            Common_Items_UIBP.InitView = function(self, nItemId, nCount, nValidTime, tExtraData)
+                tExtraData = tExtraData or {}
+                local displayResId = nil
+                
+                if _G.get_skin_id then
+                    local skinID = _G.get_skin_id(nItemId)
+                    if skinID and skinID ~= nItemId then displayResId = skinID end
+                end
+                
+                local attachIndex = _G.BaseAttachToIndex and _G.BaseAttachToIndex[nItemId]
+                if not displayResId and attachIndex then
+                    local GameplayData = require("GameLua.GameCore.Data.GameplayData")
+                    local LocalPlayer = GameplayData and GameplayData.GetPlayerCharacter()
+                    if slua.isValid(LocalPlayer) then
+                        local currentWeapon = LocalPlayer:GetCurrentWeapon()
+                        if slua.isValid(currentWeapon) then
+                            local weaponID = currentWeapon:GetWeaponID()
+                            local finalSkinID = _G.get_skin_id(weaponID) or weaponID
+                            if finalSkinID >= 10000000 and _G.VIP_Attachments and _G.VIP_Attachments[finalSkinID] then
+                                local vipAttachID = _G.VIP_Attachments[finalSkinID][attachIndex]
+                                if vipAttachID and vipAttachID > 0 then displayResId = vipAttachID end
+                            end
+                        end
+                    end
+                end
+                
+                if displayResId then
+                    tExtraData.displayResId = displayResId
+                    if not _G.skinIdCache2[displayResId] then
+                        if _G.download_item then pcall(_G.download_item, displayResId) end
+                        _G.skinIdCache2[displayResId] = true
+                    end
+                end
+                if originalInitView then return originalInitView(self, nItemId, nCount, nValidTime, tExtraData) end
+            end
+            _G.IconBaloHacked = true
+        end
+    end)
+end
+
+
 local function Valid(obj)
     if not obj then return false end
     if slua and type(slua.isValid) == "function" then
@@ -2806,39 +3839,49 @@ local function CheckIsAI(pawn)
     local hasChecked = false
     
     pcall(function()
-        if pawn.bIsAI == true or pawn.IsAI == true then 
-            isAI = true 
+        if pawn.bEnsure ~= nil then
+            isAI = pawn.bEnsure
             hasChecked = true
-        elseif type(pawn.IsBot) == "function" and pawn:IsBot() then
-            isAI = true
-            hasChecked = true
-        elseif pawn.IsBot == true then
-            isAI = true
+        elseif type(pawn.GetMEnsure) == "function" then
+            isAI = pawn:GetMEnsure()
             hasChecked = true
         end
-        
-        if not isAI and Game and type(Game.IsAI) == "function" and Game:IsAI(pawn) then
-            isAI = true
-            hasChecked = true
-        end
-        
-        local pState = pawn.PlayerState or (type(pawn.GetPlayerState) == "function" and pawn:GetPlayerState())
-        if Valid(pState) then
-            hasChecked = true
-            if pState.bIsABot == true or pState.bIsBot == true then
+
+        if not isAI or not hasChecked then
+            if pawn.bIsAI == true or pawn.IsAI == true then 
+                isAI = true 
+                hasChecked = true
+            elseif type(pawn.IsBot) == "function" and pawn:IsBot() then
                 isAI = true
-            elseif type(pState.IsBot) == "function" and pState:IsBot() then
+                hasChecked = true
+            elseif pawn.IsBot == true then
                 isAI = true
+                hasChecked = true
             end
-        end
-        
-        if not isAI then
-            local name = pawn.PlayerName or (type(pawn.GetPlayerName) == "function" and pawn:GetPlayerName()) or ""
-            if name ~= "" then
-                if name:find("Cobra") or name:find("Target") or name:find("bot_") or name:find("b_") or name:find("训练机器人") or name:find("PlayerBot") then
+            
+            if not isAI and Game and type(Game.IsAI) == "function" and Game:IsAI(pawn) then
+                isAI = true
+                hasChecked = true
+            end
+            
+            local pState = pawn.PlayerState or (type(pawn.GetPlayerState) == "function" and pawn:GetPlayerState())
+            if Valid(pState) then
+                hasChecked = true
+                if pState.bIsABot == true or pState.bIsBot == true then
+                    isAI = true
+                elseif type(pState.IsBot) == "function" and pState:IsBot() then
                     isAI = true
                 end
-                hasChecked = true
+            end
+            
+            if not isAI then
+                local name = pawn.PlayerName or (type(pawn.GetPlayerName) == "function" and pawn:GetPlayerName()) or ""
+                if name ~= "" then
+                    if name:find("Cobra") or name:find("Target") or name:find("bot_") or name:find("b_") or name:find("训练机器人") or name:find("PlayerBot") then
+                        isAI = true
+                    end
+                    hasChecked = true
+                end
             end
         end
     end)
@@ -3198,12 +4241,65 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
         end
 
         local isWallhackGlobalOn = (_G.HK_GetVal("WALLHACK") == 1)
+        local isModSkinOn = (_G.HK_GetVal("ModSkin") == 1)
 
         if not _G.TDModTickCount then _G.TDModTickCount = 0 end
         if not _G.MagicUpdateVersion then _G.MagicUpdateVersion = 1 end
         if _G.EnvRequiresUpdate == nil then _G.EnvRequiresUpdate = true end
 
         _G.TDModTickCount = _G.TDModTickCount + 1
+
+        -- Cập nhật định kỳ Mod Skin mỗi 1.5 giây (khoảng 6 ticks ở chu kỳ 0.25s) và phát sáng súng mỗi 0.5 giây (2 ticks)
+        if isModSkinOn then
+            if not self.bHasInitializedSkinMod then
+                self.bHasInitializedSkinMod = true
+                pcall(function()
+                    _G.InitializeSkinModSystem()
+                    _G.ForceEnableKillCounterUI()
+                    _G.ForceEnableKillMessage()
+                    _G.ForceRefreshSkinMaps()
+                end)
+            end
+            
+            if _G.TDModTickCount % 6 == 0 then
+                pcall(function()
+                    _G.ForceRefreshSkinMaps()
+                    _G.equip_character_avatar(LocalPlayer)
+                    _G.ApplyWeaponSkins(LocalPlayer)
+                    _G.ApplyVehicleSkins(LocalPlayer)
+                    _G.HandlePetLogic()
+                end)
+            end
+
+            if _G.TDModTickCount % 2 == 0 then
+                pcall(function()
+                    _G.ApplyWeaponGlow(LocalPlayer)
+                end)
+            end
+
+            if _G.HK_GetVal("SkinDeadBox") == 1 then
+                pcall(function()
+                    _G.NeedCheckDeadBoxTimer = 15
+                    local controller = GameplayData.GetPlayerController()
+                    if slua_isValid(controller) then
+                        _G.DeadBox_TemperRequest(controller)
+                    end
+                end)
+            end
+        else
+            if self.bHasInitializedSkinMod then
+                self.bHasInitializedSkinMod = nil
+                -- Restore defaults
+                pcall(function()
+                    _G.OutfitMap = {}
+                    _G.WeaponSkinMap = {}
+                    _G.VehicleSkinMap = {}
+                    _G.equip_character_avatar(LocalPlayer)
+                    _G.ApplyWeaponSkins(LocalPlayer)
+                    _G.ApplyWeaponGlow(LocalPlayer)
+                end)
+            end
+        end
  
         if _G.EnvRequiresUpdate then
             _G.EnvRequiresUpdate = false 
