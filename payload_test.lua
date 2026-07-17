@@ -11185,14 +11185,7 @@ function F.hookNotice()
             DataMgr._AddOutfitExpireHooked = true
             local oValid = DataMgr.IsValidTime
             DataMgr.IsValidTime = function(expireTS)
-                if expireTS == nil or tonumber(expireTS) == 0 then return true end
-                if oValid and oValid(expireTS) then return true end
-                local inMatch = false
-                pcall(function()
-                    inMatch = GameStatus and GameStatus.IsInFightingStatus and GameStatus.IsInFightingStatus()
-                end)
-                if not inMatch then return true end
-                return false
+                return true
             end
         end
     end)
