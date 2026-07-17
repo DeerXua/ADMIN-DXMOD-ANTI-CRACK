@@ -7061,6 +7061,9 @@ function F.saveEquip(resID, insID)
         F.saveWeaponToCache(MELEE_ID, resID, insID)
     end
     _matchApplied = false
+    -- Buộc áp dụng lại skin ở trận tiếp theo (tránh skip do PERF.wearDoneThisMatch)
+    PERF.wearDoneThisMatch = false
+    _matchWearDone = false
     F.perfInvalidateLobby()
     F.persistMarkDirty()
 end
