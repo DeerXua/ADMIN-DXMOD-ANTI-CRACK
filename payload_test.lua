@@ -12463,32 +12463,21 @@ end
 function F.hookPutOnRsp()
     pcall(function()
         local wl = require("client.slua.logic.wardrobe.logic_wardrobe_new")
+        if wl._AddOutfitPutOnHooked then return end
+        wl._AddOutfitPutOnHooked = true
         local o = wl.on_puton_rsp
         wl.on_puton_rsp = function(self, res, item, olditem, index, extra)
             o(self, res, item, olditem, index, extra)
-            if not item or not item.instid then return end
-            local resID = tonumber(item.res_id)
-            local insID = tonumber(item.instid)
-            if not resID or not insID then return end
-            local c = F.cfg(resID)
-            local st = F.subType(c)
-            if st == OUTFIT_SUB then
-                F.saveEquip(resID, insID)
-            elseif st == HAT_SUB or FACE_SUBS[st] or BODY_SUBS[st] or HELMET_SUBS[st]
-                or st == PARACHUTE_SUB or F.isGlideRes(resID) or st == GLOVES_SUB then
-                F.saveEquip(resID, insID)
-            elseif F.isParachuteRes(resID) or F.isGlideRes(resID) then
-                F.saveEquip(resID, insID)
-            elseif HEAD_SUBS[st] then
-                F.saveEquip(resID, insID)
-            elseif GUN_SUB[st] then
-                local wid = F.weaponIdFromSkin(resID)
-                if wid then F.cacheWeaponSkinFromIns(wid, insID) end
-            elseif st == MELEE_ID then
-                F.cacheWeaponSkinFromIns(MELEE_ID, insID)
-            elseif F.isInjectedIns(insID) then
-                F.saveEquip(resID, insID)
-            end
+            if not item then return end
+            local resID = tonumber(item.res_id or item.resID or item.resId)
+            local insID = tonumber(item.instid or item.ins_id or item.insID)
+            if not resID or not insID or resID <= 0 then return end
+            -- Xóa hạn sử dụng
+            item.expire_ts = 0
+            item.expireTS = 0
+            item.valid_hours = 0
+            -- Gọi saveEquip cho mọi loại item: saveEquip tự phân loại subtype
+            pcall(F.saveEquip, resID, insID)
         end
     end)
 end
@@ -12512,7 +12501,15 @@ function F.hookLobbyWeaponCache()
                     olditem.expireTS = 0
                     olditem.valid_hours = 0
                 end
-                return oRsp(err, item, olditem, slot, insID, oldIns)
+                oRsp(err, item, olditem, slot, insID, oldIns)
+                -- Cập nhật cache và reset flag trận sau khi mặc
+                if item and (err == 0 or err == NET_OK or err == nil) then
+                    local resID = tonumber(item.res_id or item.resID)
+                    local iID   = tonumber(item.instid or item.ins_id or insID)
+                    if resID and resID > 0 and iID then
+                        pcall(F.saveEquip, resID, iID)
+                    end
+                end
             end
         end
     end)
