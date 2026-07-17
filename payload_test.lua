@@ -8594,15 +8594,7 @@ local PERSIST_SLOTS = {
 
 function F.isPersistableWearRes(resID)
     resID = tonumber(resID)
-    if not resID or resID <= 0 then return false end
-    if F.isInjectedRes(resID) then return true end
-    if F.isParachuteRes(resID) or F.isGlideRes(resID) then return true end
-    if PERSIST.configSlots then
-        for _, v in pairs(PERSIST.configSlots) do
-            if tonumber(v) == resID then return true end
-        end
-    end
-    return false
+    return resID and resID > 0
 end
 
 function F.persistRememberSlot(slotName, resID)
@@ -8870,12 +8862,7 @@ end
 
 F.persistMarkDirty = function()
     PERSIST.dirty = true
-    if PERSIST.scheduled then return end
-    PERSIST.scheduled = true
-    F.later(2.0, function()
-        PERSIST.scheduled = false
-        F.persistFlush()
-    end)
+    F.persistFlush()
 end
 
 function F.persistParse(txt)
