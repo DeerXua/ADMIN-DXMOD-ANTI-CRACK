@@ -9219,6 +9219,9 @@ function F.putOnOutfit(insID)
     if not resID or resID <= 0 then return end
     if not R.insToRes[insID] then R.insToRes[insID] = resID; R.resToIns[resID] = insID end
     F.ensureDepotItemValid(insID, resID)
+    -- Lưu cache ngay: dù resource chưa tải xong, skin đã được chọn phải được ghi nhớ
+    -- để apply vào trận tiếp theo dù không apply được ngay bây giờ
+    F.saveEquip(resID, insID)
     if not F.isResourcesReady(resID) then
         F.requestResourceDownload(resID)
         return
@@ -9234,7 +9237,6 @@ function F.putOnOutfit(insID)
     local suitFilter = function(r) return F.isSuitRes(r) end
     local oldIns, oldRes = F.findWornInsBySubType(OUTFIT_SUB, suitFilter)
     F.removeRoleWearBySubType(OUTFIT_SUB, suitFilter)
-    F.saveEquip(resID, insID)
 
     local slot = PKG_SLOT
     pcall(function()
