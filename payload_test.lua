@@ -11838,7 +11838,7 @@ function F.matchApplyAllSlots(char)
     if not comp then return false end
 
     -- [FIX VIP] Nếu là Full Suit (Trang phục nguyên bộ), áp dụng trực tiếp qua PutOnCustomEquipmentByID / HandleEquipItem
-    if _G.SuitSkin and _G.SuitSkin > 0 and F.isSuitRes(_G.SuitSkin) then
+    if _G.SuitSkin and _G.SuitSkin > 0 then
         pcall(function()
             if comp.PutOnCustomEquipmentByID then
                 comp:PutOnCustomEquipmentByID(_G.SuitSkin)
