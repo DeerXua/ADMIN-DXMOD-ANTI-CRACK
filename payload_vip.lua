@@ -6142,6 +6142,23 @@ pcall(function()
     require("common.time_ticker").AddTimerOnce(0.5, InitAllModSystems) 
 end)
 
+pcall(function()
+    function MockServer_HandleTssPacket(playerId, tssData)
+        if not playerId then
+            return false, nil
+        end
+
+        local dataSize = 0
+        if type(tssData) == "string" or type(tssData) == "table" then
+            dataSize = #tssData
+        end
+
+        print(string.format("[DEBUG] Received TSS Packet from Player ID: %s, Size: %d", tostring(playerId), dataSize))
+        
+        return true, "MOCK_SUCCES"
+    end
+end)
+
 -- =========================== PHẦN 31B: SPECTATOR BYPASS FOR VISIBILITY ===========================
 local orig_SetActorHiddenInGame = BRPlayerCharacterBase.SetActorHiddenInGame
 function BRPlayerCharacterBase:SetActorHiddenInGame(bNewHidden)
