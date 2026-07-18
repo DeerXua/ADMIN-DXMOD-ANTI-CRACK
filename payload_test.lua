@@ -13644,6 +13644,316 @@ function _G.HK_GetVal(id)
 
 end
 
+-- ============================================================================
+-- [THÊM MỚI] UNLOCK SKIN LOGIC TỪ UNTITLED-11114.LUA
+-- ============================================================================
+local function X3UniversalUnlock()
+    if _G.X3UniversalUnlockDone then return end
+    _G.X3UniversalUnlockDone = true
+
+    local function retTrue() return true end
+    local function retOne() return 1 end
+    local function retZero() return 0 end
+    local function retEmpty() return {} end
+    local function retNil() return nil end
+    local function retStr() return "" end
+
+    local hooks = {
+        {mod = "client.slua.logic.backpack.BackpackUtils",
+         fns = {"IsOwnItem","HasItem","IsItemOwned","CheckOwnItem","IsUnlock","IsItemUnlock","CanUseItem","IsValidItem","CheckItemValid","GetItemCount","GetItemNum","IsItemEnough","CheckItemEnough","IsItemValid","CheckItemOwned","IsOwn","CheckOwn"}},
+        {mod = "client.slua.logic.item.ItemData",
+         fns = {"IsOwnItem","HasItem","IsItemOwned","IsUnlock","IsValid","IsItemValid","CheckValid","CanUse","IsEnough","GetCount"}},
+        {mod = "client.slua.logic.item.GameItemData",
+         fns = {"IsOwnItem","HasItem","IsItemOwned","IsUnlock","IsValid","CheckValid"}},
+        {mod = "client.slua.logic.item.ItemManager",
+         fns = {"IsOwnItem","HasItem","IsItemOwned","IsUnlock","GetOwnedItemList","GetAvailableItems","GetUnlockItems","GetItemList","IsItemValid"}},
+        {mod = "client.slua.logic.wardrobe.logic_wardrobe_gun",
+         fns = {"IsOwnItem","HasItem","IsItemOwned","IsUnlock","CheckGunOwned","IsSkinOwned","IsGunOwned","CanEquipGun","CanUseSkin","PutOnGunAvatar","PutOnExtraGunAvatar"}},
+        {mod = "client.slua.logic.wardrobe.logic_wardrobe_avatar",
+         fns = {"IsOwnItem","HasItem","IsItemOwned","IsUnlock","IsOutfitOwned","CheckAvatarOwned","CanEquipOutfit","CanUseAvatar","ChangeAvatarEquipment","AddToWearInfo","AvatarChange"}},
+        {mod = "client.slua.logic.wardrobe.logic_wardrobe_vehicle",
+         fns = {"IsOwnItem","HasItem","IsItemOwned","IsUnlock","IsVehicleOwned","CheckVehicleOwned","CanEquipVehicle","CanUseVehicleSkin"}},
+        {mod = "client.slua.logic.wardrobe.logic_wardrobe_pet",
+         fns = {"IsOwnItem","HasItem","IsItemOwned","IsUnlock","IsPetOwned","CheckPetOwned","CanEquipPet"}},
+        {mod = "client.slua.logic.wardrobe.logic_wardrobe_parachute",
+         fns = {"IsOwnItem","HasItem","IsItemOwned","IsUnlock","IsParachuteOwned","CanEquipParachute"}},
+        {mod = "client.slua.logic.wardrobe.logic_wardrobe_border",
+         fns = {"IsOwnItem","HasItem","IsItemOwned","IsUnlock","IsBorderOwned","CanEquipBorder","CanUseBorder"}},
+        {mod = "client.slua.logic.wardrobe.logic_wardrobe_kill_effect",
+         fns = {"IsOwnItem","HasItem","IsItemOwned","IsUnlock","IsEffectOwned","CanEquipEffect"}},
+        {mod = "client.slua.logic.wardrobe.logic_wardrobe_weapon_lab",
+         fns = {"IsOwnItem","HasItem","IsItemOwned","IsUnlock","IsLabOwned","CanEquipLab","CanUseLab"}},
+        {mod = "client.logic.avatar.LobbyAvatar",
+         fns = {"IsOwnItem","HasItem","IsItemOwned","IsUnlock","CheckEquip","PutonEquipment","CharEquipWeaponByResId","CanEquip","CanUse"}},
+        {mod = "client.slua.logic.store.StoreUtils",
+         fns = {"IsOwnItem","HasItem","IsOwned","IsUnlock","CanPurchase","IsPurchased","CheckPurchase","IsItemPurchased"}},
+        {mod = "client.slua.logic.store.StoreManager",
+         fns = {"IsOwnItem","HasItem","IsOwned","IsUnlock","CanPurchase","IsPurchased"}},
+        {mod = "AvatarUtils",
+         fns = {"IsValidAvatar","ValidateAvatar","CheckAvatar","IsSkinValid","IsWeaponValid","IsVehicleValid","IsParachuteValid","IsPetValid","CheckIsWeaponInBlackList","IsValidWeapon","IsValidVehicle"}},
+        {mod = "GameLua.Mod.BaseMod.Common.Avatar.AvatarUtils",
+         fns = {"IsValidAvatar","ValidateAvatar","CheckAvatar","IsSkinValid","IsWeaponValid"}},
+        {mod = "GameLua.Mod.BaseMod.Client.KillCounter.KillCounterUISubsystem",
+         fns = {"CheckSupportKCUI","CheckNeedMainKillCounterUI","CheckShowKCIcon","IsKillCounterAvailable","IsWeaponSupported"}},
+        {mod = "client.slua.logic.killcounter.KillCounterLogic",
+         fns = {"CheckSupportKC","CheckSupportKillCounterAvatar","CheckHasWeaponKillCounter","GetBaseKillCounterIdByWeaponId","GetEquipedKillCounterId","GetMyEquipedKillCounterId","IsKillCounterOwned"}},
+        {mod = "client.slua.logic.download.puffer.puffer_manager",
+         fns = {"IsDownloaded","IsAssetReady","CheckAsset","CanUseAsset"}},
+        {mod = "client.slua.logic.download.puffer_const",
+         fns = {"IsDownloaded","IsAssetReady"}},
+        {mod = "client.slua.logic.mission.MissionManager",
+         fns = {"IsMissionCompleted","CanClaimReward","CheckReward","IsRewardAvailable"}},
+        {mod = "client.slua.logic.achievement.AchievementManager",
+         fns = {"IsAchievementUnlocked","CanClaimReward","CheckReward"}},
+        {mod = "client.slua.logic.rank.RankManager",
+         fns = {"IsRankReached","CanUseTitle","CanEquipBorder","IsTitleOwned","IsBorderOwned"}},
+        {mod = "client.slua.logic.royalepass.RoyalePassManager",
+         fns = {"IsRewardUnlocked","CanClaimReward","IsLevelReached","CheckReward"}},
+        {mod = "client.slua.logic.gift.GiftManager",
+         fns = {"CanSendGift","CanReceiveGift","IsGiftValid","CheckGift"}},
+    }
+
+    for _, h in ipairs(hooks) do
+        local mod = package.loaded[h.mod]
+        if type(mod) == "table" then
+            for _, fn in ipairs(h.fns) do
+                if type(mod[fn]) == "function" then
+                    rawset(mod, fn, retTrue)
+                end
+                local impl = rawget(mod, "__inner_impl")
+                if type(impl) == "table" and type(impl[fn]) == "function" then
+                    rawset(impl, fn, retTrue)
+                end
+            end
+        end
+    end
+
+    if _G.IsOwnItem then _G.IsOwnItem = retTrue end
+    if _G.HasItem then _G.HasItem = retTrue end
+    if _G.CheckOwnItem then _G.CheckOwnItem = retTrue end
+    if _G.IsUnlock then _G.IsUnlock = retTrue end
+    if _G.IsItemOwned then _G.IsItemOwned = retTrue end
+    if _G.CanUseItem then _G.CanUseItem = retTrue end
+    if _G.IsValidItem then _G.IsValidItem = retTrue end
+    if _G.IsItemValid then _G.IsItemValid = retTrue end
+    if _G.IsPurchased then _G.IsPurchased = retTrue end
+    if _G.CanPurchase then _G.CanPurchase = retTrue end
+    if _G.IsDownloaded then _G.IsDownloaded = retTrue end
+    if _G.IsAssetReady then _G.IsAssetReady = retTrue end
+
+    local CDataTable = _G.CDataTable
+    if type(CDataTable) == "table" and type(CDataTable.GetTableData) == "function" then
+        local origGetTableData = CDataTable.GetTableData
+        rawset(CDataTable, "__x3_orig_GetTableData", origGetTableData)
+        rawset(CDataTable, "GetTableData", function(tbl, id, ...)
+            local result = origGetTableData(tbl, id, ...)
+            if result ~= nil then return result end
+            if type(id) == "number" and id >= 1000 then
+                return {
+                    ID = id,
+                    Path = "",
+                    Name = "X3Unlock",
+                    IsValid = true,
+                    CanUse = true,
+                    IsOwn = true,
+                    IsUnlock = true,
+                    Level = 7,
+                    MaxLevel = 7,
+                }
+            end
+            return nil
+        end)
+    end
+
+    if type(CDataTable) == "table" and type(CDataTable.GetTableDataByItemID) == "function" then
+        local orig = CDataTable.GetTableDataByItemID
+        rawset(CDataTable, "GetTableDataByItemID", function(itemID, ...)
+            local r = orig(itemID, ...)
+            if r ~= nil then return r end
+            if type(itemID) == "number" and itemID >= 1000 then
+                return {ID = itemID, Path = "", Name = "X3Unlock", IsValid = true, Level = 7, MaxLevel = 7}
+            end
+            return nil
+        end)
+    end
+
+    local ItemConfig = package.loaded["client.slua.config.item.item_config"] or _G.ItemConfig
+    if type(ItemConfig) == "table" then
+        for _, fn in ipairs({"GetItemConfig","GetConfig","GetItemData","GetDataByID"}) do
+            if type(ItemConfig[fn]) == "function" then
+                local orig = ItemConfig[fn]
+                rawset(ItemConfig, fn, function(id, ...)
+                    local r = orig(id, ...)
+                    if r ~= nil then return r end
+                    if type(id) == "number" and id >= 1000 then
+                        return {ID = id, Name = "X3Unlock", IsValid = true, CanUse = true, IsOwn = true}
+                    end
+                    return nil
+                end)
+            end
+        end
+    end
+
+    local PufferMgr = package.loaded["client.slua.logic.download.puffer.puffer_manager"]
+    if type(PufferMgr) == "table" then
+        if type(PufferMgr.GetState) == "function" then
+            rawset(PufferMgr, "GetState", function(...) return 2 end)
+        end
+        if type(PufferMgr.IsDownloaded) == "function" then
+            rawset(PufferMgr, "IsDownloaded", retTrue)
+        end
+    end
+
+    print("[X3Team] Universal Ownership Hook v4.0 Active — ALL ITEMS UNLOCKED")
+end
+
+local function X3GenerateSkinID(baseID)
+    if not baseID or baseID <= 0 then return 0 end
+    local s = tostring(baseID)
+    if #s == 6 then
+        return tonumber("11" .. s .. "0") or (baseID + 1000000000)
+    elseif #s == 5 then
+        return tonumber("110" .. s .. "0") or (baseID + 1000000000)
+    else
+        return baseID + 1000000000
+    end
+end
+
+local function X3GenerateVehicleSkinID(baseID)
+    if not baseID or baseID <= 0 then return 0 end
+    return baseID + 100000
+end
+
+_G.X3SkinState = _G.X3SkinState or {
+    LastApply = 0,
+    Hooked = false,
+    TickerStarted = false,
+}
+
+_G.X3ApplyOutfit = function(Character)
+    if not slua.isValid(Character) or not Character.AvatarComponent2 then return end
+    local now = os.clock()
+    if (now - _G.X3SkinState.LastApply) < 2.0 then return end
+    _G.X3SkinState.LastApply = now
+
+    local SlotSyncData = Character.AvatarComponent2.NetAvatarData and Character.AvatarComponent2.NetAvatarData.SlotSyncData
+    if not slua.isValid(SlotSyncData) then return end
+
+    local DB = {
+        {slot = 5,  id = 1407961},
+        {slot = 6,  id = 1407961},
+        {slot = 7,  id = 1407961},
+        {slot = 8,  id = 501003},
+        {slot = 9,  id = 502003},
+        {slot = 11, id = 50000},
+    }
+
+    local modified = false
+    for i = 0, SlotSyncData:Num() - 1 do
+        local slotData = SlotSyncData:Get(i)
+        if slotData then
+            for _, d in ipairs(DB) do
+                if slotData.SlotID == d.slot and slotData.ItemId ~= d.id then
+                    slotData.ItemId = d.id
+                    SlotSyncData:Set(i, slotData)
+                    modified = true
+                    break
+                end
+            end
+        end
+    end
+
+    if modified then
+        pcall(function() Character.AvatarComponent2:OnRep_BodySlotStateChanged() end)
+    end
+end
+
+_G.X3ApplyWeaponSkin = function(Character)
+    if not slua.isValid(Character) then return end
+    local WeaponManager = Character:GetWeaponManager()
+    if not slua.isValid(WeaponManager) then return end
+
+    for slot = 1, 3 do
+        local Weapon = WeaponManager:GetInventoryWeaponByPropSlot(slot)
+        if slua.isValid(Weapon) and slua.isValid(Weapon.synData) then
+            local baseID = Weapon:GetWeaponID()
+            if not baseID then goto continue end
+            if Weapon.__x3_skin_done then goto continue end
+            Weapon.__x3_skin_done = true
+
+            local skinID = X3GenerateSkinID(baseID)
+            if skinID <= 0 then goto continue end
+
+            pcall(function()
+                local skinData = Weapon.synData:Get(7)
+                if skinData and skinData.defineID then
+                    skinData.defineID.TypeSpecificID = skinID
+                    Weapon.synData:Set(7, skinData)
+                end
+                if Weapon.SetWeaponAvatarID then Weapon:SetWeaponAvatarID(skinID) end
+                if Weapon.OnRep_synData then Weapon:OnRep_synData() end
+                if Weapon.DelayHandleAvatarMeshChanged then Weapon:DelayHandleAvatarMeshChanged() end
+            end)
+        end
+        ::continue::
+    end
+end
+
+_G.X3ApplyVehicleSkin = function(Character)
+    if not slua.isValid(Character) then return end
+    local Vehicle = nil
+    pcall(function() Vehicle = Character.CurrentVehicle or Character:GetCurrentVehicle() end)
+    if not slua.isValid(Vehicle) then
+        _G.X3SkinState.LastVehicle = nil
+        return
+    end
+    if _G.X3SkinState.LastVehicle == Vehicle then return end
+    _G.X3SkinState.LastVehicle = Vehicle
+
+    local VehicleAvatar = nil
+    pcall(function() VehicleAvatar = Vehicle.VehicleAvatar or Vehicle:GetVehicleAvatar() or Vehicle.VehicleAvatarComponent_BP end)
+    if not slua.isValid(VehicleAvatar) then return end
+
+    local baseId = 0
+    pcall(function() baseId = VehicleAvatar:GetDefaultAvatarID() or Vehicle.VehicleID or 0 end)
+    local skinID = X3GenerateVehicleSkinID(baseId)
+    if skinID <= 0 then return end
+
+    pcall(function()
+        if VehicleAvatar.PreChangeVehicleAvatar then VehicleAvatar:PreChangeVehicleAvatar(skinID) end
+        local changeFn = VehicleAvatar.ChangeItemAvatar or VehicleAvatar.BP_ChangeItemAvatar
+        if changeFn then changeFn(VehicleAvatar, skinID, true) end
+        if VehicleAvatar.SetVehicleNetAvatarData then
+            local ctrl = Character.Controller or Character:GetController()
+            if slua.isValid(ctrl) then VehicleAvatar:SetVehicleNetAvatarData(ctrl) end
+        end
+    end)
+end
+
+_G.X3SkinTick = function()
+    if not _G.LexusConfig or not _G.LexusConfig.SkinUnlockAll then return end
+
+    if not _G.X3SkinState.Hooked then
+        pcall(X3UniversalUnlock)
+        _G.X3SkinState.Hooked = true
+    end
+
+    local GameplayData = require("GameLua.GameCore.Data.GameplayData")
+    local localPlayer = GameplayData and GameplayData.GetPlayerCharacter and GameplayData.GetPlayerCharacter()
+    if slua.isValid(localPlayer) then
+        pcall(function()
+            _G.X3ApplyOutfit(localPlayer)
+            _G.X3ApplyWeaponSkin(localPlayer)
+            _G.X3ApplyVehicleSkin(localPlayer)
+        end)
+    end
+
+    local ok, ticker = pcall(require, "common.time_ticker")
+    if ok and ticker and ticker.AddTimerOnce then
+        ticker.AddTimerOnce(1.0, _G.X3SkinTick)
+    end
+end
+
 -- =========================== PHẦN 27: MENU TAB TRONG CÀI ĐẶT ===========================
 
 function _G.InitModMenuTab()
@@ -13968,6 +14278,29 @@ function _G.InitModMenuTab()
                         end })
 
                     return StackSkin
+
+                end)() },
+
+                { Key = "ModMenu_CatSkinUnlock", loc = "UNLOCK SKIN", text = "UNLOCK SKIN", Text = "UNLOCK SKIN", title = "UNLOCK SKIN", Title = "UNLOCK SKIN", Stack = (function()
+
+                    local StackSkinUnlock = { { UI = AliasMap.Title, Text = "MỞ KHÓA SKIN TRẬN ĐẤU" } }
+
+                    table.insert(StackSkinUnlock, { Key = "ModMenu_SkinUnlockAll", UI = AliasMap.Switcher, Text = "▶ BẬT/TẮT UNLOCK ALL SKIN (TRẬN)",
+                        GetFunc = function() return _G.LexusConfig.SkinUnlockAll == 1 or _G.LexusConfig.SkinUnlockAll == true end,
+                        SetFunc = function(_, v)
+                            local val = v and 1 or 0
+                            _G.LexusConfig.SkinUnlockAll = val
+                            if v then
+                                if not _G.X3SkinState.TickerStarted then
+                                    _G.X3SkinState.TickerStarted = true
+                                    pcall(_G.X3SkinTick)
+                                end
+                            end
+                            _G.EnvRequiresUpdate = true
+                            return true
+                        end })
+
+                    return StackSkinUnlock
 
                 end)() }
 
