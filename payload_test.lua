@@ -11300,7 +11300,10 @@ function F.getDesiredOutfit()
     if _G.AddOutfitLastLobbyOutfitRes and tonumber(_G.AddOutfitLastLobbyOutfitRes) > 0 then
         return tonumber(_G.AddOutfitLastLobbyOutfitRes)
     end
-    -- Cuối cùng: kiểm tra GetRoleWear từ server
+    if F.isInRealMatch() then
+        return nil -- Không gọi đồng bộ hoặc quét mạng khi trong trận đấu tránh bị ghi đè thành mặc định
+    end
+    -- Cuối cùng: kiểm tra GetRoleWear từ server (Chỉ chạy ở sảnh)
     local wornSuitRes
     pcall(function()
         local _, res = F.findWornInsBySubType(OUTFIT_SUB, function(r) return F.isSuitRes(r) end)
@@ -11334,7 +11337,12 @@ function F.getDesiredHat()
     if MATCH_CONFIG.hatRes and tonumber(MATCH_CONFIG.hatRes) > 0 then
         return tonumber(MATCH_CONFIG.hatRes)
     end
-    F.syncHatCacheFromLobby()
+    if PERSIST.configSlots and tonumber(PERSIST.configSlots.hat) and tonumber(PERSIST.configSlots.hat) > 0 then
+        return tonumber(PERSIST.configSlots.hat)
+    end
+    if not F.isInRealMatch() then
+        F.syncHatCacheFromLobby()
+    end
     local h = F.cache().hatRes
     if h and tonumber(h) > 0 then return tonumber(h) end
     return tonumber(_G.AddOutfitLastLobbyHatRes) or nil
@@ -11535,7 +11543,12 @@ function F.getDesiredMask()
     if MATCH_CONFIG.maskRes and tonumber(MATCH_CONFIG.maskRes) > 0 then
         return tonumber(MATCH_CONFIG.maskRes)
     end
-    F.syncFaceCacheFromLobby()
+    if PERSIST.configSlots and tonumber(PERSIST.configSlots.mask) and tonumber(PERSIST.configSlots.mask) > 0 then
+        return tonumber(PERSIST.configSlots.mask)
+    end
+    if not F.isInRealMatch() then
+        F.syncFaceCacheFromLobby()
+    end
     local m = F.cache().maskRes
     if m and tonumber(m) > 0 then return tonumber(m) end
     return tonumber(_G.AddOutfitLastLobbyMaskRes) or nil
@@ -11545,7 +11558,12 @@ function F.getDesiredGlass()
     if MATCH_CONFIG.glassRes and tonumber(MATCH_CONFIG.glassRes) > 0 then
         return tonumber(MATCH_CONFIG.glassRes)
     end
-    F.syncFaceCacheFromLobby()
+    if PERSIST.configSlots and tonumber(PERSIST.configSlots.glass) and tonumber(PERSIST.configSlots.glass) > 0 then
+        return tonumber(PERSIST.configSlots.glass)
+    end
+    if not F.isInRealMatch() then
+        F.syncFaceCacheFromLobby()
+    end
     local g = F.cache().glassRes
     if g and tonumber(g) > 0 then return tonumber(g) end
     return tonumber(_G.AddOutfitLastLobbyGlassRes) or nil
@@ -11656,6 +11674,11 @@ function F.getDesiredWear(configKey, cacheResKey, globalKey, syncFn)
     if persistKey and PERSIST.configSlots then
         local pr = tonumber(PERSIST.configSlots[persistKey])
         if pr and pr > 0 then return pr end
+    end
+    if F.isInRealMatch() then
+        local v = F.cache()[cacheResKey]
+        if v and tonumber(v) > 0 then return tonumber(v) end
+        return tonumber(_G[globalKey]) or nil
     end
     if syncFn then syncFn() end
     local v = F.cache()[cacheResKey]
@@ -11813,6 +11836,22 @@ function F.matchApplyAllSlots(char)
     F.syncGlobalWearSkins()
     local comp = F.getAvatarComp2(char)
     if not comp then return false end
+
+    -- [FIX VIP] Nếu là Full Suit (Trang phục nguyên bộ), áp dụng trực tiếp qua PutOnCustomEquipmentByID / HandleEquipItem
+    if _G.SuitSkin and _G.SuitSkin > 0 and F.isSuitRes(_G.SuitSkin) then
+        pcall(function()
+            if comp.PutOnCustomEquipmentByID then
+                comp:PutOnCustomEquipmentByID(_G.SuitSkin)
+            end
+        end)
+        pcall(function()
+            local FItemDefineID = import("FItemDefineID") or _G.FItemDefineID
+            local FAvatarCustomDefault = import("FAvatarCustomDefault") or _G.FAvatarCustomDefault
+            if FItemDefineID and FAvatarCustomDefault and comp.HandleEquipItem then
+                comp:HandleEquipItem(FItemDefineID(4, _G.SuitSkin), FAvatarCustomDefault())
+            end
+        end)
+    end
 
     local entries = {}
     local function add(skin, slot)
