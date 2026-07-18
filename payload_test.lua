@@ -12458,6 +12458,17 @@ function F.startMatchWatcher(char)
     _lastWeaponResID = 0
     local elapsed = 0
 
+    -- [FIX VIP] Thực hiện áp dụng NGAY LẬP TỨC khi vào trận đấu (không đợi 3 giây timer)
+    pcall(function()
+        local cur = F.getLocalChar()
+        if cur and slua.isValid(cur) then
+            F.matchApplyAllSlots(cur)
+            F.matchApplyHat(cur)
+            F.matchApplyFaceWear(cur)
+            F.matchApplyWeaponSkin(cur)
+        end
+    end)
+
     _matchTimer = char:AddGameTimer(MATCH_TICK_SEC, true, function()
         elapsed = elapsed + MATCH_TICK_SEC
         local cur = F.getLocalChar()
