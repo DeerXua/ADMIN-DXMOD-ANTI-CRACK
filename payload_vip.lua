@@ -4133,6 +4133,7 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                             end
                         end
 
+                         if cache and cache.HK_Initialized then
                               local isADS = self.Object and (self.Object.bIsWeaponAiming == true or self.Object.bIsGunADS == true)
                               local scopeFactor = 1.0
                               if isADS then
