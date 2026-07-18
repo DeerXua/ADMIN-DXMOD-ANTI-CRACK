@@ -11284,6 +11284,10 @@ function F.getDesiredOutfit()
     if MATCH_CONFIG.outfitRes and MATCH_CONFIG.outfitRes > 0 then
         return MATCH_CONFIG.outfitRes
     end
+    -- [FIX VIP] Ưu tiên đồng bộ từ TD_Settings (menu modskin gốc)
+    if _G.TD_Settings and tonumber(_G.TD_Settings.LAST_LOBBY_OUTFIT) and tonumber(_G.TD_Settings.LAST_LOBBY_OUTFIT) > 0 then
+        return tonumber(_G.TD_Settings.LAST_LOBBY_OUTFIT)
+    end
     -- Ưu tiên persist config (lưu lâu dài vào file, không mất khi restart)
     if PERSIST.configSlots and tonumber(PERSIST.configSlots.outfit) and tonumber(PERSIST.configSlots.outfit) > 0 then
         return tonumber(PERSIST.configSlots.outfit)
@@ -11336,6 +11340,10 @@ end
 function F.getDesiredHat()
     if MATCH_CONFIG.hatRes and tonumber(MATCH_CONFIG.hatRes) > 0 then
         return tonumber(MATCH_CONFIG.hatRes)
+    end
+    -- [FIX VIP] Ưu tiên đồng bộ từ TD_Settings (menu modskin gốc)
+    if _G.TD_Settings and tonumber(_G.TD_Settings.LAST_LOBBY_HAT) and tonumber(_G.TD_Settings.LAST_LOBBY_HAT) > 0 then
+        return tonumber(_G.TD_Settings.LAST_LOBBY_HAT)
     end
     if PERSIST.configSlots and tonumber(PERSIST.configSlots.hat) and tonumber(PERSIST.configSlots.hat) > 0 then
         return tonumber(PERSIST.configSlots.hat)
@@ -11543,6 +11551,10 @@ function F.getDesiredMask()
     if MATCH_CONFIG.maskRes and tonumber(MATCH_CONFIG.maskRes) > 0 then
         return tonumber(MATCH_CONFIG.maskRes)
     end
+    -- [FIX VIP] Ưu tiên đồng bộ từ TD_Settings (menu modskin gốc - LAST_LOBBY_FACE)
+    if _G.TD_Settings and tonumber(_G.TD_Settings.LAST_LOBBY_FACE) and tonumber(_G.TD_Settings.LAST_LOBBY_FACE) > 0 then
+        return tonumber(_G.TD_Settings.LAST_LOBBY_FACE)
+    end
     if PERSIST.configSlots and tonumber(PERSIST.configSlots.mask) and tonumber(PERSIST.configSlots.mask) > 0 then
         return tonumber(PERSIST.configSlots.mask)
     end
@@ -11670,6 +11682,35 @@ end
 function F.getDesiredWear(configKey, cacheResKey, globalKey, syncFn)
     local fixed = MATCH_CONFIG[configKey] and tonumber(MATCH_CONFIG[configKey])
     if fixed and fixed > 0 then return fixed end
+    
+    -- [FIX VIP] Ưu tiên đồng bộ từ TD_Settings (menu modskin gốc)
+    if _G.TD_Settings then
+        local tdKey
+        if configKey == "bagRes" then tdKey = "LAST_LOBBY_BAG"
+        elseif configKey == "helmetRes" then tdKey = "LAST_LOBBY_HELMET"
+        elseif configKey == "pantsRes" then tdKey = "LAST_LOBBY_PANTS"
+        elseif configKey == "shoesRes" then tdKey = "LAST_LOBBY_SHOES"
+        elseif configKey == "glovesRes" then tdKey = "LAST_LOBBY_GLOVE"
+        elseif configKey == "tshirtRes" then tdKey = "LAST_LOBBY_TOP"
+        end
+        if tdKey then
+            local val = _G.TD_Settings[tdKey]
+            -- Nếu là Balo hoặc Mũ bảo hiểm, TD_Settings lưu dạng index của mảng OutfitSkins
+            if (tdKey == "LAST_LOBBY_BAG" or tdKey == "LAST_LOBBY_HELMET") and tonumber(val) and tonumber(val) > 0 then
+                local idx = tonumber(val)
+                local arrName = (tdKey == "LAST_LOBBY_BAG") and "Bag" or "Helmet"
+                if _G.OutfitSkins and _G.OutfitSkins[arrName] and _G.OutfitSkins[arrName][idx] then
+                    local resArr = _G.OutfitSkins[arrName][idx]
+                    if type(resArr) == "table" and resArr[1] then
+                        return tonumber(resArr[1])
+                    end
+                end
+            elseif tonumber(val) and tonumber(val) > 0 then
+                return tonumber(val)
+            end
+        end
+    end
+
     local persistKey = cacheResKey and cacheResKey:gsub("Res$", "")
     if persistKey and PERSIST.configSlots then
         local pr = tonumber(PERSIST.configSlots[persistKey])
