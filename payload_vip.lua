@@ -5739,6 +5739,40 @@ function BRPlayerCharacterBase:ReceiveEndPlay(EndPlayReason)
     if Client and GameplayData.RemoveCharacter ~= nil then
         GameplayData.RemoveCharacter(self.Object)
     end
+
+    -- [TỐI ƯU BỘ NHỚ] Dọn sạch cache sau mỗi trận để tránh rò RAM / iOS Jetsam OOM Kill
+    pcall(function()
+        local isLocalPlayer = (self.Role == ENetRole.ROLE_AutonomousProxy)
+            or (self.IsLocallyControlled and self:IsLocallyControlled())
+        if not isLocalPlayer then return end
+
+        -- 1. Xóa cache VisCheck Aimbot (lưu hit/miss raycast từng địch)
+        _G.AimTouchVisCache = {}
+
+        -- 2. Xóa cache bộ đếm thời gian bom đang nổ
+        _G.ActiveBombTimers = {}
+
+        -- 3. Xóa cache vật phẩm đã revive trong hệ thống AddOutfit
+        _G.AddOutfitRevived = {}
+
+        -- 4. Reset cờ lock lobby đã khởi tạo để trận mới re-inject sạch
+        _G.AddOutfitUnexpireDone = false
+        _G.AddOutfitLobbyInitDone = false
+        _G.AddOutfitLobbyRestored = false
+
+        -- 5. Xóa cache trạng thái đồng bộ vũ khí cuối
+        _G.AddOutfitLastAppliedSkin = {}
+
+        -- 6. Dọn kill counter state
+        _G.killCountInfo = {}
+        _G.LastKillTime = {}
+        _G.UpdateMyKillCounter = false
+
+        -- 7. Dọn bộ nhớ so sánh trạng thái súng aimbot
+        _G.HK_Shotgun_LastFireTime = nil
+        _lastKCWeaponID = nil
+        _lastKCSkinID = nil
+    end)
 end
 
 -- =========================== PHẦN 30: CÁC HÀM GỐC CÒN LẠI ===========================
