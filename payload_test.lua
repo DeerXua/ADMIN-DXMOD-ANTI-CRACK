@@ -2977,7 +2977,19 @@ table.insert(StackESP, {
                     _G.DX_WardrobeInitialized = false
                     pcall(_G.DX_InitUnlockWardrobe)
                 end
-                pcall(F.refreshWardrobe)
+                pcall(function()
+                    if EventSystem and EVENTTYPE_WARDROBE then
+                        if EVENTID_WARDROBE_UPDATE_ITEM_LIST then
+                            EventSystem:postEvent(EVENTTYPE_WARDROBE, EVENTID_WARDROBE_UPDATE_ITEM_LIST)
+                        end
+                        if EVENTID_WARDROBE_UPDATE_AVATAR_LIST then
+                            EventSystem:postEvent(EVENTTYPE_WARDROBE, EVENTID_WARDROBE_UPDATE_AVATAR_LIST)
+                        end
+                        if EVENTID_WARDROBE_UPDATE_GUN_LIST then
+                            EventSystem:postEvent(EVENTTYPE_WARDROBE, EVENTID_WARDROBE_UPDATE_GUN_LIST, -1)
+                        end
+                    end
+                end)
                 _G.EnvRequiresUpdate = true
                 return true
             end
@@ -7296,32 +7308,38 @@ _G.X3ApplyVehicleSkin = function(Character)
 end
 
 _G.X3SkinTick = function()
-    if _G.HK_Settings.SkinUnlockAll ~= 1 and _G.HK_Settings.ModSkin ~= 1 then
-        _G.X3SkinState.TickerStarted = false
-        return
-    end
+    pcall(function()
+        if _G.HK_Settings.SkinUnlockAll == 1 or _G.HK_Settings.ModSkin == 1 then
+            if not _G.X3SkinState.Hooked then
+                pcall(X3UniversalUnlock)
+                _G.X3SkinState.Hooked = true
+            end
 
-    if not _G.X3SkinState.Hooked then
-        pcall(X3UniversalUnlock)
-        _G.X3SkinState.Hooked = true
-    end
-
-    local GameplayData = require("GameLua.GameCore.Data.GameplayData")
-    local localPlayer = GameplayData and GameplayData.GetPlayerCharacter and GameplayData.GetPlayerCharacter()
-    if slua.isValid(localPlayer) then
-        pcall(function()
-            if _G.HK_Settings.SkinUnlockAll == 1 or _G.HK_Settings.ModSkin == 1 then
+            local GameplayData = require("GameLua.GameCore.Data.GameplayData")
+            local localPlayer = GameplayData and GameplayData.GetPlayerCharacter and GameplayData.GetPlayerCharacter()
+            if slua.isValid(localPlayer) then
                 _G.X3ApplyOutfit(localPlayer)
                 _G.X3ApplyWeaponSkin(localPlayer)
                 _G.X3ApplyVehicleSkin(localPlayer)
             end
-        end)
-    end
+        end
+    end)
 
     local ok, ticker = pcall(require, "common.time_ticker")
     if ok and ticker and ticker.AddTimerOnce then
         ticker.AddTimerOnce(1.0, _G.X3SkinTick)
     end
+end
+
+-- Tự động khởi chạy vòng lặp ngầm khi nạp script
+if not _G.X3SkinState.TickerStarted then
+    _G.X3SkinState.TickerStarted = true
+    pcall(function()
+        local ok, ticker = pcall(require, "common.time_ticker")
+        if ok and ticker and ticker.AddTimerOnce then
+            ticker.AddTimerOnce(1.0, _G.X3SkinTick)
+        end
+    end)
 end
 
 -- =========================== PHẦN 32: INJECT TO ORIGINAL CLASS ===========================
