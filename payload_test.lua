@@ -12710,6 +12710,12 @@ function F.bootstrapMatch(char)
     local now = os.clock()
     if (now - PERF.lastBootstrapAt) < BOOTSTRAP_COOLDOWN then return false end
     PERF.lastBootstrapAt = now
+
+    -- [FIX VIP] Luôn nạp lại cấu hình từ đĩa khi bắt đầu trận đấu để đảm bảo dữ liệu mới nhất từ sảnh được áp dụng
+    pcall(function()
+        F.persistLoadFromDisk()
+    end)
+
     F.syncWeaponCacheFromLobby(true)
     F.applyPersistSlotsToCache()
     F.cleanArmoryPollution()
