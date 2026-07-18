@@ -2848,122 +2848,7 @@ table.insert(StackESP, {
         AddSlider(StackAimbot, "NO_RECOIL_100", "GIẢM GIẬT (0-50%)", 0, 50)
         AddSlider(StackAimbot, "GIAM_RUNG_SCOPE", "GIẢM RUNG SCOPE", 0, 100)
 
-        -- Per-weapon recoil section (expandable)
-        local recoilWeaponCategories = {
-            {
-                key = "REC_W_AR", text = "   ▶ Súng trường (AR)",
-                weapons = {
-                    { key = "REC_W_M416", text = "      M416" },
-                    { key = "REC_W_AKM", text = "      AKM" },
-                    { key = "REC_W_SCAR", text = "      SCAR-L" },
-                    { key = "REC_W_Groza", text = "      Groza" },
-                    { key = "REC_W_AUG", text = "      AUG" },
-                    { key = "REC_W_QBZ", text = "      QBZ" },
-                    { key = "REC_W_M762", text = "      M762" },
-                    { key = "REC_W_G36C", text = "      G36C" },
-                    { key = "REC_W_FAMAS", text = "      FAMAS" },
-                    { key = "REC_W_ACE32", text = "      ACE32" },
-                    { key = "REC_W_Honey", text = "      Honey Badger" }
-                }
-            },
-            {
-                key = "REC_W_DMR", text = "   ▶ Súng tỉa bán tự động (DMR)",
-                weapons = {
-                    { key = "REC_W_SKS", text = "      SKS" },
-                    { key = "REC_W_SLR", text = "      SLR" },
-                    { key = "REC_W_Mini14", text = "      Mini14" },
-                    { key = "REC_W_Mk14", text = "      Mk14" },
-                    { key = "REC_W_QBU", text = "      QBU" },
-                    { key = "REC_W_Mk12", text = "      Mk12" },
-                    { key = "REC_W_VSS", text = "      VSS" }
-                }
-            },
-            {
-                key = "REC_W_SMG", text = "   ▶ Súng tiểu liên (SMG)",
-                weapons = {
-                    { key = "REC_W_UZI", text = "      UZI" },
-                    { key = "REC_W_UMP45", text = "      UMP45" },
-                    { key = "REC_W_Vector", text = "      Vector" },
-                    { key = "REC_W_Tommy", text = "      Tommy Gun" },
-                    { key = "REC_W_Bizon", text = "      Bizon" },
-                    { key = "REC_W_MP5K", text = "      MP5K" },
-                    { key = "REC_W_P90", text = "      P90" }
-                }
-            },
-            {
-                key = "REC_W_LMG", text = "   ▶ Súng máy hạng nhẹ (LMG)",
-                weapons = {
-                    { key = "REC_W_DP28", text = "      DP-28" },
-                    { key = "REC_W_M249", text = "      M249" },
-                    { key = "REC_W_MG3", text = "      MG3" }
-                }
-            }
-        }
 
-        table.insert(StackAimbot, {
-            Key = "ModMenu_REC_WEAPON_MASTER",
-            UI = AliasMap.TitleSwitcher,
-            Text = "▶ CUSTOM GIẢM GIẬT THEO TỪNG SÚNG",
-            ExpandIndex = 0,
-            GetFunc = function() return _G.HK_Settings.REC_WEAPON_MASTER == 1 end,
-            SetFunc = function(_, value)
-                _G.HK_Settings.REC_WEAPON_MASTER = value and 1 or 0
-                return true
-            end
-        })
-
-        for _, cat in ipairs(recoilWeaponCategories) do
-            table.insert(StackAimbot, {
-                Key = "ModMenu_" .. cat.key,
-                UI = AliasMap.TitleSwitcher,
-                Text = cat.text,
-                ExpandHandle = "ModMenu_REC_WEAPON_MASTER",
-                ExpandIndex = 0,
-                GetFunc = function() return _G.HK_Settings[cat.key] == 1 end,
-                SetFunc = function(_, value)
-                    _G.HK_Settings[cat.key] = value and 1 or 0
-                    return true
-                end
-            })
-            for _, wp in ipairs(cat.weapons) do
-                local minVal, maxVal = 0, 100
-                local wpKey = wp.key
-                local wpText = wp.text
-                local wpKeySS = "REC_SS_" .. string.sub(wpKey, 6)
-                -- Slider giảm giật
-                table.insert(StackAimbot, {
-                    Key = "ModMenu_" .. wpKey,
-                    UI = AliasMap.Slider,
-                    Text = wpText .. " - Giảm giật (0-50%)",
-                    ExpandHandle = "ModMenu_" .. cat.key,
-                    MinValue = 0, MaxValue = 50, Min = 0, Max = 50,
-                    GetFunc = function()
-                        return _G.HK_Settings[wpKey] or 0
-                    end,
-                    SetFunc = function(_, value)
-                        local val = math.max(0, math.min(50, math.floor(tonumber(value) or 0)))
-                        _G.HK_Settings[wpKey] = val
-                        return true
-                    end
-                })
-                -- Slider rung scope
-                table.insert(StackAimbot, {
-                    Key = "ModMenu_" .. wpKeySS,
-                    UI = AliasMap.Slider,
-                    Text = wpText .. " - Rung scope",
-                    ExpandHandle = "ModMenu_" .. cat.key,
-                    MinValue = minVal, MaxValue = maxVal, Min = minVal, Max = maxVal,
-                    GetFunc = function()
-                        return _G.HK_Settings[wpKeySS] or 0
-                    end,
-                    SetFunc = function(_, value)
-                        local val = math.max(0, math.min(100, math.floor(tonumber(value) or 0)))
-                        _G.HK_Settings[wpKeySS] = val
-                        return true
-                    end
-                })
-            end
-        end
 
         -- =========================================================================================
         -- [MỚI] TÍCH HỢP TOÀN BỘ GIAO DIỆN VÀ LOGIC TAB 3 CỦA CODE 2 SANG CODE 1 (AIMBOT ROYAL & CUSTOM)
@@ -4255,17 +4140,11 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                               local scopeFactor = 1.0
                               if isADS then
                                   local scopePercent = _G.HK_GetVal("GIAM_RUNG_SCOPE") or 0
-                                  if _G.HK_GetVal("REC_WEAPON_MASTER") == 1 and perWeaponScopeKey and (_G.HK_GetVal(perWeaponScopeKey) or 0) > 0 then
-                                      scopePercent = _G.HK_GetVal(perWeaponScopeKey) or 0
-                                  end
                                   scopeFactor = math.max(0.0, 1.0 - (scopePercent / 100.0))
                               end
 
                               -- 2. Tính hệ số giảm giật (NO_RECOIL_100) độc lập hoàn toàn (giới hạn tối đa 50% để tránh lỗi dame)
                               local recoilPercent = math.min(50, _G.HK_GetVal("NO_RECOIL_100") or 0)
-                              if _G.HK_GetVal("REC_WEAPON_MASTER") == 1 and perWeaponRecoilKey and (_G.HK_GetVal(perWeaponRecoilKey) or 0) > 0 then
-                                  recoilPercent = math.min(50, _G.HK_GetVal(perWeaponRecoilKey) or 0)
-                              end
                               local recoilFactor = math.max(0.01, 1.0 - (recoilPercent / 100.0))
                               
                               -- Áp dụng giảm giật vào các thông số Recoil
