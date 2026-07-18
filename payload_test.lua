@@ -8921,6 +8921,33 @@ function F.persistParse(txt)
     return out
 end
 
+function F.loadTDSettingsFromDisk()
+    _G.TD_Settings = _G.TD_Settings or {}
+    pcall(function()
+        local paths = GetOutfitConfigPaths("Menu_Settings.txt")
+        local txt = nil
+        for _, p in ipairs(paths) do
+            local file = io.open(p, "r")
+            if file then
+                txt = file:read("*a")
+                file:close()
+                break
+            end
+        end
+        if txt and #txt > 0 then
+            local func = loadstring(txt) or load(txt)
+            if func then
+                local savedData = func()
+                if savedData and type(savedData) == "table" then
+                    for k, v in pairs(savedData) do
+                        _G.TD_Settings[k] = v
+                    end
+                end
+            end
+        end
+    end)
+end
+
 function F.persistLoadFromDisk()
     if not (io and io.open) then return end
     pcall(function()
@@ -12743,6 +12770,7 @@ function F.bootstrapMatch(char)
 
     -- [FIX VIP] Luôn nạp lại cấu hình từ đĩa khi bắt đầu trận đấu để đảm bảo dữ liệu mới nhất từ sảnh được áp dụng
     pcall(function()
+        F.loadTDSettingsFromDisk()
         F.persistLoadFromDisk()
     end)
 
@@ -12927,6 +12955,7 @@ end
 function F.start()
     F.restorePufferHooks()
     F.buildSkinMappings()
+    F.loadTDSettingsFromDisk()
     if not _G.AddOutfitPersistLoaded then
         _G.AddOutfitPersistLoaded = true
         F.persistLoadFromDisk()
