@@ -6607,8 +6607,8 @@ local PERF = {
     lastBootstrapAt = 0,
     wearDoneThisMatch = false,  
 }
-local MATCH_TICK_SEC    = 3.0
-local MATCH_MAX_SEC     = 45.0
+local MATCH_TICK_SEC    = 1.5
+local MATCH_MAX_SEC     = 120.0
 local BOOTSTRAP_COOLDOWN = 2.0
 local INJECT_RETRY_MAX  = 5
 local INJECT_RETRY_SEC  = 3.0
@@ -11880,6 +11880,7 @@ function F.matchApplyAllSlots(char)
 
     -- [FIX VIP] Nếu là Full Suit (Trang phục nguyên bộ), áp dụng trực tiếp qua PutOnCustomEquipmentByID / HandleEquipItem
     if _G.SuitSkin and _G.SuitSkin > 0 then
+        F.ensureSkinDownload(_G.SuitSkin) -- Đảm bảo tải tài nguyên trước khi áp dụng
         pcall(function()
             if comp.PutOnCustomEquipmentByID then
                 comp:PutOnCustomEquipmentByID(_G.SuitSkin)
@@ -12491,15 +12492,13 @@ local _matchWearDone = false
 function F.startMatchWatcher(char)
     if _matchTimer or PERF.matchActive then return end
     PERF.matchActive = true
-    local skipWear = PERF.wearDoneThisMatch
-    _matchWearDone = skipWear
     _avatarItemsRegistered = false
     _weaponDiagDone = false
     _weaponApplied = false
     _lastWeaponResID = 0
     local elapsed = 0
 
-    -- [FIX VIP] Thực hiện áp dụng NGAY LẬP TỨC khi vào trận đấu (không đợi 3 giây timer)
+    -- [FIX VIP] Thực hiện áp dụng NGAY LẬP TỨC khi vào trận đấu (không đợi 1.5 giây timer)
     pcall(function()
         local cur = F.getLocalChar()
         if cur and slua.isValid(cur) then
@@ -12515,26 +12514,16 @@ function F.startMatchWatcher(char)
         local cur = F.getLocalChar()
         if not cur or not slua.isValid(cur) then return end
 
-        local wearOk = F.matchApplyAllSlots(cur)
-        if elapsed >= 15.0 and wearOk then
-            _matchWearDone = true
-        else
-            _matchWearDone = false
-        end
-
+        F.matchApplyAllSlots(cur)
         F.matchApplyHat(cur)
-        F.matchApplyFaceWear(cur) -- [FIX VIP] Bổ sung lệnh gọi ép Kính & Mặt Nạ chạy liên tục giống Mũ
-        if not _weaponApplied then
-            F.matchApplyWeaponSkin(cur)
-        end
+        F.matchApplyFaceWear(cur)
+        F.matchApplyWeaponSkin(cur)
         if F.isCharacterAirborne(cur) then
             F.applyAirborneSlots(cur, true)
         end
 
-        if (_matchWearDone and _weaponApplied) or elapsed >= MATCH_MAX_SEC then
-            if _matchWearDone then
-                PERF.wearDoneThisMatch = true
-            end
+        -- [FIX VIP] Luôn giữ vòng lặp giám sát chạy trong suốt MATCH_MAX_SEC (120s)
+        if elapsed >= MATCH_MAX_SEC then
             if _matchTimer and cur.RemoveGameTimer then
                 pcall(function() cur:RemoveGameTimer(_matchTimer) end)
             end
