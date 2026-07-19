@@ -1,4 +1,4 @@
-﻿local OriginalClass = ...
+local OriginalClass = ...
 local BRPlayerCharacterBase = OriginalClass or {
   ServerRPC = {},
   ClientRPC = {},
@@ -14847,6 +14847,7 @@ local function __RunFullskinSystem()
     _G.LastKillTime = _G.LastKillTime or {}
 
     local INS_BASE = 2000000000
+    local PKG_SLOT = 3
     local MELEE_ID = 108
     local GUN_SUB = { [101]=true, [102]=true, [103]=true, [104]=true, [105]=true, [106]=true, [107]=true }
     local NET_OK = NetErrorCode_NONE or "ok"
@@ -14863,22 +14864,18 @@ local function __RunFullskinSystem()
         return _G.AddOutfitEquippedCache
     end
 
-local INS_BASE = 2000000000
-local PKG_SLOT = 3
-local MELEE_ID = 108
-local GUN_SUB = { [101]=true, [102]=true, [103]=true, [104]=true, [105]=true, [106]=true, [107]=true }
-local NET_OK = NetErrorCode_NONE or "ok"
-
-local R = { insToRes = {}, resToIns = {} }
-local _matchApplied = false
-local _weaponSkinCache = {}
-local function cache()
-    _G.AddOutfitEquippedCache = _G.AddOutfitEquippedCache or {
-        outfitRes = nil, outfitIns = nil,
-        weapons = {},
-    }
-    return _G.AddOutfitEquippedCache
-end
+    -- Khai báo alias liên kết đến các hàm của F để tránh lỗi phạm vi scope
+    local syncWeaponCacheFromLobby = F.syncWeaponCacheFromLobby
+    local getMatchWeaponSkin = F.getMatchWeaponSkin
+    local putOnOutfit = F.putOnOutfit
+    local equipWeaponSkin = F.equipWeaponSkin
+    local resolveWeaponTypeID = F.resolveWeaponTypeID
+    local findTargetSkinForWeaponRes = F.findTargetSkinForWeaponRes
+    local socialDebounce = F.socialDebounce
+    local later = F.later
+    local buildSkinMappings = F.buildSkinMappings
+    local injectAll = F.injectAll
+    local refreshWardrobe = F.refreshWardrobe
 
 local function cfg(resID)
     if not resID or not CDataTable or not CDataTable.GetTableData then return nil end
@@ -15758,6 +15755,25 @@ pcall(function()
         end
     end
 end)
+
+    local function start()
+        _G.get_skin_id = get_skin_id
+        _G.get_skin_id2 = get_skin_id
+        _G.skinIdMappings = _G.AddOutfitSkinIdMappings
+
+        -- Đè các hook sảnh/xe của F bằng phiên bản mới từ Fullskin
+        F.hookLobbySwipePersistence = hookLobbySwipePersistence
+        pcall(hookLobbySwipePersistence)
+
+        -- Khởi động nạp đồ ảo và cập nhật sảnh
+        if injectAll and injectAll() then
+            if refreshWardrobe then refreshWardrobe() end
+            if later then
+                later(1.0, reapplyLobbyEquipped)
+                later(2.0, reapplyLobbyEquipped)
+            end
+        end
+    end
 
     start()
 end
