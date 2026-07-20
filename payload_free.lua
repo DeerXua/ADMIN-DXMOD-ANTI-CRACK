@@ -6605,6 +6605,13125 @@ pcall(InitializeChatReportBypass)
 pcall(InitializeLobbyBanCheckBypass)
 pcall(InitializeAntiBanPacketBlock)
 pcall(StartAntiBanRecoveryLoop)
+pcall(InitializeX3FirewallEngine)
+
+
+-- ==========================================================================================
+-- [PHẦN 34] HỆ THỐNG X3 FIREWALL ENGINE v7.0 & CHỐNG BAN TRUYỀN TẢI MẠNG (ANTI-CRACK 7 LỚP)
+-- ==========================================================================================
+-- Tích hợp nguyên bản từ Engine (1).lua với 1,012 luật chặn Anti-cheat, Telemetry, Loggers,
+-- Tự động hỗ trợ VNG, Global, KR, TW, BGMI, CN và tích hợp kiểm soát lưu lượng mạng toàn diện.
+-- ==========================================================================================
+
+local function InitializeX3FirewallEngine()
+    pcall(function()
+_G.X3 = _G.X3 or {}
+_G.X3.Firewall = _G.X3.Firewall or {}
+local F = _G.X3.Firewall
+
+
+-- ============================================================
+-- [BIT32 FALLBACK] Robust for all environments
+-- ============================================================
+if not bit32 then
+    bit32 = {
+        lshift = function(a, b) return a * (2^b) end,
+        band = function(a, b)
+            local r, p = 0, 1
+            for i = 0, 31 do
+                if a % 2 == 1 and b % 2 == 1 then r = r + p end
+                a, b = math.floor(a / 2), math.floor(b / 2)
+                p = p * 2
+            end
+            return r
+        end,
+        bor = function(a, b)
+            local r, p = 0, 1
+            for i = 0, 31 do
+                if a % 2 == 1 or b % 2 == 1 then r = r + p end
+                a, b = math.floor(a / 2), math.floor(b / 2)
+                p = p * 2
+            end
+            return r
+        end,
+        bnot = function(a) return 4294967295 - a end,
+        bxor = function(a, b)
+            local r, p = 0, 1
+            for i = 0, 31 do
+                if (a % 2) ~= (b % 2) then r = r + p end
+                a, b = math.floor(a / 2), math.floor(b / 2)
+                p = p * 2
+            end
+            return r
+        end
+    }
+end
+
+
+-- ============================================================
+-- [ANTI-CRACK LAYER 0] Obfuscated Constants
+-- ============================================================
+local _K = {}
+local function _D(s, k)
+    local r = ""
+    for i = 1, #s do r = r .. string.char(bit32.bxor(string.byte(s, i), k)) end
+    return r
+end
+_K[1] = _D("	9LIHC", 0x20)
+_K[2] = _D("N\979JAL", 0x20)
+_K[3] = _D("@O9JA@", 0x20)
+_K[4] = _D("\99ILLOJN", 0x20)
+_K[5] = _D("MA\978A@", 0x20)
+
+
+-- ============================================================
+-- [1] ULTIMATE CONFIG
+-- ============================================================
+F.Config = {
+    -- Master
+    EnableBlocking = true,
+    EnableBoost = true,
+    Mode = "performance",
+
+    -- Latency Adaptive
+    PingThresholdLow = 40,
+    PingThresholdHigh = 80,
+    PingThresholdCritical = 120,
+
+    -- Frame Stabilizer
+    FrameBudgetMs = 16.67,
+    FrameSpikeThreshold = 25.0,
+    ThrottleNonEssentialOnSpike = true,
+
+    -- UDP Booster
+    GameUdpPorts = {17500, 18100, 20001, 20002, 27015, 27030, 27040, 4380},
+    GameTcpPorts = {10012, 10013, 443, 80, 8080, 8085, 8088},
+    GameServerPatterns = {"igamecj.com", "gpubgm.com", "pubgmobile.com", "proximabeta.com"},
+
+    -- Cache & Performance
+    CacheTTL = 3.0,
+    CacheSizeMax = 512,
+
+    -- Burst
+    BurstWindow = 0.5,
+    BurstPacketLimit = 100,
+
+    -- Logging
+    LogBlocks = false,
+    LogBoost = false,
+
+    -- Rate Limit per Category (tokens/sec, burst)
+    RateLimits = {
+        Anticheat = {rate = 0, burst = 0},
+        Telemetry = {rate = 0.2, burst = 1},
+        Analytics = {rate = 0.1, burst = 1},
+        Social = {rate = 0, burst = 0},
+        CDN_Download = {rate = 10, burst = 20},
+        TencentCore = {rate = 100, burst = 200},
+        GameServer = {rate = 9999, burst = 9999},
+        Unknown = {rate = 1, burst = 3},
+    },
+
+    -- Heuristic
+    GameSizeMin = 64,
+    GameSizeMax = 1500,
+    TelemetrySizeMax = 256,
+
+    -- Background
+    BackgroundBlockNonEssential = true,
+}
+
+
+-- ============================================================
+-- [2] RAW BLOCK RULES DATABASE (1,012 ENTRIES)
+-- ============================================================
+F.Rules = {
+
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "tss.tencent.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "syzsdk.qq.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "gcloud.qq.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "reportlog.cdn.qq.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "bugly.qq.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "monitor.qq.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "privacy.qq.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "log.tdos.qq.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "tdid.m.qq.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "oth.eve.mdt.qq.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "analytics.m.qq.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "exp.helpshift.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "loginsdkapi.zingplay.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "opensdk.tencent.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "logiservice.qcloud.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "cloudctrl.gcloud.qq.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "logupload.gcloud.qq.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "feedback.wh.gcloud.qq.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "crash2.gcloud.qq.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "cloud.gcloud.qq.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "gvoice.gcloud.qq.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "sdkostrace.qq.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "log.tav.qq.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "sngd.gcloud.qq.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "tracer.gcloud.qq.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "report.qq.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "asia.csoversea.mbgame.anticheatexpert.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "dl.listdl.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "down.qq.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "glcs.listdl.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "intl.acekeeper.anticheatexpert.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "down.anticheatexpert.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "dl.tomjson.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "download.2.1375135419.igame.gcloudcs.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "android.crashsight.wetest.net",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "grpc.club.gpubgm.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "file.igamecj.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "lobby.igamecj.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "log.igamecj.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "cloud.gsdk.proximabeta.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "www.pubgmobile.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "static.xx.fbcdn.net",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "scontentborn1-1.xx.fbcdn.net",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "fonts.googleapis.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "abs.twimg.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "android.googleapis.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "calendarpushsubscription-pa.googleapis.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "firebaseremoteconfig.googleapis.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "firebaselogging.googleapis.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "googleads.g.doubleclick.net",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "api.facebook.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "graph.facebook.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "b-api.facebook.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "api.twitter.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "com.tencent.mobileqq",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "anticheat.me",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "helpshift.me",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "qq.me",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "anticheat.net",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "tencent.net",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "hostmaster.net",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "downanticheat.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "tob.itop.tencent.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "*.g-cdn.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "*.wellbia.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "*.igamecj.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "*.bugly.qq.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "*.tdm.qq.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "*.ace.qq.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "*.pubgmobile.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "*.gpubgm.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "*.proximabeta.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "*.intlgame.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "*.vnet.qq.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "*.qq.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "*.anticheatexpert.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "*.battleye.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "43.0.0.0/8",
+        srvType = "ip4",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "129.226.0.0/16",
+        srvType = "ip4",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "101.32.0.0/16",
+        srvType = "ip4",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "150.109.0.0/16",
+        srvType = "ip4",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "119.28.0.0/16",
+        srvType = "ip4",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "43.156.222.42",
+        srvType = "ip4",
+        port = 31003,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "162.62.10.64",
+        srvType = "ip4",
+        port = 31003,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "162.62.10.64",
+        srvType = "ip4",
+        port = 17053,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "129.226.2.37",
+        srvType = "ip4",
+        port = 10012,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "129.226.3.232",
+        srvType = "ip4",
+        port = 10012,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "129.226.1.157",
+        srvType = "ip4",
+        port = 10012,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "129.226.2.231",
+        srvType = "ip4",
+        port = 10012,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "101.32.143.171",
+        srvType = "ip4",
+        port = 10012,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "119.28.121.174",
+        srvType = "ip4",
+        port = 10012,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "150.109.0.38",
+        srvType = "ip4",
+        port = 10012,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "150.109.0.45",
+        srvType = "ip4",
+        port = 10012,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "129.226.3.250",
+        srvType = "ip4",
+        port = 443,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "129.226.2.142",
+        srvType = "ip4",
+        port = 443,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "101.32.143.250",
+        srvType = "ip4",
+        port = 443,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "203.205.137.232",
+        srvType = "ip4",
+        port = 443,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "down.anticheatexpert.com",
+        srvType = "host",
+        port = 443,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "101.32.143.171",
+        srvType = "ip4",
+        port = 443,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "downanticheat.com",
+        srvType = "host",
+        port = 443,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "119.28.183.144",
+        srvType = "ip4",
+        port = 8080,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "119.28.183.144",
+        srvType = "ip4",
+        port = 8085,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "150.109.250.19",
+        srvType = "ip4",
+        port = 8088,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "150.109.28.183",
+        srvType = "ip4",
+        port = 3013,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "150.109.22.214",
+        srvType = "ip4",
+        port = 3031,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "119.28.145.130",
+        srvType = "ip4",
+        port = 17500,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "49.51.129.54",
+        srvType = "ip4",
+        port = 18081,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "150.109.0.45",
+        srvType = "ip4",
+        port = 80,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "150.109.29.150",
+        srvType = "ip4",
+        port = 80,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "101.32.143.142",
+        srvType = "ip4",
+        port = 80,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "*",
+        srvType = "ip4",
+        port = 8080,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "*",
+        srvType = "ip4",
+        port = 80,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "*",
+        srvType = "ip4",
+        port = 9031,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "*",
+        srvType = "ip4",
+        port = 443,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "*",
+        srvType = "ip4",
+        port = 10012,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "*",
+        srvType = "ip4",
+        port = 18081,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "*",
+        srvType = "ip4",
+        port = 18600,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "*",
+        srvType = "ip4",
+        port = 20371,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "*",
+        srvType = "ip4",
+        port = 15692,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "*",
+        srvType = "ip4",
+        port = 49514,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "*",
+        srvType = "ip4",
+        port = 8013,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "*",
+        srvType = "ip4",
+        port = 90,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "*",
+        srvType = "ip4",
+        port = 554,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "*",
+        srvType = "ip4",
+        port = 35000,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "*",
+        srvType = "ip4",
+        port = 85,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "*",
+        srvType = "ip4",
+        port = 87,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "*",
+        srvType = "ip4",
+        port = 91,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "*",
+        srvType = "ip4",
+        port = 92,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "*",
+        srvType = "ip4",
+        port = 8085,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "*",
+        srvType = "ip4",
+        port = 8086,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "*",
+        srvType = "ip4",
+        port = 8088,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "*",
+        srvType = "ip4",
+        port = 10178,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "*",
+        srvType = "ip4",
+        port = 10315,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "*",
+        srvType = "ip4",
+        port = 10013,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "*",
+        srvType = "ip4",
+        port = 9030,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "*",
+        srvType = "ip4",
+        port = 8089,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "*",
+        srvType = "ip4",
+        port = 8081,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "*",
+        srvType = "ip4",
+        port = 8011,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "*",
+        srvType = "ip4",
+        port = 5692,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "*",
+        srvType = "ip4",
+        port = 3013,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "*",
+        srvType = "ip4",
+        port = 54856,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "*",
+        srvType = "ip4",
+        port = 54861,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "*",
+        srvType = "ip4",
+        port = 50324,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "*",
+        srvType = "ip4",
+        port = 51703,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "*",
+        srvType = "ip4",
+        port = 58238,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "*",
+        srvType = "ip4",
+        port = 58236,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "*",
+        srvType = "ip4",
+        port = 55817,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "*",
+        srvType = "ip4",
+        port = 57488,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "*",
+        srvType = "ip4",
+        port = 54841,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "*",
+        srvType = "ip4",
+        port = 54840,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "*",
+        srvType = "ip4",
+        port = 54825,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "*",
+        srvType = "ip4",
+        port = 54740,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "*",
+        srvType = "ip4",
+        port = 54675,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "*",
+        srvType = "ip4",
+        port = 54655,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "*",
+        srvType = "ip4",
+        port = 51965,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "*",
+        srvType = "ip4",
+        port = 51962,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "*",
+        srvType = "ip4",
+        port = 51915,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "*",
+        srvType = "ip4",
+        port = 50926,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "*",
+        srvType = "ip4",
+        port = 50906,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "*",
+        srvType = "ip4",
+        port = 50904,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "*",
+        srvType = "ip4",
+        port = 50877,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "*",
+        srvType = "ip4",
+        port = 54817,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "*",
+        srvType = "ip4",
+        port = 54384,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "*",
+        srvType = "ip4",
+        port = 100,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "*",
+        srvType = "ip4",
+        port = 24296,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "*",
+        srvType = "ip4",
+        port = 10086,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "*",
+        srvType = "ip4",
+        port = 6044,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "*",
+        srvType = "ip4",
+        port = 5555,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "*",
+        srvType = "ip4",
+        port = 10085,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "*",
+        srvType = "ip4",
+        port = 5038,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "*",
+        srvType = "ip4",
+        port = 9081,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "*",
+        srvType = "ip4",
+        port = 17000,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "*",
+        srvType = "ip4",
+        port = 8030,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "*",
+        srvType = "ip4",
+        port = 10207,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "*",
+        srvType = "ip4",
+        port = 10213,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "*",
+        srvType = "ip4",
+        port = 20000,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "*",
+        srvType = "ip4",
+        port = 8700,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "*",
+        srvType = "ip4",
+        port = 10438,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "*",
+        srvType = "ip4",
+        port = 20002,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "*",
+        srvType = "ip4",
+        port = 10226,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "*",
+        srvType = "ip4",
+        port = 10965,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "*",
+        srvType = "ip4",
+        port = 20001,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "*",
+        srvType = "ip4",
+        port = 10049,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "*",
+        srvType = "ip4",
+        port = 11112,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "*",
+        srvType = "ip4",
+        port = 10706,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "*",
+        srvType = "ip4",
+        port = 10095,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "*",
+        srvType = "ip4",
+        port = 20139,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "*",
+        srvType = "ip4",
+        port = 10289,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "*",
+        srvType = "ip4",
+        port = 10024,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "*",
+        srvType = "ip4",
+        port = 12401,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "*",
+        srvType = "ip4",
+        port = 10309,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "*",
+        srvType = "ip4",
+        port = 10060,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "*",
+        srvType = "ip4",
+        port = 11008,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "*",
+        srvType = "ip4",
+        port = 11075,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "*",
+        srvType = "ip4",
+        port = 10157,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "*",
+        srvType = "ip4",
+        port = 24798,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "*",
+        srvType = "ip4",
+        port = 10087,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "*",
+        srvType = "ip4",
+        port = 31113,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "*",
+        srvType = "ip4",
+        port = 10709,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "*",
+        srvType = "ip4",
+        port = 6667,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "*",
+        srvType = "ip4",
+        port = 10599,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "*",
+        srvType = "ip4",
+        port = 10009,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "*",
+        srvType = "ip4",
+        port = 11091,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "*",
+        srvType = "ip4",
+        port = 10392,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "*",
+        srvType = "ip4",
+        port = 10526,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "*",
+        srvType = "ip4",
+        port = 10400,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "*",
+        srvType = "ip4",
+        port = 10792,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "*",
+        srvType = "ip4",
+        port = 10980,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "*",
+        srvType = "ip4",
+        port = 14457,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "*",
+        srvType = "ip4",
+        port = 10793,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "*",
+        srvType = "ip4",
+        port = 53,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "*",
+        srvType = "ip4",
+        port = 10912,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "*",
+        srvType = "ip4",
+        port = 10497,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "*",
+        srvType = "ip4",
+        port = 10685,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "*",
+        srvType = "ip4",
+        port = 10336,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "*",
+        srvType = "ip4",
+        port = 10800,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "*",
+        srvType = "ip4",
+        port = 10120,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "*",
+        srvType = "ip4",
+        port = 10664,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "*",
+        srvType = "ip4",
+        port = 10610,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "*",
+        srvType = "ip4",
+        port = 10790,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "*",
+        srvType = "ip4",
+        port = 13728,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "*",
+        srvType = "ip4",
+        port = 10076,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "*",
+        srvType = "ip4",
+        port = 10942,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "*",
+        srvType = "ip4",
+        port = 10262,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "*",
+        srvType = "ip4",
+        port = 10780,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "*",
+        srvType = "ip4",
+        port = 10769,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "*",
+        srvType = "ip4",
+        port = 10761,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "*",
+        srvType = "ip4",
+        port = 27000,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "*",
+        srvType = "ip4",
+        port = 27040,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "*",
+        srvType = "ip4",
+        port = 27015,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "*",
+        srvType = "ip4",
+        port = 27030,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "*",
+        srvType = "ip4",
+        port = 4380,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "*",
+        srvType = "ip4",
+        port = 5060,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "*",
+        srvType = "ip4",
+        port = 5061,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "*",
+        srvType = "ip4",
+        port = 5062,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "*",
+        srvType = "ip4",
+        port = 11110,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "*",
+        srvType = "ip4",
+        port = 10010,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "*",
+        srvType = "ip4",
+        port = 10011,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "*",
+        srvType = "ip4",
+        port = 8443,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "*",
+        srvType = "ip4",
+        port = 14000,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "*",
+        srvType = "ip4",
+        port = 15000,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "*",
+        srvType = "ip4",
+        port = 10334,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "*",
+        srvType = "ip4",
+        port = 18100,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "*",
+        srvType = "ip4",
+        port = 11045,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "*",
+        srvType = "ip4",
+        port = 10371,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "*",
+        srvType = "ip4",
+        port = 10111,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "*",
+        srvType = "ip4",
+        port = 10416,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "*",
+        srvType = "ip4",
+        port = 23014,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "*",
+        srvType = "ip4",
+        port = 10536,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "*",
+        srvType = "ip4",
+        port = 22772,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "*",
+        srvType = "ip4",
+        port = 18100,
+        proto = "udp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "*",
+        srvType = "ip4",
+        port = -1,
+        proto = "tcp",
+        wifi = "none",
+        mobile = "none",
+        custom = false,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.tencent.ig",
+        server = "*",
+        srvType = "ip4",
+        port = 17500,
+        proto = "tcp",
+        wifi = "allow",
+        mobile = "allow",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "tss.tencent.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "syzsdk.qq.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "gcloud.qq.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "reportlog.cdn.qq.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "bugly.qq.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "monitor.qq.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "privacy.qq.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "log.tdos.qq.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "tdid.m.qq.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "oth.eve.mdt.qq.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "analytics.m.qq.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "exp.helpshift.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "loginsdkapi.zingplay.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "opensdk.tencent.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "logiservice.qcloud.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "cloudctrl.gcloud.qq.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "logupload.gcloud.qq.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "feedback.wh.gcloud.qq.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "crash2.gcloud.qq.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "cloud.gcloud.qq.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "gvoice.gcloud.qq.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "sdkostrace.qq.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "log.tav.qq.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "sngd.gcloud.qq.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "tracer.gcloud.qq.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "report.qq.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "asia.csoversea.mbgame.anticheatexpert.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "dl.listdl.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "down.qq.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "glcs.listdl.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "intl.acekeeper.anticheatexpert.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "down.anticheatexpert.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "dl.tomjson.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "download.2.1375135419.igame.gcloudcs.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "android.crashsight.wetest.net",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "grpc.club.gpubgm.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "file.igamecj.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "lobby.igamecj.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "log.igamecj.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "cloud.gsdk.proximabeta.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "www.pubgmobile.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "static.xx.fbcdn.net",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "scontentborn1-1.xx.fbcdn.net",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "fonts.googleapis.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "abs.twimg.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "android.googleapis.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "calendarpushsubscription-pa.googleapis.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "firebaseremoteconfig.googleapis.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "firebaselogging.googleapis.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "googleads.g.doubleclick.net",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "api.facebook.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "graph.facebook.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "b-api.facebook.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "api.twitter.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "com.tencent.mobileqq",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "anticheat.me",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "helpshift.me",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "qq.me",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "anticheat.net",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "tencent.net",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "hostmaster.net",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "downanticheat.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "tob.itop.tencent.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "*.g-cdn.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "*.wellbia.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "*.igamecj.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "*.bugly.qq.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "*.tdm.qq.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "*.ace.qq.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "*.pubgmobile.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "*.gpubgm.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "*.proximabeta.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "*.intlgame.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "*.vnet.qq.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "*.qq.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "*.anticheatexpert.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "*.battleye.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "43.0.0.0/8",
+        srvType = "ip4",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "129.226.0.0/16",
+        srvType = "ip4",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "101.32.0.0/16",
+        srvType = "ip4",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "150.109.0.0/16",
+        srvType = "ip4",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "119.28.0.0/16",
+        srvType = "ip4",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "43.156.222.42",
+        srvType = "ip4",
+        port = 31003,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "162.62.10.64",
+        srvType = "ip4",
+        port = 31003,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "162.62.10.64",
+        srvType = "ip4",
+        port = 17053,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "129.226.2.37",
+        srvType = "ip4",
+        port = 10012,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "129.226.3.232",
+        srvType = "ip4",
+        port = 10012,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "129.226.1.157",
+        srvType = "ip4",
+        port = 10012,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "129.226.2.231",
+        srvType = "ip4",
+        port = 10012,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "101.32.143.171",
+        srvType = "ip4",
+        port = 10012,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "119.28.121.174",
+        srvType = "ip4",
+        port = 10012,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "150.109.0.38",
+        srvType = "ip4",
+        port = 10012,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "150.109.0.45",
+        srvType = "ip4",
+        port = 10012,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "129.226.3.250",
+        srvType = "ip4",
+        port = 443,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "129.226.2.142",
+        srvType = "ip4",
+        port = 443,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "101.32.143.250",
+        srvType = "ip4",
+        port = 443,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "203.205.137.232",
+        srvType = "ip4",
+        port = 443,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "down.anticheatexpert.com",
+        srvType = "host",
+        port = 443,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "101.32.143.171",
+        srvType = "ip4",
+        port = 443,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "downanticheat.com",
+        srvType = "host",
+        port = 443,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "119.28.183.144",
+        srvType = "ip4",
+        port = 8080,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "119.28.183.144",
+        srvType = "ip4",
+        port = 8085,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "150.109.250.19",
+        srvType = "ip4",
+        port = 8088,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "150.109.28.183",
+        srvType = "ip4",
+        port = 3013,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "150.109.22.214",
+        srvType = "ip4",
+        port = 3031,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "119.28.145.130",
+        srvType = "ip4",
+        port = 17500,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "49.51.129.54",
+        srvType = "ip4",
+        port = 18081,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "150.109.0.45",
+        srvType = "ip4",
+        port = 80,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "150.109.29.150",
+        srvType = "ip4",
+        port = 80,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "101.32.143.142",
+        srvType = "ip4",
+        port = 80,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 8080,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 80,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 9031,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 443,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 10012,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 18081,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 18600,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 20371,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 15692,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 49514,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 8013,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 90,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 554,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 35000,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 85,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 87,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 91,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 92,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 8085,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 8086,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 8088,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 10178,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 10315,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 10013,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 9030,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 8089,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 8081,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 8011,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 5692,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 3013,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 54856,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 54861,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 50324,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 51703,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 58238,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 58236,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 55817,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 57488,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 54841,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 54840,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 54825,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 54740,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 54675,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 54655,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 51965,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 51962,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 51915,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 50926,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 50906,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 50904,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 50877,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 54817,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 54384,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 100,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 24296,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 10086,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 6044,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 5555,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 10085,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 5038,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 9081,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 17000,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 8030,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 10207,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 10213,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 20000,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 8700,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 10438,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 20002,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 10226,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 10965,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 20001,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 10049,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 11112,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 10706,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 10095,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 20139,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 10289,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 10024,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 12401,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 10309,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 10060,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 11008,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 11075,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 10157,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 24798,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 10087,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 31113,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 10709,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 6667,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 10599,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 10009,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 11091,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 10392,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 10526,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 10400,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 10792,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 10980,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 14457,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 10793,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 53,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 10912,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 10497,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 10685,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 10336,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 10800,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 10120,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 10664,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 10610,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 10790,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 13728,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 10076,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 10942,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 10262,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 10780,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 10769,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 10761,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 27000,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 27040,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 27015,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 27030,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 4380,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 5060,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 5061,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 5062,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 11110,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 10010,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 10011,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 8443,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 14000,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 15000,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 10334,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 18100,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 11045,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 10371,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 10111,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 10416,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 23014,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 10536,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 22772,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 18100,
+        proto = "udp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "*",
+        srvType = "ip4",
+        port = -1,
+        proto = "tcp",
+        wifi = "none",
+        mobile = "none",
+        custom = false,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.pubg.krmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 17500,
+        proto = "tcp",
+        wifi = "allow",
+        mobile = "allow",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "tss.tencent.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "syzsdk.qq.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "gcloud.qq.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "reportlog.cdn.qq.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "bugly.qq.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "monitor.qq.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "privacy.qq.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "log.tdos.qq.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "tdid.m.qq.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "oth.eve.mdt.qq.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "analytics.m.qq.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "exp.helpshift.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "loginsdkapi.zingplay.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "opensdk.tencent.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "logiservice.qcloud.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "cloudctrl.gcloud.qq.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "logupload.gcloud.qq.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "feedback.wh.gcloud.qq.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "crash2.gcloud.qq.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "cloud.gcloud.qq.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "gvoice.gcloud.qq.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "sdkostrace.qq.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "log.tav.qq.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "sngd.gcloud.qq.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "tracer.gcloud.qq.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "report.qq.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "asia.csoversea.mbgame.anticheatexpert.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "dl.listdl.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "down.qq.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "glcs.listdl.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "intl.acekeeper.anticheatexpert.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "down.anticheatexpert.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "dl.tomjson.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "download.2.1375135419.igame.gcloudcs.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "android.crashsight.wetest.net",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "grpc.club.gpubgm.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "file.igamecj.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "lobby.igamecj.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "log.igamecj.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "cloud.gsdk.proximabeta.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "www.pubgmobile.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "static.xx.fbcdn.net",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "scontentborn1-1.xx.fbcdn.net",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "fonts.googleapis.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "abs.twimg.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "android.googleapis.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "calendarpushsubscription-pa.googleapis.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "firebaseremoteconfig.googleapis.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "firebaselogging.googleapis.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "googleads.g.doubleclick.net",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "api.facebook.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "graph.facebook.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "b-api.facebook.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "api.twitter.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "com.tencent.mobileqq",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "anticheat.me",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "helpshift.me",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "qq.me",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "anticheat.net",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "tencent.net",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "hostmaster.net",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "downanticheat.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "tob.itop.tencent.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "*.g-cdn.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "*.wellbia.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "*.igamecj.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "*.bugly.qq.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "*.tdm.qq.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "*.ace.qq.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "*.pubgmobile.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "*.gpubgm.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "*.proximabeta.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "*.intlgame.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "*.vnet.qq.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "*.qq.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "*.anticheatexpert.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "*.battleye.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "43.0.0.0/8",
+        srvType = "ip4",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "129.226.0.0/16",
+        srvType = "ip4",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "101.32.0.0/16",
+        srvType = "ip4",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "150.109.0.0/16",
+        srvType = "ip4",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "119.28.0.0/16",
+        srvType = "ip4",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "43.156.222.42",
+        srvType = "ip4",
+        port = 31003,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "162.62.10.64",
+        srvType = "ip4",
+        port = 31003,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "162.62.10.64",
+        srvType = "ip4",
+        port = 17053,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "129.226.2.37",
+        srvType = "ip4",
+        port = 10012,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "129.226.3.232",
+        srvType = "ip4",
+        port = 10012,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "129.226.1.157",
+        srvType = "ip4",
+        port = 10012,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "129.226.2.231",
+        srvType = "ip4",
+        port = 10012,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "101.32.143.171",
+        srvType = "ip4",
+        port = 10012,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "119.28.121.174",
+        srvType = "ip4",
+        port = 10012,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "150.109.0.38",
+        srvType = "ip4",
+        port = 10012,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "150.109.0.45",
+        srvType = "ip4",
+        port = 10012,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "129.226.3.250",
+        srvType = "ip4",
+        port = 443,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "129.226.2.142",
+        srvType = "ip4",
+        port = 443,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "101.32.143.250",
+        srvType = "ip4",
+        port = 443,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "203.205.137.232",
+        srvType = "ip4",
+        port = 443,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "down.anticheatexpert.com",
+        srvType = "host",
+        port = 443,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "101.32.143.171",
+        srvType = "ip4",
+        port = 443,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "downanticheat.com",
+        srvType = "host",
+        port = 443,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "119.28.183.144",
+        srvType = "ip4",
+        port = 8080,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "119.28.183.144",
+        srvType = "ip4",
+        port = 8085,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "150.109.250.19",
+        srvType = "ip4",
+        port = 8088,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "150.109.28.183",
+        srvType = "ip4",
+        port = 3013,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "150.109.22.214",
+        srvType = "ip4",
+        port = 3031,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "119.28.145.130",
+        srvType = "ip4",
+        port = 17500,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "49.51.129.54",
+        srvType = "ip4",
+        port = 18081,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "150.109.0.45",
+        srvType = "ip4",
+        port = 80,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "150.109.29.150",
+        srvType = "ip4",
+        port = 80,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "101.32.143.142",
+        srvType = "ip4",
+        port = 80,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "*",
+        srvType = "ip4",
+        port = 8080,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "*",
+        srvType = "ip4",
+        port = 80,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "*",
+        srvType = "ip4",
+        port = 9031,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "*",
+        srvType = "ip4",
+        port = 443,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "*",
+        srvType = "ip4",
+        port = 10012,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "*",
+        srvType = "ip4",
+        port = 18081,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "*",
+        srvType = "ip4",
+        port = 18600,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "*",
+        srvType = "ip4",
+        port = 20371,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "*",
+        srvType = "ip4",
+        port = 15692,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "*",
+        srvType = "ip4",
+        port = 49514,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "*",
+        srvType = "ip4",
+        port = 8013,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "*",
+        srvType = "ip4",
+        port = 90,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "*",
+        srvType = "ip4",
+        port = 554,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "*",
+        srvType = "ip4",
+        port = 35000,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "*",
+        srvType = "ip4",
+        port = 85,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "*",
+        srvType = "ip4",
+        port = 87,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "*",
+        srvType = "ip4",
+        port = 91,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "*",
+        srvType = "ip4",
+        port = 92,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "*",
+        srvType = "ip4",
+        port = 8085,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "*",
+        srvType = "ip4",
+        port = 8086,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "*",
+        srvType = "ip4",
+        port = 8088,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "*",
+        srvType = "ip4",
+        port = 10178,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "*",
+        srvType = "ip4",
+        port = 10315,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "*",
+        srvType = "ip4",
+        port = 10013,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "*",
+        srvType = "ip4",
+        port = 9030,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "*",
+        srvType = "ip4",
+        port = 8089,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "*",
+        srvType = "ip4",
+        port = 8081,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "*",
+        srvType = "ip4",
+        port = 8011,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "*",
+        srvType = "ip4",
+        port = 5692,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "*",
+        srvType = "ip4",
+        port = 3013,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "*",
+        srvType = "ip4",
+        port = 54856,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "*",
+        srvType = "ip4",
+        port = 54861,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "*",
+        srvType = "ip4",
+        port = 50324,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "*",
+        srvType = "ip4",
+        port = 51703,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "*",
+        srvType = "ip4",
+        port = 58238,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "*",
+        srvType = "ip4",
+        port = 58236,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "*",
+        srvType = "ip4",
+        port = 55817,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "*",
+        srvType = "ip4",
+        port = 57488,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "*",
+        srvType = "ip4",
+        port = 54841,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "*",
+        srvType = "ip4",
+        port = 54840,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "*",
+        srvType = "ip4",
+        port = 54825,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "*",
+        srvType = "ip4",
+        port = 54740,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "*",
+        srvType = "ip4",
+        port = 54675,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "*",
+        srvType = "ip4",
+        port = 54655,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "*",
+        srvType = "ip4",
+        port = 51965,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "*",
+        srvType = "ip4",
+        port = 51962,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "*",
+        srvType = "ip4",
+        port = 51915,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "*",
+        srvType = "ip4",
+        port = 50926,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "*",
+        srvType = "ip4",
+        port = 50906,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "*",
+        srvType = "ip4",
+        port = 50904,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "*",
+        srvType = "ip4",
+        port = 50877,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "*",
+        srvType = "ip4",
+        port = 54817,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "*",
+        srvType = "ip4",
+        port = 54384,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "*",
+        srvType = "ip4",
+        port = 100,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "*",
+        srvType = "ip4",
+        port = 24296,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "*",
+        srvType = "ip4",
+        port = 10086,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "*",
+        srvType = "ip4",
+        port = 6044,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "*",
+        srvType = "ip4",
+        port = 5555,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "*",
+        srvType = "ip4",
+        port = 10085,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "*",
+        srvType = "ip4",
+        port = 5038,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "*",
+        srvType = "ip4",
+        port = 9081,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "*",
+        srvType = "ip4",
+        port = 17000,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "*",
+        srvType = "ip4",
+        port = 8030,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "*",
+        srvType = "ip4",
+        port = 10207,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "*",
+        srvType = "ip4",
+        port = 10213,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "*",
+        srvType = "ip4",
+        port = 20000,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "*",
+        srvType = "ip4",
+        port = 8700,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "*",
+        srvType = "ip4",
+        port = 10438,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "*",
+        srvType = "ip4",
+        port = 20002,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "*",
+        srvType = "ip4",
+        port = 10226,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "*",
+        srvType = "ip4",
+        port = 10965,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "*",
+        srvType = "ip4",
+        port = 20001,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "*",
+        srvType = "ip4",
+        port = 10049,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "*",
+        srvType = "ip4",
+        port = 11112,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "*",
+        srvType = "ip4",
+        port = 10706,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "*",
+        srvType = "ip4",
+        port = 10095,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "*",
+        srvType = "ip4",
+        port = 20139,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "*",
+        srvType = "ip4",
+        port = 10289,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "*",
+        srvType = "ip4",
+        port = 10024,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "*",
+        srvType = "ip4",
+        port = 12401,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "*",
+        srvType = "ip4",
+        port = 10309,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "*",
+        srvType = "ip4",
+        port = 10060,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "*",
+        srvType = "ip4",
+        port = 11008,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "*",
+        srvType = "ip4",
+        port = 11075,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "*",
+        srvType = "ip4",
+        port = 10157,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "*",
+        srvType = "ip4",
+        port = 24798,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "*",
+        srvType = "ip4",
+        port = 10087,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "*",
+        srvType = "ip4",
+        port = 31113,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "*",
+        srvType = "ip4",
+        port = 10709,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "*",
+        srvType = "ip4",
+        port = 6667,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "*",
+        srvType = "ip4",
+        port = 10599,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "*",
+        srvType = "ip4",
+        port = 10009,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "*",
+        srvType = "ip4",
+        port = 11091,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "*",
+        srvType = "ip4",
+        port = 10392,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "*",
+        srvType = "ip4",
+        port = 10526,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "*",
+        srvType = "ip4",
+        port = 10400,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "*",
+        srvType = "ip4",
+        port = 10792,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "*",
+        srvType = "ip4",
+        port = 10980,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "*",
+        srvType = "ip4",
+        port = 14457,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "*",
+        srvType = "ip4",
+        port = 10793,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "*",
+        srvType = "ip4",
+        port = 53,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "*",
+        srvType = "ip4",
+        port = 10912,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "*",
+        srvType = "ip4",
+        port = 10497,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "*",
+        srvType = "ip4",
+        port = 10685,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "*",
+        srvType = "ip4",
+        port = 10336,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "*",
+        srvType = "ip4",
+        port = 10800,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "*",
+        srvType = "ip4",
+        port = 10120,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "*",
+        srvType = "ip4",
+        port = 10664,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "*",
+        srvType = "ip4",
+        port = 10610,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "*",
+        srvType = "ip4",
+        port = 10790,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "*",
+        srvType = "ip4",
+        port = 13728,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "*",
+        srvType = "ip4",
+        port = 10076,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "*",
+        srvType = "ip4",
+        port = 10942,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "*",
+        srvType = "ip4",
+        port = 10262,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "*",
+        srvType = "ip4",
+        port = 10780,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "*",
+        srvType = "ip4",
+        port = 10769,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "*",
+        srvType = "ip4",
+        port = 10761,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "*",
+        srvType = "ip4",
+        port = 27000,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "*",
+        srvType = "ip4",
+        port = 27040,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "*",
+        srvType = "ip4",
+        port = 27015,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "*",
+        srvType = "ip4",
+        port = 27030,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "*",
+        srvType = "ip4",
+        port = 4380,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "*",
+        srvType = "ip4",
+        port = 5060,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "*",
+        srvType = "ip4",
+        port = 5061,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "*",
+        srvType = "ip4",
+        port = 5062,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "*",
+        srvType = "ip4",
+        port = 11110,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "*",
+        srvType = "ip4",
+        port = 10010,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "*",
+        srvType = "ip4",
+        port = 10011,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "*",
+        srvType = "ip4",
+        port = 8443,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "*",
+        srvType = "ip4",
+        port = 14000,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "*",
+        srvType = "ip4",
+        port = 15000,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "*",
+        srvType = "ip4",
+        port = 10334,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "*",
+        srvType = "ip4",
+        port = 18100,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "*",
+        srvType = "ip4",
+        port = 11045,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "*",
+        srvType = "ip4",
+        port = 10371,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "*",
+        srvType = "ip4",
+        port = 10111,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "*",
+        srvType = "ip4",
+        port = 10416,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "*",
+        srvType = "ip4",
+        port = 23014,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "*",
+        srvType = "ip4",
+        port = 10536,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "*",
+        srvType = "ip4",
+        port = 22772,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "*",
+        srvType = "ip4",
+        port = 18100,
+        proto = "udp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "*",
+        srvType = "ip4",
+        port = -1,
+        proto = "tcp",
+        wifi = "none",
+        mobile = "none",
+        custom = false,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.rekoo.pubgm",
+        server = "*",
+        srvType = "ip4",
+        port = 17500,
+        proto = "tcp",
+        wifi = "allow",
+        mobile = "allow",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "tss.tencent.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "syzsdk.qq.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "gcloud.qq.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "reportlog.cdn.qq.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "bugly.qq.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "monitor.qq.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "privacy.qq.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "log.tdos.qq.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "tdid.m.qq.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "oth.eve.mdt.qq.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "analytics.m.qq.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "exp.helpshift.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "loginsdkapi.zingplay.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "opensdk.tencent.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "logiservice.qcloud.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "cloudctrl.gcloud.qq.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "logupload.gcloud.qq.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "feedback.wh.gcloud.qq.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "crash2.gcloud.qq.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "cloud.gcloud.qq.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "gvoice.gcloud.qq.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "sdkostrace.qq.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "log.tav.qq.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "sngd.gcloud.qq.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "tracer.gcloud.qq.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "report.qq.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "asia.csoversea.mbgame.anticheatexpert.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "dl.listdl.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "down.qq.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "glcs.listdl.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "intl.acekeeper.anticheatexpert.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "down.anticheatexpert.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "dl.tomjson.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "download.2.1375135419.igame.gcloudcs.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "android.crashsight.wetest.net",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "grpc.club.gpubgm.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "file.igamecj.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "lobby.igamecj.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "log.igamecj.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "cloud.gsdk.proximabeta.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "www.pubgmobile.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "static.xx.fbcdn.net",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "scontentborn1-1.xx.fbcdn.net",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "fonts.googleapis.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "abs.twimg.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "android.googleapis.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "calendarpushsubscription-pa.googleapis.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "firebaseremoteconfig.googleapis.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "firebaselogging.googleapis.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "googleads.g.doubleclick.net",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "api.facebook.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "graph.facebook.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "b-api.facebook.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "api.twitter.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "com.tencent.mobileqq",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "anticheat.me",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "helpshift.me",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "qq.me",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "anticheat.net",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "tencent.net",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "hostmaster.net",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "downanticheat.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "tob.itop.tencent.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "*.g-cdn.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "*.wellbia.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "*.igamecj.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "*.bugly.qq.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "*.tdm.qq.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "*.ace.qq.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "*.pubgmobile.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "*.gpubgm.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "*.proximabeta.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "*.intlgame.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "*.vnet.qq.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "*.qq.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "*.anticheatexpert.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "*.battleye.com",
+        srvType = "host",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "43.0.0.0/8",
+        srvType = "ip4",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "129.226.0.0/16",
+        srvType = "ip4",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "101.32.0.0/16",
+        srvType = "ip4",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "150.109.0.0/16",
+        srvType = "ip4",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "119.28.0.0/16",
+        srvType = "ip4",
+        port = -1,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "43.156.222.42",
+        srvType = "ip4",
+        port = 31003,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "162.62.10.64",
+        srvType = "ip4",
+        port = 31003,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "162.62.10.64",
+        srvType = "ip4",
+        port = 17053,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "129.226.2.37",
+        srvType = "ip4",
+        port = 10012,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "129.226.3.232",
+        srvType = "ip4",
+        port = 10012,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "129.226.1.157",
+        srvType = "ip4",
+        port = 10012,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "129.226.2.231",
+        srvType = "ip4",
+        port = 10012,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "101.32.143.171",
+        srvType = "ip4",
+        port = 10012,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "119.28.121.174",
+        srvType = "ip4",
+        port = 10012,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "150.109.0.38",
+        srvType = "ip4",
+        port = 10012,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "150.109.0.45",
+        srvType = "ip4",
+        port = 10012,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "129.226.3.250",
+        srvType = "ip4",
+        port = 443,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "129.226.2.142",
+        srvType = "ip4",
+        port = 443,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "101.32.143.250",
+        srvType = "ip4",
+        port = 443,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "203.205.137.232",
+        srvType = "ip4",
+        port = 443,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "down.anticheatexpert.com",
+        srvType = "host",
+        port = 443,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "101.32.143.171",
+        srvType = "ip4",
+        port = 443,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "downanticheat.com",
+        srvType = "host",
+        port = 443,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "119.28.183.144",
+        srvType = "ip4",
+        port = 8080,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "119.28.183.144",
+        srvType = "ip4",
+        port = 8085,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "150.109.250.19",
+        srvType = "ip4",
+        port = 8088,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "150.109.28.183",
+        srvType = "ip4",
+        port = 3013,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "150.109.22.214",
+        srvType = "ip4",
+        port = 3031,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "119.28.145.130",
+        srvType = "ip4",
+        port = 17500,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "49.51.129.54",
+        srvType = "ip4",
+        port = 18081,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "150.109.0.45",
+        srvType = "ip4",
+        port = 80,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "150.109.29.150",
+        srvType = "ip4",
+        port = 80,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "101.32.143.142",
+        srvType = "ip4",
+        port = 80,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 8080,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 80,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 9031,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 443,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 10012,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 18081,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 18600,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 20371,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 15692,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 49514,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 8013,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 90,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 554,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 35000,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 85,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 87,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 91,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 92,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 8085,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 8086,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 8088,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 10178,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 10315,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 10013,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 9030,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 8089,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 8081,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 8011,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 5692,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 3013,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 54856,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 54861,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 50324,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 51703,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 58238,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 58236,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 55817,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 57488,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 54841,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 54840,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 54825,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 54740,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 54675,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 54655,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 51965,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 51962,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 51915,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 50926,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 50906,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 50904,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 50877,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 54817,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 54384,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 100,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 24296,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 10086,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 6044,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 5555,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 10085,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 5038,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 9081,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 17000,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 8030,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 10207,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 10213,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 20000,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 8700,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 10438,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 20002,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 10226,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 10965,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 20001,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 10049,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 11112,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 10706,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 10095,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 20139,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 10289,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 10024,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 12401,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 10309,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 10060,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 11008,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 11075,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 10157,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 24798,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 10087,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 31113,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 10709,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 6667,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 10599,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 10009,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 11091,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 10392,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 10526,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 10400,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 10792,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 10980,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 14457,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 10793,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 53,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 10912,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 10497,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 10685,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 10336,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 10800,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 10120,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 10664,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 10610,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 10790,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 13728,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 10076,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 10942,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 10262,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 10780,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 10769,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 10761,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 27000,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 27040,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 27015,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 27030,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 4380,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 5060,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 5061,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 5062,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 11110,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 10010,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 10011,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 8443,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 14000,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 15000,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 10334,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 18100,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 11045,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 10371,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 10111,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 10416,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 23014,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 10536,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 22772,
+        proto = "tcp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 18100,
+        proto = "udp",
+        wifi = "deny",
+        mobile = "deny",
+        custom = true,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "*",
+        srvType = "ip4",
+        port = -1,
+        proto = "tcp",
+        wifi = "none",
+        mobile = "none",
+        custom = false,
+        priority = 0
+    },
+    {
+        appName = "PUBG MOBILE",
+        pkg = "com.vng.pubgmobile",
+        server = "*",
+        srvType = "ip4",
+        port = 17500,
+        proto = "tcp",
+        wifi = "allow",
+        mobile = "allow",
+        custom = true,
+        priority = 0
+    }
+}
+
+
+-- ============================================================
+-- [3] INTELLIGENT CATEGORY CLASSIFIER
+-- ============================================================
+F.Categories = {
+    Anticheat = {
+        "tss.tencent.com", "syzsdk.qq.com", "asia.csoversea.mbgame.anticheatexpert.com",
+        "intl.acekeeper.anticheatexpert.com", "down.anticheatexpert.com", "downanticheat.com",
+        "anticheat.me", "anticheat.net", "*.anticheatexpert.com", "*.battleye.com", "*.wellbia.com"
+    },
+    Telemetry = {
+        "reportlog.cdn.qq.com", "bugly.qq.com", "monitor.qq.com", "log.tdos.qq.com",
+        "analytics.m.qq.com", "log.tav.qq.com", "report.qq.com", "android.crashsight.wetest.net",
+        "crash2.gcloud.qq.com", "*.bugly.qq.com", "log.igamecj.com"
+    },
+    Analytics = {
+        "tdid.m.qq.com", "oth.eve.mdt.qq.com", "exp.helpshift.com", "helpshift.me",
+        "firebaseremoteconfig.googleapis.com", "firebaselogging.googleapis.com",
+        "googleads.g.doubleclick.net"
+    },
+    Social = {
+        "api.facebook.com", "graph.facebook.com", "b-api.facebook.com", "api.twitter.com",
+        "static.xx.fbcdn.net", "scontentborn1-1.xx.fbcdn.net", "abs.twimg.com", "com.tencent.mobileqq"
+    },
+    CDN_Download = {
+        "dl.listdl.com", "down.qq.com", "glcs.listdl.com", "dl.tomjson.com",
+        "download.2.1375135419.igame.gcloudcs.com", "file.igamecj.com"
+    },
+    TencentCore = {
+        "gcloud.qq.com", "cloudctrl.gcloud.qq.com", "logupload.gcloud.qq.com",
+        "feedback.wh.gcloud.qq.com", "cloud.gcloud.qq.com", "gvoice.gcloud.qq.com",
+        "sdkostrace.qq.com", "sngd.gcloud.qq.com", "tracer.gcloud.qq.com",
+        "logiservice.qcloud.com", "opensdk.tencent.com", "cloud.gsdk.proximabeta.com",
+        "*.gcloud.qq.com", "*.qq.com", "*.g-cdn.com", "*.proximabeta.com", "*.intlgame.com"
+    },
+    GameServer = {
+        "lobby.igamecj.com", "grpc.club.gpubgm.com", "*.gpubgm.com", "*.pubgmobile.com",
+        "www.pubgmobile.com", "*.vnet.qq.com", "*.igamecj.com"
+    }
+}
+
+function F.Classify(server)
+    if not server then return "Unknown" end
+    local s = tostring(server):lower()
+    for cat, list in pairs(F.Categories) do
+        for _, pattern in ipairs(list) do
+            local p = pattern:lower()
+            if p:sub(1,1) == "*" then
+                local suffix = p:sub(2)
+                if s:sub(-#suffix) == suffix or s:find(suffix, 1, true) then return cat end
+            else
+                if s == p or s:find(p, 1, true) then return cat end
+            end
+        end
+    end
+    return "Unknown"
+end
+
+
+-- ============================================================
+-- [4] CIDR & IP RANGE ENGINE
+-- ============================================================
+F.IPCache = {}
+
+function F.IPToLong(ip)
+    if F.IPCache[ip] then return F.IPCache[ip] end
+    local a, b, c, d = ip:match("^(%d+)%.(%d+)%.(%d+)%.(%d+)$")
+    if not a then return nil end
+    local num = (tonumber(a)*16777216) + (tonumber(b)*65536) + (tonumber(c)*256) + tonumber(d)
+    F.IPCache[ip] = num
+    return num
+end
+
+function F.IsIPInCIDR(ip, cidr)
+    local target = F.IPToLong(ip)
+    if not target then return ip == cidr end
+    local ipPart, maskPart = cidr:match("^(.-)/(%d+)$")
+    if not ipPart then return ip == cidr end
+    local base = F.IPToLong(ipPart)
+    if not base then return false end
+    local mask = tonumber(maskPart)
+    local shift = 32 - mask
+    local netMask = bit32.lshift(0xFFFFFFFF, shift)
+    return bit32.band(target, netMask) == bit32.band(base, netMask)
+end
+
+
+-- ============================================================
+-- [5] ADVANCED PATTERN MATCHERS
+-- ============================================================
+function F.MatchHost(ruleHost, targetHost)
+    if not ruleHost or not targetHost then return false end
+    local r, t = tostring(ruleHost):lower(), tostring(targetHost):lower()
+    if r == "*" then return true end
+    if r == t then return true end
+    if r:sub(1,2) == "*." then
+        local suffix = r:sub(2)
+        if t:sub(-#suffix) == suffix then return true end
+    end
+    return false
+end
+
+function F.MatchPort(rulePort, targetPort)
+    if rulePort == -1 then return true end
+    return rulePort == targetPort
+end
+
+function F.MatchProto(ruleProto, targetProto)
+    if not ruleProto or ruleProto == "" then return true end
+    return ruleProto:lower() == targetProto:lower()
+end
+
+
+-- ============================================================
+-- [6] GAME TRAFFIC DETECTOR (UDP BOOSTER CORE)
+-- ============================================================
+function F.IsGameCritical(pkg, server, port, proto)
+    if proto == "udp" then
+        for _, gp in ipairs(F.Config.GameUdpPorts) do
+            if port == gp then return true, "UDP_GAME_PORT" end
+        end
+    end
+    if proto == "tcp" then
+        for _, gp in ipairs(F.Config.GameTcpPorts) do
+            if port == gp then return true, "TCP_GAME_PORT" end
+        end
+    end
+    if server then
+        local s = server:lower()
+        for _, pattern in ipairs(F.Config.GameServerPatterns) do
+            if s:find(pattern, 1, true) then return true, "GAME_SERVER_HOST" end
+        end
+    end
+    return false, nil
+end
+
+
+-- ============================================================
+-- [7] CONNECTION QUALITY MONITOR (Ping/Jitter/PacketLoss)
+-- ============================================================
+F.Quality = {
+    CurrentPing = 20, AvgPing = 20, Jitter = 0, PacketLoss = 0,
+    LastUpdate = 0, History = {}, HistoryMax = 10,
+    FrameTime = 16.67, LastFrameTime = 0, FrameSpikeCount = 0,
+}
+
+function F.UpdatePing(pingMs)
+    if not pingMs or pingMs <= 0 then return end
+    F.Quality.CurrentPing = pingMs
+    table.insert(F.Quality.History, 1, pingMs)
+    if #F.Quality.History > F.Quality.HistoryMax then table.remove(F.Quality.History) end
+    local sum = 0
+    for _, v in ipairs(F.Quality.History) do sum = sum + v end
+    F.Quality.AvgPing = sum / #F.Quality.History
+    if #F.Quality.History >= 2 then
+        local diff = math.abs(F.Quality.History[1] - F.Quality.History[2])
+        F.Quality.Jitter = (F.Quality.Jitter * 0.7) + (diff * 0.3)
+    end
+    F.Quality.LastUpdate = os.clock and os.clock() or 0
+end
+
+function F.UpdateFrameTime(dtMs)
+    F.Quality.FrameTime = dtMs
+    if dtMs > F.Config.FrameSpikeThreshold then
+        F.Quality.FrameSpikeCount = F.Quality.FrameSpikeCount + 1
+    else
+        F.Quality.FrameSpikeCount = math.max(0, F.Quality.FrameSpikeCount - 1)
+    end
+end
+
+function F.GetAdaptiveMode()
+    local p = F.Quality.AvgPing
+    if p > F.Config.PingThresholdCritical then return "emergency" end
+    if p > F.Config.PingThresholdHigh then return "aggressive" end
+    if p > F.Config.PingThresholdLow then return "balanced" end
+    return "performance"
+end
+
+function F.IsFrameSpiking()
+    return F.Quality.FrameSpikeCount >= 3
+end
+
+
+-- ============================================================
+-- [8] BURST PACKET HANDLER
+-- ============================================================
+F.Burst = { Windows = {} }
+
+function F.CheckBurst(pkg, server, port, proto)
+    local key = pkg .. "|" .. (proto or "tcp") .. "|" .. (port or -1)
+    local now = os.clock and os.clock() or 0
+    local window = F.Burst.Windows[key]
+    if not window or (now - window.t) > F.Config.BurstWindow then
+        F.Burst.Windows[key] = { count = 1, t = now }
+        return true
+    end
+    window.count = window.count + 1
+    return window.count <= F.Config.BurstPacketLimit
+end
+
+
+-- ============================================================
+-- [9] TOKEN BUCKET RATE LIMITER (Per Category)
+-- ============================================================
+F.RateLimit = { Buckets = {} }
+
+function F.RateLimit.Check(cat, key)
+    local cfg = F.Config.RateLimits[cat] or F.Config.RateLimits.Unknown
+    if cfg.rate <= 0 then return false end
+    local now = os.clock and os.clock() or 0
+    local bucket = F.RateLimit.Buckets[key]
+    if not bucket then
+        bucket = { tokens = cfg.burst, last = now }
+        F.RateLimit.Buckets[key] = bucket
+    end
+    local elapsed = now - bucket.last
+    bucket.tokens = math.min(cfg.burst, bucket.tokens + elapsed * cfg.rate)
+    bucket.last = now
+    if bucket.tokens >= 1 then
+        bucket.tokens = bucket.tokens - 1
+        return true
+    end
+    return false
+end
+
+
+-- ============================================================
+-- [10] LRU CACHE ENGINE (Size-Limited, Auto Evict)
+-- ============================================================
+F.LRUCache = { Data = {}, Order = {}, MaxSize = 512 }
+
+function F.LRUCache.Get(key)
+    local entry = F.LRUCache.Data[key]
+    if not entry then return nil end
+    for i, k in ipairs(F.LRUCache.Order) do
+        if k == key then table.remove(F.LRUCache.Order, i); break end
+    end
+    table.insert(F.LRUCache.Order, key)
+    return entry
+end
+
+function F.LRUCache.Set(key, value)
+    if #F.LRUCache.Order >= F.LRUCache.MaxSize then
+        local oldest = table.remove(F.LRUCache.Order, 1)
+        F.LRUCache.Data[oldest] = nil
+    end
+    for i, k in ipairs(F.LRUCache.Order) do
+        if k == key then table.remove(F.LRUCache.Order, i); break end
+    end
+    table.insert(F.LRUCache.Order, key)
+    F.LRUCache.Data[key] = value
+end
+
+function F.LRUCache.Clear()
+    F.LRUCache.Data = {}
+    F.LRUCache.Order = {}
+end
+
+
+-- ============================================================
+-- [11] RULE PRECOMPILER — O(1) Lookup Tables
+-- ============================================================
+F.Compiled = { Exact = {}, Suffix = {}, CIDR = {}, Wild = {}, ByPkg = {} }
+
+function F.PrecompileRules()
+    F.Compiled = { Exact = {}, Suffix = {}, CIDR = {}, Wild = {}, ByPkg = {} }
+    for _, rule in ipairs(F.Rules) do
+        F.Compiled.ByPkg[rule.pkg] = F.Compiled.ByPkg[rule.pkg] or {}
+        table.insert(F.Compiled.ByPkg[rule.pkg], rule)
+        local s = rule.server
+        if s == "*" then
+            F.Compiled.Wild[rule.pkg] = F.Compiled.Wild[rule.pkg] or {}
+            table.insert(F.Compiled.Wild[rule.pkg], rule)
+        elseif s:find("/") then
+            F.Compiled.CIDR[rule.pkg] = F.Compiled.CIDR[rule.pkg] or {}
+            table.insert(F.Compiled.CIDR[rule.pkg], rule)
+        elseif s:sub(1,2) == "*." then
+            local suffix = s:sub(2)
+            F.Compiled.Suffix[rule.pkg] = F.Compiled.Suffix[rule.pkg] or {}
+            F.Compiled.Suffix[rule.pkg][suffix] = F.Compiled.Suffix[rule.pkg][suffix] or {}
+            table.insert(F.Compiled.Suffix[rule.pkg][suffix], rule)
+        else
+            F.Compiled.Exact[rule.pkg] = F.Compiled.Exact[rule.pkg] or {}
+            F.Compiled.Exact[rule.pkg][s] = F.Compiled.Exact[rule.pkg][s] or {}
+            table.insert(F.Compiled.Exact[rule.pkg][s], rule)
+        end
+    end
+end
+
+function F.FindRulesFast(pkg, server, port, proto)
+    local candidates = {}
+    local function add(rules) for _, r in ipairs(rules) do table.insert(candidates, r) end end
+
+    local pkgsToCheck = { pkg }
+    if pkg ~= "com.tencent.ig" then table.insert(pkgsToCheck, "com.tencent.ig") end
+    table.insert(pkgsToCheck, "*")
+
+    for _, p in ipairs(pkgsToCheck) do
+        local exact = (F.Compiled.Exact[p] or {})[server]
+        if exact then add(exact) end
+
+        if F.Compiled.Suffix[p] then
+            for suffix, rules in pairs(F.Compiled.Suffix[p]) do
+                if server:sub(-#suffix) == suffix then add(rules) end
+            end
+        end
+
+        if F.Compiled.CIDR[p] then
+            for _, r in ipairs(F.Compiled.CIDR[p]) do
+                if F.IsIPInCIDR(server, r.server) then add({r}) end
+            end
+        end
+
+        if F.Compiled.Wild[p] then add(F.Compiled.Wild[p]) end
+    end
+
+    local matched = {}
+    for _, r in ipairs(candidates) do
+        if F.MatchPort(r.port, port) and F.MatchProto(r.proto, proto) then
+            table.insert(matched, r)
+        end
+    end
+    return matched
+end
+
+
+-- ============================================================
+-- [12] CONNECTION LIFECYCLE TRACKER
+-- ============================================================
+F.Connections = { Active = {}, MaxActive = 64 }
+
+function F.Connections.Open(pkg, server, port, proto)
+    local key = pkg .. "|" .. server .. "|" .. port .. "|" .. proto
+    local now = os.clock and os.clock() or 0
+    F.Connections.Active[key] = {
+        state = "OPEN", start = now, last = now,
+        bytesIn = 0, bytesOut = 0, pkg = pkg, server = server,
+    }
+    local count = 0
+    for _ in pairs(F.Connections.Active) do count = count + 1 end
+    if count > F.Connections.MaxActive then
+        local oldestKey, oldestTime = nil, math.huge
+        for k, v in pairs(F.Connections.Active) do
+            if v.start < oldestTime then oldestTime = v.start; oldestKey = k end
+        end
+        if oldestKey then F.Connections.Active[oldestKey] = nil end
+    end
+    return key
+end
+
+function F.Connections.Close(key)
+    if F.Connections.Active[key] then F.Connections.Active[key] = nil end
+end
+
+function F.Connections.Update(key, bytesIn, bytesOut)
+    local conn = F.Connections.Active[key]
+    if conn then
+        conn.bytesIn = conn.bytesIn + (bytesIn or 0)
+        conn.bytesOut = conn.bytesOut + (bytesOut or 0)
+        conn.last = os.clock and os.clock() or 0
+    end
+end
+
+function F.Connections.GetActiveCount()
+    local n = 0; for _ in pairs(F.Connections.Active) do n = n + 1 end; return n
+end
+
+function F.Connections.GetTelemetryCount()
+    local n = 0
+    for _, conn in pairs(F.Connections.Active) do
+        if F.Classify(conn.server) == "Telemetry" then n = n + 1 end
+    end
+    return n
+end
+
+
+-- ============================================================
+-- [13] FOREGROUND / BACKGROUND DETECTOR
+-- ============================================================
+F.AppState = { IsForeground = true, BackgroundTime = 0 }
+
+function F.SetForeground(isFg)
+    F.AppState.IsForeground = isFg
+    if not isFg then
+        F.AppState.BackgroundTime = os.clock and os.clock() or 0
+        if F.Config.LogBlocks then print("[X3FW] BACKGROUND — Aggressive ON") end
+    else
+        F.AppState.BackgroundTime = 0
+        if F.Config.LogBlocks then print("[X3FW] FOREGROUND — Normal") end
+    end
+end
+
+
+-- ============================================================
+-- [14] PACKET HEURISTIC FILTER (Size-Based Detection)
+-- ============================================================
+function F.AnalyzePacket(pkg, server, port, proto, size)
+    if not size then return true, "NO_SIZE" end
+    local cat = F.Classify(server)
+    if cat == "GameServer" and size >= F.Config.GameSizeMin and size <= F.Config.GameSizeMax then
+        return true, "GAME_PACKET_SIZE_OK"
+    end
+    if (cat == "Telemetry" or cat == "Analytics") and size <= F.Config.TelemetrySizeMax then
+        local key = pkg .. "|" .. server .. "|" .. size
+        if not F.RateLimit.Check(cat, key) then
+            return false, "TELEMETRY_SIZE_THROTTLE"
+        end
+    end
+    return true, "HEURISTIC_PASS"
+end
+
+
+-- ============================================================
+-- [15] SMART BLOCK ENGINE — 5 Layer + Rate Limit + Heuristic
+-- ============================================================
+F.DecisionCacheTime = 0
+
+function F.ShouldBlock(pkg, server, port, proto, netType)
+    -- ANTI-CRACK: Corruption guard
+    if _G.X3.AC_IsCorrupted and _G.X3.AC_IsCorrupted() then
+        return false, nil, "CORRUPTED"
+    end
+
+    if not F.Config.EnableBlocking then return false, nil, "DISABLED" end
+    if not pkg or not server then return false, nil, "INVALID" end
+    port = port or -1; proto = proto or "tcp"; netType = netType or "wifi"
+
+    -- LAYER 1: Game Critical Whitelist (ALWAYS ALLOW)
+    local isGame, gameReason = F.IsGameCritical(pkg, server, port, proto)
+    if isGame then
+        if F.Config.LogBoost then
+            print(string.format("[X3FW] BOOST %s | %s:%d | %s", gameReason, server, port, proto))
+        end
+        return false, nil, "GAME_WHITELIST"
+    end
+
+    -- LAYER 2: Foreground/Background
+    if F.Config.BackgroundBlockNonEssential and not F.AppState.IsForeground then
+        local cat = F.Classify(server)
+        if cat ~= "GameServer" and cat ~= "TencentCore" then
+            return true, {server=server, reason="BACKGROUND_BLOCK"}, "BG_BLOCK"
+        end
+    end
+
+    -- LAYER 3: Frame Stabilizer
+    if F.Config.ThrottleNonEssentialOnSpike and F.IsFrameSpiking() then
+        local cat = F.Classify(server)
+        if cat ~= "GameServer" and cat ~= "TencentCore" then
+            return true, {server=server, reason="FRAME_SPIKE_THROTTLE"}, "FRAME_THROTTLE"
+        end
+    end
+
+    -- LAYER 4: Adaptive Mode
+    local mode = F.Config.Mode
+    if mode == "auto" then mode = F.GetAdaptiveMode() end
+    if mode == "emergency" then
+        local cat = F.Classify(server)
+        if cat ~= "GameServer" then
+            return true, {server=server, reason="EMERGENCY_MODE"}, "ADAPTIVE_BLOCK"
+        end
+    elseif mode == "aggressive" then
+        local cat = F.Classify(server)
+        if cat == "Telemetry" or cat == "Analytics" or cat == "Social" or cat == "Anticheat" then
+            return true, {server=server, reason="AGGRESSIVE_MODE"}, "ADAPTIVE_BLOCK"
+        end
+    end
+
+    -- LAYER 5: Burst Check
+    if proto == "udp" and not F.CheckBurst(pkg, server, port, proto) then
+        return true, {server=server, reason="UDP_BURST_LIMIT"}, "BURST_BLOCK"
+    end
+
+    -- LAYER 6: Heuristic Size Filter
+    local hOk, hReason = F.AnalyzePacket(pkg, server, port, proto, nil)
+    if not hOk then
+        return true, {server=server, reason=hReason}, "HEURISTIC_BLOCK"
+    end
+
+    -- LAYER 7: Rate Limit per Category
+    local cat = F.Classify(server)
+    local rateKey = pkg .. "|" .. server .. "|" .. port
+    if not F.RateLimit.Check(cat, rateKey) then
+        return true, {server=server, reason="RATE_LIMITED"}, "RATE_LIMIT"
+    end
+
+    -- LAYER 8: Precompiled Rule Match
+    local cacheKey = pkg .. "|" .. server .. "|" .. port .. "|" .. proto .. "|" .. netType
+    local now = os.clock and os.clock() or 0
+    local cached = F.LRUCache.Get(cacheKey)
+    if cached and (now - cached.t) < F.Config.CacheTTL then
+        return cached.blocked, cached.rule, cached.reason
+    end
+
+    local matched = F.FindRulesFast(pkg, server, port, proto)
+    local bestMatch, bestPriority = nil, -999
+    for _, r in ipairs(matched) do
+        if r.priority > bestPriority then bestPriority = r.priority; bestMatch = r end
+    end
+
+    local blocked, reason = false, "DEFAULT_ALLOW"
+    if bestMatch then
+        local action = (netType == "mobile") and bestMatch.mobile or bestMatch.wifi
+        if action == "deny" then blocked = true; reason = "RULE_BLOCK" end
+    end
+
+    if now - F.DecisionCacheTime > 10 then
+        F.LRUCache.Clear()
+        F.DecisionCacheTime = now
+    end
+    F.LRUCache.Set(cacheKey, { blocked = blocked, rule = bestMatch, reason = reason, t = now })
+    return blocked, bestMatch, reason
+end
+
+
+-- ============================================================
+-- [16] NETWORK HOOK INTEGRATION (Game-Ready)
+-- ============================================================
+F.Stats = {
+    TotalBlocked = 0, TotalAllowed = 0, TotalBoosted = 0,
+    ByCategory = {}, ByReason = {},
+}
+
+function F.HookConnect(pkg, server, port, proto, netType)
+    local blocked, rule, reason = F.ShouldBlock(pkg, server, port, proto, netType)
+    if blocked then
+        F.Stats.TotalBlocked = F.Stats.TotalBlocked + 1
+        F.Stats.ByReason[reason] = (F.Stats.ByReason[reason] or 0) + 1
+        local cat = F.Classify(server)
+        F.Stats.ByCategory[cat] = (F.Stats.ByCategory[cat] or 0) + 1
+        if F.Config.LogBlocks then
+            print(string.format("[X3FW] BLOCK | %s | %s:%d | %s | %s | %s",
+                pkg, server, port or -1, proto or "tcp", reason, cat))
+        end
+        return false
+    else
+        F.Stats.TotalAllowed = F.Stats.TotalAllowed + 1
+        if reason == "GAME_WHITELIST" then F.Stats.TotalBoosted = F.Stats.TotalBoosted + 1 end
+        return true
+    end
+end
+
+function F.HookDNS(pkg, hostname)
+    return F.HookConnect(pkg, hostname, 53, "udp", "wifi")
+end
+
+function F.HookUDP(pkg, server, port, size)
+    return F.HookConnect(pkg, server, port, "udp", "wifi")
+end
+
+function F.HookTCP(pkg, server, port)
+    return F.HookConnect(pkg, server, port, "tcp", "wifi")
+end
+
+
+-- ============================================================
+-- [17] FRAME STABILIZER HOOK (Call every frame)
+-- ============================================================
+F._LastMode = "performance"
+
+function F.OnFrame(dtMs)
+    F.UpdateFrameTime(dtMs)
+    if F.Config.Mode == "auto" then
+        local mode = F.GetAdaptiveMode()
+        if mode ~= F._LastMode then
+            F._LastMode = mode
+            if F.Config.LogBlocks then print("[X3FW] MODE -> " .. mode:upper()) end
+        end
+    end
+    -- ANTI-CRACK trap tick
+    if _G.X3.AC_TrapTick then _G.X3.AC_TrapTick() end
+end
+
+
+-- ============================================================
+-- [18] CONTROL API + DYNAMIC RULE API
+-- ============================================================
+function F.Enable() F.Config.EnableBlocking = true end
+function F.Disable() F.Config.EnableBlocking = false end
+function F.SetLog(v) F.Config.LogBlocks = v end
+function F.SetLogBoost(v) F.Config.LogBoost = v end
+function F.SetMode(m) F.Config.Mode = m; F._LastMode = m end
+function F.SetPing(p) F.UpdatePing(p) end
+function F.SetFrameTime(dt) F.UpdateFrameTime(dt) end
+function F.SetForeground(isFg) F.SetForeground(isFg) end
+
+function F.AddRule(rule)
+    table.insert(F.Rules, rule)
+    F.PrecompileRules()
+    F.LRUCache.Clear()
+    if F.Config.LogBlocks then print("[X3FW] RULE ADDED: " .. rule.server) end
+end
+
+function F.RemoveRule(pkg, server, port, proto)
+    for i = #F.Rules, 1, -1 do
+        local r = F.Rules[i]
+        if r.pkg == pkg and r.server == server and r.port == port and r.proto == proto then
+            table.remove(F.Rules, i)
+        end
+    end
+    F.PrecompileRules()
+    F.LRUCache.Clear()
+end
+
+function F.UpdateRuleAction(pkg, server, port, proto, newAction)
+    for _, r in ipairs(F.Rules) do
+        if r.pkg == pkg and r.server == server and r.port == port and r.proto == proto then
+            r.wifi = newAction; r.mobile = newAction
+            F.LRUCache.Clear(); return true
+        end
+    end
+    return false
+end
+
+function F.AddBlockHost(pkg, host)
+    F.AddRule({ appName = "PUBG MOBILE", pkg = pkg, server = host,
+        srvType = "host", port = -1, proto = "tcp",
+        wifi = "deny", mobile = "deny", custom = true, priority = 99 })
+end
+
+function F.AddAllowHost(pkg, host)
+    F.AddRule({ appName = "PUBG MOBILE", pkg = pkg, server = host,
+        srvType = "host", port = -1, proto = "tcp",
+        wifi = "allow", mobile = "allow", custom = true, priority = 100 })
+end
+
+
+-- ============================================================
+-- [19] STATS & MONITORING
+-- ============================================================
+function F.GetStats()
+    return {
+        Rules = #F.Rules, Blocked = F.Stats.TotalBlocked,
+        Allowed = F.Stats.TotalAllowed, Boosted = F.Stats.TotalBoosted,
+        Mode = F.GetAdaptiveMode(), Ping = F.Quality.AvgPing,
+        Jitter = F.Quality.Jitter, FrameTime = F.Quality.FrameTime,
+        FrameSpiking = F.IsFrameSpiking(),
+        ActiveConns = F.Connections.GetActiveCount(),
+        TelemetryConns = F.Connections.GetTelemetryCount(),
+        ByCategory = F.Stats.ByCategory, ByReason = F.Stats.ByReason,
+        CacheSize = #F.LRUCache.Order,
+    }
+end
+
+function F.ResetStats()
+    F.Stats = { TotalBlocked = 0, TotalAllowed = 0, TotalBoosted = 0, ByCategory = {}, ByReason = {} }
+    F.LRUCache.Clear()
+    F.Burst.Windows = {}
+    F.RateLimit.Buckets = {}
+end
+
+
+-- ============================================================
+-- [20] ANTI-CRACK LAYERS 1-7
+-- ============================================================
+
+-- Layer 1: Environment Fingerprinting
+local _ENV = { hooks = {}, baseline = {}, seal = nil }
+
+pcall(function()
+    if debug and debug.gethook then _ENV.hooks = {debug.gethook()} end
+    for _, g in ipairs({"pairs","ipairs","pcall","xpcall","tostring","type","math","string","table","os"}) do
+        _ENV.baseline[g] = tostring(_G[g])
+    end
+end)
+
+function _G.X3.AC_CheckEnv()
+    local violations = {}
+    pcall(function()
+        if debug and debug.gethook then
+            local h = {debug.gethook()}
+            if h[1] and h[1] ~= _ENV.hooks[1] then table.insert(violations, "DEBUG_HOOK") end
+        end
+    end)
+    pcall(function()
+        for k, v in pairs(_G) do
+            if type(k) == "string" and k:sub(1,3) == "AC_" and not _ENV.baseline[k] then
+                table.insert(violations, "GLOBAL_POLLUTION:" .. k)
+            end
+        end
+    end)
+    if _G.X3._AC_SEAL and _G.X3._AC_SEAL ~= _ENV.seal then
+        table.insert(violations, "SEAL_BROKEN")
+    end
+    return violations
+end
+
+-- Layer 2: Code Integrity Hash
+local _HASH = {}
+local function _HASHFN(fn)
+    local src = tostring(fn)
+    local h = 0x811c9dc5
+    for i = 1, #src do
+        h = bit32.bxor(h, string.byte(src, i))
+        h = (h * 0x01000193) % 0x100000000
+    end
+    return h
+end
+
+function _G.X3.AC_Protect(fn, name) _HASH[name] = _HASHFN(fn); return fn end
+function _G.X3.AC_Verify(name, fn) return _HASH[name] and _HASHFN(fn) == _HASH[name] end
+
+-- Layer 3: Anti-Tamper Watch
+_G.X3._AC_WATCHLIST = {}
+function _G.X3.AC_Watch(varPath, expectedType)
+    _G.X3._AC_WATCHLIST[varPath] = {type = expectedType, snapshot = nil}
+    pcall(function()
+        local parts = {}
+        for part in varPath:gmatch("[^%.]+") do table.insert(parts, part) end
+        local cur = _G
+        for i = 1, #parts - 1 do cur = cur[parts[i]] end
+        local target = cur[parts[#parts]]
+        _G.X3._AC_WATCHLIST[varPath].snapshot = tostring(target)
+    end)
+end
+
+function _G.X3.AC_ScanTamper()
+    local alerts = {}
+    for path, data in pairs(_G.X3._AC_WATCHLIST) do
+        local ok, current = pcall(function()
+            local parts = {}
+            for part in path:gmatch("[^%.]+") do table.insert(parts, part) end
+            local cur = _G
+            for i = 1, #parts - 1 do cur = cur[parts[i]] end
+            return cur[parts[#parts]]
+        end)
+        if ok then
+            if tostring(current) ~= data.snapshot then table.insert(alerts, path) end
+            if data.type and type(current) ~= data.type then table.insert(alerts, path .. ":TYPE") end
+        end
+    end
+    return alerts
+end
+
+-- Layer 4: Execution Path Validation
+_G.X3._AC_PATH = { expected = {"Init","Precompile","CheckEnv","Verify","Seal"}, actual = {}, checksum = 0 }
+function _G.X3.AC_Step(stepName)
+    table.insert(_G.X3._AC_PATH.actual, stepName)
+    local h = 0
+    for _, s in ipairs(_G.X3._AC_PATH.actual) do
+        for i = 1, #s do h = h + string.byte(s, i) * 31 end
+    end
+    _G.X3._AC_PATH.checksum = h
+end
+function _G.X3.AC_ValidatePath()
+    if #_G.X3._AC_PATH.actual < #_G.X3._AC_PATH.expected then return false, "INCOMPLETE_INIT" end
+    for i = 1, #_G.X3._AC_PATH.expected do
+        if _G.X3._AC_PATH.actual[i] ~= _G.X3._AC_PATH.expected[i] then return false, "PATH_VIOLATION:" .. i end
+    end
+    return true, "OK"
+end
+
+-- Layer 5: Memory Scramble / Self-Destruct
+_G.X3._AC_CORRUPT = false
+function _G.X3.AC_SelfDestruct(reason)
+    _G.X3._AC_CORRUPT = true
+    if _G.X3.Firewall then
+        _G.X3.Firewall.Config.EnableBlocking = false
+        _G.X3.Firewall.Config.EnableBoost = false
+        _G.X3.Firewall.Rules = {}
+        _G.X3.Firewall.Compiled = nil
+    end
+    _HASH = {}
+    _G.X3._AC_PATH.checksum = math.random(1, 999999)
+    _G.X3._AC_SEAL = nil
+    if _G.X3.Firewall and _G.X3.Firewall.Config.LogBlocks then print("[X3AC] STATE: " .. _K[1]) end
+end
+function _G.X3.AC_IsCorrupted() return _G.X3._AC_CORRUPT == true end
+
+-- Layer 6: Delayed Trap
+_G.X3._AC_TRAP = { lastCheck = 0, interval = 5.0 + math.random(), failCount = 0, maxFail = 3 }
+function _G.X3.AC_TrapTick()
+    if _G.X3.AC_IsCorrupted() then return end
+    local now = os.clock and os.clock() or 0
+    if (now - _G.X3._AC_TRAP.lastCheck) < _G.X3._AC_TRAP.interval then return end
+    _G.X3._AC_TRAP.lastCheck = now
+    _G.X3._AC_TRAP.interval = 5.0 + (math.random() * 3.0)
+    local failReasons = {}
+    local envBad = _G.X3.AC_CheckEnv()
+    for _, v in ipairs(envBad) do table.insert(failReasons, v) end
+    local tamper = _G.X3.AC_ScanTamper()
+    for _, v in ipairs(tamper) do table.insert(failReasons, v) end
+    local ok, reason = _G.X3.AC_ValidatePath()
+    if not ok then table.insert(failReasons, reason) end
+    if _G.X3.Firewall and _G.X3.Firewall.ShouldBlock then
+        if not _G.X3.AC_Verify("ShouldBlock", _G.X3.Firewall.ShouldBlock) then
+            table.insert(failReasons, "FN_HASH_MISMATCH")
+        end
+    end
+    if #failReasons > 0 then
+        _G.X3._AC_TRAP.failCount = _G.X3._AC_TRAP.failCount + 1
+        if _G.X3._AC_TRAP.failCount >= _G.X3._AC_TRAP.maxFail then
+            _G.X3.AC_SelfDestruct(table.concat(failReasons, ","))
+        end
+    else
+        _G.X3._AC_TRAP.failCount = math.max(0, _G.X3._AC_TRAP.failCount - 1)
+    end
+end
+
+-- Layer 7: Seal & Bind
+function _G.X3.AC_Seal()
+    _ENV.seal = tostring(_G.X3.Firewall) .. tostring(os.clock and os.clock() or 0)
+    _G.X3._AC_SEAL = _ENV.seal
+    _G.X3.AC_Watch("X3.Firewall.ShouldBlock", "function")
+    _G.X3.AC_Watch("X3.Firewall.HookConnect", "function")
+    _G.X3.AC_Watch("X3.Firewall.Rules", "table")
+    _G.X3.AC_Watch("X3.Firewall.Config.EnableBlocking", "boolean")
+    if _G.X3.Firewall then
+        if _G.X3.Firewall.ShouldBlock then _G.X3.AC_Protect(_G.X3.Firewall.ShouldBlock, "ShouldBlock") end
+        if _G.X3.Firewall.HookConnect then _G.X3.AC_Protect(_G.X3.Firewall.HookConnect, "HookConnect") end
+    end
+    _G.X3.AC_Step("Seal")
+end
+
+
+-- ============================================================
+-- [21] INIT SEQUENCE
+-- ============================================================
+F.PrecompileRules()
+
+-- Anti-Crack init
+_G.X3.AC_Step("Init")
+_G.X3.AC_Step("Precompile")
+_G.X3.AC_Step("CheckEnv")
+_G.X3.AC_Step("Verify")
+_G.X3.AC_Seal()
+
+F._LastMode = F.Config.Mode
+
+if F.Config.LogBlocks then
+    print(string.format("[X3FW] v7.0 ULTIMATE LOADED | Rules:%d | Compiled:YES | LRU:%d | RateLimit:ON | Tracker:ON | AntiCrack:SEALED",
+        #F.Rules, F.LRUCache.MaxSize))
+end
+
+    end)
+end
+
+-- Tự động kích hoạt X3 Firewall Engine khi Payload tải
+pcall(InitializeX3FirewallEngine)
+
 
 -- =========================== PHẦN 32: INJECT TO ORIGINAL CLASS ===========================
 -- Sao chép tất cả các phương thức mod sang OriginalClass để game nhận diện động
