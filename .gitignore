@@ -6,3 +6,6 @@ sessions.json.tmp
 ecosystem.config.*
 .env
 .DS_Store
+*.bak
+*.bak*
+*.tmp

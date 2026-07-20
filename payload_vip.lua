@@ -6862,6 +6862,11 @@ local function StartAntiBanRecoveryLoop()
             end
         end)
         pcall(function()
+            if _G.X3 and _G.X3.Bypass and _G.X3.Bypass.SelfHeal then
+                _G.X3.Bypass.SelfHeal()
+            end
+        end)
+        pcall(function()
             local ok, ticker = pcall(require, "common.time_ticker")
             if ok and ticker and ticker.AddTimerOnce then
                 ticker.AddTimerOnce(15.0, AntiBanLoop)
@@ -6876,6 +6881,732 @@ local function StartAntiBanRecoveryLoop()
     end)
 end
 
+-- ====================================================================================
+-- PHẦN 34: X3 BYPASS ENGINE v8.0 (JAILBREAK / ROOT / GIẢ LẬP / INJECTION / PTRACE BYPASS)
+-- Tích hợp từ: jailbreakdetct.lua
+-- Hỗ trợ: Cross-Platform (Android + iOS) | Kernel | MemoryGuard | TSS SDK | Frida | Substrate
+-- ====================================================================================
+_G.X3 = _G.X3 or {}
+_G.X3.Bypass = _G.X3.Bypass or {
+    -- Trạng thái nạp patch các phân vùng
+    ACTIVE = false,
+    KernelPatched = false,
+    MemoryGuardPatched = false,
+    TssPatched = false,
+    AntiCheatPatched = false,
+    IntegrityPatched = false,
+    RootPatched = false,
+    EmulatorPatched = false,
+    JailbreakPatched = false,
+    IpaPatched = false,
+    FridaPatched = false,
+    PtracePatched = false,
+    SyscallPatched = false,
+    SandboxPatched = false,
+
+    -- Chỉ số thử nghiệm & đếm
+    PatchAttempts = 0,
+    LastPatchTime = 0,
+    RetryCount = 0,
+    MaxRetries = 5,
+
+    -- Danh sách cấu hình iOS
+    IosChecks = {},
+    IosPaths = {},
+    IosSchemes = {},
+
+    -- Danh sách cấu hình Android
+    AndroidChecks = {},
+
+    -- Tự động tự chữa lành (Self-Heal)
+    AutoHeal = true,
+    HealInterval = 10.0,
+    LastHeal = 0,
+}
+
+local B34 = _G.X3.Bypass
+
+-- [34.0] Bitwise 32-bit Fallback Helper (Hỗ trợ toán tử bit32 cho môi trường Lua thiếu thư viện)
+if not bit32 then
+    bit32 = {
+        lshift = function(a, b) return a * (2^b) end,
+        band = function(a, b)
+            local r, p = 0, 1
+            for i = 0, 31 do
+                if a % 2 == 1 and b % 2 == 1 then r = r + p end
+                a, b = math.floor(a / 2), math.floor(b / 2)
+                p = p * 2
+            end
+            return r
+        end,
+        bor = function(a, b)
+            local r, p = 0, 1
+            for i = 0, 31 do
+                if a % 2 == 1 or b % 2 == 1 then r = r + p end
+                a, b = math.floor(a / 2), math.floor(b / 2)
+                p = p * 2
+            end
+            return r
+        end,
+        bnot = function(a) return 4294967295 - a end,
+        bxor = function(a, b)
+            local r, p = 0, 1
+            for i = 0, 31 do
+                if (a % 2) ~= (b % 2) then r = r + p end
+                a, b = math.floor(a / 2), math.floor(b / 2)
+                p = p * 2
+            end
+            return r
+        end
+    }
+end
+
+-- [34.1] Safe Module Require & Platform Detection (Phát hiện hệ điều hành Android / iOS)
+local function X3_SafeRequire(path)
+    local ok, mod = pcall(function() return require(path) end)
+    if ok and mod then return mod end
+    local parts = {}
+    for part in path:gmatch("[^%.]+") do table.insert(parts, part) end
+    local cur = _G
+    for _, p in ipairs(parts) do
+        cur = cur[p]
+        if not cur then return nil end
+    end
+    return cur
+end
+
+function B34.DetectPlatform()
+    local platform = "unknown"
+    pcall(function()
+        if _G.UE4Runtime and _G.UE4Runtime.GetPlatformName then
+            platform = _G.UE4Runtime.GetPlatformName()
+        elseif _G.ANDROID_VERSION then
+            platform = "Android"
+        elseif _G.IOS_VERSION or _G.UIDevice then
+            platform = "iOS"
+        end
+    end)
+    if platform == "unknown" then
+        pcall(function()
+            local app = _G.Java and _G.Java.android and _G.Java.android.content and _G.Java.android.content.Context
+            if app then platform = "Android" end
+        end)
+    end
+    return platform
+end
+
+function B34.IsIOS() return B34.DetectPlatform() == "iOS" end
+function B34.IsAndroid() return B34.DetectPlatform() == "Android" end
+
+-- [34.2] LAYER 1: Kernel Check Bypass (Bypass hệ thống kiểm tra Kernel trên Android & iOS)
+function B34.PatchKernelCheck()
+    if B34.KernelPatched then return true end
+    local ok = false
+    pcall(function()
+        local subsystems = X3_SafeRequire("GameLua.GameCore.Module.Subsystem.SubsystemMgr")
+        if subsystems and subsystems.Get then
+            local kernel = subsystems:Get("ClientKernelCheckSubsystem")
+            if kernel then
+                kernel.IsKernelClean = function() return true end
+                kernel.GetKernelVersion = function() return "4.19.113-perf+" end
+                kernel.IsBootloaderLocked = function() return true end
+                kernel.CheckKernelIntegrity = function() return true, {status="clean", code=0} end
+                kernel.VerifyKernelSignature = function() return true end
+                kernel.IsKernelModified = function() return false end
+                kernel.GetKernelHash = function() return "official" end
+                ok = true
+            end
+        end
+        local iosKernel = X3_SafeRequire("GameLua.GameCore.Module.Subsystem.iOSKernelSubsystem")
+        if iosKernel then
+            iosKernel.IsKernelPatched = function() return false end
+            iosKernel.CheckKernelExploit = function() return false, "none" end
+            iosKernel.GetKernelSlide = function() return 0 end
+            iosKernel.IsKASLRBypassed = function() return false end
+            ok = true
+        end
+    end)
+    B34.KernelPatched = ok
+    return ok
+end
+
+-- [34.3] LAYER 2: Memory Guard Bypass (Bypass hệ thống quét bộ nhớ động Memory Guard)
+function B34.PatchMemoryGuard()
+    if B34.MemoryGuardPatched then return true end
+    local ok = false
+    pcall(function()
+        local subsystems = X3_SafeRequire("GameLua.GameCore.Module.Subsystem.SubsystemMgr")
+        if subsystems and subsystems.Get then
+            local mg = subsystems:Get("ClientMemoryGuardSubsystem")
+            if mg then
+                mg.IsMemoryClean = function() return true, {code=0, detail="no_anomaly"} end
+                mg.ScanResult = function() return "clean", 0 end
+                mg.GetMemoryReport = function() return {status="clean", regions=0, anomalies={}} end
+                mg.PerformDeepScan = function() return true, "clean" end
+                mg.CheckMemoryRegion = function() return true end
+                mg.DetectHook = function() return false, {} end
+                mg.GetHookList = function() return {} end
+                ok = true
+            end
+        end
+    end)
+    B34.MemoryGuardPatched = ok
+    return ok
+end
+
+-- [34.4] LAYER 3: TSS SDK Bypass (Giả lập phản hồi an toàn cho Tencent Security Service SDK)
+function B34.PatchTssSdk()
+    if B34.TssPatched then return true end
+    local ok = false
+    pcall(function()
+        _G.TssSdk = _G.TssSdk or {}
+        local T = _G.TssSdk
+        T.CheckKernel = function() return true, {status="verified", tampered=false, code=0} end
+        T.VerifyBoot = function() return true, {locked=true, verified=true, bootloader="locked"} end
+        T.CheckMemory = function() return true, {clean=true, modified=false} end
+        T.GetSecurityLevel = function() return 3, "high" end
+        T.ReportStatus = function() return {safe=true, threat=0} end
+        T.AntiCheatCheck = function() return true, "pass" end
+        T.CheckSignature = function() return true, {valid=true, signer="official"} end
+        T.GetDeviceRisk = function() return 0, "low" end
+        T.CheckEnvironment = function() return true, {emulator=false, root=false, jailbreak=false} end
+        T.ReportBehavior = function() return true end
+        ok = true
+    end)
+    B34.TssPatched = ok
+    return ok
+end
+
+-- [34.5] LAYER 4: Anti-Cheat Subsystem Bypass (Vô hiệu hóa kiểm tra hack/cheat của game & GameGuard)
+function B34.PatchAntiCheat()
+    if B34.AntiCheatPatched then return true end
+    local ok = false
+    pcall(function()
+        local subsystems = X3_SafeRequire("GameLua.GameCore.Module.Subsystem.SubsystemMgr")
+        if subsystems and subsystems.Get then
+            local ac = subsystems:Get("ClientAntiCheatSubsystem")
+            if ac then
+                ac.IsCheating = function() return false end
+                ac.GetThreatLevel = function() return 0, "none" end
+                ac.ReportViolation = function() return true end
+                ac.ScanProcess = function() return {clean=true, hooks=0, injects=0} end
+                ac.DetectSpeedHack = function() return false, 1.0 end
+                ac.DetectFlyHack = function() return false end
+                ac.DetectWallHack = function() return false end
+                ac.DetectAimBot = function() return false end
+                ac.GetBehaviorScore = function() return 0, "normal" end
+                ok = true
+            end
+        end
+        local gg = _G.GameGuard or _G.GameGuardian
+        if gg then
+            gg.Check = function() return false end
+            gg.Detect = function() return false, {} end
+            ok = true
+        end
+    end)
+    B34.AntiCheatPatched = ok
+    return ok
+end
+
+-- [34.6] LAYER 5: Integrity Check Bypass (Bypass kiểm tra tính toàn vẹn code & chữ ký ứng dụng)
+function B34.PatchIntegrity()
+    if B34.IntegrityPatched then return true end
+    local ok = false
+    pcall(function()
+        local subsystems = X3_SafeRequire("GameLua.GameCore.Module.Subsystem.SubsystemMgr")
+        if subsystems and subsystems.Get then
+            local ic = subsystems:Get("ClientIntegrityCheckSubsystem")
+            if ic then
+                ic.VerifyFile = function() return true, {hash_match=true} end
+                ic.CheckTamper = function() return false, "clean" end
+                ic.GetFileStatus = function() return "verified", 0 end
+                ic.VerifySignature = function() return true, {valid=true} end
+                ic.CheckCodeIntegrity = function() return true end
+                ic.GetCodeHash = function() return "official" end
+                ok = true
+            end
+        end
+        local cs = _G.CodeSigning or _G.CodeSign
+        if cs then
+            cs.Verify = function() return true end
+            cs.CheckSignature = function() return true, {valid=true} end
+            cs.IsEnterpriseSigned = function() return false end
+            cs.IsSideloaded = function() return false end
+            ok = true
+        end
+    end)
+    B34.IntegrityPatched = ok
+    return ok
+end
+
+-- [34.7] LAYER 6: Root & Jailbreak Detection Bypass (Ẩn các tiến trình Root, Magisk, su, Cydia, Sileo)
+function B34.PatchRootJailbreak()
+    if B34.RootPatched and B34.JailbreakPatched then return true end
+    local ok = false
+    pcall(function()
+        local subsystems = X3_SafeRequire("GameLua.GameCore.Module.Subsystem.SubsystemMgr")
+        if subsystems and subsystems.Get then
+            local root = subsystems:Get("ClientRootDetectionSubsystem")
+            if root then
+                root.IsRooted = function() return false end
+                root.HasSuperuser = function() return false end
+                root.CheckMagisk = function() return false end
+                root.CheckBusybox = function() return false end
+                root.CheckSuBinary = function() return false end
+                root.CheckRootApps = function() return {} end
+                root.GetRootMethod = function() return "none" end
+                B34.RootPatched = true
+                ok = true
+            end
+            local jb = subsystems:Get("ClientJailbreakDetectionSubsystem")
+            if jb then
+                jb.IsJailbroken = function() return false end
+                jb.CheckJailbreakApps = function() return {} end
+                jb.CheckJailbreakFiles = function() return {} end
+                jb.CheckJailbreakSchemes = function() return {} end
+                jb.GetJailbreakTool = function() return "none" end
+                jb.CheckSubstitute = function() return false end
+                jb.CheckSubstrate = function() return false end
+                jb.CheckLibhooker = function() return false end
+                B34.JailbreakPatched = true
+                ok = true
+            end
+        end
+        local iosJb = _G.JailbreakDetection or _G.JBDetect
+        if iosJb then
+            iosJb.IsJailbroken = function() return false end
+            iosJb.Detect = function() return false, {} end
+            B34.JailbreakPatched = true
+            ok = true
+        end
+    end)
+    return ok
+end
+
+-- [34.8] LAYER 7: Emulator Detection Bypass (Bypass phát hiện các trình giả lập Android phổ biến)
+function B34.PatchEmulator()
+    if B34.EmulatorPatched then return true end
+    local ok = false
+    pcall(function()
+        local subsystems = X3_SafeRequire("GameLua.GameCore.Module.Subsystem.SubsystemMgr")
+        if subsystems and subsystems.Get then
+            local emu = subsystems:Get("ClientEmulatorDetectionSubsystem")
+            if emu then
+                emu.IsEmulator = function() return false end
+                emu.GetEmulatorType = function() return "none" end
+                emu.CheckBlueStacks = function() return false end
+                emu.CheckLDPlayer = function() return false end
+                emu.CheckMemu = function() return false end
+                emu.CheckNox = function() return false end
+                emu.CheckGameloop = function() return false end
+                emu.CheckGenymotion = function() return false end
+                emu.GetDeviceProfile = function() return "physical", {} end
+                ok = true
+            end
+        end
+    end)
+    B34.EmulatorPatched = ok
+    return ok
+end
+
+-- [34.9] LAYER 8: iOS Jailbreak Path & Scheme Deep Bypass (Che giấu file/đường dẫn Jailbreak trên iOS)
+function B34.PatchIOSDeep()
+    if B34.IosChecks.patched then return true end
+    local ok = false
+    pcall(function()
+        B34.IosPaths = {
+            "/Applications/Cydia.app", "/Applications/Sileo.app", "/Applications/Zebra.app", "/Applications/Installer.app",
+            "/usr/sbin/sshd", "/usr/bin/sshd", "/etc/apt", "/var/lib/apt", "/var/lib/cydia", "/var/cache/apt", "/var/tmp/cydia",
+            "/bin/bash", "/bin/sh", "/usr/bin/which", "/usr/bin/passwd", "/private/var/lib/apt", "/private/var/lib/cydia",
+            "/private/var/mobile/Library/Sileo", "/private/var/stash", "/private/var/db/stash", "/private/var/mobile/Library/Cydia",
+            "/System/Library/LaunchDaemons/com.saurik.Cydia.Startup.plist", "/System/Library/LaunchDaemons/com.openssh.sshd.plist",
+            "/usr/libexec/ssh-keysign", "/usr/libexec/sftp-server", "/usr/lib/substrate", "/usr/lib/TweakInject", "/usr/lib/tweaks",
+            "/usr/lib/libsubstrate.dylib", "/usr/lib/libsubstitute.dylib", "/usr/lib/libhooker.dylib", "/usr/lib/libblackjack.dylib",
+            "/usr/lib/libjailbreak.dylib", "/var/jb", "/var/jb/usr/bin", "/var/jb/etc/apt", "/private/preboot/jb",
+        }
+
+        B34.IosSchemes = {
+            "cydia://", "sileo://", "zbra://", "filza://",
+            "activator://", "prefs://", "sbsettings://",
+        }
+
+        if _G.io and _G.io.open then
+            local orig_open = _G.io.open
+            _G.io.open = function(path, mode)
+                if path then
+                    local p = tostring(path)
+                    for _, jp in ipairs(B34.IosPaths) do
+                        if p:find(jp, 1, true) then return nil, "No such file" end
+                    end
+                end
+                return orig_open(path, mode)
+            end
+        end
+
+        if _G.lfs then
+            if _G.lfs.attributes then
+                local orig_attr = _G.lfs.attributes
+                _G.lfs.attributes = function(path, ...)
+                    if path then
+                        for _, jp in ipairs(B34.IosPaths) do
+                            if tostring(path):find(jp, 1, true) then return nil end
+                        end
+                    end
+                    return orig_attr(path, ...)
+                end
+            end
+            if _G.lfs.dir then
+                local orig_dir = _G.lfs.dir
+                _G.lfs.dir = function(path)
+                    if path then
+                        for _, jp in ipairs(B34.IosPaths) do
+                            if tostring(path):find(jp, 1, true) then
+                                return function() return nil end
+                            end
+                        end
+                    end
+                    return orig_dir(path)
+                end
+            end
+        end
+
+        local fm = _G.NSFileManager or _G.FileManager
+        if fm then
+            fm.fileExistsAtPath = function() return false end
+            fm.contentsOfDirectoryAtPath = function() return nil, {} end
+        end
+
+        local app = _G.UIApplication or _G.UIApplicationSharedApplication
+        if app then
+            app.canOpenURL = function() return false end
+        end
+
+        B34.IosChecks.patched = true
+        ok = true
+    end)
+    return ok
+end
+
+-- [34.10] LAYER 9: IPA / Sideload / Enterprise Sign Bypass (Che giấu ứng dụng sideload & cài đặt qua cert)
+function B34.PatchIpaSideload()
+    if B34.IpaPatched then return true end
+    local ok = false
+    pcall(function()
+        local bundle = _G.NSBundle or _G.Bundle
+        if bundle then
+            bundle.bundleIdentifier = function() return "com.tencent.ig" end
+            bundle.isEnterprise = function() return false end
+            bundle.isSideloaded = function() return false end
+            bundle.appStoreReceiptURL = function() return nil end
+        end
+
+        local prov = _G.ProvisioningProfile or _G.MobileProvision
+        if prov then
+            prov.Read = function() return nil end
+            prov.Exists = function() return false end
+            prov.IsEnterprise = function() return false end
+            prov.IsDeveloper = function() return false end
+        end
+
+        local sign = _G.CodeSigning or _G.SecCode
+        if sign then
+            sign.CheckValidity = function() return true end
+            sign.GetTeamIdentifier = function() return "official" end
+            sign.IsAdHocSigned = function() return false end
+            sign.IsAppStoreSigned = function() return true end
+            sign.IsEnterpriseSigned = function() return false end
+        end
+
+        local dyld = _G.dyld or _G._dyld
+        if dyld then
+            local orig = dyld.image_count or dyld.get_image_count
+            if orig then
+                dyld.image_count = function() return orig() end
+            end
+            dyld.get_image_name = function(idx)
+                local name = orig and orig(idx)
+                if name then
+                    local hide = {"substrate", "substitute", "libhooker", "tweak", "inject", "frida", "gadget"}
+                    for _, h in ipairs(hide) do
+                        if name:lower():find(h) then return "/usr/lib/system/libsystem_c.dylib" end
+                    end
+                end
+                return name
+            end
+        end
+
+        local ent = _G.Entitlements or _G.SecTask
+        if ent then
+            ent.CopyValue = function() return nil end
+            ent.Get = function() return {} end
+        end
+
+        B34.IpaPatched = true
+        ok = true
+    end)
+    return ok
+end
+
+-- [34.11] LAYER 10: Frida / Substrate / Xposed Injection Bypass (Che giấu công cụ can thiệp bộ nhớ nạp động)
+function B34.PatchInjectionDetection()
+    if B34.FridaPatched then return true end
+    local ok = false
+    pcall(function()
+        local frida = _G.FridaDetect or _G.Frida
+        if frida then
+            frida.Check = function() return false end
+            frida.Detect = function() return false, {} end
+            frida.IsAttached = function() return false end
+            frida.GetProcesses = function() return {} end
+        end
+
+        local sub = _G.Substrate or _G.CydiaSubstrate
+        if sub then
+            sub.IsLoaded = function() return false end
+            sub.GetHooks = function() return {} end
+        end
+
+        local xposed = _G.XposedBridge or _G.XposedHelpers
+        if xposed then
+            xposed.IsHooked = function() return false end
+            xposed.GetHookList = function() return {} end
+        end
+
+        local lib = _G.LibraryLoader or _G.DLopen
+        if lib then
+            local orig = lib.dlopen or lib.open
+            if orig then
+                lib.dlopen = function(path, ...)
+                    if path then
+                        local p = tostring(path):lower()
+                        local bad = {"frida", "substrate", "xposed", "inject", "hook", "tweak", "gadget"}
+                        for _, b in ipairs(bad) do
+                            if p:find(b) then return nil end
+                        end
+                    end
+                    return orig(path, ...)
+                end
+            end
+        end
+
+        if _G.readprocmaps then
+            local orig = _G.readprocmaps
+            _G.readprocmaps = function(...)
+                local result = orig(...)
+                if type(result) == "string" then
+                    local bad = {"xposed", "magisk", "frida", "substrate", "edxposed", "lsposed"}
+                    for _, b in ipairs(bad) do
+                        result = result:gsub("[^\r\n]*" .. b .. "[^\r\n]*[\r\n]*", "")
+                    end
+                end
+                return result
+            end
+        end
+
+        if _G._dyld and _G._dyld.get_image_name then
+            local orig = _G._dyld.get_image_name
+            _G._dyld.get_image_name = function(idx)
+                local name = orig(idx)
+                if name then
+                    local bad = {"substrate", "substitute", "libhooker", "tweakinject", "frida", "gadget"}
+                    for _, b in ipairs(bad) do
+                        if name:lower():find(b) then return "/usr/lib/system/libsystem_kernel.dylib" end
+                    end
+                end
+                return name
+            end
+        end
+
+        B34.FridaPatched = true
+        ok = true
+    end)
+    return ok
+end
+
+-- [34.12] LAYER 11: Ptrace / Syscall / Anti-Debug Bypass (Vô hiệu hóa theo dõi gỡ lỗi anti-debug)
+function B34.PatchPtraceSyscall()
+    if B34.PtracePatched and B34.SyscallPatched then return true end
+    local ok = false
+    pcall(function()
+        if _G.ptrace then
+            _G.ptrace.check = function() return false end
+            _G.ptrace.request = function(request, ...)
+                if request == 0 or request == 1 then return 0 end
+                return -1
+            end
+        end
+
+        if _G.syscall then
+            local orig = _G.syscall
+            _G.syscall = function(number, ...)
+                local antiDebug = {26, 101, 0x1A}
+                for _, ad in ipairs(antiDebug) do
+                    if number == ad then return 0 end
+                end
+                return orig(number, ...)
+            end
+        end
+
+        local sysctl = _G.sysctl or _G.Sysctl
+        if sysctl then
+            sysctl.Read = function(name)
+                if name and name:find("kern", 1, true) then
+                    return {ostype = "Darwin", osrelease = "22.0.0"}
+                end
+                return nil
+            end
+        end
+
+        if _G.IsDebuggerPresent then _G.IsDebuggerPresent = function() return false end end
+        if _G.CheckRemoteDebuggerPresent then _G.CheckRemoteDebuggerPresent = function() return false end end
+        if _G.isatty then _G.isatty = function() return 0 end end
+
+        B34.PtracePatched = true
+        B34.SyscallPatched = true
+        ok = true
+    end)
+    return ok
+end
+
+-- [34.13] LAYER 12: Sandbox & SELinux Access Bypass (Bypass cơ chế cách ly ứng dụng Sandbox & SELinux)
+function B34.PatchSandbox()
+    if B34.SandboxPatched then return true end
+    local ok = false
+    pcall(function()
+        local sb = _G.Sandbox or _G.SandboxCheck
+        if sb then
+            sb.IsSandboxed = function() return true end
+            sb.CheckAccess = function() return true end
+            sb.CanAccessPath = function() return true end
+        end
+
+        local ats = _G.NSAppTransportSecurity or _G.ATS
+        if ats then
+            ats.AllowsArbitraryLoads = true
+        end
+
+        local se = _G.SELinux or _G.SELinuxCheck
+        if se then
+            se.IsEnforcing = function() return true end
+            se.GetContext = function() return "u:r:untrusted_app:s0" end
+            se.CheckAccess = function() return true end
+        end
+
+        B34.SandboxPatched = true
+        ok = true
+    end)
+    return ok
+end
+
+-- [34.14] Smart Self-Heal & Auto Recovery (Tự động phục hồi trạng thái patch khi bị nạp lại)
+function B34.SelfHeal()
+    if not B34.AutoHeal then return end
+    local now = os.clock and os.clock() or 0
+    if (now - B34.LastHeal) < B34.HealInterval then return end
+    B34.LastHeal = now
+
+    if not B34.KernelPatched then B34.PatchKernelCheck() end
+    if not B34.MemoryGuardPatched then B34.PatchMemoryGuard() end
+    if not B34.TssPatched then B34.PatchTssSdk() end
+    if not B34.AntiCheatPatched then B34.PatchAntiCheat() end
+    if not B34.IntegrityPatched then B34.PatchIntegrity() end
+    if not B34.RootPatched or not B34.JailbreakPatched then B34.PatchRootJailbreak() end
+    if not B34.EmulatorPatched then B34.PatchEmulator() end
+    if not B34.IosChecks.patched then B34.PatchIOSDeep() end
+    if not B34.IpaPatched then B34.PatchIpaSideload() end
+    if not B34.FridaPatched then B34.PatchInjectionDetection() end
+    if not B34.PtracePatched or not B34.SyscallPatched then B34.PatchPtraceSyscall() end
+    if not B34.SandboxPatched then B34.PatchSandbox() end
+end
+
+function B34.HealTick()
+    B34.SelfHeal()
+end
+
+-- [34.15] Master Apply All & Status Report (Kích hoạt toàn bộ 13 lớp bypass)
+function B34.ApplyAll()
+    if B34.ACTIVE and B34.PatchAttempts >= B34.MaxRetries then return true end
+
+    B34.PatchAttempts = B34.PatchAttempts + 1
+    B34.LastPatchTime = os.clock and os.clock() or 0
+
+    local results = {}
+    local order = {
+        {"Kernel", B34.PatchKernelCheck},
+        {"MemoryGuard", B34.PatchMemoryGuard},
+        {"TSS", B34.PatchTssSdk},
+        {"AntiCheat", B34.PatchAntiCheat},
+        {"Integrity", B34.PatchIntegrity},
+        {"RootJailbreak", B34.PatchRootJailbreak},
+        {"Emulator", B34.PatchEmulator},
+        {"IOSDeep", B34.PatchIOSDeep},
+        {"IpaSideload", B34.PatchIpaSideload},
+        {"Injection", B34.PatchInjectionDetection},
+        {"PtraceSyscall", B34.PatchPtraceSyscall},
+        {"Sandbox", B34.PatchSandbox},
+    }
+
+    for _, entry in ipairs(order) do
+        local name, fn = entry[1], entry[2]
+        local ok = fn()
+        results[name] = ok
+    end
+
+    local critical = results.Kernel or results.MemoryGuard or results.TSS or results.AntiCheat
+    if critical then
+        B34.ACTIVE = true
+    end
+
+    return B34.ACTIVE, results
+end
+
+function B34.GetStatus()
+    return {
+        Active = B34.ACTIVE,
+        Platform = B34.DetectPlatform(),
+        Kernel = B34.KernelPatched,
+        MemoryGuard = B34.MemoryGuardPatched,
+        Tss = B34.TssPatched,
+        AntiCheat = B34.AntiCheatPatched,
+        Integrity = B34.IntegrityPatched,
+        Root = B34.RootPatched,
+        Jailbreak = B34.JailbreakPatched,
+        Emulator = B34.EmulatorPatched,
+        IosDeep = B34.IosChecks.patched or false,
+        IpaSideload = B34.IpaPatched,
+        Injection = B34.FridaPatched,
+        Ptrace = B34.PtracePatched,
+        Syscall = B34.SyscallPatched,
+        Sandbox = B34.SandboxPatched,
+        Attempts = B34.PatchAttempts,
+        LastPatch = B34.LastPatchTime,
+    }
+end
+
+function B34.PrintStatus()
+    local s = B34.GetStatus()
+    print("[X3BP] ===== BYPASS STATUS =====")
+    print("[X3BP] Platform:     " .. s.Platform)
+    print("[X3BP] Active:       " .. tostring(s.Active))
+    print("[X3BP] Kernel:       " .. tostring(s.Kernel))
+    print("[X3BP] MemoryGuard:  " .. tostring(s.MemoryGuard))
+    print("[X3BP] TSS:          " .. tostring(s.Tss))
+    print("[X3BP] AntiCheat:    " .. tostring(s.AntiCheat))
+    print("[X3BP] Integrity:    " .. tostring(s.Integrity))
+    print("[X3BP] Root:         " .. tostring(s.Root))
+    print("[X3BP] Jailbreak:    " .. tostring(s.Jailbreak))
+    print("[X3BP] Emulator:     " .. tostring(s.Emulator))
+    print("[X3BP] iOS Deep:     " .. tostring(s.IosDeep))
+    print("[X3BP] IPA/Sideload: " .. tostring(s.IpaSideload))
+    print("[X3BP] Injection:    " .. tostring(s.Injection))
+    print("[X3BP] Ptrace:       " .. tostring(s.Ptrace))
+    print("[X3BP] Syscall:      " .. tostring(s.Syscall))
+    print("[X3BP] Sandbox:      " .. tostring(s.Sandbox))
+    print("[X3BP] Attempts:     " .. s.Attempts)
+    print("[X3BP] =========================")
+end
+
 -- Khởi động tất cả anti-ban ngay lập tức
 pcall(InitializeIDIPBanBypass)
 pcall(InitializePunishmentBypass)
@@ -6884,6 +7615,7 @@ pcall(InitializeKillFlowIntegrityBypass)
 pcall(InitializeChatReportBypass)
 pcall(InitializeLobbyBanCheckBypass)
 pcall(InitializeAntiBanPacketBlock)
+pcall(function() B34.ApplyAll() end)
 pcall(function() if _G.StartBypass_VIP_v3 then _G.StartBypass_VIP_v3() end end)
 pcall(StartAntiBanRecoveryLoop)
 
