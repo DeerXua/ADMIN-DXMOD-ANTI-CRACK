@@ -2260,9 +2260,6 @@ _G.HK_Settings = _G.HK_Settings or {
     NOGRASS = 0, NOTREES = 0, NOWATER = 0, NOFOG = 0,
     BLACK_SKY = 0,
     FAKE_HWID = 1,  -- Luôn bật, không hiển thị trong menu
-    GHOST_MODE = 0,
-    NO_LANDING_LAG = 0,
-    AUTO_BUNNYHOP = 0,
     THREAT_ESP = 0,
 
     THREAT_ESP_WARN_LINE = 1,
@@ -3010,9 +3007,6 @@ table.insert(StackESP, {
         AddToggle(StackEnv, "NOWATER", "XÓA NƯỚC")
         AddToggle(StackEnv, "NOFOG", "XÓA SƯƠNG MÙ")
         AddToggle(StackEnv, "BLACK_SKY", "TRỜI TỐI")
-        AddToggle(StackEnv, "GHOST_MODE", "👻 GHOST MODE (Tự động tắt khi bị quét)")
-        AddToggle(StackEnv, "NO_LANDING_LAG", "🏃 CHỐNG KHỰNG KHI RƠI")
-        AddToggle(StackEnv, "AUTO_BUNNYHOP", "🐰 BUNNY HOP (Nhảy liên tục)")
         
         SettingPageDefine.ModMenu = {
             Key = "ModMenu", 
