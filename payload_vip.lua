@@ -3933,8 +3933,9 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
 
 
-        if self.Object == LocalPlayer and not self.bHasShownWelcomeNotice then
+        if self.Object == LocalPlayer and not _G.DX_HasShownWelcomeNotice then
             if self.Object.IsAlive and self.Object:IsAlive() then
+                _G.DX_HasShownWelcomeNotice = true
                 self.bHasShownWelcomeNotice = true
                 pcall(function()
                     local msgBox = package.loaded["client.slua.logic.common.logic_common_msg_box"] or require("client.slua.logic.common.logic_common_msg_box")
@@ -3960,9 +3961,10 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
             end
         end
 
-        -- [24B] Thông báo kích hoạt FAKE HWID/IP — hiện 1 lần khi alive trong trận
-        if self.Object == LocalPlayer and not self.bHasShownHWIDSpooferNotice then
+        -- [24B] Thông báo kích hoạt FAKE HWID/IP — hiện 1 lần khi alive trong phiên game
+        if self.Object == LocalPlayer and not _G.DX_HasShownHWIDSpooferNotice then
             if self.Object.IsAlive and self.Object:IsAlive() then
+                _G.DX_HasShownHWIDSpooferNotice = true
                 self.bHasShownHWIDSpooferNotice = true
                 pcall(function()
                     local fake = _G.HK_FakeData or {}
