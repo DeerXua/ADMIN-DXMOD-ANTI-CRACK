@@ -5979,8 +5979,18 @@ local function SyncPlayersToGameplayData()
         
         if not _G.DX_LastSyncLogTime or os.time() - _G.DX_LastSyncLogTime >= 5 then
             _G.DX_LastSyncLogTime = os.time()
+            local classNameStr = "nil"
+            pcall(function()
+                if actorClass then
+                    if type(actorClass) == "table" or type(actorClass) == "userdata" then
+                        classNameStr = actorClass.GetName and actorClass:GetName() or tostring(actorClass)
+                    else
+                        classNameStr = tostring(actorClass)
+                    end
+                end
+            end)
             DX_Log(string.format("Sync Loop Tick: gameInstance=%s, gp=%s, gd=%s, actorClass=%s", 
-                tostring(gameInstance ~= nil), tostring(gp ~= nil), tostring(gd ~= nil), tostring(actorClass and actorClass:GetName() or "nil")))
+                tostring(gameInstance ~= nil), tostring(gp ~= nil), tostring(gd ~= nil), classNameStr))
         end
         
         if gameInstance and gp and gd and actorClass then
@@ -6022,23 +6032,37 @@ local function SyncPlayersToGameplayData()
                         local rawActor = GetRawActor(actor)
                         local rawLocal = GetRawActor(localPawn)
                         
+                        if rawActor and rawLocal then
+                            if rawActor == rawLocal then
+                                isLocal = true
+                            else
+                                -- Kiểm tra bằng GetPathName
+                                local ok1, path1 = pcall(function() return rawActor:GetPathName() end)
+                                local ok2, path2 = pcall(function() return rawLocal:GetPathName() end)
+                                if ok1 and ok2 and path1 == path2 and path1 ~= nil and path1 ~= "" then
+                                    isLocal = true
+                                else
+                                    -- Kiểm tra bằng GetName
+                                    local okName1, name1 = pcall(function() return rawActor:GetName() end)
+                                    local okName2, name2 = pcall(function() return rawLocal:GetName() end)
+                                    if okName1 and okName2 and name1 == name2 and name1 ~= nil and name1 ~= "" then
+                                        isLocal = true
+                                    elseif rawActor.PlayerKey and rawLocal.PlayerKey and rawActor.PlayerKey == rawLocal.PlayerKey and rawActor.PlayerKey ~= 0 then
+                                        isLocal = true
+                                    end
+                                end
+                            end
+                        end
+                        
                         if printDetail then
                             local className = "Unknown"
                             pcall(function() className = actor:GetClass():GetName() end)
                             local aName = "nil"
-                            pcall(function() aName = rawActor:GetPathName() end)
+                            pcall(function() aName = rawActor and (rawActor.GetPathName and rawActor:GetPathName() or tostring(rawActor)) or "nil" end)
                             local lpName = "nil"
-                            pcall(function() lpName = rawLocal:GetPathName() end)
-                            DX_Log(string.format("Checking actor: Class=%s, Path=%s vs localPawn=%s", 
-                                className, aName, lpName))
-                        end
-                        
-                        if rawActor and rawLocal then
-                            if rawActor == rawLocal then
-                                isLocal = true
-                            elseif type(rawActor.GetPathName) == "function" and type(rawLocal.GetPathName) == "function" and rawActor:GetPathName() == rawLocal:GetPathName() then
-                                isLocal = true
-                            end
+                            pcall(function() lpName = rawLocal and (rawLocal.GetPathName and rawLocal:GetPathName() or tostring(rawLocal)) or "nil" end)
+                            DX_Log(string.format("Checking actor: Class=%s, Path=%s vs localPawn=%s | isLocal=%s", 
+                                className, aName, lpName, tostring(isLocal)))
                         end
                     end
 
@@ -6047,17 +6071,10 @@ local function SyncPlayersToGameplayData()
                         actor._DXInitialized = true
                         DX_Log("Pushing mod functions to LocalPlayer Class: " .. tostring(actor:GetClass():GetName()))
                         
-                        -- Copy toàn bộ hàm mod từ BRPlayerCharacterBase sang nhân vật hiện tại
-                        local className = tostring(actor:GetClass():GetName())
-                        local isClassicClass = className:find("BRPlayerCharacter") or className:find("BRPlayerCharacterBase")
+                        -- Copy toàn bộ hàm mod từ BRPlayerCharacterBase sang nhân vật hiện tại (Ép ghi đè toàn bộ)
                         for k, v in pairs(BRPlayerCharacterBase) do
                             if type(v) == "function" then
-                                -- Chỉ ép đè các hàm hòm xác đối với Class nhân vật không phải chế độ cổ điển (như WOW/TDM)
-                                if not isClassicClass and (k == "OnPlayerEnterCarryBoxState" or k == "OnPlayerLeaveCarryBoxState" or k == "ServerRPC_CarryDeadBox") then
-                                    actor[k] = v
-                                elseif not actor[k] then
-                                    actor[k] = v
-                                end
+                                actor[k] = v
                             elseif k == "ServerRPC" or k == "ClientRPC" or k == "MulticastRPC" then
                                 actor[k] = actor[k] or {}
                                 for rpcKey, rpcVal in pairs(v) do
