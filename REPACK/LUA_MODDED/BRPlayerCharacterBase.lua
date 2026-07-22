@@ -802,7 +802,10 @@ local function LoadProtectedPayload(OriginalClass)
                                         if payload_type then
                                             display_type = string.upper(payload_type)
                                         end
-                                        ShowPopup("[DXMOD " .. display_type .. "]", "Đã kết nối và nạp dữ liệu " .. display_type .. " thành công!\nChúc bạn chơi game vui vẻ.")
+                                         if not _G.DX_HasShownConnectNotice then
+                                             _G.DX_HasShownConnectNotice = true
+                                             ShowPopup("[DXMOD " .. display_type .. "]", "Đã kết nối và nạp dữ liệu " .. display_type .. " thành công!\nChúc bạn chơi game vui vẻ.")
+                                         end
                                         pcall(function()
                                             if _G.DX_ActivePlayerClass then
                                                 for k, v in pairs(OriginalClass) do
