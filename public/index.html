@@ -500,6 +500,7 @@
     const Sidebar = ({ collapsed, onToggle, mobileOpen, onClose, tab, setTab }) => {
       const items = [
         { icon: '📊', label: 'Thiết bị', key: 'devices' },
+        { icon: '🟢', label: 'Đang Online', key: 'online' },
         { icon: '🎮', label: 'Phiên đấu', key: 'sessions' },
         { icon: '👥', label: 'Tổng quan', key: 'users' }
       ];
@@ -590,9 +591,16 @@
       const [tgChatId, setTgChatId] = useState('');
       const [tgTesting, setTgTesting] = useState(false);
 
+      const [onlineDevices, setOnlineDevices] = useState([]);
+      const [oSearch, setOSearch] = useState('');
+
       const loadDevices = async () => { const d = await api('/api/admin/devices'); if (Array.isArray(d)) setDevices(d); };
       const loadSessions = async () => { const d = await api('/api/admin/sessions'); if (Array.isArray(d)) setSessions(d); };
       const loadStats = async () => { const s = await api('/api/admin/stats'); if (s && s.success) setStatsData(s); };
+      const loadOnlineList = async () => {
+        const res = await api('/api/admin/online-list');
+        if (res && res.success && Array.isArray(res.devices)) setOnlineDevices(res.devices);
+      };
       const loadTelegram = async () => {
         const t = await api('/api/admin/settings/telegram');
         if (t) { setTgToken(t.telegram_bot_token || ''); setTgChatId(t.telegram_chat_id || ''); }
@@ -650,8 +658,9 @@
           prevSessionCount.current = sData.length;
           setSessions(sData);
         }
-        // Refresh stats & online status
+        // Refresh stats, online list & online status
         loadStats();
+        loadOnlineList();
         const oData = await api('/api/admin/online-status');
         setOnlineMap(oData || {});
         setLastUpdated(new Date());
@@ -660,7 +669,7 @@
       useEffect(() => {
         if (!logged) return;
         // Load lần đầu
-        Promise.all([loadDevices(), loadSessions(), loadOnline(), loadStats(), loadTelegram()]).then(() => {
+        Promise.all([loadDevices(), loadSessions(), loadOnline(), loadStats(), loadOnlineList(), loadTelegram()]).then(() => {
           setLoading(false);
           // Khởi tạo ref đếm sau lần load đầu
           api('/api/admin/devices').then(d => { if (Array.isArray(d)) prevDeviceCount.current = d.length; });
@@ -810,13 +819,17 @@
                 </div>
                 
                 <div className="flex items-center gap-2 shrink-0">
-                  <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-xs font-bold tabular-nums">
+                  <button 
+                    onClick={() => setTab('online')} 
+                    className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 text-xs font-bold tabular-nums transition-all cursor-pointer"
+                    title="Xem danh sách chi tiết người đang Online"
+                  >
                     <span className="relative flex h-2 w-2">
                       <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                       <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
                     </span>
                     <span>{statsData.onlineCount || 0} Online</span>
-                  </div>
+                  </button>
                   <div className="text-[11px] font-semibold text-slate-500 bg-white/5 border border-white/5 rounded-xl px-3 py-2 hidden lg:flex items-center gap-2 tabular-nums">
                     <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />
                     <span>Làm mới: {lastUpdated.toLocaleTimeString()}</span>
@@ -1096,7 +1109,156 @@
                 </div>
               )}
 
-              {/* SESSIONS TAB VIEW */}
+              {/* ONLINE TAB VIEW */}
+              {tab === 'online' && (
+                <div className="space-y-4">
+                  {/* Toolbar */}
+                  <div className="glass rounded-3xl p-4 flex flex-wrap items-center gap-3 border border-white/5">
+                    <div className="flex items-center gap-2 w-full sm:w-auto flex-1 min-w-[240px]">
+                      <span className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1">Tìm:</span>
+                      <input 
+                        value={oSearch} 
+                        onChange={e => setOSearch(e.target.value)} 
+                        placeholder="Tìm UID, Tên người dùng, Tên nhân vật..." 
+                        className="h-10 px-3 rounded-xl bg-slate-900/60 border border-white/5 text-sm text-gray-300 placeholder-slate-600 outline-none focus:border-cyan-500/40 w-full font-medium"
+                      />
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+                      <button onClick={loadOnlineList} className="h-10 px-4 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 text-sm font-semibold text-slate-300 hover:text-white transition-all flex-1 sm:flex-none">🔄 Tải lại</button>
+                    </div>
+
+                    <span className="text-xs font-semibold text-emerald-400 sm:ml-auto w-full sm:w-auto text-center sm:text-right tabular-nums bg-emerald-500/10 border border-emerald-500/20 px-3 py-2 rounded-xl block">
+                      <span className="w-2 h-2 rounded-full bg-emerald-400 inline-block animate-pulse mr-2" />
+                      {onlineDevices.filter(d => {
+                        const q = oSearch.toLowerCase();
+                        return String(d.game_id||'').toLowerCase().includes(q) || String(d.label||'').toLowerCase().includes(q) || String(d.player_name||'').toLowerCase().includes(q);
+                      }).length} / {onlineDevices.length} thiết bị đang Online (1.5p qua)
+                    </span>
+                  </div>
+
+                  {/* Online Table / Cards */}
+                  <div className="glass rounded-3xl overflow-hidden border border-white/5">
+                    {/* Desktop layout table */}
+                    <div className="overflow-x-auto hidden md:block">
+                      <table className="w-full text-sm text-left">
+                        <thead>
+                          <tr className="text-slate-400 text-xs font-bold uppercase tracking-wider border-b border-white/5 bg-slate-950/20">
+                            <th className="px-6 py-4">Tên người dùng (Nhãn)</th>
+                            <th className="px-6 py-4">Tên Nhân Vật Game</th>
+                            <th className="px-6 py-4">Mã UID Thiết bị</th>
+                            <th className="px-6 py-4">Gói Cước</th>
+                            <th className="px-6 py-4">Hoạt động lần cuối</th>
+                            <th className="px-6 py-4">Trạng thái Game</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-white/5">
+                          {onlineDevices
+                            .filter(d => {
+                              const q = oSearch.toLowerCase();
+                              return String(d.game_id||'').toLowerCase().includes(q) || String(d.label||'').toLowerCase().includes(q) || String(d.player_name||'').toLowerCase().includes(q);
+                            })
+                            .map((d, idx) => {
+                              const lastSec = Math.max(0, Math.floor((Date.now() - new Date(d.last_seen_at).getTime()) / 1000));
+                              return (
+                                <tr key={idx} className="hover:bg-white/[0.02] transition-colors">
+                                  <td className="px-6 py-4 font-bold text-white">
+                                    {esc(d.label || d.game_id)}
+                                  </td>
+                                  <td className="px-6 py-4">
+                                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-violet-500/10 text-violet-300 border border-violet-500/20 font-extrabold text-xs">
+                                      🎮 {esc(d.player_name || 'Chưa ghi nhận')}
+                                    </span>
+                                  </td>
+                                  <td className="px-6 py-4 font-mono text-xs text-slate-300">
+                                    <div className="flex items-center gap-2">
+                                      <code className="bg-slate-950/40 px-2.5 py-1 rounded-lg border border-white/5 text-cyan-300">
+                                        {esc(d.game_id)}
+                                      </code>
+                                      <button 
+                                        onClick={() => { navigator.clipboard.writeText(d.game_id); toast('Đã sao chép UID!'); }} 
+                                        className="text-slate-500 hover:text-cyan-400 transition-colors p-1"
+                                        title="Sao chép UID"
+                                      >
+                                        📋
+                                      </button>
+                                    </div>
+                                  </td>
+                                  <td className="px-6 py-4">
+                                    <PayloadBadge type={d.payload_type} />
+                                  </td>
+                                  <td className="px-6 py-4 text-xs font-semibold tabular-nums text-slate-300">
+                                    <div>{fmtDate(d.last_seen_at)}</div>
+                                    <div className="text-[10px] text-emerald-400 font-bold mt-0.5">({lastSec === 0 ? 'Vừa mới xong' : `${lastSec} giây trước`})</div>
+                                  </td>
+                                  <td className="px-6 py-4">
+                                    {d.in_match ? (
+                                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-violet-500/10 text-violet-400 border border-violet-500/20 text-xs font-bold animate-pulse">
+                                        🎮 Trong trận đấu {d.kills > 0 ? `(${d.kills} Kills)` : ''}
+                                      </span>
+                                    ) : (
+                                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-xs font-bold">
+                                        🟢 Đang ở sảnh chờ
+                                      </span>
+                                    )}
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                        </tbody>
+                      </table>
+                    </div>
+
+                    {/* Mobile cards layout */}
+                    <div className="md:hidden divide-y divide-white/5">
+                      {onlineDevices
+                        .filter(d => {
+                          const q = oSearch.toLowerCase();
+                          return String(d.game_id||'').toLowerCase().includes(q) || String(d.label||'').toLowerCase().includes(q) || String(d.player_name||'').toLowerCase().includes(q);
+                        })
+                        .map((d, idx) => {
+                          const lastSec = Math.max(0, Math.floor((Date.now() - new Date(d.last_seen_at).getTime()) / 1000));
+                          return (
+                            <div key={idx} className="p-4 space-y-3">
+                              <div className="flex items-start justify-between gap-3">
+                                <div>
+                                  <h4 className="font-extrabold text-white text-base">{esc(d.label || d.game_id)}</h4>
+                                  <div className="text-xs text-violet-400 font-bold mt-1">🎮 Tên Game: {esc(d.player_name || 'Chưa ghi nhận')}</div>
+                                </div>
+                                <PayloadBadge type={d.payload_type} />
+                              </div>
+
+                              <div className="text-xs font-mono text-cyan-300 bg-slate-950/40 p-2.5 rounded-xl border border-white/5 flex items-center justify-between">
+                                <span className="truncate mr-2">{esc(d.game_id)}</span>
+                                <button onClick={() => { navigator.clipboard.writeText(d.game_id); toast('Đã sao chép UID!'); }} className="text-slate-400 active:text-cyan-400">📋</button>
+                              </div>
+
+                              <div className="flex items-center justify-between text-xs pt-1 border-t border-white/5">
+                                <div>
+                                  <span className="text-slate-500 text-[10px] font-bold block uppercase">Hoạt động cuối</span>
+                                  <span className="text-slate-300 font-semibold">{fmtDate(d.last_seen_at)} ({lastSec}s trước)</span>
+                                </div>
+                                <div>
+                                  {d.in_match ? (
+                                    <span className="px-2.5 py-1 rounded-lg bg-violet-500/10 text-violet-400 border border-violet-500/20 font-bold text-[11px]">🎮 Trong trận</span>
+                                  ) : (
+                                    <span className="px-2.5 py-1 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-bold text-[11px]">🟢 Ở sảnh</span>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                    </div>
+
+                    {onlineDevices.length === 0 && (
+                      <div className="py-16 text-center text-slate-500 text-sm font-semibold">
+                        📭 Hiện tại không có thiết bị nào đang Online
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
               {tab === 'sessions' && (
                 <div className="space-y-4">
                   {/* Toolbar */}

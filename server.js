@@ -567,6 +567,43 @@ app.get("/api/admin/stats", checkAdminAuth, (req, res) => {
   });
 });
 
+// Endpoint trả về danh sách chi tiết tất cả thiết bị đang ONLINE
+app.get("/api/admin/online-list", checkAdminAuth, (req, res) => {
+  const db = readDatabase();
+  const devices = db.devices || [];
+  const sessions = readSessions();
+  const now = Date.now();
+  const ONLINE_WINDOW_MS = 90 * 1000; // 1.5 phút (90 giây)
+
+  const onlineDevices = devices
+    .filter(d => {
+      const lastSeen = d.last_seen_at ? new Date(d.last_seen_at).getTime() : (d.updated_at ? new Date(d.updated_at).getTime() : 0);
+      return (now - lastSeen <= ONLINE_WINDOW_MS);
+    })
+    .map(d => {
+      const targetUid = String(d.game_id || "").trim();
+      const activeSession = sessions.find(s => String(s.uid || "").trim() === targetUid && s.status === "in_match");
+      const userSessions = sessions.filter(s => String(s.uid || "").trim() === targetUid);
+      const lastSession = userSessions.length > 0 ? userSessions[userSessions.length - 1] : null;
+      const playerName = activeSession ? activeSession.player_name : (lastSession ? lastSession.player_name : (d.last_player_name || "Chưa ghi nhận"));
+
+      return {
+        game_id: d.game_id,
+        label: d.label || d.game_id,
+        player_name: playerName,
+        payload_type: d.payload_type || "free",
+        status: d.status,
+        last_seen_at: d.last_seen_at || d.updated_at,
+        in_match: !!activeSession,
+        match_id: activeSession ? activeSession.match_id : null,
+        kills: activeSession ? (activeSession.kills || 0) : 0,
+        note: d.note || ""
+      };
+    });
+
+  res.json({ success: true, count: onlineDevices.length, devices: onlineDevices });
+});
+
 // ── TELEGRAM BOT SETTINGS ────────────────────────────────────────────────────
 app.get("/api/admin/settings/telegram", checkAdminAuth, (req, res) => {
   const db = readDatabase();
