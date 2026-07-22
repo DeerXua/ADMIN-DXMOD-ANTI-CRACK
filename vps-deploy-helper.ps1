@@ -4,7 +4,7 @@
 # =============================================================
 #
 #  CÁCH DÙNG:
-#  1. Mở terminal và chạy: ssh root@160.250.246.119
+#  1. Mở terminal và chạy: ssh root@103.77.243.123
 #  2. Nhập password khi được hỏi
 #  3. Sau khi vào VPS, paste lệnh bên dưới:
 
@@ -23,7 +23,7 @@ Write-Host "⚠️  CHỈ CẦN NHẬP MẬT KHẨU DUY NHẤT LẦN NÀY!" -For
 Write-Host "     Sau đó restart không cần password nữa!" -ForegroundColor Red
 Write-Host ""
 Write-Host "Bước 1: SSH vào VPS" -ForegroundColor Yellow
-Write-Host "  ssh root@160.250.246.119" -ForegroundColor White
+Write-Host "  ssh root@103.77.243.123" -ForegroundColor White
 Write-Host ""
 Write-Host "Bước 2: Sau khi vào VPS, chạy lệnh này (sửa mật khẩu trước):" -ForegroundColor Yellow
 Write-Host "  ADMIN_PASSWORD='matkhau_cua_ban' bash -c '$(curl -fsSL https://raw.githubusercontent.com/DeerXua/ADMIN-DXMOD-ANTI-CRACK/main/deploy.sh)'" -ForegroundColor Green
@@ -39,8 +39,8 @@ Write-Host "CÁC LẦN SAU CHỈ CẦN:" -ForegroundColor Green
 Write-Host "  cd /opt/core-payload-server && git pull && pm2 restart core-payload-server" -ForegroundColor White
 Write-Host ""
 Write-Host "Kết quả:" -ForegroundColor Yellow
-Write-Host "  http://160.250.246.119:5002/health  (Health Check)"
-Write-Host "  http://160.250.246.119:5002/api/payload  (Endpoint lấy code)"
+Write-Host "  https://lethiennhan.id.vn/health  (Health Check)"
+Write-Host "  https://lethiennhan.id.vn/api/payload  (Endpoint lấy code)"
 Write-Host ""
 
 # Tự động copy lệnh vào clipboard
