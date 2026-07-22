@@ -511,7 +511,7 @@ app.get("/api/admin/stats", checkAdminAuth, (req, res) => {
   const db = readDatabase();
   const devices = db.devices || [];
   const now = Date.now();
-  const THREE_MINS = 3 * 60 * 1000; // 3 phút tính Online
+  const ONLINE_WINDOW_MS = 90 * 1000; // 1.5 phút (90 giây) tính Online
 
   let onlineCount = 0;
   let vipCount = 0;
@@ -522,7 +522,7 @@ app.get("/api/admin/stats", checkAdminAuth, (req, res) => {
 
   devices.forEach(d => {
     const lastSeen = d.last_seen_at ? new Date(d.last_seen_at).getTime() : (d.updated_at ? new Date(d.updated_at).getTime() : 0);
-    if (now - lastSeen <= THREE_MINS) {
+    if (now - lastSeen <= ONLINE_WINDOW_MS) {
       onlineCount++;
     }
 
