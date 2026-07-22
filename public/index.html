@@ -7,6 +7,7 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
   <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.6/babel.min.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
   <style>
     :root {
@@ -251,6 +252,1373 @@
   </script>
 
   <!-- REACT APP -->
-  <script src="/app.min.js"></script>
+  <script type="text/babel">
+    const { useState, useEffect, useRef } = React;
+
+    // ─── API Helpers ───
+    const api = path => {
+      const t = localStorage.getItem('dx_at');
+      return fetch(path, {
+        headers: t ? { Authorization: t } : {}
+      }).then(r => {
+        if (r.status === 401) {
+          localStorage.removeItem('dx_at');
+          window.location.reload();
+        }
+        return r.json();
+      });
+    };
+
+    const apiPost = (path, body) => {
+      const t = localStorage.getItem('dx_at');
+      return fetch(path, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(t ? { Authorization: t } : {})
+        },
+        body: JSON.stringify(body)
+      }).then(r => r.json());
+    };
+
+    const esc = s => {
+      if (!s) return '';
+      return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    };
+
+    const toast = (msg, type = 'success') => {
+      const el = document.getElementById('t');
+      el.textContent = msg;
+      el.className = `fixed bottom-6 right-6 px-5 py-3 rounded-2xl text-sm font-semibold shadow-2xl z-[200] transition-all duration-300 ${
+        type === 'success' 
+          ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' 
+          : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
+      }`;
+      el.style.transform = 'translateY(0)';
+      el.style.opacity = '1';
+      setTimeout(() => {
+        el.style.transform = 'translateY(20px)';
+        el.style.opacity = '0';
+      }, 3000);
+    };
+
+    const fmtDate = d => d ? new Date(d).toLocaleString('vi-VN') : '--';
+    const fmtDur = s => {
+      if (!s) return '--';
+      if (s < 60) return s + 's';
+      const m = Math.floor(s / 60);
+      if (m < 60) return m + 'm ' + s % 60 + 's';
+      return Math.floor(m / 60) + 'h ' + m % 60 + 'm';
+    };
+
+    // ─── Custom Hooks ───
+    function useCounter(target, duration = 1200) {
+      const [v, setV] = useState(0);
+      const raf = useRef();
+      const started = useRef(false);
+      useEffect(() => {
+        if (started.current) return;
+        started.current = true;
+        const s = performance.now();
+        const fn = n => {
+          const t = Math.min((n - s) / duration, 1);
+          const e = 1 - Math.pow(1 - t, 3);
+          setV(Math.round(target * e));
+          if (t < 1) raf.current = requestAnimationFrame(fn);
+        };
+        raf.current = requestAnimationFrame(fn);
+        return () => cancelAnimationFrame(raf.current);
+      }, [target, duration]);
+      return v;
+    }
+
+    // ─── Skeletons ───
+    const Sk = ({ cn = '' }) => <div class={`sk ${cn}`} />;
+
+    // ─── StatusBadge ───
+    const Badge = ({ s }) => {
+      const m = {
+        active: { bg: 'rgba(16, 185, 129, 0.1)', c: '#10b981', l: 'Đã kích hoạt' },
+        approved: { bg: 'rgba(16, 185, 129, 0.1)', c: '#10b981', l: 'Đã kích hoạt' },
+        pending: { bg: 'rgba(245, 158, 11, 0.1)', c: '#f59e0b', l: 'Chờ duyệt' },
+        expired: { bg: 'rgba(244, 63, 94, 0.1)', c: '#f43f5e', l: 'Hết hạn' }
+      };
+      const st = m[s.toLowerCase()] || m.pending;
+      return (
+        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold" style={{ background: st.bg, color: st.c }}>
+          <span className="w-1.5 h-1.5 rounded-full" style={{ background: st.c, boxShadow: `0 0 8px ${st.c}` }} />
+          {st.l}
+        </span>
+      );
+    };
+
+    // ─── OnlineStatusBadge ───
+    const OnlineBadge = ({ state }) => {
+      const m = {
+        in_match: { c: '#06b6d4', t: 'Trong trận', glow: 'rgba(6, 182, 212, 0.4)' },
+        online: { c: '#10b981', t: 'Online', glow: 'rgba(16, 185, 129, 0.4)' },
+        offline: { c: '#64748b', t: 'Offline', glow: 'transparent' }
+      };
+      const s = m[state] || m.offline;
+      return (
+        <span className="inline-flex items-center gap-2 text-xs font-semibold" style={{ color: s.c }}>
+          <span className="w-2 h-2 rounded-full relative flex">
+            {state !== 'offline' && <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75" style={{ background: s.c }} />}
+            <span className="relative inline-flex rounded-full h-2 w-2" style={{ background: s.c, boxShadow: `0 0 8px ${s.glow}` }} />
+          </span>
+          {s.t}
+        </span>
+      );
+    };
+
+    // ─── PayloadBadge ───
+    const PayloadBadge = ({ type }) => {
+      const m = {
+        free: { bg: 'rgba(100, 116, 139, 0.1)', c: '#94a3b8', l: 'FREE' },
+        vip: { bg: 'rgba(139, 92, 246, 0.1)', c: '#a78bfa', l: 'VIP' },
+        test: { bg: 'rgba(245, 158, 11, 0.1)', c: '#fbbf24', l: 'TEST' }
+      };
+      const st = m[String(type || 'free').toLowerCase()] || m.free;
+      return (
+        <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold border" style={{ backgroundColor: st.bg, color: st.c, borderColor: `${st.c}20` }}>
+          {st.l}
+        </span>
+      );
+    };
+
+    // ─── Login UI ───
+    const Login = ({ onLogin }) => {
+      const [p, setP] = useState('');
+      const [e, setE] = useState('');
+      const [load, setLoad] = useState(false);
+
+      const h = async ev => {
+        ev.preventDefault();
+        setLoad(true);
+        setE('');
+        try {
+          const r = await fetch('/api/admin/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ password: p })
+          });
+          const d = await r.json();
+          if (r.ok) {
+            localStorage.setItem('dx_at', d.token);
+            onLogin();
+          } else {
+            setE(d.error || 'Mật khẩu không chính xác!');
+          }
+        } catch (err) {
+          setE('Lỗi kết nối máy chủ!');
+        } finally {
+          setLoad(false);
+        }
+      };
+
+      return (
+        <div className="min-h-screen flex items-center justify-center p-4">
+          <div className="glass neon-border rounded-3xl p-8 w-full max-w-md relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-24 h-24 bg-cyan-500/10 rounded-full blur-2xl pointer-events-none"></div>
+            <div className="absolute bottom-0 left-0 w-24 h-24 bg-purple-500/10 rounded-full blur-2xl pointer-events-none"></div>
+            
+            <div className="text-center mb-8">
+              <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-cyan-400 to-violet-600 flex items-center justify-center text-white text-3xl font-bold mx-auto mb-4 shadow-lg shadow-cyan-500/10">
+                DX
+              </div>
+              <h1 className="text-white text-3xl font-extrabold tracking-tight glow-text-cyan">CYBERNEXUS</h1>
+              <p className="text-cyan-400/60 text-xs font-semibold tracking-widest uppercase mt-1">LUA mod security system</p>
+            </div>
+            
+            <form onSubmit={h} className="space-y-5">
+              <div className="relative">
+                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500">🔒</span>
+                <input 
+                  type="password" 
+                  placeholder="MẬT KHẨU QUẢN TRỊ" 
+                  value={p} 
+                  onChange={e => setP(e.target.value)} 
+                  required 
+                  autoFocus
+                  className="w-full h-12 pl-11 pr-4 rounded-2xl bg-slate-950/40 border border-white/5 text-sm text-gray-200 placeholder-slate-700 outline-none focus:border-cyan-500/40 focus:bg-slate-950/80 transition-all font-semibold tracking-wider"
+                />
+              </div>
+              {e && <p className="text-rose-400 text-xs text-center font-medium bg-rose-500/5 py-2 rounded-xl border border-rose-500/10">{e}</p>}
+              
+              <button 
+                type="submit" 
+                disabled={load}
+                className="btn-cyber w-full h-12 rounded-2xl text-sm font-bold bg-gradient-to-r from-cyan-500 to-violet-600 text-white shadow-lg shadow-cyan-500/10 flex items-center justify-center gap-2 hover:shadow-cyan-500/20 active:scale-95 transition-all"
+              >
+                {load ? 'ĐANG XÁC THỰC...' : 'ĐĂNG NHẬP HỆ THỐNG'}
+              </button>
+            </form>
+          </div>
+        </div>
+      );
+    };
+
+    // ─── KPI Card ───
+    const Kpi = ({ icon, label, val, color }) => {
+      const c = useCounter(val);
+      const d = val >= 1e6 ? (val / 1e6).toFixed(1) + 'M' : val >= 1e3 ? (val / 1e3).toFixed(0) + 'K' : val;
+      
+      const theme = {
+        cyan: 'from-cyan-400 to-sky-600 text-cyan-400 border-cyan-500/10',
+        emerald: 'from-emerald-400 to-teal-600 text-emerald-400 border-emerald-500/10',
+        amber: 'from-amber-400 to-orange-600 text-amber-400 border-amber-500/10',
+        rose: 'from-rose-400 to-pink-600 text-rose-400 border-rose-500/10'
+      }[color] || 'from-cyan-400 to-sky-600 text-cyan-400';
+
+      return (
+        <div className={`glass neon-hover rounded-3xl p-6 border border-white/5 relative overflow-hidden transition-all duration-300`}>
+          <div className="flex items-center justify-between mb-4">
+            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">{label}</span>
+            <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${theme} bg-opacity-10 flex items-center justify-center text-xl`}>
+              {icon}
+            </div>
+          </div>
+          <div className="text-3xl font-extrabold text-white tabular-nums tracking-tight mb-1">{c}</div>
+        </div>
+      );
+    };
+
+    // ─── Confirm Dialog ───
+    let _confirmResolve = null;
+    const showConfirm = (title, body) => {
+      document.getElementById('cm').style.display = 'flex';
+      document.getElementById('ct').textContent = title;
+      document.getElementById('cb').textContent = body;
+      return new Promise(r => { _confirmResolve = r; });
+    };
+    const closeConfirm = v => {
+      document.getElementById('cm').style.display = 'none';
+      if (_confirmResolve) _confirmResolve(v);
+    };
+
+    // ─── Sidebar ───
+    const Sidebar = ({ collapsed, onToggle, mobileOpen, onClose, tab, setTab }) => {
+      const items = [
+        { icon: '📊', label: 'Thiết bị', key: 'devices' },
+        { icon: '🟢', label: 'Đang Online', key: 'online' },
+        { icon: '🎮', label: 'Phiên đấu', key: 'sessions' },
+        { icon: '👥', label: 'Tổng quan', key: 'users' }
+      ];
+      return (
+        <>
+          {/* Overlay on mobile when sidebar open */}
+          <div 
+            onClick={onClose} 
+            className={`fixed inset-0 z-40 bg-slate-950/60 backdrop-blur-sm transition-opacity duration-300 md:hidden ${
+              mobileOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
+            }`} 
+          />
+          <aside 
+            className={`glass border-r border-white/5 sidebar flex flex-col overflow-hidden ${
+              mobileOpen ? 'open' : ''
+            } ${collapsed ? 'collapsed' : ''}`}
+            style={{ width: collapsed ? 76 : 260 }}
+          >
+            <div className="flex items-center gap-3 px-5 h-20 shrink-0 border-b border-white/5">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-400 to-violet-600 flex items-center justify-center text-white text-lg font-bold shadow-lg shadow-cyan-500/10 border border-white/10">
+                DX
+              </div>
+              {!collapsed && (
+                <div className="flex flex-col">
+                  <span className="text-white font-extrabold text-md tracking-tight glow-text-cyan">CYBERNEXUS</span>
+                  <span className="text-[9px] text-cyan-400/50 font-bold uppercase tracking-wider">Mod administrator</span>
+                </div>
+              )}
+            </div>
+            
+            <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
+              {items.map((item, i) => (
+                <div 
+                  key={i} 
+                  onClick={() => { setTab(item.key); onClose(); }} 
+                  className={`flex items-center gap-4 px-4 py-3 rounded-2xl cursor-pointer transition-all duration-200 text-sm font-semibold ${
+                    tab === item.key 
+                      ? 'bg-gradient-to-r from-cyan-500/15 to-violet-500/5 text-cyan-400 border border-cyan-500/20' 
+                      : 'text-slate-400 hover:text-white hover:bg-white/5 border border-transparent'
+                  }`}
+                >
+                  <span className="text-lg shrink-0">{item.icon}</span>
+                  {(!collapsed || mobileOpen) && <span>{item.label}</span>}
+                </div>
+              ))}
+            </nav>
+            
+            <div className="p-4 border-t border-white/5 hidden md:block">
+              <button 
+                onClick={onToggle} 
+                className="w-full h-10 rounded-xl text-xs font-bold bg-white/5 border border-white/10 hover:bg-white/10 text-slate-400 hover:text-white transition-all flex items-center justify-center"
+              >
+                {collapsed ? '▶' : '◀ THU GỌN'}
+              </button>
+            </div>
+          </aside>
+        </>
+      );
+    };
+
+    // ─── App Component ───
+    const App = () => {
+      const [logged, setLogged] = useState(!!localStorage.getItem('dx_at'));
+      const [loading, setLoading] = useState(true);
+      const [devices, setDevices] = useState([]);
+      const [sessions, setSessions] = useState([]);
+      const [onlineMap, setOnlineMap] = useState({});
+      const [tab, setTab] = useState('devices');
+      const [collapsed, setCollapsed] = useState(false);
+      const [mobileOpen, setMobileOpen] = useState(false);
+      const [search, setSearch] = useState('');
+      const [filter, setFilter] = useState('all');
+      const [payloadTypeTab, setPayloadTypeTab] = useState('all');
+      const [sSearch, sSetSearch] = useState('');
+      const [sFilter, sSetFilter] = useState('all');
+      
+      const [addOpen, setAddOpen] = useState(false);
+      const [addUid, setAddUid] = useState('');
+      const [addLabel, setAddLabel] = useState('');
+      const [addPayloadType, setAddPayloadType] = useState('free');
+      const [addExpiry, setAddExpiry] = useState('30days');
+      const [addNote, setAddNote] = useState('');
+      const [lastUpdated, setLastUpdated] = useState(new Date());
+
+      const [statsData, setStatsData] = useState({ totalDevices: 0, onlineCount: 0, counts: { vip: 0, free: 0, test: 0, pending: 0, expired: 0 }, percentages: { vip: 0, free: 0, test: 0 } });
+      const [tgModalOpen, setTgModalOpen] = useState(false);
+      const [tgToken, setTgToken] = useState('');
+      const [tgChatId, setTgChatId] = useState('');
+      const [tgTesting, setTgTesting] = useState(false);
+
+      const [onlineDevices, setOnlineDevices] = useState([]);
+      const [oSearch, setOSearch] = useState('');
+
+      const loadDevices = async () => { const d = await api('/api/admin/devices'); if (Array.isArray(d)) setDevices(d); };
+      const loadSessions = async () => { const d = await api('/api/admin/sessions'); if (Array.isArray(d)) setSessions(d); };
+      const loadStats = async () => { const s = await api('/api/admin/stats'); if (s && s.success) setStatsData(s); };
+      const loadOnlineList = async () => {
+        const res = await api('/api/admin/online-list');
+        if (res && res.success && Array.isArray(res.devices)) setOnlineDevices(res.devices);
+      };
+      const loadTelegram = async () => {
+        const t = await api('/api/admin/settings/telegram');
+        if (t) { setTgToken(t.telegram_bot_token || ''); setTgChatId(t.telegram_chat_id || ''); }
+      };
+
+      const saveTelegram = async e => {
+        e.preventDefault();
+        const res = await apiPost('/api/admin/settings/telegram', { telegram_bot_token: tgToken, telegram_chat_id: tgChatId });
+        if (res && res.success) toast(res.message || "Đã lưu cài đặt Telegram!", "success");
+        else toast(res ? res.error || "Có lỗi xảy ra" : "Lỗi kết nối", "error");
+      };
+
+      const testTelegram = async () => {
+        setTgTesting(true);
+        const res = await apiPost('/api/admin/test-telegram', {});
+        setTgTesting(false);
+        if (res && res.success) toast(res.message, "success");
+        else toast(res ? res.error || "Lỗi gửi tin nhắn" : "Lỗi kết nối", "error");
+      };
+
+      const clearSessions = async () => {
+        if (!confirm("Bạn có chắc chắn muốn xóa sạch toàn bộ lịch sử phiên đấu?")) return;
+        const res = await apiPost('/api/admin/sessions/clear', {});
+        if (res && res.success) {
+          toast(res.message || "Đã xóa sạch lịch sử phiên đấu", "success");
+          loadSessions();
+        } else {
+          toast(res ? res.error || "Có lỗi xảy ra" : "Không thể kết nối server", "error");
+        }
+      };
+      const loadOnline = async () => { const d = await api('/api/admin/online-status'); setOnlineMap(d || {}); };
+
+      // --- Auto-refresh refs để theo dõi thay đổi ---
+      const prevDeviceCount = React.useRef(null);
+      const prevSessionCount = React.useRef(null);
+
+      const autoRefresh = async () => {
+        // Refresh devices - phát hiện thiết bị mới
+        const dData = await api('/api/admin/devices');
+        if (Array.isArray(dData)) {
+          if (prevDeviceCount.current !== null && dData.length > prevDeviceCount.current) {
+            const newCount = dData.length - prevDeviceCount.current;
+            toast(`🔔 Có ${newCount} thiết bị mới vừa đăng ký!`, 'success');
+          }
+          prevDeviceCount.current = dData.length;
+          setDevices(dData);
+        }
+        // Refresh sessions - phát hiện phiên mới
+        const sData = await api('/api/admin/sessions');
+        if (Array.isArray(sData)) {
+          if (prevSessionCount.current !== null && sData.length > prevSessionCount.current) {
+            const newCount = sData.length - prevSessionCount.current;
+            toast(`🎮 ${newCount} phiên đấu mới bắt đầu`, 'success');
+          }
+          prevSessionCount.current = sData.length;
+          setSessions(sData);
+        }
+        // Refresh stats, online list & online status
+        loadStats();
+        loadOnlineList();
+        const oData = await api('/api/admin/online-status');
+        setOnlineMap(oData || {});
+        setLastUpdated(new Date());
+      };
+
+      useEffect(() => {
+        if (!logged) return;
+        // Load lần đầu
+        Promise.all([loadDevices(), loadSessions(), loadOnline(), loadStats(), loadOnlineList(), loadTelegram()]).then(() => {
+          setLoading(false);
+          // Khởi tạo ref đếm sau lần load đầu
+          api('/api/admin/devices').then(d => { if (Array.isArray(d)) prevDeviceCount.current = d.length; });
+          api('/api/admin/sessions').then(s => { if (Array.isArray(s)) prevSessionCount.current = s.length; });
+        });
+        // Auto-refresh mọi 8 giây
+        const i = setInterval(autoRefresh, 8000);
+        return () => clearInterval(i);
+      }, [logged]);
+
+      if (!logged) return <Login onLogin={() => { setLogged(true); setLoading(true); }} />;
+
+      const filtered = devices.filter(d => {
+        const q = search.toLowerCase();
+        const m = String(d.game_id || '').toLowerCase().includes(q) || String(d.label || '').toLowerCase().includes(q) || String(d.note || '').toLowerCase().includes(q);
+        const exp = d.expires_at && new Date(d.expires_at).getTime() < Date.now();
+        let f = true;
+        if (filter === 'approved') f = (d.status === 'approved' || d.status === 'active') && !exp;
+        else if (filter === 'pending') f = d.status === 'pending';
+        else if (filter === 'expired') f = exp;
+
+        // Sub-tab filter (vip, free, test)
+        const pType = d.payload_type || 'free';
+        const matchesPayloadType = payloadTypeTab === 'all' || pType === payloadTypeTab;
+
+        return m && f && matchesPayloadType;
+      });
+
+      const sFiltered = sessions.filter(s => {
+        const q = sSearch.toLowerCase();
+        return (String(s.uid || '').toLowerCase().includes(q) || String(s.player_name || '').toLowerCase().includes(q)) && (sFilter === 'all' || s.status === sFilter);
+      });
+
+      const hEdit = uid => {
+        const d = devices.find(x => x.game_id === uid);
+        if (!d) return;
+        document.getElementById('eu').value = uid;
+        document.getElementById('el').value = d.label || '';
+        document.getElementById('es').value = d.status === 'active' ? 'approved' : d.status;
+        document.getElementById('en').value = d.note || '';
+        document.getElementById('ep_type').value = d.payload_type || 'free';
+        if (!d.expires_at || d.expires_at === 'null') {
+          document.getElementById('exs').value = 'lifetime';
+          document.getElementById('exc').style.display = 'none';
+        } else {
+          document.getElementById('exs').value = 'custom';
+          document.getElementById('exc').style.display = 'block';
+          const dt = new Date(d.expires_at);
+          document.getElementById('exd').value = new Date(dt.getTime() - dt.getTimezoneOffset() * 6e4).toISOString().slice(0, 16);
+        }
+        document.getElementById('em').style.display = 'flex';
+      };
+
+      const hSaveEdit = async e => {
+        e.preventDefault();
+        const uid = document.getElementById('eu').value;
+        const label = document.getElementById('el').value;
+        const status = document.getElementById('es').value;
+        const note = document.getElementById('en').value;
+        const payload_type = document.getElementById('ep_type').value;
+        let expires_at = null;
+        const dur = document.getElementById('exs').value;
+        if (dur === '1day') expires_at = new Date(Date.now() + 864e5).toISOString();
+        else if (dur === '7days') expires_at = new Date(Date.now() + 6048e5).toISOString();
+        else if (dur === '30days') expires_at = new Date(Date.now() + 2592e6).toISOString();
+        else if (dur === 'custom') expires_at = new Date(document.getElementById('exd').value).toISOString();
+        const ep = status === 'approved' ? '/api/admin/approve' : '/api/admin/reject';
+        const r = await apiPost(ep, { uid, label, note, expires_at, payload_type });
+        if (r.success) {
+          document.getElementById('em').style.display = 'none';
+          toast('Đã lưu thay đổi!');
+          loadDevices();
+        } else {
+          toast(r.error || 'Có lỗi xảy ra!', 'error');
+        }
+      };
+
+      const hDelete = async uid => {
+        const confirmed = await showConfirm('XOÁ THIẾT BỊ', `Bạn có chắc chắn muốn xoá vĩnh viễn thiết bị có UID: ${uid}?`);
+        if (!confirmed) return;
+        const d = await apiPost('/api/admin/delete', { uid });
+        if (d.success) {
+          toast('Đã xoá thiết bị!');
+          loadDevices();
+        } else {
+          toast('Xoá thất bại!', 'error');
+        }
+      };
+
+      const hAdd = async e => {
+        e.preventDefault();
+        if (!addUid.trim()) {
+          toast('Vui lòng nhập UID!', 'error');
+          return;
+        }
+        let expires_at = null;
+        if (addExpiry === '1day') expires_at = new Date(Date.now() + 864e5).toISOString();
+        else if (addExpiry === '7days') expires_at = new Date(Date.now() + 6048e5).toISOString();
+        else if (addExpiry === '30days') expires_at = new Date(Date.now() + 2592e6).toISOString();
+        else if (addExpiry === 'custom') expires_at = new Date(document.getElementById('adx').value).toISOString();
+        const r = await apiPost('/api/admin/create', { uid: addUid.trim(), label: addLabel, expires_at, note: addNote, payload_type: addPayloadType });
+        if (r.success) {
+          setAddOpen(false);
+          setAddUid(''); setAddLabel(''); setAddNote(''); setAddPayloadType('free');
+          toast('Đã thêm thiết bị mới!');
+          loadDevices();
+        } else {
+          toast(r.error || 'Có lỗi xảy ra!', 'error');
+        }
+      };
+
+      const stats = { total: devices.length, active: 0, pending: 0, expired: 0 };
+      devices.forEach(d => {
+        const exp = d.expires_at && new Date(d.expires_at).getTime() < Date.now();
+        if (exp) stats.expired++;
+        else if (d.status === 'approved' || d.status === 'active') stats.active++;
+        else stats.pending++;
+      });
+      const inMatch = sessions.filter(s => s.status === 'in_match').length;
+
+      return (
+        <div className="min-h-screen flex">
+          <Sidebar 
+            collapsed={collapsed} 
+            onToggle={() => setCollapsed(p => !p)} 
+            mobileOpen={mobileOpen} 
+            onClose={() => setMobileOpen(false)} 
+            tab={tab} 
+            setTab={setTab}
+          />
+          <div className={`flex-1 main-content ${collapsed ? 'collapsed' : ''} min-h-screen flex flex-col`}>
+            <div className="p-4 md:p-8 max-w-7xl w-full mx-auto space-y-6 flex-1">
+              
+              {/* Header navbar */}
+              <header className="glass rounded-3xl px-4 md:px-6 h-20 flex items-center justify-between gap-4 border border-white/5 relative">
+                <div className="flex items-center gap-3 flex-1 min-w-0">
+                  <button onClick={() => setMobileOpen(true)} className="md:hidden w-10 h-10 rounded-xl bg-white/5 border border-white/10 text-white flex items-center justify-center select-none active:bg-white/10 shrink-0">☰</button>
+                  <div className="relative flex-1 max-w-md">
+                    <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500 text-sm">🔍</span>
+                    <input 
+                      value={search} 
+                      onChange={e => setSearch(e.target.value)} 
+                      placeholder="Tìm kiếm UID, tên, ghi chú..." 
+                      className="w-full h-11 pl-10 pr-4 rounded-2xl bg-slate-950/20 border border-white/5 text-sm text-gray-200 placeholder-slate-600 outline-none focus:border-cyan-500/40 focus:bg-slate-950/50 transition-all font-medium"
+                    />
+                  </div>
+                </div>
+                
+                <div className="flex items-center gap-2 shrink-0">
+                  <button 
+                    onClick={() => setTab('online')} 
+                    className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 text-xs font-bold tabular-nums transition-all cursor-pointer"
+                    title="Xem danh sách chi tiết người đang Online"
+                  >
+                    <span className="relative flex h-2 w-2">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                    </span>
+                    <span>{statsData.onlineCount || 0} Online</span>
+                  </button>
+                  <div className="text-[11px] font-semibold text-slate-500 bg-white/5 border border-white/5 rounded-xl px-3 py-2 hidden lg:flex items-center gap-2 tabular-nums">
+                    <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />
+                    <span>Làm mới: {lastUpdated.toLocaleTimeString()}</span>
+                  </div>
+                  <button 
+                    onClick={() => setTgModalOpen(true)} 
+                    className="h-10 px-3 rounded-xl bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 hover:bg-cyan-500/20 text-xs font-bold transition-all flex items-center gap-1.5"
+                    title="Cấu hình Telegram Bot"
+                  >
+                    📱 <span className="hidden sm:inline">Telegram</span>
+                  </button>
+                  <button 
+                    onClick={() => { localStorage.removeItem('dx_at'); setLogged(false); }} 
+                    className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 text-slate-400 hover:text-rose-400 hover:border-rose-500/20 flex items-center justify-center transition-all" 
+                    title="Đăng xuất"
+                  >
+                    🚪
+                  </button>
+                </div>
+              </header>
+
+              {/* KPIs Dashboard */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-5">
+                {loading ? Array.from({ length: 4 }).map((_, i) => (
+                  <div key={i} className="glass rounded-3xl p-6 space-y-4 border border-white/5">
+                    <div className="flex justify-between items-center"><Sk cn="w-24 h-3"/><Sk cn="w-10 h-10 rounded-xl"/></div>
+                    <Sk cn="w-16 h-7"/>
+                  </div>
+                )) : [
+                  <Kpi key="1" icon="📱" label="Tổng thiết bị" val={stats.total} color="cyan" />,
+                  <Kpi key="2" icon="🟢" label="Đã kích hoạt" val={stats.active} color="emerald" />,
+                  <Kpi key="3" icon="⏳" label="Đang chờ duyệt" val={stats.pending} color="amber" />,
+                  <Kpi key="4" icon="🔴" label="Đã hết hạn" val={stats.expired} color="rose" />
+                ]}
+              </div>
+
+              {/* Package Distribution Analytics Bar */}
+              <div className="glass rounded-3xl p-5 md:p-6 border border-white/5 space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="text-lg">📊</span>
+                    <h3 className="text-white font-bold text-sm glow-text-cyan uppercase tracking-wider">Tỷ lệ phân bổ gói cước (VIP vs FREE vs TEST)</h3>
+                  </div>
+                  <span className="text-xs text-slate-500 font-semibold tabular-nums">{statsData.totalDevices || devices.length} thiết bị</span>
+                </div>
+
+                {/* Progress bar visualizer */}
+                <div className="w-full h-3 rounded-full bg-slate-900 overflow-hidden flex p-0.5 border border-white/5">
+                  <div className="h-full bg-gradient-to-r from-violet-500 to-purple-600 rounded-l-full transition-all duration-500" style={{ width: `${statsData.percentages?.vip || 0}%` }} title={`VIP: ${statsData.percentages?.vip || 0}%`} />
+                  <div className="h-full bg-gradient-to-r from-cyan-500 to-blue-600 transition-all duration-500" style={{ width: `${statsData.percentages?.free || 0}%` }} title={`FREE: ${statsData.percentages?.free || 0}%`} />
+                  <div className="h-full bg-gradient-to-r from-amber-500 to-orange-600 transition-all duration-500" style={{ width: `${statsData.percentages?.test || 0}%` }} title={`TEST: ${statsData.percentages?.test || 0}%`} />
+                  <div className="h-full bg-slate-700/50 rounded-r-full transition-all duration-500" style={{ width: `${statsData.percentages?.pending || 0}%` }} title={`CHỜ: ${statsData.percentages?.pending || 0}%`} />
+                </div>
+
+                {/* Legend badges */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-1">
+                  <div className="bg-violet-500/10 border border-violet-500/20 rounded-2xl p-3 text-center">
+                    <div className="text-[11px] text-violet-400 font-bold uppercase tracking-wider mb-1">⭐ Gói VIP</div>
+                    <div className="text-lg font-extrabold text-white tabular-nums">{statsData.counts?.vip || 0} <span className="text-xs text-violet-400 font-normal">({statsData.percentages?.vip || 0}%)</span></div>
+                  </div>
+                  <div className="bg-cyan-500/10 border border-cyan-500/20 rounded-2xl p-3 text-center">
+                    <div className="text-[11px] text-cyan-400 font-bold uppercase tracking-wider mb-1">🎁 Gói FREE</div>
+                    <div className="text-lg font-extrabold text-white tabular-nums">{statsData.counts?.free || 0} <span className="text-xs text-cyan-400 font-normal">({statsData.percentages?.free || 0}%)</span></div>
+                  </div>
+                  <div className="bg-amber-500/10 border border-amber-500/20 rounded-2xl p-3 text-center">
+                    <div className="text-[11px] text-amber-400 font-bold uppercase tracking-wider mb-1">🧪 Gói TEST</div>
+                    <div className="text-lg font-extrabold text-white tabular-nums">{statsData.counts?.test || 0} <span className="text-xs text-amber-400 font-normal">({statsData.percentages?.test || 0}%)</span></div>
+                  </div>
+                  <div className="bg-slate-500/10 border border-white/10 rounded-2xl p-3 text-center">
+                    <div className="text-[11px] text-slate-400 font-bold uppercase tracking-wider mb-1">⏳ Chờ duyệt</div>
+                    <div className="text-lg font-extrabold text-white tabular-nums">{statsData.counts?.pending || 0} <span className="text-xs text-slate-400 font-normal">({statsData.percentages?.pending || 0}%)</span></div>
+                  </div>
+                </div>
+              </div>
+
+              {/* DEVICES TAB VIEW */}
+              {tab === 'devices' && (
+                <div className="space-y-4">
+                  {/* Sub-tabs for Payload Types: VIP, FREE, TEST */}
+                  <div className="flex border-b border-white/5 gap-6 mb-2">
+                    {[
+                      { key: 'all', label: 'Tất cả thiết bị', color: 'text-cyan-400' },
+                      { key: 'vip', label: 'VIP ⭐', color: 'text-violet-400' },
+                      { key: 'free', label: 'FREE 🎁', color: 'text-slate-400' },
+                      { key: 'test', label: 'TEST 🧪', color: 'text-amber-400' }
+                    ].map(t => {
+                      const count = t.key === 'all' 
+                        ? devices.length 
+                        : devices.filter(d => (d.payload_type || 'free') === t.key).length;
+                      
+                      const active = payloadTypeTab === t.key;
+                      return (
+                        <button
+                          key={t.key}
+                          onClick={() => setPayloadTypeTab(t.key)}
+                          className={`pb-3 text-sm font-bold transition-all relative flex items-center gap-2 ${
+                            active ? 'text-white border-b-2 border-cyan-500' : 'text-slate-400 hover:text-slate-200'
+                          }`}
+                        >
+                          <span className={active ? t.color : ''}>{t.label}</span>
+                          <span className={`px-2 py-0.5 rounded-full text-[10px] tabular-nums font-bold ${
+                            active ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/20' : 'bg-white/5 text-slate-500 border border-transparent'
+                          }`}>
+                            {count}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {/* Toolbar */}
+                  <div className="glass rounded-3xl p-4 flex flex-wrap items-center gap-3 border border-white/5">
+                    <div className="flex items-center gap-2 w-full sm:w-auto">
+                      <span className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1">Lọc:</span>
+                      <select 
+                        value={filter} 
+                        onChange={e => setFilter(e.target.value)} 
+                        className="h-10 px-3 rounded-xl bg-slate-900/60 border border-white/5 text-sm text-gray-300 outline-none focus:border-cyan-500/40 cursor-pointer flex-1 sm:flex-none"
+                      >
+                        <option value="all">Tất cả trạng thái</option>
+                        <option value="approved">Đã kích hoạt</option>
+                        <option value="pending">Chờ duyệt</option>
+                        <option value="expired">Đã hết hạn</option>
+                      </select>
+                    </div>
+                    
+                    <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+                      <button onClick={loadDevices} className="h-10 px-4 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 text-sm font-semibold text-slate-300 hover:text-white transition-all flex-1 sm:flex-none">🔄 Tải lại</button>
+                      <button onClick={() => setAddOpen(true)} className="h-10 px-5 rounded-xl bg-gradient-to-r from-cyan-500 to-violet-600 hover:shadow-lg hover:shadow-cyan-500/10 text-sm font-bold text-white transition-all btn-cyber flex-1 sm:flex-none">＋ Thêm thiết bị</button>
+                      <button onClick={() => window.open('/api/admin/export/devices', '_blank')} className="h-10 px-4 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 text-sm font-semibold text-slate-300 hover:text-white transition-all flex-1 sm:flex-none">📥 Xuất CSV</button>
+                    </div>
+                    
+                    <span className="text-xs font-semibold text-slate-500 sm:ml-auto w-full sm:w-auto text-center sm:text-right tabular-nums bg-slate-900/50 px-3 py-2 rounded-xl border border-white/5 block">
+                      {filtered.length} / {devices.length} thiết bị
+                    </span>
+                  </div>
+
+                  {/* Devices Grid / Table */}
+                  <div className="glass rounded-3xl overflow-hidden border border-white/5">
+                    {loading ? (
+                      <div className="p-6 space-y-5">
+                        {Array.from({ length: 4 }).map((_, i) => (
+                          <div key={i} className="flex items-center gap-4">
+                            <Sk cn="w-10 h-10 rounded-xl" />
+                            <div className="flex-1 space-y-2"><Sk cn="w-1/4 h-3" /><Sk cn="w-1/2 h-3" /></div>
+                            <Sk cn="w-20 h-6" />
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <>
+                        {/* Desktop layout table (visible only on screens larger than mobile) */}
+                        <div className="overflow-x-auto hidden md:block">
+                          <table className="w-full text-sm text-left">
+                            <thead>
+                              <tr className="text-slate-400 text-xs font-bold uppercase tracking-wider border-b border-white/5 bg-slate-950/20">
+                                <th className="px-6 py-4">Tên thiết bị</th>
+                                <th className="px-6 py-4">Mã UID</th>
+                                <th className="px-6 py-4">Phân loại</th>
+                                <th className="px-6 py-4">Trạng thái</th>
+                                <th className="px-6 py-4">Kết nối</th>
+                                <th className="px-6 py-4">Ngày hết hạn</th>
+                                <th className="px-6 py-4">Ghi chú</th>
+                                <th className="px-6 py-4 text-center">Hành động</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-white/5">
+                              {filtered.map(d => {
+                                const exp = d.expires_at && new Date(d.expires_at).getTime() < Date.now();
+                                return (
+                                  <tr key={d.game_id} className="hover:bg-cyan-500/[0.02] transition-colors">
+                                    <td className="px-6 py-4 text-white font-semibold">{esc(d.label || 'Không tên')}</td>
+                                    <td className="px-6 py-4">
+                                      <div className="flex items-center gap-1.5">
+                                        <code className="code-font text-[11px] text-cyan-400 bg-cyan-950/30 border border-cyan-500/10 px-2.5 py-1 rounded-lg">
+                                          {esc(d.game_id)}
+                                        </code>
+                                        <button 
+                                          onClick={() => { navigator.clipboard.writeText(d.game_id); toast('Đã sao chép UID!'); }} 
+                                          className="text-slate-500 hover:text-cyan-400 transition-all p-1"
+                                          title="Copy UID"
+                                        >
+                                          📋
+                                        </button>
+                                      </div>
+                                    </td>
+                                    <td className="px-6 py-4"><PayloadBadge type={d.payload_type} /></td>
+                                    <td className="px-6 py-4">{exp ? <Badge s="expired" /> : <Badge s={d.status} />}</td>
+                                    <td className="px-6 py-4"><OnlineBadge state={onlineMap[d.game_id] || 'offline'} /></td>
+                                    <td className={`px-6 py-4 font-semibold text-xs ${exp ? 'text-rose-400' : 'text-slate-300'}`}>
+                                      {d.expires_at ? fmtDate(d.expires_at) : 'Vĩnh viễn'}
+                                    </td>
+                                    <td className="px-6 py-4 text-slate-400 max-w-[180px] truncate">{esc(d.note) || '-'}</td>
+                                    <td className="px-6 py-4 text-center whitespace-nowrap">
+                                      <div className="flex justify-center gap-1.5">
+                                        <button onClick={() => hEdit(d.game_id)} className="w-8 h-8 rounded-lg bg-white/5 hover:bg-cyan-500/10 border border-white/5 hover:border-cyan-500/20 text-slate-400 hover:text-cyan-400 flex items-center justify-center transition-all" title="Chỉnh sửa">✏️</button>
+                                        <button onClick={() => hDelete(d.game_id)} className="w-8 h-8 rounded-lg bg-white/5 hover:bg-rose-500/10 border border-white/5 hover:border-rose-500/20 text-slate-400 hover:text-rose-400 flex items-center justify-center transition-all" title="Xoá vĩnh viễn">🗑️</button>
+                                      </div>
+                                    </td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
+
+                        {/* Hybrid Premium Mobile Layout (visible only on mobile screen widths) */}
+                        <div className="md:hidden divide-y divide-white/5">
+                          {filtered.map(d => {
+                            const exp = d.expires_at && new Date(d.expires_at).getTime() < Date.now();
+                            return (
+                              <div key={d.game_id} className="p-4 space-y-4 hover:bg-cyan-500/[0.01] transition-colors">
+                                <div className="flex items-start justify-between gap-2">
+                                  <div className="min-w-0">
+                                    <h4 className="text-white font-bold text-base truncate">{esc(d.label || 'Không tên')}</h4>
+                                    <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
+                                      <code className="code-font text-[10px] text-cyan-400 bg-cyan-950/30 border border-cyan-500/10 px-2 py-0.5 rounded-lg truncate max-w-[150px]">
+                                        {esc(d.game_id)}
+                                      </code>
+                                      <button 
+                                        onClick={() => { navigator.clipboard.writeText(d.game_id); toast('Đã sao chép UID!'); }} 
+                                        className="text-slate-500 active:text-cyan-400 p-1"
+                                      >
+                                        📋
+                                      </button>
+                                      <PayloadBadge type={d.payload_type} />
+                                    </div>
+                                  </div>
+                                  <div className="flex flex-col items-end gap-2 shrink-0">
+                                    {exp ? <Badge s="expired" /> : <Badge s={d.status} />}
+                                    <OnlineBadge state={onlineMap[d.game_id] || 'offline'} />
+                                  </div>
+                                </div>
+                                
+                                <div className="grid grid-cols-2 gap-3 text-xs border-t border-white/5 pt-3">
+                                  <div>
+                                    <span className="text-slate-500 block font-bold uppercase tracking-wider text-[9px] mb-0.5">Ngày hết hạn</span>
+                                    <span className={`font-semibold ${exp ? 'text-rose-400' : 'text-slate-300'}`}>
+                                      {d.expires_at ? fmtDate(d.expires_at) : 'Vĩnh viễn'}
+                                    </span>
+                                  </div>
+                                  <div>
+                                    <span className="text-slate-500 block font-bold uppercase tracking-wider text-[9px] mb-0.5">Ghi chú</span>
+                                    <span className="text-slate-300 font-semibold truncate block max-w-[130px]">
+                                      {esc(d.note) || '--'}
+                                    </span>
+                                  </div>
+                                </div>
+
+                                <div className="flex gap-2 pt-2">
+                                  <button 
+                                    onClick={() => hEdit(d.game_id)} 
+                                    className="flex-1 h-10 rounded-xl bg-white/5 border border-white/5 text-slate-300 hover:text-white text-xs font-bold flex items-center justify-center gap-1.5 active:bg-white/10 transition-all"
+                                  >
+                                    ✏️ Chỉnh sửa bản quyền
+                                  </button>
+                                  <button 
+                                    onClick={() => hDelete(d.game_id)} 
+                                    className="w-10 h-10 rounded-xl bg-white/5 border border-white/5 text-rose-400 active:bg-rose-500/10 flex items-center justify-center shrink-0 transition-all"
+                                  >
+                                    🗑️
+                                  </button>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+
+                        {filtered.length === 0 && (
+                          <div className="py-16 text-center text-slate-500 text-sm font-semibold">
+                            📭 Không tìm thấy thiết bị nào
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* ONLINE TAB VIEW */}
+              {tab === 'online' && (
+                <div className="space-y-4">
+                  {/* Toolbar */}
+                  <div className="glass rounded-3xl p-4 flex flex-wrap items-center gap-3 border border-white/5">
+                    <div className="flex items-center gap-2 w-full sm:w-auto flex-1 min-w-[240px]">
+                      <span className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1">Tìm:</span>
+                      <input 
+                        value={oSearch} 
+                        onChange={e => setOSearch(e.target.value)} 
+                        placeholder="Tìm UID, Tên người dùng, Tên nhân vật..." 
+                        className="h-10 px-3 rounded-xl bg-slate-900/60 border border-white/5 text-sm text-gray-300 placeholder-slate-600 outline-none focus:border-cyan-500/40 w-full font-medium"
+                      />
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+                      <button onClick={loadOnlineList} className="h-10 px-4 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 text-sm font-semibold text-slate-300 hover:text-white transition-all flex-1 sm:flex-none">🔄 Tải lại</button>
+                    </div>
+
+                    <span className="text-xs font-semibold text-emerald-400 sm:ml-auto w-full sm:w-auto text-center sm:text-right tabular-nums bg-emerald-500/10 border border-emerald-500/20 px-3 py-2 rounded-xl block">
+                      <span className="w-2 h-2 rounded-full bg-emerald-400 inline-block animate-pulse mr-2" />
+                      {onlineDevices.filter(d => {
+                        const q = oSearch.toLowerCase();
+                        return String(d.game_id||'').toLowerCase().includes(q) || String(d.label||'').toLowerCase().includes(q) || String(d.player_name||'').toLowerCase().includes(q);
+                      }).length} / {onlineDevices.length} thiết bị đang Online (1.5p qua)
+                    </span>
+                  </div>
+
+                  {/* Online Table / Cards */}
+                  <div className="glass rounded-3xl overflow-hidden border border-white/5">
+                    {/* Desktop layout table */}
+                    <div className="overflow-x-auto hidden md:block">
+                      <table className="w-full text-sm text-left">
+                        <thead>
+                          <tr className="text-slate-400 text-xs font-bold uppercase tracking-wider border-b border-white/5 bg-slate-950/20">
+                            <th className="px-6 py-4">Tên người dùng (Nhãn)</th>
+                            <th className="px-6 py-4">Tên Nhân Vật Game</th>
+                            <th className="px-6 py-4">Mã UID Thiết bị</th>
+                            <th className="px-6 py-4">Gói Cước</th>
+                            <th className="px-6 py-4">Hoạt động lần cuối</th>
+                            <th className="px-6 py-4">Trạng thái Game</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-white/5">
+                          {onlineDevices
+                            .filter(d => {
+                              const q = oSearch.toLowerCase();
+                              return String(d.game_id||'').toLowerCase().includes(q) || String(d.label||'').toLowerCase().includes(q) || String(d.player_name||'').toLowerCase().includes(q);
+                            })
+                            .map((d, idx) => {
+                              const lastSec = Math.max(0, Math.floor((Date.now() - new Date(d.last_seen_at).getTime()) / 1000));
+                              return (
+                                <tr key={idx} className="hover:bg-white/[0.02] transition-colors">
+                                  <td className="px-6 py-4 font-bold text-white">
+                                    {esc(d.label || d.game_id)}
+                                  </td>
+                                  <td className="px-6 py-4">
+                                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-violet-500/10 text-violet-300 border border-violet-500/20 font-extrabold text-xs">
+                                      🎮 {esc(d.player_name || 'Chưa ghi nhận')}
+                                    </span>
+                                  </td>
+                                  <td className="px-6 py-4 font-mono text-xs text-slate-300">
+                                    <div className="flex items-center gap-2">
+                                      <code className="bg-slate-950/40 px-2.5 py-1 rounded-lg border border-white/5 text-cyan-300">
+                                        {esc(d.game_id)}
+                                      </code>
+                                      <button 
+                                        onClick={() => { navigator.clipboard.writeText(d.game_id); toast('Đã sao chép UID!'); }} 
+                                        className="text-slate-500 hover:text-cyan-400 transition-colors p-1"
+                                        title="Sao chép UID"
+                                      >
+                                        📋
+                                      </button>
+                                    </div>
+                                  </td>
+                                  <td className="px-6 py-4">
+                                    <PayloadBadge type={d.payload_type} />
+                                  </td>
+                                  <td className="px-6 py-4 text-xs font-semibold tabular-nums text-slate-300">
+                                    <div>{fmtDate(d.last_seen_at)}</div>
+                                    <div className="text-[10px] text-emerald-400 font-bold mt-0.5">({lastSec === 0 ? 'Vừa mới xong' : `${lastSec} giây trước`})</div>
+                                  </td>
+                                  <td className="px-6 py-4">
+                                    {d.in_match ? (
+                                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-violet-500/10 text-violet-400 border border-violet-500/20 text-xs font-bold animate-pulse">
+                                        🎮 Trong trận đấu {d.kills > 0 ? `(${d.kills} Kills)` : ''}
+                                      </span>
+                                    ) : (
+                                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-xs font-bold">
+                                        🟢 Đang ở sảnh chờ
+                                      </span>
+                                    )}
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                        </tbody>
+                      </table>
+                    </div>
+
+                    {/* Mobile cards layout */}
+                    <div className="md:hidden divide-y divide-white/5">
+                      {onlineDevices
+                        .filter(d => {
+                          const q = oSearch.toLowerCase();
+                          return String(d.game_id||'').toLowerCase().includes(q) || String(d.label||'').toLowerCase().includes(q) || String(d.player_name||'').toLowerCase().includes(q);
+                        })
+                        .map((d, idx) => {
+                          const lastSec = Math.max(0, Math.floor((Date.now() - new Date(d.last_seen_at).getTime()) / 1000));
+                          return (
+                            <div key={idx} className="p-4 space-y-3">
+                              <div className="flex items-start justify-between gap-3">
+                                <div>
+                                  <h4 className="font-extrabold text-white text-base">{esc(d.label || d.game_id)}</h4>
+                                  <div className="text-xs text-violet-400 font-bold mt-1">🎮 Tên Game: {esc(d.player_name || 'Chưa ghi nhận')}</div>
+                                </div>
+                                <PayloadBadge type={d.payload_type} />
+                              </div>
+
+                              <div className="text-xs font-mono text-cyan-300 bg-slate-950/40 p-2.5 rounded-xl border border-white/5 flex items-center justify-between">
+                                <span className="truncate mr-2">{esc(d.game_id)}</span>
+                                <button onClick={() => { navigator.clipboard.writeText(d.game_id); toast('Đã sao chép UID!'); }} className="text-slate-400 active:text-cyan-400">📋</button>
+                              </div>
+
+                              <div className="flex items-center justify-between text-xs pt-1 border-t border-white/5">
+                                <div>
+                                  <span className="text-slate-500 text-[10px] font-bold block uppercase">Hoạt động cuối</span>
+                                  <span className="text-slate-300 font-semibold">{fmtDate(d.last_seen_at)} ({lastSec}s trước)</span>
+                                </div>
+                                <div>
+                                  {d.in_match ? (
+                                    <span className="px-2.5 py-1 rounded-lg bg-violet-500/10 text-violet-400 border border-violet-500/20 font-bold text-[11px]">🎮 Trong trận</span>
+                                  ) : (
+                                    <span className="px-2.5 py-1 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-bold text-[11px]">🟢 Ở sảnh</span>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                    </div>
+
+                    {onlineDevices.length === 0 && (
+                      <div className="py-16 text-center text-slate-500 text-sm font-semibold">
+                        📭 Hiện tại không có thiết bị nào đang Online
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+              {tab === 'sessions' && (
+                <div className="space-y-4">
+                  {/* Toolbar */}
+                  <div className="glass rounded-3xl p-4 flex flex-wrap items-center gap-3 border border-white/5">
+                    <input 
+                      value={sSearch} 
+                      onChange={e => sSetSearch(e.target.value)} 
+                      placeholder="Tìm theo UID hoặc tên..." 
+                      className="h-10 px-3 rounded-xl bg-slate-900/60 border border-white/5 text-sm text-gray-300 placeholder-slate-600 outline-none focus:border-cyan-500/40 w-full sm:w-auto sm:min-w-[200px] font-medium"
+                    />
+                    <select 
+                      value={sFilter} 
+                      onChange={e => sSetFilter(e.target.value)} 
+                      className="h-10 px-3 rounded-xl bg-slate-900/60 border border-white/5 text-sm text-gray-300 outline-none focus:border-cyan-500/40 cursor-pointer w-full sm:w-auto flex-1 sm:flex-none"
+                    >
+                      <option value="all">Tất cả trạng thái</option>
+                      <option value="in_match">Đang trong trận</option>
+                      <option value="ended">Đã kết thúc</option>
+                    </select>
+                    <button onClick={loadSessions} className="h-10 px-4 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 text-sm font-semibold text-slate-300 hover:text-white transition-all w-full sm:w-auto flex-1 sm:flex-none">🔄 Tải lại</button>
+                    <button onClick={clearSessions} className="h-10 px-4 rounded-xl bg-rose-500/10 border border-rose-500/20 hover:bg-rose-500/20 text-sm font-semibold text-rose-400 hover:text-rose-300 transition-all w-full sm:w-auto flex-1 sm:flex-none">🗑️ Xóa tất cả</button>
+                    
+                    <span className="text-xs font-semibold text-slate-500 sm:ml-auto w-full sm:w-auto text-center sm:text-right bg-slate-900/50 px-3 py-2 rounded-xl border border-white/5 tabular-nums">
+                      {sFiltered.length} phiên hoạt động
+                    </span>
+                  </div>
+
+                  {/* Sessions Table / Cards */}
+                  <div className="glass rounded-3xl overflow-hidden border border-white/5">
+                    {/* Desktop table view */}
+                    <div className="overflow-x-auto hidden md:block">
+                      <table className="w-full text-sm text-left">
+                        <thead>
+                          <tr className="text-slate-400 text-xs font-bold uppercase tracking-wider border-b border-white/5 bg-slate-950/20">
+                            <th className="px-6 py-4">Tên người chơi</th>
+                            <th className="px-6 py-4">Thiết bị UID</th>
+                            <th className="px-6 py-4">ID trận đấu</th>
+                            <th className="px-6 py-4">Số mạng (Kill)</th>
+                            <th className="px-6 py-4">Bắt đầu lúc</th>
+                            <th className="px-6 py-4">Kết thúc lúc</th>
+                            <th className="px-6 py-4">Thời lượng</th>
+                            <th className="px-6 py-4">Trạng thái</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-white/5">
+                          {sFiltered.map((s, i) => (
+                            <tr key={s.id || i} className="hover:bg-cyan-500/[0.01] transition-colors">
+                              <td className="px-6 py-4">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-white font-semibold">{esc(s.player_name || 'Không tên')}</span>
+                                  {s.top1 && (
+                                    <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20 uppercase tracking-wider">
+                                      🏆 TOP 1
+                                    </span>
+                                  )}
+                                </div>
+                              </td>
+                              <td className="px-6 py-4">
+                                <code className="code-font text-[11px] text-cyan-400 bg-cyan-950/30 border border-cyan-500/10 px-2 py-0.5 rounded-md">
+                                  {esc(s.uid)}
+                                </code>
+                              </td>
+                              <td className="px-6 py-4 text-slate-400 font-medium">{esc(s.match_id) || '--'}</td>
+                              <td className="px-6 py-4">
+                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-slate-900 border border-white/5 text-slate-300">
+                                  {s.kill_num || 0} Kills
+                                </span>
+                              </td>
+                              <td className="px-6 py-4 text-xs text-slate-400">{fmtDate(s.started_at)}</td>
+                              <td className="px-6 py-4 text-xs text-slate-400">{fmtDate(s.ended_at)}</td>
+                              <td className="px-6 py-4 text-slate-200 font-medium">{fmtDur(s.duration_sec)}</td>
+                              <td className="px-6 py-4">
+                                {s.status === 'in_match' ? (
+                                  <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 text-xs font-bold">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-ping" />
+                                    Trong trận
+                                  </span>
+                                ) : (
+                                  <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded bg-slate-900 border border-white/5 text-slate-500 text-xs font-semibold">
+                                    Hoàn thành
+                                  </span>
+                                )}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+
+                    {/* Mobile Card list view */}
+                    <div className="md:hidden divide-y divide-white/5">
+                      {sFiltered.map((s, i) => (
+                        <div key={s.id || i} className="p-4 space-y-3 hover:bg-cyan-500/[0.01] transition-colors">
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="text-white font-bold text-sm truncate max-w-[150px]">{esc(s.player_name || 'Không tên')}</span>
+                                {s.top1 && (
+                                  <span className="px-1.5 py-0.5 rounded text-[8px] font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20">🏆 TOP 1</span>
+                                )}
+                              </div>
+                              <code className="code-font text-[10px] text-cyan-400 bg-cyan-950/30 border border-cyan-500/10 px-2 py-0.5 rounded-md mt-1.5 inline-block">
+                                {esc(s.uid)}
+                              </code>
+                            </div>
+                            <div className="shrink-0">
+                              {s.status === 'in_match' ? (
+                                <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 text-xs font-bold">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-ping" />
+                                  Trong trận
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded bg-slate-900 border border-white/5 text-slate-500 text-xs font-semibold">
+                                  Xong
+                                </span>
+                              )}
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-3 gap-2 text-xs border-t border-white/5 pt-3">
+                            <div>
+                              <span className="text-slate-500 block font-bold uppercase tracking-wider text-[8px] mb-0.5">Trận đấu</span>
+                              <span className="text-slate-300 font-semibold truncate block max-w-[80px]">{esc(s.match_id) || '--'}</span>
+                            </div>
+                            <div>
+                              <span className="text-slate-500 block font-bold uppercase tracking-wider text-[8px] mb-0.5">Kills</span>
+                              <span className="text-slate-300 font-bold">{s.kill_num || 0} Kills</span>
+                            </div>
+                            <div>
+                              <span className="text-slate-500 block font-bold uppercase tracking-wider text-[8px] mb-0.5">Thời lượng</span>
+                              <span className="text-slate-300 font-semibold">{fmtDur(s.duration_sec)}</span>
+                            </div>
+                          </div>
+                          
+                          <div className="text-[10px] text-slate-500 flex flex-wrap justify-between gap-1 pt-1">
+                            <span>Vào: {fmtDate(s.started_at)}</span>
+                            {s.ended_at && <span>Ra: {fmtDate(s.ended_at)}</span>}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    {sFiltered.length === 0 && (
+                      <div className="py-16 text-center text-slate-500 text-sm font-semibold">
+                        📭 Chưa ghi nhận phiên hoạt động nào
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* OVERVIEW / USERS TAB VIEW */}
+              {tab === 'users' && (
+                <div className="glass rounded-3xl border border-white/5 overflow-hidden">
+                  <div className="p-6 border-b border-white/5">
+                    <h3 className="text-white font-bold text-lg">BIỂU ĐỒ & THỐNG KÊ CHI TIẾT</h3>
+                    <p className="text-slate-400 text-xs mt-1">Tổng quan hoạt động của hệ thống giấy phép DXMOD</p>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 p-4 md:p-6 border-b border-white/5 bg-slate-950/10">
+                    <div className="glass rounded-2xl p-5 text-center relative overflow-hidden">
+                      <div className="text-4xl font-extrabold text-white mb-2 tabular-nums">{stats.total}</div>
+                      <div className="text-xs text-slate-400 font-semibold uppercase tracking-wider text-[9px]">Tổng số thiết bị</div>
+                    </div>
+                    <div className="glass rounded-2xl p-5 text-center relative overflow-hidden">
+                      <div className="text-4xl font-extrabold text-emerald-400 mb-2 tabular-nums">{stats.active}</div>
+                      <div className="text-xs text-slate-400 font-semibold uppercase tracking-wider text-[9px]">Đang kích hoạt</div>
+                    </div>
+                    <div className="glass rounded-2xl p-5 text-center relative overflow-hidden">
+                      <div className="text-4xl font-extrabold text-amber-400 mb-2 tabular-nums">{stats.pending}</div>
+                      <div className="text-xs text-slate-400 font-semibold uppercase tracking-wider text-[9px]">Đang chờ duyệt</div>
+                    </div>
+                    <div className="glass rounded-2xl p-5 text-center relative overflow-hidden">
+                      <div className="text-4xl font-extrabold text-rose-400 mb-2 tabular-nums">{stats.expired}</div>
+                      <div className="text-xs text-slate-400 font-semibold uppercase tracking-wider text-[9px]">Hết hạn giấy phép</div>
+                    </div>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 p-4 md:p-6">
+                    <div className="glass rounded-2xl p-5 text-center border border-cyan-500/10 relative">
+                      <div className="text-4xl font-extrabold text-cyan-400 mb-2 tabular-nums">{inMatch}</div>
+                      <div className="text-xs text-slate-400 font-semibold uppercase tracking-wider text-[9px]">Số người trong trận</div>
+                    </div>
+                    <div className="glass rounded-2xl p-5 text-center border border-white/5 relative">
+                      <div className="text-4xl font-extrabold text-white mb-2 tabular-nums">{sessions.length}</div>
+                      <div className="text-xs text-slate-400 font-semibold uppercase tracking-wider text-[9px]">Tổng số trận đấu</div>
+                    </div>
+                    <div className="glass rounded-2xl p-5 text-center border border-violet-500/10 relative">
+                      <div className="text-4xl font-extrabold text-violet-400 mb-2 tabular-nums">{sessions.filter(s=>s.top1).length}</div>
+                      <div className="text-xs text-slate-400 font-semibold uppercase tracking-wider text-[9px]">Đạt TOP 1 (Cúp Vàng)</div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+            </div>
+          </div>
+
+          {/* ── EDIT LICENSE MODAL ── */}
+          <div id="em" className="fixed inset-0 z-[100] bg-slate-950/70 backdrop-blur-md hidden items-center justify-center p-4" onClick={e=>e.target.id==='em'?document.getElementById('em').style.display='none':null}>
+            <div className="glass neon-border rounded-3xl w-full max-w-xl p-6 md:p-8 relative modal-scroll">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-white font-extrabold text-lg glow-text-cyan">Cấu hình bản quyền</h3>
+                <button onClick={()=>document.getElementById('em').style.display='none'} className="w-8 h-8 rounded-lg bg-white/5 hover:bg-rose-500/10 text-slate-400 hover:text-rose-400 border border-white/5 flex items-center justify-center transition-all">✕</button>
+              </div>
+              <form onSubmit={hSaveEdit} className="space-y-4">
+                <input type="hidden" id="eu"/>
+                <div>
+                  <label className="text-xs text-slate-400 font-bold uppercase tracking-wider block mb-2">Tên hiển thị (Tên người chơi)</label>
+                  <input id="el" className="w-full h-11 px-4 rounded-xl bg-slate-950/40 border border-white/5 text-sm text-gray-200 outline-none focus:border-cyan-500/40 focus:bg-slate-950/80 transition-all font-semibold" />
+                </div>
+                <div>
+                  <label className="text-xs text-slate-400 font-bold uppercase tracking-wider block mb-2">Trạng thái phê duyệt</label>
+                  <select id="es" className="w-full h-11 px-4 rounded-xl bg-slate-950/40 border border-white/5 text-sm text-gray-300 outline-none focus:border-cyan-500/40 focus:bg-slate-950/80 transition-all cursor-pointer font-semibold">
+                    <option value="approved">✅ Phê duyệt kích hoạt</option>
+                    <option value="pending">⏳ Đưa về hàng chờ duyệt</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs text-slate-400 font-bold uppercase tracking-wider block mb-2">Phân loại Payload (Quyền hạn)</label>
+                  <select id="ep_type" className="w-full h-11 px-4 rounded-xl bg-slate-950/40 border border-white/5 text-sm text-gray-300 outline-none focus:border-cyan-500/40 focus:bg-slate-950/80 transition-all cursor-pointer font-semibold">
+                    <option value="free">🎁 Bản FREE</option>
+                    <option value="vip">⭐ Bản VIP</option>
+                    <option value="test">🧪 Bản TEST</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs text-slate-400 font-bold uppercase tracking-wider block mb-2">Thời hạn giấy phép</label>
+                  <select id="exs" onChange={e=>document.getElementById('exc').style.display=e.target.value==='custom'?'block':'none'} className="w-full h-11 px-4 rounded-xl bg-slate-950/40 border border-white/5 text-sm text-gray-300 outline-none focus:border-cyan-500/40 focus:bg-slate-950/80 transition-all cursor-pointer font-semibold">
+                    <option value="lifetime">♾️ Trọn đời (Vĩnh viễn)</option>
+                    <option value="1day">1 Ngày</option>
+                    <option value="7days">7 Ngày</option>
+                    <option value="30days">30 Ngày</option>
+                    <option value="custom">📅 Chọn ngày tuỳ ý</option>
+                  </select>
+                </div>
+                <div id="exc" style={{display:'none'}}>
+                  <input id="exd" type="datetime-local" className="w-full h-11 px-4 rounded-xl bg-slate-950/40 border border-white/5 text-sm text-gray-200 outline-none focus:border-cyan-500/40 focus:bg-slate-950/80 transition-all font-semibold" />
+                </div>
+                <div>
+                  <label className="text-xs text-slate-400 font-bold uppercase tracking-wider block mb-2">Ghi chú chi tiết</label>
+                  <textarea id="en" rows="3" className="w-full px-4 py-3 rounded-xl bg-slate-950/40 border border-white/5 text-sm text-gray-200 outline-none focus:border-cyan-500/40 focus:bg-slate-950/80 transition-all resize-none font-medium" />
+                </div>
+                <div className="flex justify-end gap-3 pt-3">
+                  <button type="button" onClick={()=>document.getElementById('em').style.display='none'} className="h-11 px-5 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 text-sm font-semibold text-slate-300 hover:text-white transition-all">Huỷ bỏ</button>
+                  <button type="submit" className="h-11 px-6 rounded-xl bg-gradient-to-r from-cyan-500 to-violet-600 hover:shadow-lg hover:shadow-cyan-500/10 text-sm font-bold text-white transition-all btn-cyber">Lưu thiết lập</button>
+                </div>
+              </form>
+            </div>
+          </div>
+
+          {/* ── ADD DEVICE MODAL ── */}
+          <div id="am" className={`fixed inset-0 z-[100] bg-slate-950/70 backdrop-blur-md ${addOpen?'flex':'hidden'} items-center justify-center p-4`} onClick={e=>e.target.id==='am'?setAddOpen(false):null}>
+            <div className="glass neon-border rounded-3xl w-full max-w-xl p-6 md:p-8 relative modal-scroll">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-white font-extrabold text-lg glow-text-cyan">Thêm thiết bị thủ công</h3>
+                <button onClick={()=>setAddOpen(false)} className="w-8 h-8 rounded-lg bg-white/5 hover:bg-rose-500/10 text-slate-400 hover:text-rose-400 border border-white/5 flex items-center justify-center transition-all">✕</button>
+              </div>
+              <form onSubmit={hAdd} className="space-y-4">
+                <div>
+                  <label className="text-xs text-slate-400 font-bold uppercase tracking-wider block mb-2">Mã UID thiết bị <span className="text-rose-400">*</span></label>
+                  <input value={addUid} onChange={e=>setAddUid(e.target.value)} required placeholder="Ví dụ: AD68DB61-4A21-4054-..." className="w-full h-11 px-4 rounded-xl bg-slate-950/40 border border-white/5 text-sm text-gray-200 outline-none focus:border-cyan-500/40 focus:bg-slate-950/80 transition-all font-semibold" />
+                </div>
+                <div>
+                  <label className="text-xs text-slate-400 font-bold uppercase tracking-wider block mb-2">Tên người dùng (Nhãn hiển thị)</label>
+                  <input value={addLabel} onChange={e=>setAddLabel(e.target.value)} placeholder="Ví dụ: Nguyễn Văn A" className="w-full h-11 px-4 rounded-xl bg-slate-950/40 border border-white/5 text-sm text-gray-200 outline-none focus:border-cyan-500/40 focus:bg-slate-950/80 transition-all font-semibold" />
+                </div>
+                <div>
+                  <label className="text-xs text-slate-400 font-bold uppercase tracking-wider block mb-2">Phân loại Payload (Quyền hạn)</label>
+                  <select value={addPayloadType} onChange={e=>setAddPayloadType(e.target.value)} className="w-full h-11 px-4 rounded-xl bg-slate-950/40 border border-white/5 text-sm text-gray-300 outline-none focus:border-cyan-500/40 focus:bg-slate-950/80 transition-all cursor-pointer font-semibold">
+                    <option value="free">🎁 Bản FREE</option>
+                    <option value="vip">⭐ Bản VIP</option>
+                    <option value="test">🧪 Bản TEST</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs text-slate-400 font-bold uppercase tracking-wider block mb-2">Thời hạn giấy phép</label>
+                  <select value={addExpiry} onChange={e=>setAddExpiry(e.target.value)} className="w-full h-11 px-4 rounded-xl bg-slate-950/40 border border-white/5 text-sm text-gray-300 outline-none focus:border-cyan-500/40 focus:bg-slate-950/80 transition-all cursor-pointer font-semibold">
+                    <option value="lifetime">♾️ Trọn đời (Vĩnh viễn)</option>
+                    <option value="1day">1 Ngày</option>
+                    <option value="7days">7 Ngày</option>
+                    <option value="30days">30 Ngày</option>
+                    <option value="custom">📅 Chọn ngày tuỳ ý</option>
+                  </select>
+                </div>
+                {addExpiry==='custom' && (
+                  <div>
+                    <input id="adx" type="datetime-local" className="w-full h-11 px-4 rounded-xl bg-slate-950/40 border border-white/5 text-sm text-gray-200 outline-none focus:border-cyan-500/40 focus:bg-slate-950/80 transition-all font-semibold" />
+                  </div>
+                )}
+                <div>
+                  <label className="text-xs text-slate-400 font-bold uppercase tracking-wider block mb-2">Ghi chú</label>
+                  <textarea value={addNote} onChange={e=>setAddNote(e.target.value)} rows="3" placeholder="Nhập ghi chú hoặc thông tin khách hàng..." className="w-full px-4 py-3 rounded-xl bg-slate-950/40 border border-white/5 text-sm text-gray-200 outline-none focus:border-cyan-500/40 focus:bg-slate-950/80 transition-all resize-none font-medium" />
+                </div>
+                <div className="flex justify-end gap-3 pt-3">
+                  <button type="button" onClick={()=>setAddOpen(false)} className="h-11 px-5 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 text-sm font-semibold text-slate-300 hover:text-white transition-all">Huỷ bỏ</button>
+                  <button type="submit" className="h-11 px-6 rounded-xl bg-gradient-to-r from-cyan-500 to-violet-600 hover:shadow-lg hover:shadow-cyan-500/10 text-sm font-bold text-white transition-all btn-cyber">Thêm thiết bị</button>
+                </div>
+              </form>
+            </div>
+          </div>
+
+          {/* ── TELEGRAM BOT SETTINGS MODAL ── */}
+          <div id="tm" className={`fixed inset-0 z-[100] bg-slate-950/70 backdrop-blur-md ${tgModalOpen?'flex':'hidden'} items-center justify-center p-4`} onClick={e=>e.target.id==='tm'?setTgModalOpen(false):null}>
+            <div className="glass neon-border rounded-3xl w-full max-w-xl p-6 md:p-8 relative modal-scroll">
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center gap-2">
+                  <span className="text-xl">📱</span>
+                  <h3 className="text-white font-extrabold text-lg glow-text-cyan">Cấu hình Thông báo Telegram Bot</h3>
+                </div>
+                <button onClick={()=>setTgModalOpen(false)} className="w-8 h-8 rounded-lg bg-white/5 hover:bg-rose-500/10 text-slate-400 hover:text-rose-400 border border-white/5 flex items-center justify-center transition-all">✕</button>
+              </div>
+              <form onSubmit={saveTelegram} className="space-y-4">
+                <div>
+                  <label className="text-xs text-slate-400 font-bold uppercase tracking-wider block mb-2">Telegram Bot Token</label>
+                  <input value={tgToken} onChange={e=>setTgToken(e.target.value)} placeholder="Ví dụ: 7123456789:AAE...xyz" className="w-full h-11 px-4 rounded-xl bg-slate-950/40 border border-white/5 text-sm text-gray-200 outline-none focus:border-cyan-500/40 focus:bg-slate-950/80 transition-all font-mono" />
+                  <p className="text-[11px] text-slate-500 mt-1">Lấy token từ BotFather trên Telegram (@BotFather)</p>
+                </div>
+                <div>
+                  <label className="text-xs text-slate-400 font-bold uppercase tracking-wider block mb-2">Telegram Chat ID (ID của bạn hoặc Nhóm)</label>
+                  <input value={tgChatId} onChange={e=>setTgChatId(e.target.value)} placeholder="Ví dụ: 1234567890" className="w-full h-11 px-4 rounded-xl bg-slate-950/40 border border-white/5 text-sm text-gray-200 outline-none focus:border-cyan-500/40 focus:bg-slate-950/80 transition-all font-mono" />
+                  <p className="text-[11px] text-slate-500 mt-1">Lấy ID chat cá nhân từ bot @userinfobot hoặc @myidbot</p>
+                </div>
+                <div className="p-4 rounded-2xl bg-cyan-500/5 border border-cyan-500/10 text-xs text-slate-300 space-y-1">
+                  <div className="font-bold text-cyan-400 mb-1">💡 Các thông báo sẽ nhận qua Telegram:</div>
+                  <div>• 📱 Khi có **thiết bị mới tự động đăng ký** (FREE 7 ngày).</div>
+                  <div>• 👑 Khi bạn **duyệt hoặc nâng cấp VIP** cho thiết bị.</div>
+                </div>
+                <div className="flex justify-between items-center pt-3 gap-3">
+                  <button type="button" onClick={testTelegram} disabled={tgTesting} className="h-11 px-4 rounded-xl bg-violet-500/10 border border-violet-500/20 hover:bg-violet-500/20 text-xs font-bold text-violet-400 transition-all flex items-center gap-2">
+                    {tgTesting ? '⏳ Đang gửi...' : '🔔 Gửi tin nhắn thử'}
+                  </button>
+                  <div className="flex gap-2">
+                    <button type="button" onClick={()=>setTgModalOpen(false)} className="h-11 px-4 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 text-xs font-semibold text-slate-300 hover:text-white transition-all">Đóng</button>
+                    <button type="submit" className="h-11 px-5 rounded-xl bg-gradient-to-r from-cyan-500 to-violet-600 hover:shadow-lg hover:shadow-cyan-500/10 text-xs font-bold text-white transition-all btn-cyber">Lưu cấu hình</button>
+                  </div>
+                </div>
+              </form>
+            </div>
+          </div>
+
+          {/* ── DANGER CONFIRM MODAL ── */}
+          <div id="cm" className="fixed inset-0 z-[100] bg-slate-950/70 backdrop-blur-md hidden items-center justify-center p-4">
+            <div className="glass neon-border rounded-3xl w-full max-w-sm p-6 relative">
+              <h3 id="ct" className="text-white font-extrabold text-lg mb-2 glow-text-purple">Xác nhận tác vụ</h3>
+              <p id="cb" className="text-slate-400 text-sm mb-6 leading-relaxed">Nội dung</p>
+              <div className="flex justify-end gap-3">
+                <button id="cc" onClick={()=>closeConfirm(false)} className="close-c h-10 px-4 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 text-sm font-semibold text-slate-300 hover:text-white transition-all">Huỷ bỏ</button>
+                <button id="co" onClick={()=>closeConfirm(true)} className="h-10 px-5 rounded-xl bg-gradient-to-r from-rose-500 to-pink-600 hover:shadow-lg hover:shadow-rose-500/10 text-sm font-bold text-white transition-all btn-cyber">Xác nhận</button>
+              </div>
+            </div>
+          </div>
+
+          {/* ── SYSTEM TOAST ── */}
+          <div id="t" style={{ transform: 'translateY(20px)', opacity: 0 }} />
+        </div>
+      );
+    };
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
 </body>
 </html>
