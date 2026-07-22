@@ -392,6 +392,11 @@ app.post("/api/check", (req, res) => {
     }
   }
 
+  const nowIso = new Date().toISOString();
+  device.last_seen_at = nowIso;
+  device.updated_at = nowIso;
+  writeDatabase(db);
+
   res.json({ status: "success", active: true, message: "Device activated", expires_at: device.expires_at });
 });
 
