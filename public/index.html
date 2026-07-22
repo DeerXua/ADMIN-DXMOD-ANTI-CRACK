@@ -668,10 +668,15 @@
 
       useEffect(() => {
         if (!logged) return;
-        // Load lần đầu
-        Promise.all([loadDevices(), loadSessions(), loadOnline(), loadStats(), loadOnlineList(), loadTelegram()]).then(() => {
+        // Tải các dữ liệu quan trọng trước để giao diện hiển thị ngay tức thì
+        Promise.all([loadDevices(), loadStats()]).then(() => {
           setLoading(false);
-          // Khởi tạo ref đếm sau lần load đầu
+          // Tải song song các dữ liệu phụ ngầm bên dưới
+          loadSessions();
+          loadOnline();
+          loadOnlineList();
+          loadTelegram();
+          
           api('/api/admin/devices').then(d => { if (Array.isArray(d)) prevDeviceCount.current = d.length; });
           api('/api/admin/sessions').then(s => { if (Array.isArray(s)) prevSessionCount.current = s.length; });
         });
