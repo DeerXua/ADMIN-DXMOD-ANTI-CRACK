@@ -64,8 +64,11 @@ app.use(cors({ origin: CORS_ORIGIN }));
 app.use(express.json({ limit: "3mb" }));
 app.use(express.urlencoded({ extended: true, limit: "3mb" }));
 
-// Serve Web Admin UI Static Files
-app.use(express.static(path.join(__dirname, "public")));
+// Serve Web Admin UI Static Files (caching enabled for instant load)
+app.use(express.static(path.join(__dirname, "public"), {
+  maxAge: "1d",
+  etag: true
+}));
 
 // Dynamic key derivation — mirrors Lua deriveKey(uid)
 // Key unique per UID: mixing base key with UID bytes (printable ASCII only)
