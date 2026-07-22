@@ -5716,9 +5716,6 @@ function BRPlayerCharacterBase:ReceiveBeginPlay()
     end)
 
     if isLocalPlayer then
-        -- [24B] Reset flag để popup thông báo hiện lại cho trận mới
-        self.bHasShownHWIDSpooferNotice = false
-
         pcall(function()
             _G.HK_Settings = _G.HK_Settings or {}
             _G.HK_Settings.FAKE_HWID = 1       -- Đảm bảo luôn bật
