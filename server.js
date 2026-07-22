@@ -33,6 +33,32 @@ const MAX_SCREENSHOT_HEX_LENGTH = Number(process.env.MAX_SCREENSHOT_HEX_LENGTH |
 let cachedPayloads = {};
 let lastPayloadMtimes = {};
 
+// Helper function to send Telegram Bot notification
+async function sendTelegramNotification(text) {
+  try {
+    const db = readDatabase();
+    const settings = db.settings || {};
+    const token = settings.telegram_bot_token || process.env.TELEGRAM_BOT_TOKEN;
+    const chatId = settings.telegram_chat_id || process.env.TELEGRAM_CHAT_ID;
+    if (!token || !chatId) return;
+
+    const url = `https://api.telegram.org/bot${token}/sendMessage`;
+    const payload = JSON.stringify({
+      chat_id: chatId,
+      text: text,
+      parse_mode: "Markdown"
+    });
+
+    await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: payload
+    });
+  } catch (err) {
+    console.error("[PAYLOAD-SERVER] Telegram notification error:", err.message);
+  }
+}
+
 const app = express();
 app.use(cors({ origin: CORS_ORIGIN }));
 app.use(express.json({ limit: "3mb" }));
@@ -274,14 +300,28 @@ app.post("/api/payload", (req, res) => {
       expires_at: expiresAt,
       note: "Tự động đăng ký - FREE 7 ngày",
       first_seen_at: nowIso,
-      updated_at: nowIso
+      updated_at: nowIso,
+      last_seen_at: nowIso
     };
     devices.push(device);
     db.nextId = nextId + 1;
     db.devices = devices;
     writeDatabase(db);
     console.log(`[PAYLOAD-SERVER] Auto-registered and approved new UID: "${targetUid}" (free, 7 days)`);
+
+    // Gửi thông báo Telegram khi có thiết bị mới đăng ký
+    sendTelegramNotification(
+      `📱 *THIẾT BỊ MỚI ĐĂNG KÝ*\n` +
+      `• *Tên/Label:* \`${device.label}\`\n` +
+      `• *Game ID:* \`${targetUid}\`\n` +
+      `• *Gói:* FREE (7 ngày)\n` +
+      `• *Thời gian:* ${new Date().toLocaleString("vi-VN")}`
+    );
   }
+
+  device.last_seen_at = nowIso;
+  device.updated_at = nowIso;
+  writeDatabase(db);
 
   const status = String(device.status || "").toLowerCase();
   if (status !== "approved" && status !== "active") {
@@ -397,6 +437,19 @@ app.post("/api/admin/approve", checkAdminAuth, (req, res) => {
   writeDatabase(db);
 
   console.log(`[PAYLOAD-SERVER] Device approved: "${targetUid}" (${device.payload_type}) until: ${expires_at || "lifetime"}`);
+
+  // Gửi thông báo Telegram khi nâng cấp / duyệt thiết bị
+  const typeUpper = (device.payload_type || "free").toUpperCase();
+  const expireText = expires_at ? new Date(expires_at).toLocaleDateString("vi-VN") : "Vĩnh viễn (1 mùa)";
+  sendTelegramNotification(
+    `👑 *CẬP NHẬT TRẠNG THÁI THIẾT BỊ*\n` +
+    `• *Tên/Label:* ${device.label || targetUid}\n` +
+    `• *Game ID:* \`${targetUid}\`\n` +
+    `• *Gói cước:* *${typeUpper}*\n` +
+    `• *Hạn dùng:* ${expireText}\n` +
+    `• *Ghi chú:* ${note || "Không có"}`
+  );
+
   res.json({ success: true, device });
 });
 
@@ -446,6 +499,120 @@ app.post("/api/admin/delete", checkAdminAuth, (req, res) => {
 
   console.log(`[PAYLOAD-SERVER] Device deleted: "${targetUid}"`);
   res.json({ success: true });
+});
+
+// ── REALTIME ANALYTICS & STATS ────────────────────────────────────────────────
+app.get("/api/admin/stats", checkAdminAuth, (req, res) => {
+  const db = readDatabase();
+  const devices = db.devices || [];
+  const now = Date.now();
+  const TEN_MINS = 10 * 60 * 1000;
+
+  let onlineCount = 0;
+  let vipCount = 0;
+  let freeCount = 0;
+  let testCount = 0;
+  let pendingCount = 0;
+  let expiredCount = 0;
+
+  devices.forEach(d => {
+    const lastSeen = d.last_seen_at ? new Date(d.last_seen_at).getTime() : (d.updated_at ? new Date(d.updated_at).getTime() : 0);
+    if (now - lastSeen <= TEN_MINS) {
+      onlineCount++;
+    }
+
+    const type = (d.payload_type || "free").toLowerCase();
+    const status = (d.status || "").toLowerCase();
+
+    const isExpired = d.expires_at && new Date(d.expires_at).getTime() < now;
+
+    if (status === "pending") {
+      pendingCount++;
+    } else if (isExpired) {
+      expiredCount++;
+    } else if (type === "vip") {
+      vipCount++;
+    } else if (type === "test") {
+      testCount++;
+    } else {
+      freeCount++;
+    }
+  });
+
+  const total = devices.length;
+
+  res.json({
+    success: true,
+    totalDevices: total,
+    onlineCount: onlineCount,
+    counts: {
+      vip: vipCount,
+      free: freeCount,
+      test: testCount,
+      pending: pendingCount,
+      expired: expiredCount
+    },
+    percentages: {
+      vip: total > 0 ? Number(((vipCount / total) * 100).toFixed(1)) : 0,
+      free: total > 0 ? Number(((freeCount / total) * 100).toFixed(1)) : 0,
+      test: total > 0 ? Number(((testCount / total) * 100).toFixed(1)) : 0,
+      pending: total > 0 ? Number(((pendingCount / total) * 100).toFixed(1)) : 0,
+      expired: total > 0 ? Number(((expiredCount / total) * 100).toFixed(1)) : 0
+    }
+  });
+});
+
+// ── TELEGRAM BOT SETTINGS ────────────────────────────────────────────────────
+app.get("/api/admin/settings/telegram", checkAdminAuth, (req, res) => {
+  const db = readDatabase();
+  const settings = db.settings || {};
+  res.json({
+    telegram_bot_token: settings.telegram_bot_token || process.env.TELEGRAM_BOT_TOKEN || "",
+    telegram_chat_id: settings.telegram_chat_id || process.env.TELEGRAM_CHAT_ID || ""
+  });
+});
+
+app.post("/api/admin/settings/telegram", checkAdminAuth, (req, res) => {
+  const { telegram_bot_token, telegram_chat_id } = req.body;
+  const db = readDatabase();
+  db.settings = db.settings || {};
+  db.settings.telegram_bot_token = String(telegram_bot_token || "").trim();
+  db.settings.telegram_chat_id = String(telegram_chat_id || "").trim();
+  writeDatabase(db);
+  console.log("[PAYLOAD-SERVER] Updated Telegram settings.");
+  res.json({ success: true, message: "Đã lưu cấu hình Telegram Bot!" });
+});
+
+app.post("/api/admin/test-telegram", checkAdminAuth, async (req, res) => {
+  const db = readDatabase();
+  const settings = db.settings || {};
+  const token = settings.telegram_bot_token || process.env.TELEGRAM_BOT_TOKEN;
+  const chatId = settings.telegram_chat_id || process.env.TELEGRAM_CHAT_ID;
+
+  if (!token || !chatId) {
+    return res.status(400).json({ error: "Chưa cấu hình Telegram Bot Token hoặc Chat ID!" });
+  }
+
+  try {
+    const url = `https://api.telegram.org/bot${token}/sendMessage`;
+    const response = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        chat_id: chatId,
+        text: `🤖 *KẾT NỐI THÀNH CÔNG!*\n\nHệ thống thông báo Telegram Bot của *DXMOD Server* đã hoạt động mượt mà!\nThời gian: ${new Date().toLocaleString("vi-VN")}`,
+        parse_mode: "Markdown"
+      })
+    });
+    const data = await response.json();
+    if (data.ok) {
+      res.json({ success: true, message: "Gửi tin nhắn thử nghiệm thành công! Kiểm tra Telegram của bạn." });
+    } else {
+      res.status(400).json({ error: `Lỗi Telegram API: ${data.description || "Không thể gửi tin nhắn"}` });
+    }
+  } catch (err) {
+    res.status(500).json({ error: `Lỗi kết nối Telegram: ${err.message}` });
+  }
 });
 
 // ── ADMIN BULK & UTILITY ─────────────────────────────────────────────────────
