@@ -5887,18 +5887,6 @@ function BRPlayerCharacterBase:ReceiveBeginPlay()
             end
         end)
 
-        -- [OUTFIT & SKIN PERSISTENCE] Tự động mang trang phục & skin súng từ sảnh vào trận đấu
-        pcall(function()
-            if _G.AddOutfit then
-                if _G.AddOutfit.persistLoadFromDisk then _G.AddOutfit.persistLoadFromDisk() end
-                if _G.AddOutfit.persistApplyLoaded then _G.AddOutfit.persistApplyLoaded() end
-                if _G.AddOutfit.reapplyLobbyEquipped then _G.AddOutfit.reapplyLobbyEquipped() end
-            end
-            if _G.equip_weapon_avatar then
-                _G.equip_weapon_avatar(self)
-            end
-        end)
-
         -- [24B] Popup đã chuyển sang StartAdvancedSystems (hiện khi alive, tránh duplicate)
 
         -- [TRACKING] Báo bắt đầu trận lên Admin
