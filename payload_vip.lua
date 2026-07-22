@@ -6068,19 +6068,36 @@ local function SyncPlayersToGameplayData()
 
                     -- 3. Nếu là nhân vật của mình và chưa được khởi chạy Mod
                     if isLocal and not actor._DXInitialized then
-                        actor._DXInitialized = true
-                        DX_Log("Pushing mod functions to LocalPlayer Class: " .. tostring(actor:GetClass():GetName()))
-                        
-                        -- Copy toàn bộ hàm mod từ BRPlayerCharacterBase sang nhân vật hiện tại (Ép ghi đè toàn bộ)
-                        for k, v in pairs(BRPlayerCharacterBase) do
-                            if type(v) == "function" then
-                                actor[k] = v
-                            elseif k == "ServerRPC" or k == "ClientRPC" or k == "MulticastRPC" then
-                                actor[k] = actor[k] or {}
-                                for rpcKey, rpcVal in pairs(v) do
-                                    actor[k][rpcKey] = rpcVal
+                        local className = "Unknown"
+                        pcall(function()
+                            if actor and actor.GetClass then
+                                local cls = actor:GetClass()
+                                if cls then
+                                    className = cls.GetName and cls:GetName() or tostring(cls)
                                 end
                             end
+                        end)
+                        DX_Log("Pushing mod functions to LocalPlayer Class: " .. tostring(className))
+                        
+                        -- Copy toàn bộ hàm mod từ BRPlayerCharacterBase sang nhân vật hiện tại (Ép ghi đè toàn bộ)
+                        local copyOk, copyErr = pcall(function()
+                            for k, v in pairs(BRPlayerCharacterBase) do
+                                if type(v) == "function" then
+                                    actor[k] = v
+                                elseif k == "ServerRPC" or k == "ClientRPC" or k == "MulticastRPC" then
+                                    actor[k] = actor[k] or {}
+                                    for rpcKey, rpcVal in pairs(v) do
+                                        actor[k][rpcKey] = rpcVal
+                                    end
+                                end
+                            end
+                        end)
+                        
+                        if copyOk then
+                            actor._DXInitialized = true
+                            DX_Log("Successfully pushed mod functions to LocalPlayer")
+                        else
+                            DX_Log("Failed to push mod functions: " .. tostring(copyErr))
                         end
                         
                         -- Cấu hình các biến trạng thái
