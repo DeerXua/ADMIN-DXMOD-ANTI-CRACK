@@ -4020,19 +4020,32 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
         local isAiming = self.Object.bIsWeaponAiming or false
 
-        -- Kiểm tra trạng thái trượt TDM để tránh xung đột FOV làm zoom xa zoom gần liên tục
-        local isSliding = false
+        -- Kiểm tra các trạng thái đặc biệt: Trượt TDM, Ván trượt bay (Hoverboard), Xe cộ, Cưỡi thú/Đu dây
+        local isSpecialState = false
         pcall(function()
-            if self.Object.bIsSliding or (type(self.Object.IsSliding) == "function" and self.Object:IsSliding()) then
-                isSliding = true
+            local obj = self.Object
+            -- 1. Trạng thái trượt (Slide) TDM
+            if obj.bIsSliding or (type(obj.IsSliding) == "function" and obj:IsSliding()) then
+                isSpecialState = true
             end
-            if not isSliding and slua.isValid(self.Object.STCharacterMovement) then
-                if self.Object.STCharacterMovement.bIsSliding or self.Object.STCharacterMovement.CustomMovementMode == 1 then
-                    isSliding = true
+            if not isSpecialState and slua.isValid(obj.STCharacterMovement) then
+                if obj.STCharacterMovement.bIsSliding or obj.STCharacterMovement.CustomMovementMode == 1 then
+                    isSpecialState = true
+                end
+            end
+            -- 2. Trạng thái Ván trượt bay / Xe cộ / Gắn kết (Hoverboard / Vehicle / Mounted)
+            if not isSpecialState then
+                if (type(obj.IsAttachedToAnyVehicle) == "function" and obj:IsAttachedToAnyVehicle())
+                   or (type(obj.GetCurrentVehicle) == "function" and slua.isValid(obj:GetCurrentVehicle()))
+                   or obj.bIsDriving or obj.bIsPassenger or obj.VehicleCar
+                   or (type(obj.GetAttachParentActor) == "function" and slua.isValid(obj:GetAttachParentActor())) then
+                    isSpecialState = true
                 end
             end
         end)
-        if isSliding then
+        
+        -- Nếu ở trạng thái đặc biệt và không mở ngắm thực tế thì ép isAiming = false
+        if isSpecialState then
             isAiming = false
         end
 
@@ -4058,7 +4071,8 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
             self.HK_ForceFOV = true
         end
 
-        if not isAiming then
+        -- Áp dụng FOV (Nếu bật IpadView thì luôn ưu tiên duy trì góc nhìn IpadView khi trượt / đi ván trượt)
+        if not isAiming or isSpecialState then
             if _G.HK_GetVal("IpadView") == 1 then
                 pcall(function()
                     local targetTPP = _G.HK_GetVal("IpadViewFOV") or 120
