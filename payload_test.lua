@@ -9923,7 +9923,7 @@ local function GetOutfitConfigPaths(fileName)
     return paths
 end
 
-local CONFIG_PATHS = GetOutfitConfigPaths("dung0610_outfit.json")
+local CONFIG_PATHS = GetOutfitConfigPaths("dxmods_outfit.json")
 
 local PERSIST_SLOTS = {
     { "outfit", "outfitRes", "outfitIns", "AddOutfitLastLobbyOutfitRes" },
@@ -11452,10 +11452,10 @@ function F.rememberLobbyOutfitRes(resID)
     _G.AddOutfitLastLobbyOutfitRes = resID
     F.invalidateLobbyResolved()
     local cch = F.cache()
-    if not cch.outfitRes or cch.outfitRes <= 0 then
-        cch.outfitRes = resID
-        if F.isInjectedRes(resID) then cch.outfitIns = R.resToIns[resID] end
-    end
+    cch.outfitRes = resID
+    if F.isInjectedRes(resID) then cch.outfitIns = R.resToIns[resID] end
+    F.persistRememberSlot("outfit", resID)
+    F.persistMarkDirty()
 end
 
 function F.wearPatchKey()
@@ -12625,24 +12625,40 @@ function F.notify(msg)
 end
 
 function F.getDesiredOutfit()
-    if MATCH_CONFIG.outfitRes and MATCH_CONFIG.outfitRes > 0 then
-        return MATCH_CONFIG.outfitRes
+    if MATCH_CONFIG.outfitRes and tonumber(MATCH_CONFIG.outfitRes) > 0 then
+        return tonumber(MATCH_CONFIG.outfitRes)
     end
+
+    -- [FIX OUTFIT IN-GAME] Ưu tiên lấy trang phục ảo đã chọn ở Sảnh / Config persist
+    F.syncBodyCacheFromLobby()
+    local c = F.cache()
+    if c.outfitRes and tonumber(c.outfitRes) > 0 then
+        return tonumber(c.outfitRes)
+    end
+    local lastRes = tonumber(_G.AddOutfitLastLobbyOutfitRes)
+    if lastRes and lastRes > 0 then
+        return lastRes
+    end
+    if PERSIST.configSlots and tonumber(PERSIST.configSlots.outfit) and tonumber(PERSIST.configSlots.outfit) > 0 then
+        return tonumber(PERSIST.configSlots.outfit)
+    end
+
+    -- Fallback: Nếu sảnh không chọn đồ ảo mới dùng đồ mặc định của server
     local wornSuitRes
     pcall(function()
         local _, res = F.findWornInsBySubType(OUTFIT_SUB, function(r) return F.isSuitRes(r) end)
         wornSuitRes = tonumber(res)
     end)
     if wornSuitRes and wornSuitRes > 0 then return wornSuitRes end
+
     local tshirtWorn = false
     pcall(function()
         local ins = F.findWornInsBySubType(OUTFIT_SUB, function(r) return F.isTshirtRes(r) end)
         tshirtWorn = ins ~= nil
     end)
     if tshirtWorn then return nil end
-    F.syncBodyCacheFromLobby()
-    local c = F.cache()
-    return c.outfitRes
+
+    return nil
 end
 
 function F.matchApplyOutfit(char)
@@ -14670,14 +14686,14 @@ local _hasRestoredInGameOutfit = false
 local function AutoRestoreInGameSkin()
     pcall(function()
         if _G.AddOutfit and _G.AddOutfit.isInRealMatch and _G.AddOutfit.isInRealMatch() then
-            if not _hasRestoredInGameOutfit then
-                _hasRestoredInGameOutfit = true
-                if _G.AddOutfit.persistLoadFromDisk then pcall(_G.AddOutfit.persistLoadFromDisk) end
-                if _G.AddOutfit.persistApplyLoaded then pcall(_G.AddOutfit.persistApplyLoaded) end
-                if _G.AddOutfit.reapplyLobbyEquipped then pcall(_G.AddOutfit.reapplyLobbyEquipped) end
-                if _G.equip_weapon_avatar then
-                    local char = _G.AddOutfit.getLocalChar and _G.AddOutfit.getLocalChar()
-                    if char then pcall(_G.equip_weapon_avatar, char) end
+            local char = _G.AddOutfit.getLocalChar and _G.AddOutfit.getLocalChar()
+            if char and slua.isValid(char) then
+                if not _hasRestoredInGameOutfit then
+                    _hasRestoredInGameOutfit = true
+                    if _G.AddOutfit.persistLoadFromDisk then pcall(_G.AddOutfit.persistLoadFromDisk) end
+                    if _G.AddOutfit.persistApplyLoaded then pcall(_G.AddOutfit.persistApplyLoaded) end
+                    if _G.AddOutfit.matchApplyAllSlots then pcall(_G.AddOutfit.matchApplyAllSlots, char) end
+                    if _G.equip_weapon_avatar then pcall(_G.equip_weapon_avatar, char) end
                 end
             end
         else
@@ -15137,10 +15153,14 @@ local function rememberLobbyOutfitRes(resID)
     if not resID or resID <= 0 or not isFullSuitRes(resID) then return end
     _G.AddOutfitLastLobbyOutfitRes = resID
     local cch = cache()
-    if not cch.outfitRes or cch.outfitRes <= 0 then
-        cch.outfitRes = resID
-        if isInjectedRes(resID) then cch.outfitIns = R.resToIns[resID] end
-    end
+    cch.outfitRes = resID
+    if isInjectedRes(resID) then cch.outfitIns = R.resToIns[resID] end
+    pcall(function()
+        if F and F.persistRememberSlot then
+            F.persistRememberSlot("outfit", resID)
+            F.persistMarkDirty()
+        end
+    end)
 end
 
 local function resolveLobbyOutfitRes()
