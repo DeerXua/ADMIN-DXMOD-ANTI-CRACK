@@ -3322,6 +3322,18 @@ _G.AimTouch = function()
         local pc = player:GetPlayerControllerSafety()
         if not slua.isValid(pc) then return end
         
+        -- Không chạy AimTouch khi đang cưỡi ván trượt bay (Hoverboard), Jump Pad, Xe cộ hoặc đang đính kèm phương tiện
+        local isMountedOrVehicle = false
+        pcall(function()
+            if (type(player.IsAttachedToAnyVehicle) == "function" and player:IsAttachedToAnyVehicle())
+               or (type(player.GetCurrentVehicle) == "function" and slua.isValid(player:GetCurrentVehicle()))
+               or player.bIsDriving or player.bIsPassenger or player.VehicleCar
+               or (type(player.GetAttachParentActor) == "function" and slua.isValid(player:GetAttachParentActor())) then
+                isMountedOrVehicle = true
+            end
+        end)
+        if isMountedOrVehicle then return end
+        
         local isFiring = player.bIsWeaponFiring
         local isADS = player.bIsGunADS
         
@@ -3750,15 +3762,25 @@ end
         local deltaYaw = rot.Yaw - currentRot.Yaw
         local deltaPitch = rot.Pitch - currentRot.Pitch
         
-        -- Bù trừ chênh lệch Camera khi mở ống ngắm (ADS)
+        -- Bù trừ chênh lệch Camera khi mở ống ngắm (ADS) - Giới hạn chênh lệch để không bị lộn ngược 180 độ góc nhìn
         if isADS then
             local camRot = nil
             if type(camManager.GetCameraRotation) == "function" then
                 camRot = camManager:GetCameraRotation()
             end
             if camRot then
-                deltaYaw = deltaYaw - (camRot.Yaw - currentRot.Yaw)
-                deltaPitch = deltaPitch - (camRot.Pitch - currentRot.Pitch)
+                local diffYaw = camRot.Yaw - currentRot.Yaw
+                local diffPitch = camRot.Pitch - currentRot.Pitch
+                if diffYaw > 180 then diffYaw = diffYaw - 360 end
+                if diffYaw < -180 then diffYaw = diffYaw + 360 end
+                if diffPitch > 180 then diffPitch = diffPitch - 360 end
+                if diffPitch < -180 then diffPitch = diffPitch + 360 end
+                
+                -- Chỉ bù trừ chênh lệch nhỏ khi mở ADS thực sự, tránh giật 180 độ khi va chạm vật thể/ván trượt
+                if math.abs(diffYaw) < 45 and math.abs(diffPitch) < 45 then
+                    deltaYaw = deltaYaw - diffYaw
+                    deltaPitch = deltaPitch - diffPitch
+                end
             end
         end
 
