@@ -3492,6 +3492,22 @@ if isShotgun and _G.HK_GetVal("AimTouchSG") == 1 then
             igBot = _G.HK_GetVal("AimTouchHipIgBot") == 1
         end
 
+        -- Kiểm tra trạng thái trượt (Slide) trong TDM để tránh giật màn hình
+        local isSliding = false
+        pcall(function()
+            if player.bIsSliding or (type(player.IsSliding) == "function" and player:IsSliding()) then
+                isSliding = true
+            end
+            if not isSliding and slua.isValid(player.STCharacterMovement) then
+                if player.STCharacterMovement.bIsSliding or player.STCharacterMovement.CustomMovementMode == 1 then
+                    isSliding = true
+                end
+            end
+        end)
+        
+        -- Nếu đang trượt TDM và không bấm nút bắn thì không ép xoay camera SetControlRotation
+        if isSliding and not isFiring then return end
+
         local currentMaxDist = maxDistMeters * 100 
 
         local enemies = _G.GetEnemyTargetsFromActors(currentMaxDist)
@@ -3890,10 +3906,11 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
             _G.AimTouch()
         end
         
-        -- Bunny Hop (Nhảy liên tục không khựng khi giữ nút nhảy)
+        -- Bunny Hop (Nhảy liên tục không khựng khi giữ nút nhảy, không nhảy đè khi đang trượt TDM)
         if cache_AUTO_BUNNYHOP == 1 and self.bPressedJump then
             pcall(function()
-                if slua.isValid(self.STCharacterMovement) and self.STCharacterMovement.MovementMode == EMovementMode.MOVE_Walking then
+                local isSliding = self.bIsSliding or (type(self.IsSliding) == "function" and self:IsSliding())
+                if not isSliding and slua.isValid(self.STCharacterMovement) and self.STCharacterMovement.MovementMode == EMovementMode.MOVE_Walking then
                     self:Jump()
                 end
             end)
@@ -4002,6 +4019,23 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
         end)
 
         local isAiming = self.Object.bIsWeaponAiming or false
+
+        -- Kiểm tra trạng thái trượt TDM để tránh xung đột FOV làm zoom xa zoom gần liên tục
+        local isSliding = false
+        pcall(function()
+            if self.Object.bIsSliding or (type(self.Object.IsSliding) == "function" and self.Object:IsSliding()) then
+                isSliding = true
+            end
+            if not isSliding and slua.isValid(self.Object.STCharacterMovement) then
+                if self.Object.STCharacterMovement.bIsSliding or self.Object.STCharacterMovement.CustomMovementMode == 1 then
+                    isSliding = true
+                end
+            end
+        end)
+        if isSliding then
+            isAiming = false
+        end
+
         local isWallhackGlobalOn = (_G.HK_GetVal("WALLHACK") == 1)
         local isWhiteBodyOn = (_G.HK_GetVal("WHITE_BODY") == 1)            
         local espHit1 = (_G.HK_GetVal("ESP_HITMARK_1") == 1)
