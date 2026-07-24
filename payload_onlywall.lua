@@ -2970,6 +2970,8 @@ table.insert(StackESP, {
             UIKey = "Setting_Page_Privacy", 
             Category = {
                 { Key = "ModMenu_Cat1", loc = "ESP & WALLHACK", text = "ESP & WALLHACK", Text = "ESP & WALLHACK", title = "ESP & WALLHACK", Title = "ESP & WALLHACK", Stack = StackESP },
+                { Key = "ModMenu_Cat2", loc = "VŨ KHÍ (BÙ GIẬT & THU TÂM)", text = "VŨ KHÍ (BÙ GIẬT & THU TÂM)", Text = "VŨ KHÍ (BÙ GIẬT & THU TÂM)", title = "VŨ KHÍ (BÙ GIẬT & THU TÂM)", Title = "VŨ KHÍ (BÙ GIẬT & THU TÂM)", Stack = StackAimbot },
+                { Key = "ModMenu_Cat4", loc = "GÓC NHÌN IPAD", text = "GÓC NHÌN IPAD", Text = "GÓC NHÌN IPAD", title = "GÓC NHÌN IPAD", Title = "GÓC NHÌN IPAD", Stack = StackEnv },
             }
         }
         table.insert(SettingCatalog, 1, SettingPageDefine.ModMenu)
