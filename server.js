@@ -16,7 +16,8 @@ const PAYLOAD_PATH = path.join(__dirname, "protected_payload.lua");
 const PAYLOAD_PATHS = {
   free: path.join(__dirname, "payload_free.lua"),
   vip: path.join(__dirname, "payload_vip.lua"),
-  test: path.join(__dirname, "payload_test.lua")
+  test: path.join(__dirname, "payload_test.lua"),
+  onlywall: path.join(__dirname, "payload_onlywall.lua")
 };
 
 // Authentication — MUST be set via environment variable

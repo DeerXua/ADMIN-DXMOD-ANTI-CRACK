@@ -376,7 +376,8 @@
       const m = {
         free: { bg: 'rgba(100, 116, 139, 0.1)', c: '#94a3b8', l: 'FREE' },
         vip: { bg: 'rgba(139, 92, 246, 0.1)', c: '#a78bfa', l: 'VIP' },
-        test: { bg: 'rgba(245, 158, 11, 0.1)', c: '#fbbf24', l: 'TEST' }
+        test: { bg: 'rgba(245, 158, 11, 0.1)', c: '#fbbf24', l: 'TEST' },
+        onlywall: { bg: 'rgba(16, 185, 129, 0.1)', c: '#34d399', l: 'ONLY WALL' }
       };
       const st = m[String(type || 'free').toLowerCase()] || m.free;
       return (
@@ -919,7 +920,8 @@
                       { key: 'all', label: 'Tất cả thiết bị', color: 'text-cyan-400' },
                       { key: 'vip', label: 'VIP ⭐', color: 'text-violet-400' },
                       { key: 'free', label: 'FREE 🎁', color: 'text-slate-400' },
-                      { key: 'test', label: 'TEST 🧪', color: 'text-amber-400' }
+                      { key: 'test', label: 'TEST 🧪', color: 'text-amber-400' },
+                      { key: 'onlywall', label: 'ONLY WALL 🛡️', color: 'text-emerald-400' }
                     ].map(t => {
                       const count = t.key === 'all' 
                         ? devices.length 
@@ -1488,6 +1490,7 @@
                     <option value="free">🎁 Bản FREE</option>
                     <option value="vip">⭐ Bản VIP</option>
                     <option value="test">🧪 Bản TEST</option>
+                    <option value="onlywall">🛡️ Bản ONLY WALL</option>
                   </select>
                 </div>
                 <div>
@@ -1537,6 +1540,7 @@
                     <option value="free">🎁 Bản FREE</option>
                     <option value="vip">⭐ Bản VIP</option>
                     <option value="test">🧪 Bản TEST</option>
+                    <option value="onlywall">🛡️ Bản ONLY WALL</option>
                   </select>
                 </div>
                 <div>
