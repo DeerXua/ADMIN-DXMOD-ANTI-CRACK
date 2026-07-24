@@ -2216,7 +2216,7 @@ end)
 local ConfigFileName = "Menu_Settings.txt"
 _G.LastConfigSaveStr = ""
 
-_G.HK_Settings = _G.HK_Settings or {
+local defaultSettings = {
     ESP_HITMARK_1 = 0, ESP_HITMARK_2 = 0, WALLHACK = 0, WHITE_BODY = 0,
     ESP_WEAPON = 0, ESP_COUNT = 0, ESP_BOX = 0, EspLoai5 = 0,
     AIMBOT = 0, SPEED_AIMBOT = 0, FOV_AIMBOT = 0, THU_TAM = 0,
@@ -2337,6 +2337,13 @@ _G.HK_Settings = _G.HK_Settings or {
     AimTouchSniperDist = 400,
     AimTouchSniperPred = 50,
 }
+
+_G.HK_Settings = _G.HK_Settings or {}
+for k, v in pairs(defaultSettings) do
+    if _G.HK_Settings[k] == nil then
+        _G.HK_Settings[k] = v
+    end
+end
 
 _G.SaveModSettings = function()
     pcall(function()
