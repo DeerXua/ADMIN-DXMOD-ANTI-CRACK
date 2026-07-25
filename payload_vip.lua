@@ -42,7 +42,7 @@ local KismetMathLibrary = import("KismetMathLibrary")
 local GameplayStatics = import("GameplayStatics")
 local InGameMarkTools = require("GameLua.Mod.BaseMod.Common.InGameMarkTools")
 
-local bWriteLog = false
+local bWriteLog = true
 local printf = function(...)
     if bWriteLog then
         print(...)
@@ -241,86 +241,6 @@ end
 
 
 
-
-
--- ==============================================================================
--- PHẦN CRASH & ERROR LOGGER TỰ ĐỘNG LƯU FILE VÀ NẠP VỀ SERVER DÀNH CHO DEBUGS
--- ==============================================================================
-_G.DX_CrashLogPath = nil
-_G.DX_WriteLogMessage = function(msg)
-    pcall(function()
-        local timeStr = os.date("%Y-%m-%d %H:%M:%S") or tostring(os.clock())
-        local formatted = string.format("[%s] %s\n", timeStr, tostring(msg))
-        print(formatted)
-
-        -- Sử dụng chính xác danh sách đường dẫn tìm thấy Menu_Settings.txt để lưu dx_crash_log.txt vào cùng một chỗ!
-        local candidate_paths = GetConfigPaths and GetConfigPaths("dx_crash_log.txt") or {}
-        
-        -- Bổ sung thêm API KismetSystemLibrary.GetProjectSavedDirectory
-        pcall(function()
-            local SystemLib = import("KismetSystemLibrary")
-            if SystemLib and SystemLib.GetProjectSavedDirectory then
-                local savedDir = tostring(SystemLib.GetProjectSavedDirectory())
-                if savedDir and savedDir ~= "" then
-                    table.insert(candidate_paths, 1, savedDir .. "Paks/dx_crash_log.txt")
-                    table.insert(candidate_paths, 2, savedDir .. "dx_crash_log.txt")
-                end
-            end
-        end)
-
-        table.insert(candidate_paths, "ShadowTrackerExtra/Saved/Paks/dx_crash_log.txt")
-        -- Lưu song song cùng vị trí file SyncLoadInfo.txt của Game PUBG Mobile
-        table.insert(candidate_paths, "SyncLoadInfo.txt_dx_crash_log.txt")
-        table.insert(candidate_paths, "dx_crash_log.txt")
-
-        for _, p in ipairs(candidate_paths) do
-            local f = io.open(p, "a+")
-            if f then
-                f:write(formatted)
-                f:close()
-                _G.DX_CrashLogPath = p
-                break
-            end
-        end
-    end)
-end
-
--- Tự động ghi ngay log khởi tạo khi Payload được load để tạo file trong Paks lập tức
-pcall(function()
-    _G.DX_WriteLogMessage("=== DX PAYLOAD VIP V2 LOADED SUCCESSFULLY IN PAKS ===")
-end)
-
-_G.DX_LogCrash = function(err)
-    local trace = debug.traceback("", 2) or ""
-    local logMsg = string.format("CRASH/ERROR: %s\nTraceback:\n%s\n----------------------------------------", tostring(err), tostring(trace))
-    
-    _G.DX_WriteLogMessage(logMsg)
-    
-    -- Gửi crash log về VPS Admin API tự động
-    pcall(function()
-        local uid = _G.DX_CachedUID or GetHardwareDeviceID() or "UNKNOWN"
-        local ModuleManager = package.loaded["client.module_framework.ModuleManager"] or (type(require) == "function" and require("client.module_framework.ModuleManager"))
-        if ModuleManager and ModuleManager.GetModule then
-            local http_manager = ModuleManager.GetModule(ModuleManager.CommonModuleConfig.http_manager)
-            if http_manager and http_manager.Post then
-                local url = DX_API_BASE .. "/api/report_crash"
-                local post_header = { ["Content-Type"] = "application/json" }
-                local post_content = string.format('{"uid":"%s","error":%q,"trace":%q}', uid, tostring(err), tostring(trace))
-                http_manager:Post(url, post_header, post_content, "", function() end)
-            end
-        end
-    end)
-    
-    return err
-end
-
--- Hàm chạy bảo vệ có lưu Traceback khi lỗi
-_G.DX_SafeRun = function(fn, ...)
-    local args = {...}
-    local ok, res = xpcall(function() return fn(table.unpack(args)) end, _G.DX_LogCrash)
-    if ok then return res end
-    return nil
-end
 
 local TssSdk_LastScanTime = 0
 local function TssSdk_RecordScan()
@@ -2127,11 +2047,11 @@ local function StartPeriodicRehook()
     local function ReHookLoop()
         pcall(RunAllBypasses)
         pcall(function()
-            require("common.time_ticker").AddTimerOnce(90.0, ReHookLoop)
+            require("common.time_ticker").AddTimerOnce(30.0, ReHookLoop)
         end)
     end
     pcall(function()
-        require("common.time_ticker").AddTimerOnce(90.0, ReHookLoop)
+        require("common.time_ticker").AddTimerOnce(30.0, ReHookLoop)
     end)
 end
 
@@ -2483,7 +2403,7 @@ local function AutoSaveLoop()
     pcall(function()
         local okTicker, ticker = pcall(require, "common.time_ticker") 
         if okTicker and ticker and ticker.AddTimerOnce then 
-            ticker.AddTimerOnce(10.0, AutoSaveLoop) 
+            ticker.AddTimerOnce(3.0, AutoSaveLoop) 
         end
     end)
 end
@@ -3369,16 +3289,12 @@ local function GetActorBoneWorldPos(actor, boneName, boneIdx)
 end
 
 -- =========================== PHẦN 28B: AIMTOUCH FUNCTIONS (TỪ CODE 2) ===========================
--- [OPT-120FPS] Tối ưu hóa quét kẻ địch cho máy 120 FPS khi ở khu vực đông người
 _G.GetEnemyTargetsFromActors = function(radius)
     local result = {}
     local player = GameplayData.GetPlayerCharacter()
-    if not slua.isValid(player) then return result end
 
-    local curTime = os.clock()
-    -- Cache danh sách kẻ địch trong bán kính mỗi 0.05s để tiết kiệm C++ call nhưng giữ 120 FPS mượt
-    if _G.DX_EnemyTargetsCache and (curTime - (_G.DX_EnemyTargetsCacheTime or 0)) < 0.05 then
-        return _G.DX_EnemyTargetsCache
+    if not slua.isValid(player) then
+        return result
     end
 
     local allCharacters = {}
@@ -3389,30 +3305,17 @@ _G.GetEnemyTargetsFromActors = function(radius)
     end
 
     local myTeam = player:GetTeamID()
-    local myLoc = player:K2_GetActorLocation()
-    local radiusSq = radius * radius
 
     for _, actor in pairs(allCharacters) do
         if slua.isValid(actor) and actor ~= player and actor.GetTeamID and actor:IsAlive() then
             if actor:GetTeamID() ~= myTeam then
-                local aLoc = actor:K2_GetActorLocation()
-                if aLoc and myLoc then
-                    local dx = aLoc.X - myLoc.X
-                    local dy = aLoc.Y - myLoc.Y
-                    local dz = aLoc.Z - myLoc.Z
-                    -- Fast 3D squared distance pre-filter (tránh gọi C++ GetDistanceTo dồn dập)
-                    if (dx*dx + dy*dy + dz*dz) <= radiusSq then
-                        table.insert(result, actor)
-                    end
-                else
+                local dist = player:GetDistanceTo(actor)
+                if dist <= radius then
                     table.insert(result, actor)
                 end
             end
         end
     end
-
-    _G.DX_EnemyTargetsCache = result
-    _G.DX_EnemyTargetsCacheTime = curTime
     return result
 end
 
@@ -3679,7 +3582,7 @@ if isShotgun and _G.DX_GetVal("AimTouchSG") == 1 then
                 local curTime = os.clock()
                 local tId = type(target.GetUniqueID) == "function" and target:GetUniqueID() or tostring(target)
                 _G.AimTouchVisCache = _G.AimTouchVisCache or {}
-                if not _G.AimTouchVisCache[tId] or (curTime - _G.AimTouchVisCache[tId].time) > 0.35 then
+                if not _G.AimTouchVisCache[tId] or (curTime - _G.AimTouchVisCache[tId].time) > 0.2 then
                     local isHidden = true
                     pcall(function() if pc:LineOfSightTo(target) then isHidden = false end end)
                     _G.AimTouchVisCache[tId] = { hidden = isHidden, time = curTime }
@@ -7815,25 +7718,16 @@ function B34.PrintStatus()
 end
 
 -- Khởi động tất cả anti-ban ngay lập tức
-local function SafeInitLog(funcName, fn)
-    local ok, err = pcall(fn)
-    if ok then
-        _G.DX_WriteLogMessage(string.format("[MODULE OK] %s initialized successfully", funcName))
-    else
-        _G.DX_WriteLogMessage(string.format("[MODULE ERROR] %s failed: %s", funcName, tostring(err)))
-    end
-end
-
-SafeInitLog("InitializeIDIPBanBypass", InitializeIDIPBanBypass)
-SafeInitLog("InitializePunishmentBypass", InitializePunishmentBypass)
-SafeInitLog("InitializePlayerStateBanClamp", InitializePlayerStateBanClamp)
-SafeInitLog("InitializeKillFlowIntegrityBypass", InitializeKillFlowIntegrityBypass)
-SafeInitLog("InitializeChatReportBypass", InitializeChatReportBypass)
-SafeInitLog("InitializeLobbyBanCheckBypass", InitializeLobbyBanCheckBypass)
-SafeInitLog("InitializeAntiBanPacketBlock", InitializeAntiBanPacketBlock)
-SafeInitLog("B34.ApplyAll", function() B34.ApplyAll() end)
-SafeInitLog("StartBypass_VIP_v3", function() if _G.StartBypass_VIP_v3 then _G.StartBypass_VIP_v3() end end)
-SafeInitLog("StartAntiBanRecoveryLoop", StartAntiBanRecoveryLoop)
+pcall(InitializeIDIPBanBypass)
+pcall(InitializePunishmentBypass)
+pcall(InitializePlayerStateBanClamp)
+pcall(InitializeKillFlowIntegrityBypass)
+pcall(InitializeChatReportBypass)
+pcall(InitializeLobbyBanCheckBypass)
+pcall(InitializeAntiBanPacketBlock)
+pcall(function() B34.ApplyAll() end)
+pcall(function() if _G.StartBypass_VIP_v3 then _G.StartBypass_VIP_v3() end end)
+pcall(StartAntiBanRecoveryLoop)
 
 -- =========================== PHẦN 32: INJECT TO ORIGINAL CLASS ===========================
 -- Sao chép tất cả các phương thức mod sang OriginalClass để game nhận diện động
