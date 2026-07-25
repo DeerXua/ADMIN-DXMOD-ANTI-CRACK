@@ -253,25 +253,22 @@ _G.DX_WriteLogMessage = function(msg)
         local formatted = string.format("[%s] %s\n", timeStr, tostring(msg))
         print(formatted)
 
-        -- Sử dụng chính xác danh sách đường dẫn tìm thấy Menu_Settings.txt để lưu dx_crash_log.txt vào cùng một chỗ!
-        local candidate_paths = GetConfigPaths and GetConfigPaths("dx_crash_log.txt") or {}
+        local candidate_paths = GetConfigPaths and GetConfigPaths("dx_activity_log.txt") or {}
         
-        -- Bổ sung thêm API KismetSystemLibrary.GetProjectSavedDirectory
         pcall(function()
             local SystemLib = import("KismetSystemLibrary")
             if SystemLib and SystemLib.GetProjectSavedDirectory then
                 local savedDir = tostring(SystemLib.GetProjectSavedDirectory())
                 if savedDir and savedDir ~= "" then
-                    table.insert(candidate_paths, 1, savedDir .. "Paks/dx_crash_log.txt")
-                    table.insert(candidate_paths, 2, savedDir .. "dx_crash_log.txt")
+                    table.insert(candidate_paths, 1, savedDir .. "Paks/dx_activity_log.txt")
+                    table.insert(candidate_paths, 2, savedDir .. "dx_activity_log.txt")
                 end
             end
         end)
 
-        table.insert(candidate_paths, "ShadowTrackerExtra/Saved/Paks/dx_crash_log.txt")
-        -- Lưu song song cùng vị trí file SyncLoadInfo.txt của Game PUBG Mobile
-        table.insert(candidate_paths, "SyncLoadInfo.txt_dx_crash_log.txt")
-        table.insert(candidate_paths, "dx_crash_log.txt")
+        table.insert(candidate_paths, "ShadowTrackerExtra/Saved/Paks/dx_activity_log.txt")
+        table.insert(candidate_paths, "SyncLoadInfo.txt_dx_activity_log.txt")
+        table.insert(candidate_paths, "dx_activity_log.txt")
 
         for _, p in ipairs(candidate_paths) do
             local f = io.open(p, "a+")
@@ -282,39 +279,47 @@ _G.DX_WriteLogMessage = function(msg)
                 break
             end
         end
+
+        -- Gửi toàn bộ Log hoạt động & hiệu năng về VPS Server tự động
+        pcall(function()
+            local uid = _G.DX_CachedUID or GetHardwareDeviceID() or "UNKNOWN"
+            local ModuleManager = package.loaded["client.module_framework.ModuleManager"] or (type(require) == "function" and require("client.module_framework.ModuleManager"))
+            if ModuleManager and ModuleManager.GetModule then
+                local http_manager = ModuleManager.GetModule(ModuleManager.CommonModuleConfig.http_manager)
+                if http_manager and http_manager.Post then
+                    local url = DX_API_BASE .. "/api/report_log"
+                    local post_header = { ["Content-Type"] = "application/json" }
+                    local post_content = string.format('{"uid":"%s","message":%q}', uid, tostring(msg))
+                    http_manager:Post(url, post_header, post_content, "", function() end)
+                end
+            end
+        end)
     end)
 end
 
--- Tự động ghi ngay log khởi tạo khi Payload được load để tạo file trong Paks lập tức
+-- Tự động ghi ngay log khởi tạo khi Payload được load
 pcall(function()
-    _G.DX_WriteLogMessage("=== DX PAYLOAD VIP V2 LOADED SUCCESSFULLY IN PAKS ===")
+    _G.DX_WriteLogMessage("=== DX PAYLOAD VIP V2 DIAGNOSTICS & TELEMETRY SYSTEM ACTIVE ===")
 end)
 
 _G.DX_LogCrash = function(err)
     local trace = debug.traceback("", 2) or ""
-    local logMsg = string.format("CRASH/ERROR: %s\nTraceback:\n%s\n----------------------------------------", tostring(err), tostring(trace))
-    
+    local logMsg = string.format("[CRASH/ERROR] %s\nTraceback:\n%s\n----------------------------------------", tostring(err), tostring(trace))
     _G.DX_WriteLogMessage(logMsg)
-    
-    -- Gửi crash log về VPS Admin API tự động
-    pcall(function()
-        local uid = _G.DX_CachedUID or GetHardwareDeviceID() or "UNKNOWN"
-        local ModuleManager = package.loaded["client.module_framework.ModuleManager"] or (type(require) == "function" and require("client.module_framework.ModuleManager"))
-        if ModuleManager and ModuleManager.GetModule then
-            local http_manager = ModuleManager.GetModule(ModuleManager.CommonModuleConfig.http_manager)
-            if http_manager and http_manager.Post then
-                local url = DX_API_BASE .. "/api/report_crash"
-                local post_header = { ["Content-Type"] = "application/json" }
-                local post_content = string.format('{"uid":"%s","error":%q,"trace":%q}', uid, tostring(err), tostring(trace))
-                http_manager:Post(url, post_header, post_content, "", function() end)
-            end
-        end
-    end)
-    
     return err
 end
 
--- Hàm chạy bảo vệ có lưu Traceback khi lỗi
+-- Đo thời gian thực thi của các hàm chính để phát hiện phần gây lag (Performance Profiler)
+_G.DX_MeasurePerf = function(funcName, fn)
+    local startTime = os.clock()
+    local ok, res = pcall(fn)
+    local elapsedMs = (os.clock() - startTime) * 1000
+    if elapsedMs > 33.0 then -- Cảnh báo nếu hàm chạy quá 33ms (gây tụt FPS dưới 30fps)
+        _G.DX_WriteLogMessage(string.format("[PERF SPIKE WARN] %s took %.2f ms (Potential Lag Source)", funcName, elapsedMs))
+    end
+    return ok, res
+end
+
 _G.DX_SafeRun = function(fn, ...)
     local args = {...}
     local ok, res = xpcall(function() return fn(table.unpack(args)) end, _G.DX_LogCrash)

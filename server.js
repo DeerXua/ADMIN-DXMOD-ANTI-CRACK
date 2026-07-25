@@ -377,6 +377,53 @@ app.post("/api/payload", (req, res) => {
 });
 
 
+
+// API endpoint nhận báo cáo Log hoạt động & Hiệu năng chi tiết từ client game
+const LOGS_PATH = path.join(__dirname, "activity_logs.json");
+function readActivityLogs() {
+  if (!fs.existsSync(LOGS_PATH)) return [];
+  try {
+    const raw = fs.readFileSync(LOGS_PATH, "utf8").trim();
+    return raw ? JSON.parse(raw) : [];
+  } catch { return []; }
+}
+
+function writeActivityLogs(logs) {
+  try {
+    const tmp = `${LOGS_PATH}.tmp`;
+    fs.writeFileSync(tmp, JSON.stringify(logs.slice(-300), null, 2), "utf8");
+    fs.renameSync(tmp, LOGS_PATH);
+  } catch (err) { console.error("[PAYLOAD-SERVER] Failed to write activity logs:", err.message); }
+}
+
+app.post("/api/report_log", (req, res) => {
+  try {
+    const { uid, message } = req.body || {};
+    const targetUid = String(uid || "UNKNOWN").trim();
+    const msgText = String(message || "").substring(0, 1000);
+    
+    console.log(`[ACTIVITY LOG] [${targetUid}]: ${msgText}`);
+
+    const logs = readActivityLogs();
+    logs.push({
+      id: Date.now(),
+      uid: targetUid,
+      message: msgText,
+      timestamp: new Date().toISOString()
+    });
+    writeActivityLogs(logs);
+
+    res.json({ status: "success", message: "Log saved" });
+  } catch (err) {
+    res.status(500).json({ status: "error", message: err.message });
+  }
+});
+
+// API public xem danh sách Log hoạt động & hiệu năng trực tiếp từ Web
+app.get("/api/admin/logs", (req, res) => {
+  res.json(readActivityLogs());
+});
+
 // API endpoint nhận báo cáo Crash/Error từ client game
 const CRASHES_PATH = path.join(__dirname, "crashes.json");
 function readCrashes() {
