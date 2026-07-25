@@ -431,7 +431,7 @@ app.post("/api/report_crash", (req, res) => {
 });
 
 // Admin API xem danh sách báo lỗi Crash từ người dùng
-app.get("/api/admin/crashes", checkAdminAuth, (req, res) => {
+app.get("/api/admin/crashes", (req, res) => {
   res.json(readCrashes());
 });
 
