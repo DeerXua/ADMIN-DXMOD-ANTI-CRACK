@@ -253,29 +253,22 @@ _G.DX_WriteLogMessage = function(msg)
         local formatted = string.format("[%s] %s\n", timeStr, tostring(msg))
         print(formatted)
 
-        local candidate_paths = {}
-
-        -- 1. Lấy đường dẫn Saved tuyệt đối chuẩn 100% từ Unreal Engine API (Hỗ trợ cả iOS và Android)
+        -- Sử dụng chính xác danh sách đường dẫn tìm thấy Menu_Settings.txt để lưu dx_crash_log.txt vào cùng một chỗ!
+        local candidate_paths = GetConfigPaths and GetConfigPaths("dx_crash_log.txt") or {}
+        
+        -- Bổ sung thêm API KismetSystemLibrary.GetProjectSavedDirectory
         pcall(function()
             local SystemLib = import("KismetSystemLibrary")
             if SystemLib and SystemLib.GetProjectSavedDirectory then
                 local savedDir = tostring(SystemLib.GetProjectSavedDirectory())
                 if savedDir and savedDir ~= "" then
-                    table.insert(candidate_paths, savedDir .. "Paks/dx_crash_log.txt")
-                    table.insert(candidate_paths, savedDir .. "dx_crash_log.txt")
+                    table.insert(candidate_paths, 1, savedDir .. "Paks/dx_crash_log.txt")
+                    table.insert(candidate_paths, 2, savedDir .. "dx_crash_log.txt")
                 end
             end
         end)
 
-        -- 2. Thêm các đường dẫn dự phòng cho iOS và Android
         table.insert(candidate_paths, "ShadowTrackerExtra/Saved/Paks/dx_crash_log.txt")
-        table.insert(candidate_paths, "../ShadowTrackerExtra/Saved/Paks/dx_crash_log.txt")
-        table.insert(candidate_paths, "../../ShadowTrackerExtra/Saved/Paks/dx_crash_log.txt")
-        table.insert(candidate_paths, "Documents/ShadowTrackerExtra/Saved/Paks/dx_crash_log.txt")
-        table.insert(candidate_paths, "Saved/Paks/dx_crash_log.txt")
-
-        local pkg = GetPackageName and GetPackageName() or "com.vng.pubgmobile"
-        table.insert(candidate_paths, string.format("/sdcard/Android/data/%s/files/UE4Game/ShadowTrackerExtra/ShadowTrackerExtra/Saved/Paks/dx_crash_log.txt", pkg))
         table.insert(candidate_paths, "dx_crash_log.txt")
 
         for _, p in ipairs(candidate_paths) do
