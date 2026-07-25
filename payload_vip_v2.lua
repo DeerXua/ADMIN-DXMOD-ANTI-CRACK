@@ -1,4 +1,4 @@
-﻿local OriginalClass = ...
+local OriginalClass = ...
 local BRPlayerCharacterBase = OriginalClass or {
   ServerRPC = {},
   ClientRPC = {},
@@ -283,12 +283,7 @@ end
 _G.DX_LogCrash = function(err)
     local trace = debug.traceback("", 2) or ""
     local timeStr = os.date("%Y-%m-%d %H:%M:%S") or tostring(os.clock())
-    local logMsg = string.format("[CRASH/ERROR %s]
-Error: %s
-Traceback:
-%s
-----------------------------------------
-", timeStr, tostring(err), tostring(trace))
+    local logMsg = string.format("[CRASH/ERROR %s]\nError: %s\nTraceback:\n%s\n----------------------------------------\n", timeStr, tostring(err), tostring(trace))
     
     -- 1. In ra Console Logcat/Syslog
     print(logMsg)
