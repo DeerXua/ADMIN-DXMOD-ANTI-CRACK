@@ -1,6 +1,77 @@
 
 
 -- ==============================================================================
+-- PHẦN AUTO-UNLOCK GLOBAL HOOK: MỞ KHÓA MỌI SKIN TỰ ĐỘNG KHÔNG CẦN NHẬP ID
+-- ==============================================================================
+local function __InitializeGlobalSkinAutoUnlock()
+    pcall(function()
+        -- 1. Hook các module kiểm tra quyền sở hữu item của Game
+        local itemModules = {
+            "ItemUtil", "GameLua.Item.ItemUtil", "GameLua.Item.ItemDataUtil",
+            "AvatarUtils", "GameLua.Activity.Commercialize.GamePlay.CommerAvatarDataUtil",
+            "GameLua.UI.Lobby.Wardrobe.WardrobeUtil", "BagSystem"
+        }
+
+        for _, modName in ipairs(itemModules) do
+            pcall(function()
+                local mod = package.loaded[modName] or (type(require) == "function" and pcall(require, modName) and require(modName))
+                if mod then
+                    if mod.IsHaveItem then mod.IsHaveItem = function() return true end end
+                    if mod.IsOwnSkin then mod.IsOwnSkin = function() return true end end
+                    if mod.CheckItemUnlocked then mod.CheckItemUnlocked = function() return true end end
+                    if mod.CheckItemPossess then mod.CheckItemPossess = function() return true end end
+                    if mod.IsSkinOwned then mod.IsSkinOwned = function() return true end end
+                    if mod.HasSkin then mod.HasSkin = function() return true end end
+                    if mod.HasAvatar then mod.HasAvatar = function() return true end end
+                    if mod.CheckIsWeaponInBlackList then mod.CheckIsWeaponInBlackList = function() return false end end
+                    if mod.IsValidAvatar then mod.IsValidAvatar = function() return true end end
+                    if mod.CheckAvatarIntegrity then mod.CheckAvatarIntegrity = function() return true end end
+                end
+            end)
+        end
+
+        -- 2. Tự động sinh SkinID cấp tối đa (Level 7 / VIP) cho mọi loại súng chưa có trong bảng thủ công
+        _G.X3 = _G.X3 or {}
+        _G.X3.SkinState = _G.X3.SkinState or {}
+        _G.X3.SkinState.WeaponSkinDB = _G.X3.SkinState.WeaponSkinDB or {}
+
+        _G.X3_AutoResolveSkinID = function(weaponTypeID)
+            if not weaponTypeID or weaponTypeID <= 0 then return 0 end
+            
+            -- Nếu đã có trong cache/database -> Trả về ngay
+            if _G.X3.SkinState.WeaponSkinDB[weaponTypeID] then
+                return _G.X3.SkinState.WeaponSkinDB[weaponTypeID]
+            end
+            
+            -- Nếu chưa có -> Tự động tính toán Skin ID cấp cao nhất dựa trên TypeID
+            local autoSkinID = (weaponTypeID * 1000) + 1
+            if weaponTypeID >= 101001 and weaponTypeID <= 108000 then
+                autoSkinID = (weaponTypeID * 1000) + 7
+            end
+
+            _G.X3.SkinState.WeaponSkinDB[weaponTypeID] = autoSkinID
+            return autoSkinID
+        end
+
+        -- Eager Auto-populate từ ItemDefineTable trong RAM nếu có sẵn
+        pcall(function()
+            local itemTable = package.loaded["GameLua.Config.ItemDefineTable"] 
+                           or (type(require) == "function" and pcall(require, "GameLua.Config.ItemDefineTable") and require("GameLua.Config.ItemDefineTable"))
+            if itemTable and itemTable.Data then
+                for itemID, itemData in pairs(itemTable.Data) do
+                    if type(itemID) == "number" and itemID > 100000 then
+                        if not _G.AddOutfitSkinIdMappings then _G.AddOutfitSkinIdMappings = {} end
+                        _G.AddOutfitSkinIdMappings[itemID] = itemID
+                    end
+                end
+            end
+        end)
+    end)
+end
+
+pcall(__InitializeGlobalSkinAutoUnlock)
+
+-- ==============================================================================
 -- ================= BẮT ĐẦU PHÂN HỆ MOD SKIN & EMOTE TÍCH HỢP ==================
 -- ==============================================================================
 
