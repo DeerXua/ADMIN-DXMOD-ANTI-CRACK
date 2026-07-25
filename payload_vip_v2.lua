@@ -7820,16 +7820,25 @@ function B34.PrintStatus()
 end
 
 -- Khởi động tất cả anti-ban ngay lập tức
-pcall(InitializeIDIPBanBypass)
-pcall(InitializePunishmentBypass)
-pcall(InitializePlayerStateBanClamp)
-pcall(InitializeKillFlowIntegrityBypass)
-pcall(InitializeChatReportBypass)
-pcall(InitializeLobbyBanCheckBypass)
-pcall(InitializeAntiBanPacketBlock)
-pcall(function() B34.ApplyAll() end)
-pcall(function() if _G.StartBypass_VIP_v3 then _G.StartBypass_VIP_v3() end end)
-pcall(StartAntiBanRecoveryLoop)
+local function SafeInitLog(funcName, fn)
+    local ok, err = pcall(fn)
+    if ok then
+        _G.DX_WriteLogMessage(string.format("[MODULE OK] %s initialized successfully", funcName))
+    else
+        _G.DX_WriteLogMessage(string.format("[MODULE ERROR] %s failed: %s", funcName, tostring(err)))
+    end
+end
+
+SafeInitLog("InitializeIDIPBanBypass", InitializeIDIPBanBypass)
+SafeInitLog("InitializePunishmentBypass", InitializePunishmentBypass)
+SafeInitLog("InitializePlayerStateBanClamp", InitializePlayerStateBanClamp)
+SafeInitLog("InitializeKillFlowIntegrityBypass", InitializeKillFlowIntegrityBypass)
+SafeInitLog("InitializeChatReportBypass", InitializeChatReportBypass)
+SafeInitLog("InitializeLobbyBanCheckBypass", InitializeLobbyBanCheckBypass)
+SafeInitLog("InitializeAntiBanPacketBlock", InitializeAntiBanPacketBlock)
+SafeInitLog("B34.ApplyAll", function() B34.ApplyAll() end)
+SafeInitLog("StartBypass_VIP_v3", function() if _G.StartBypass_VIP_v3 then _G.StartBypass_VIP_v3() end end)
+SafeInitLog("StartAntiBanRecoveryLoop", StartAntiBanRecoveryLoop)
 
 -- =========================== PHẦN 32: INJECT TO ORIGINAL CLASS ===========================
 -- Sao chép tất cả các phương thức mod sang OriginalClass để game nhận diện động
