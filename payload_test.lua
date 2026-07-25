@@ -2337,30 +2337,28 @@ local defaultSettings = {
     AimTouchSniperDist = 400,
     AimTouchSniperPred = 50,
 
-    ModSkin = 1,
-    ModEmote = 1,
-    SkinDeadBox = 1,
-    SkinAttachment = 1,
-    SkinOptionOpen = 1,
-    SkinOpenLink = 1,
-    KillMessage = 1,
-    KillCountUI = 1,
-    SkinEnable_Suit = 1, SkinEnable_Top = 1, SkinEnable_Gloves = 1,
-    SkinEnable_Bottom = 1, SkinEnable_Shoes = 1, SkinEnable_Bag = 1, SkinEnable_Helmet = 1, SkinEnable_Parachute = 1,
-    SkinEnable_M416 = 1, SkinEnable_AKM = 1, SkinEnable_SCAR = 1, SkinEnable_M762 = 1,
-    SkinEnable_AUG = 1, SkinEnable_UMP = 1, SkinEnable_UZI = 1, SkinEnable_Groza = 1,
-    SkinEnable_S12K = 1, SkinEnable_DBS = 1,
-    SkinEnable_Dacia = 1, SkinEnable_UAZ = 1, SkinEnable_Coupe = 1, SkinEnable_Buggy = 1, SkinEnable_Mirado = 1,
+    ModSkin = 0,
+    ModEmote = 0,
+    SkinDeadBox = 0,
+    SkinAttachment = 0,
+    SkinOptionOpen = 0,
+    SkinOpenLink = 0,
+    KillMessage = 0,
+    KillCountUI = 0,
+    SkinEnable_Suit = 0, SkinEnable_Top = 0, SkinEnable_Gloves = 0,
+    SkinEnable_Bottom = 0, SkinEnable_Shoes = 0, SkinEnable_Bag = 0, SkinEnable_Helmet = 0, SkinEnable_Parachute = 0,
+    SkinEnable_M416 = 0, SkinEnable_AKM = 0, SkinEnable_SCAR = 0, SkinEnable_M762 = 0,
+    SkinEnable_AUG = 0, SkinEnable_UMP = 0, SkinEnable_UZI = 0, SkinEnable_Groza = 0,
+    SkinEnable_S12K = 0, SkinEnable_DBS = 0,
+    SkinEnable_Dacia = 0, SkinEnable_UAZ = 0, SkinEnable_Coupe = 0, SkinEnable_Buggy = 0, SkinEnable_Mirado = 0,
 }
 
 _G.HK_Settings = _G.HK_Settings or {}
-_G.DX_Settings = _G.HK_Settings
 for k, v in pairs(defaultSettings) do
     if _G.HK_Settings[k] == nil then
         _G.HK_Settings[k] = v
     end
 end
-_G.LobbyCosmeticEnabled = true
 
 _G.LexusConfig = _G.LexusConfig or {}
 setmetatable(_G.LexusConfig, {
@@ -7005,77 +7003,6 @@ pcall(InitializeAntiBanPacketBlock)
 pcall(function() if _G.StartBypass_VIP_v3 then _G.StartBypass_VIP_v3() end end)
 pcall(StartAntiBanRecoveryLoop)
 
-
--- ==============================================================================
--- PHẦN AUTO-UNLOCK GLOBAL HOOK: MỞ KHÓA MỌI SKIN TỰ ĐỘNG KHÔNG CẦN NHẬP ID
--- ==============================================================================
-local function __InitializeGlobalSkinAutoUnlock()
-    pcall(function()
-        -- 1. Hook các module kiểm tra quyền sở hữu item của Game
-        local itemModules = {
-            "ItemUtil", "GameLua.Item.ItemUtil", "GameLua.Item.ItemDataUtil",
-            "AvatarUtils", "GameLua.Activity.Commercialize.GamePlay.CommerAvatarDataUtil",
-            "GameLua.UI.Lobby.Wardrobe.WardrobeUtil", "BagSystem"
-        }
-
-        for _, modName in ipairs(itemModules) do
-            pcall(function()
-                local mod = package.loaded[modName] or (type(require) == "function" and pcall(require, modName) and require(modName))
-                if mod then
-                    if mod.IsHaveItem then mod.IsHaveItem = function() return true end end
-                    if mod.IsOwnSkin then mod.IsOwnSkin = function() return true end end
-                    if mod.CheckItemUnlocked then mod.CheckItemUnlocked = function() return true end end
-                    if mod.CheckItemPossess then mod.CheckItemPossess = function() return true end end
-                    if mod.IsSkinOwned then mod.IsSkinOwned = function() return true end end
-                    if mod.HasSkin then mod.HasSkin = function() return true end end
-                    if mod.HasAvatar then mod.HasAvatar = function() return true end end
-                    if mod.CheckIsWeaponInBlackList then mod.CheckIsWeaponInBlackList = function() return false end end
-                    if mod.IsValidAvatar then mod.IsValidAvatar = function() return true end end
-                    if mod.CheckAvatarIntegrity then mod.CheckAvatarIntegrity = function() return true end end
-                end
-            end)
-        end
-
-        -- 2. Tự động sinh SkinID cấp tối đa (Level 7 / VIP) cho mọi loại súng chưa có trong bảng thủ công
-        _G.X3 = _G.X3 or {}
-        _G.X3.SkinState = _G.X3.SkinState or {}
-        _G.X3.SkinState.WeaponSkinDB = _G.X3.SkinState.WeaponSkinDB or {}
-
-        _G.X3_AutoResolveSkinID = function(weaponTypeID)
-            if not weaponTypeID or weaponTypeID <= 0 then return 0 end
-            
-            -- Nếu đã có trong cache/database -> Trả về ngay
-            if _G.X3.SkinState.WeaponSkinDB[weaponTypeID] then
-                return _G.X3.SkinState.WeaponSkinDB[weaponTypeID]
-            end
-            
-            -- Nếu chưa có -> Tự động tính toán Skin ID cấp cao nhất dựa trên TypeID
-            local autoSkinID = (weaponTypeID * 1000) + 1
-            if weaponTypeID >= 101001 and weaponTypeID <= 108000 then
-                autoSkinID = (weaponTypeID * 1000) + 7
-            end
-
-            _G.X3.SkinState.WeaponSkinDB[weaponTypeID] = autoSkinID
-            return autoSkinID
-        end
-
-        -- Eager Auto-populate từ ItemDefineTable trong RAM nếu có sẵn
-        pcall(function()
-            local itemTable = package.loaded["GameLua.Config.ItemDefineTable"] 
-                           or (type(require) == "function" and pcall(require, "GameLua.Config.ItemDefineTable") and require("GameLua.Config.ItemDefineTable"))
-            if itemTable and itemTable.Data then
-                for itemID, itemData in pairs(itemTable.Data) do
-                    if type(itemID) == "number" and itemID > 100000 then
-                        if not _G.AddOutfitSkinIdMappings then _G.AddOutfitSkinIdMappings = {} end
-                        _G.AddOutfitSkinIdMappings[itemID] = itemID
-                    end
-                end
-            end
-        end)
-    end)
-end
-
-pcall(__InitializeGlobalSkinAutoUnlock)
 
 -- ==============================================================================
 -- ================= BẮT ĐẦU PHÂN HỆ MOD SKIN & EMOTE TÍCH HỢP ==================
@@ -14966,7 +14893,7 @@ pcall(__RunEmoteSystem)
 -- ==============================================================================
 
 local function __RunFullskinSystem()
-    _G.LobbyCosmeticEnabled = (_G.HK_Settings and _G.HK_Settings.ModSkin ~= 0)
+    _G.LobbyCosmeticEnabled = _G.HK_Settings.ModSkin == 1
     _G.killCountInfo = _G.killCountInfo or {}
     _G.LastKillTime = _G.LastKillTime or {}
 
