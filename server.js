@@ -227,12 +227,13 @@ function writeDatabase(db) {
 
 // Sessions DB helpers
 function readSessions() {
-  if (!fs.existsSync(SESSIONS_PATH)) return { sessions: [] };
+  if (!fs.existsSync(SESSIONS_PATH)) return [];
   try {
     const raw = fs.readFileSync(SESSIONS_PATH, "utf8").trim();
-    if (!raw) return { sessions: [] };
-    return JSON.parse(raw);
-  } catch { return { sessions: [] }; }
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : (parsed.sessions || []);
+  } catch { return []; }
 }
 
 function writeSessions(data) {
