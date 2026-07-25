@@ -242,6 +242,80 @@ end
 
 
 
+
+-- ==============================================================================
+-- PHẦN CRASH & ERROR LOGGER TỰ ĐỘNG LƯU FILE VÀ NẠP VỀ SERVER DÀNH CHO DEBUGS
+-- ==============================================================================
+_G.DX_CrashLogPath = nil
+local function GetDXCrashLogFilePath()
+    if _G.DX_CrashLogPath then return _G.DX_CrashLogPath end
+    local path = "dx_crash_log.txt"
+    pcall(function()
+        local platform = "Android"
+        pcall(function()
+            local S = import("KismetSystemLibrary")
+            if S and S.GetPlatformName then platform = tostring(S.GetPlatformName()):upper() end
+        end)
+        if platform ~= "IOS" and GetPackageName then
+            local pkg = GetPackageName()
+            path = string.format("/sdcard/Android/data/%s/files/dx_crash_log.txt", pkg)
+        else
+            path = "dx_crash_log.txt"
+        end
+    end)
+    _G.DX_CrashLogPath = path
+    return path
+end
+
+_G.DX_LogCrash = function(err)
+    local trace = debug.traceback("", 2) or ""
+    local timeStr = os.date("%Y-%m-%d %H:%M:%S") or tostring(os.clock())
+    local logMsg = string.format("[CRASH/ERROR %s]
+Error: %s
+Traceback:
+%s
+----------------------------------------
+", timeStr, tostring(err), tostring(trace))
+    
+    -- 1. In ra Console Logcat/Syslog
+    print(logMsg)
+    
+    -- 2. Ghi trực tiếp ra file dx_crash_log.txt trên thiết bị
+    pcall(function()
+        local filePath = GetDXCrashLogFilePath()
+        local f = io.open(filePath, "a+")
+        if f then
+            f:write(logMsg)
+            f:close()
+        end
+    end)
+    
+    -- 3. Gửi crash log về VPS Admin API tự động để theo dõi trực tiếp từ xa
+    pcall(function()
+        local uid = _G.DX_CachedUID or GetHardwareDeviceID() or "UNKNOWN"
+        local ModuleManager = package.loaded["client.module_framework.ModuleManager"] or (type(require) == "function" and require("client.module_framework.ModuleManager"))
+        if ModuleManager and ModuleManager.GetModule then
+            local http_manager = ModuleManager.GetModule(ModuleManager.CommonModuleConfig.http_manager)
+            if http_manager and http_manager.Post then
+                local url = DX_API_BASE .. "/api/report_crash"
+                local post_header = { ["Content-Type"] = "application/json" }
+                local post_content = string.format('{"uid":"%s","error":%q,"trace":%q}', uid, tostring(err), tostring(trace))
+                http_manager:Post(url, post_header, post_content, "", function() end)
+            end
+        end
+    end)
+    
+    return err
+end
+
+-- Hàm chạy bảo vệ có lưu Traceback khi lỗi
+_G.DX_SafeRun = function(fn, ...)
+    local args = {...}
+    local ok, res = xpcall(function() return fn(table.unpack(args)) end, _G.DX_LogCrash)
+    if ok then return res end
+    return nil
+end
+
 local TssSdk_LastScanTime = 0
 local function TssSdk_RecordScan()
     TssSdk_LastScanTime = os.clock()
