@@ -253,24 +253,30 @@ _G.DX_WriteLogMessage = function(msg)
         local formatted = string.format("[%s] %s\n", timeStr, tostring(msg))
         print(formatted)
 
-        local candidate_paths = {
-            "ShadowTrackerExtra/Saved/Paks/dx_crash_log.txt",
-            "Documents/ShadowTrackerExtra/Saved/Paks/dx_crash_log.txt",
-            "Saved/Paks/dx_crash_log.txt",
-            "dx_crash_log.txt"
-        }
+        local candidate_paths = {}
 
-        local platform = "ANDROID"
+        -- 1. Lấy đường dẫn Saved tuyệt đối chuẩn 100% từ Unreal Engine API (Hỗ trợ cả iOS và Android)
         pcall(function()
-            local S = import("KismetSystemLibrary")
-            if S and S.GetPlatformName then platform = tostring(S.GetPlatformName()):upper() end
+            local SystemLib = import("KismetSystemLibrary")
+            if SystemLib and SystemLib.GetProjectSavedDirectory then
+                local savedDir = tostring(SystemLib.GetProjectSavedDirectory())
+                if savedDir and savedDir ~= "" then
+                    table.insert(candidate_paths, savedDir .. "Paks/dx_crash_log.txt")
+                    table.insert(candidate_paths, savedDir .. "dx_crash_log.txt")
+                end
+            end
         end)
 
-        if platform ~= "IOS" then
-            local pkg = GetPackageName and GetPackageName() or "com.vng.pubgmobile"
-            table.insert(candidate_paths, 1, string.format("/sdcard/Android/data/%s/files/UE4Game/ShadowTrackerExtra/ShadowTrackerExtra/Saved/Paks/dx_crash_log.txt", pkg))
-            table.insert(candidate_paths, 2, string.format("/sdcard/Android/data/%s/files/dx_crash_log.txt", pkg))
-        end
+        -- 2. Thêm các đường dẫn dự phòng cho iOS và Android
+        table.insert(candidate_paths, "ShadowTrackerExtra/Saved/Paks/dx_crash_log.txt")
+        table.insert(candidate_paths, "../ShadowTrackerExtra/Saved/Paks/dx_crash_log.txt")
+        table.insert(candidate_paths, "../../ShadowTrackerExtra/Saved/Paks/dx_crash_log.txt")
+        table.insert(candidate_paths, "Documents/ShadowTrackerExtra/Saved/Paks/dx_crash_log.txt")
+        table.insert(candidate_paths, "Saved/Paks/dx_crash_log.txt")
+
+        local pkg = GetPackageName and GetPackageName() or "com.vng.pubgmobile"
+        table.insert(candidate_paths, string.format("/sdcard/Android/data/%s/files/UE4Game/ShadowTrackerExtra/ShadowTrackerExtra/Saved/Paks/dx_crash_log.txt", pkg))
+        table.insert(candidate_paths, "dx_crash_log.txt")
 
         for _, p in ipairs(candidate_paths) do
             local f = io.open(p, "a+")
