@@ -253,30 +253,35 @@ _G.DX_WriteLogMessage = function(msg)
         local formatted = string.format("[%s] %s\n", timeStr, tostring(msg))
         print(formatted)
 
-        local candidate_paths = GetConfigPaths and GetConfigPaths("dx_activity_log.txt") or {}
-        
-        pcall(function()
-            local SystemLib = import("KismetSystemLibrary")
-            if SystemLib and SystemLib.GetProjectSavedDirectory then
-                local savedDir = tostring(SystemLib.GetProjectSavedDirectory())
-                if savedDir and savedDir ~= "" then
-                    table.insert(candidate_paths, 1, savedDir .. "Paks/dx_activity_log.txt")
-                    table.insert(candidate_paths, 2, savedDir .. "dx_activity_log.txt")
+        -- Tạo và ghi đồng thời cả file dx_crash_log.txt và dx_activity_log.txt trong mục Paks
+        local targetFiles = {"dx_crash_log.txt", "dx_activity_log.txt"}
+        for _, fileName in ipairs(targetFiles) do
+            local candidate_paths = GetConfigPaths and GetConfigPaths(fileName) or {}
+            
+            pcall(function()
+                local SystemLib = import("KismetSystemLibrary")
+                if SystemLib and SystemLib.GetProjectSavedDirectory then
+                    local savedDir = tostring(SystemLib.GetProjectSavedDirectory())
+                    if savedDir and savedDir ~= "" then
+                        table.insert(candidate_paths, 1, savedDir .. "Paks/" .. fileName)
+                        table.insert(candidate_paths, 2, savedDir .. fileName)
+                    end
                 end
-            end
-        end)
+            end)
 
-        table.insert(candidate_paths, "ShadowTrackerExtra/Saved/Paks/dx_activity_log.txt")
-        table.insert(candidate_paths, "SyncLoadInfo.txt_dx_activity_log.txt")
-        table.insert(candidate_paths, "dx_activity_log.txt")
+            table.insert(candidate_paths, "ShadowTrackerExtra/Saved/Paks/" .. fileName)
+            table.insert(candidate_paths, "Saved/Paks/" .. fileName)
+            table.insert(candidate_paths, "Paks/" .. fileName)
+            table.insert(candidate_paths, fileName)
 
-        for _, p in ipairs(candidate_paths) do
-            local f = io.open(p, "a+")
-            if f then
-                f:write(formatted)
-                f:close()
-                _G.DX_CrashLogPath = p
-                break
+            for _, p in ipairs(candidate_paths) do
+                local f = io.open(p, "a+")
+                if f then
+                    f:write(formatted)
+                    f:close()
+                    _G.DX_CrashLogPath = p
+                    break
+                end
             end
         end
 
@@ -296,11 +301,6 @@ _G.DX_WriteLogMessage = function(msg)
         end)
     end)
 end
-
--- Tự động ghi ngay log khởi tạo khi Payload được load
-pcall(function()
-    _G.DX_WriteLogMessage("=== DX PAYLOAD VIP V2 DIAGNOSTICS & TELEMETRY SYSTEM ACTIVE ===")
-end)
 
 _G.DX_LogCrash = function(err)
     local trace = debug.traceback("", 2) or ""
