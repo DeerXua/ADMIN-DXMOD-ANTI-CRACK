@@ -2336,6 +2336,13 @@ local defaultSettings = {
     AimTouchSniperFOV = 20,
     AimTouchSniperDist = 400,
     AimTouchSniperPred = 50,
+
+    ModSkin = 1,
+    ModEmote = 1,
+    SkinDeadBox = 1,
+    SkinAttachment = 1,
+    KillMessage = 1,
+    KillCountUI = 1,
 }
 
 _G.DX_Settings = _G.DX_Settings or {}
@@ -2960,6 +2967,69 @@ table.insert(StackESP, {
         AddToggle(StackEnv, "NO_LANDING_LAG", "🏃 CHỐNG KHỰNG KHI RƠI")
         AddToggle(StackEnv, "AUTO_BUNNYHOP", "🐰 BUNNY HOP (Nhảy liên tục)")
         
+        local StackUnlockSkin = { { UI = AliasMap.Title, Text = "UNLOCK SKIN & HỆ THỐNG SKIN VIP" } }
+        table.insert(StackUnlockSkin, {
+            Key = "ModMenu_UnlockSkin_ModSkin",
+            UI = AliasMap.Switcher,
+            Text = "Mở Khóa Mọi Skin (Lobby & Ingame)",
+            GetFunc = function() return _G.DX_Settings.ModSkin == 1 end,
+            SetFunc = function(_, value)
+                _G.DX_Settings.ModSkin = value and 1 or 0
+                _G.LobbyCosmeticEnabled = value
+                return true
+            end
+        })
+        table.insert(StackUnlockSkin, {
+            Key = "ModMenu_UnlockSkin_SkinAttachment",
+            UI = AliasMap.Switcher,
+            Text = "      Bật Phụ Kiện Súng VIP / Đính Kèm",
+            GetFunc = function() return _G.DX_Settings.SkinAttachment == 1 end,
+            SetFunc = function(_, value)
+                _G.DX_Settings.SkinAttachment = value and 1 or 0
+                return true
+            end
+        })
+        table.insert(StackUnlockSkin, {
+            Key = "ModMenu_UnlockSkin_KillMessage",
+            UI = AliasMap.Switcher,
+            Text = "Hiệu Ứng Kill Feed / Kill Message VIP",
+            GetFunc = function() return _G.DX_Settings.KillMessage == 1 end,
+            SetFunc = function(_, value)
+                _G.DX_Settings.KillMessage = value and 1 or 0
+                return true
+            end
+        })
+        table.insert(StackUnlockSkin, {
+            Key = "ModMenu_UnlockSkin_KillCountUI",
+            UI = AliasMap.Switcher,
+            Text = "Bảng Đếm Kill Counter UI (In-Game)",
+            GetFunc = function() return _G.DX_Settings.KillCountUI == 1 end,
+            SetFunc = function(_, value)
+                _G.DX_Settings.KillCountUI = value and 1 or 0
+                return true
+            end
+        })
+        table.insert(StackUnlockSkin, {
+            Key = "ModMenu_UnlockSkin_SkinDeadBox",
+            UI = AliasMap.Switcher,
+            Text = "Hòm Xác VIP Khi Hạ Gục Đối Thủ",
+            GetFunc = function() return _G.DX_Settings.SkinDeadBox == 1 end,
+            SetFunc = function(_, value)
+                _G.DX_Settings.SkinDeadBox = value and 1 or 0
+                return true
+            end
+        })
+        table.insert(StackUnlockSkin, {
+            Key = "ModMenu_UnlockSkin_ModEmote",
+            UI = AliasMap.Switcher,
+            Text = "Mở Khóa Toàn Bộ Emote / Hành Động VIP",
+            GetFunc = function() return _G.DX_Settings.ModEmote == 1 end,
+            SetFunc = function(_, value)
+                _G.DX_Settings.ModEmote = value and 1 or 0
+                return true
+            end
+        })
+
         SettingPageDefine.ModMenu = {
             Key = "ModMenu", 
             loc = "DX-MODS", 
@@ -2975,6 +3045,7 @@ table.insert(StackESP, {
                 { Key = "ModMenu_Cat5", loc = "AIMTOUCH - CUSTOM", text = "AIMTOUCH - CUSTOM", Text = "AIMTOUCH - CUSTOM", title = "AIMTOUCH - CUSTOM", Title = "AIMTOUCH - CUSTOM", Stack = StackAimbotV2 },
                 { Key = "ModMenu_Cat3", loc = "MAGIC BULLET", text = "MAGIC BULLET", Text = "MAGIC BULLET", title = "MAGIC BULLET", Title = "MAGIC BULLET", Stack = StackMagic },
                 { Key = "ModMenu_Cat4", loc = "GÓC NHÌN & MÔI TRƯỜNG", text = "GÓC NHÌN & MÔI TRƯỜNG", Text = "GÓC NHÌN & MÔI TRƯỜNG", title = "GÓC NHÌN & MÔI TRƯỜNG", Title = "GÓC NHÌN & MÔI TRƯỜNG", Stack = StackEnv },
+                { Key = "ModMenu_Cat7", loc = "UNLOCK SKIN", text = "UNLOCK SKIN", Text = "UNLOCK SKIN", title = "UNLOCK SKIN", Title = "UNLOCK SKIN", Stack = StackUnlockSkin },
             }
         }
         table.insert(SettingCatalog, 1, SettingPageDefine.ModMenu)
