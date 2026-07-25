@@ -1,4 +1,4 @@
-local OriginalClass = ...
+﻿local OriginalClass = ...
 local BRPlayerCharacterBase = OriginalClass or {
   ServerRPC = {},
   ClientRPC = {},
@@ -2990,14 +2990,13 @@ table.insert(StackESP, {
         AddToggle(StackEnv, "AUTO_BUNNYHOP", "🐰 BUNNY HOP (Nhảy liên tục)")
         
         local StackUnlockSkin = { { UI = AliasMap.Title, Text = "UNLOCK SKIN & HỆ THỐNG SKIN VIP" } }
-        table.insert(StackUnlockSkin, {
+                table.insert(StackUnlockSkin, {
             Key = "ModMenu_UnlockSkin_ModSkin",
             UI = AliasMap.Switcher,
-            Text = "Mở Khóa Mọi Skin (Lobby & Ingame)",
+            Text = "UNLOCK SKIN: BAT/TAT toan bo skin (Lobby & Ingame)",
             GetFunc = function() return _G.DX_Settings.ModSkin == 1 end,
             SetFunc = function(_, value)
-                _G.DX_Settings.ModSkin = value and 1 or 0
-                _G.LobbyCosmeticEnabled = value
+                pcall(F.toggleSkin, value)
                 return true
             end
         })
@@ -8208,7 +8207,8 @@ local MATCH_CONFIG = {
 }
 
 -- Bảng ID các siêu xe (Thêm tự do nếu có ID mới)
-local ITEMS = {
+local ITEMS = {}
+local _OLD_ITEMS = {
     0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14,
     15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29,
     30, 32, 36, 45, 47, 90, 98, 249, 416, 427, 500, 570, 686, 707, 762,
@@ -8866,6 +8866,24 @@ local ITEMS = {
     1502001364, 1502001373, 1502001381, 1502001402, 1502001403, 1502001416, 1502001427, 1502001439, 1502001443, 1502001450, 1502001453, 1502001471, 1502001480, 1502001490, 1502001495,
     1502001508, 1502002014, 1502002023, 1502002069, 1502002508, 1502003014, 1502003023, 1502003069, 1502003508,
 }
+pcall(function()
+    local itemTable = CDataTable.GetTable("Item")
+    if itemTable then
+        for resID, cfg in pairs(itemTable) do
+            local id = tonumber(resID)
+            if id and id > 0 then
+                local mainTab = tonumber(cfg.WardrobeMainTab) or 0
+                local subTab = tonumber(cfg.WardrobeTab) or 0
+                local subType = tonumber(cfg.ItemSubType) or 0
+                if mainTab > 0 or subTab > 0 or subType >= 900 or subType == 701 or 
+                   subType == 415 or subType == 413 or subType == 414 or subType == 452 or 
+                   subType == 108 or (subType >= 101 and subType <= 107) then
+                    table.insert(ITEMS, id)
+                end
+            end
+        end
+    end
+end)
 
 local INS_BASE = 2000000000
 local PKG_SLOT = 3
@@ -11513,6 +11531,84 @@ function F.injectAll(entity)
     return n > 0
 end
 
+
+-- Xoa toan bo skin da inject khi tat toggle
+function F.clearAllInjected(entity)
+    entity = entity or F.getEntity()
+    local removed = 0
+    if entity and entity._data then
+        local kept = {}
+        for i = 1, (entity._DataCount or #entity._data) do
+            local d = entity._data[i]
+            if d then
+                local ins = tonumber(d.instid or d.insID)
+                -- Giu lai cac item that (khong phai do script inject)
+                if ins and ins >= INS_BASE and R.insToRes[ins] then
+                    removed = removed + 1
+                else
+                    table.insert(kept, d)
+                end
+            end
+        end
+        entity._data = kept
+        entity._DataCount = #kept
+        -- Rebuild index maps
+        pcall(function()
+            entity.ResIDToIndexArrayMap = {}
+            entity.InsIDToIndexMap = {}
+            for idx, d in ipairs(kept) do
+                local res = tonumber(d.res_id or d.resID)
+                local ins = tonumber(d.instid or d.insID)
+                if res then
+                    entity.ResIDToIndexArrayMap[res] = entity.ResIDToIndexArrayMap[res] or {}
+                    table.insert(entity.ResIDToIndexArrayMap[res], idx)
+                end
+                if ins then entity.InsIDToIndexMap[ins] = idx end
+            end
+        end)
+    end
+    -- Reset runtime lookup maps
+    R.resToIns = {}
+    R.insToRes = {}
+    R.byWeapon = {}
+    _G.AddOutfitUnexpireDone = nil
+    -- Xoa inject armory (skin sung)
+    pcall(function()
+        local Arm = require("client.logic.armory.logic_armory")
+        if Arm then
+            if Arm.rsp_list then
+                Arm.rsp_list.skin_list = {}
+                Arm.rsp_list.install_list = {}
+            end
+            Arm.WardrobeInsList = {}
+        end
+    end)
+    return removed
+end
+
+-- Ham toggle trung tam: bat/tat toan bo tinh nang Unlock Skin
+function F.toggleSkin(enable)
+    _G.DX_Settings.ModSkin = enable and 1 or 0
+    _G.LobbyCosmeticEnabled = enable ~= false
+    if enable then
+        -- Bat: re-inject toan bo skin
+        pcall(F.injectAll)
+        -- Reset co de cho phep reapply lai outfit/xe/weapon skin trong sanh
+        LOBBY.reapplyDone = false
+        LOBBY.reapplyScheduled = false
+        LOBBY.wardrobeRefreshed = false
+        -- Re-apply bo do dang mac trong sanh + vehicle + weapon skin
+        pcall(F.reapplyWeaponsFromConfig)
+        pcall(F.reapplyVehicleSlotsFromConfig, true)
+        pcall(F.reapplyHallThemeFromConfig, true)
+        pcall(F.scheduleLobbyReapplyOnce)
+        pcall(F.refreshWardrobe)
+    else
+        -- Tat: xoa toan bo skin da inject
+        pcall(F.clearAllInjected)
+        pcall(F.refreshWardrobe)
+    end
+end
 function F.refreshWardrobe()
     pcall(function()
         if EventSystem and EVENTTYPE_WARDROBE then
