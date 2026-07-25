@@ -2337,28 +2337,30 @@ local defaultSettings = {
     AimTouchSniperDist = 400,
     AimTouchSniperPred = 50,
 
-    ModSkin = 0,
-    ModEmote = 0,
-    SkinDeadBox = 0,
-    SkinAttachment = 0,
-    SkinOptionOpen = 0,
-    SkinOpenLink = 0,
-    KillMessage = 0,
-    KillCountUI = 0,
-    SkinEnable_Suit = 0, SkinEnable_Top = 0, SkinEnable_Gloves = 0,
-    SkinEnable_Bottom = 0, SkinEnable_Shoes = 0, SkinEnable_Bag = 0, SkinEnable_Helmet = 0, SkinEnable_Parachute = 0,
-    SkinEnable_M416 = 0, SkinEnable_AKM = 0, SkinEnable_SCAR = 0, SkinEnable_M762 = 0,
-    SkinEnable_AUG = 0, SkinEnable_UMP = 0, SkinEnable_UZI = 0, SkinEnable_Groza = 0,
-    SkinEnable_S12K = 0, SkinEnable_DBS = 0,
-    SkinEnable_Dacia = 0, SkinEnable_UAZ = 0, SkinEnable_Coupe = 0, SkinEnable_Buggy = 0, SkinEnable_Mirado = 0,
+    ModSkin = 1,
+    ModEmote = 1,
+    SkinDeadBox = 1,
+    SkinAttachment = 1,
+    SkinOptionOpen = 1,
+    SkinOpenLink = 1,
+    KillMessage = 1,
+    KillCountUI = 1,
+    SkinEnable_Suit = 1, SkinEnable_Top = 1, SkinEnable_Gloves = 1,
+    SkinEnable_Bottom = 1, SkinEnable_Shoes = 1, SkinEnable_Bag = 1, SkinEnable_Helmet = 1, SkinEnable_Parachute = 1,
+    SkinEnable_M416 = 1, SkinEnable_AKM = 1, SkinEnable_SCAR = 1, SkinEnable_M762 = 1,
+    SkinEnable_AUG = 1, SkinEnable_UMP = 1, SkinEnable_UZI = 1, SkinEnable_Groza = 1,
+    SkinEnable_S12K = 1, SkinEnable_DBS = 1,
+    SkinEnable_Dacia = 1, SkinEnable_UAZ = 1, SkinEnable_Coupe = 1, SkinEnable_Buggy = 1, SkinEnable_Mirado = 1,
 }
 
 _G.HK_Settings = _G.HK_Settings or {}
+_G.DX_Settings = _G.HK_Settings
 for k, v in pairs(defaultSettings) do
     if _G.HK_Settings[k] == nil then
         _G.HK_Settings[k] = v
     end
 end
+_G.LobbyCosmeticEnabled = true
 
 _G.LexusConfig = _G.LexusConfig or {}
 setmetatable(_G.LexusConfig, {
@@ -14893,7 +14895,7 @@ pcall(__RunEmoteSystem)
 -- ==============================================================================
 
 local function __RunFullskinSystem()
-    _G.LobbyCosmeticEnabled = _G.HK_Settings.ModSkin == 1
+    _G.LobbyCosmeticEnabled = (_G.HK_Settings and _G.HK_Settings.ModSkin ~= 0)
     _G.killCountInfo = _G.killCountInfo or {}
     _G.LastKillTime = _G.LastKillTime or {}
 

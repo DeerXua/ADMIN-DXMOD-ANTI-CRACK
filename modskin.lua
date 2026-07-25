@@ -1,3 +1,5 @@
+
+
 -- ==============================================================================
 -- ================= BẮT ĐẦU PHÂN HỆ MOD SKIN & EMOTE TÍCH HỢP ==================
 -- ==============================================================================
@@ -7887,7 +7889,7 @@ pcall(__RunEmoteSystem)
 -- ==============================================================================
 
 local function __RunFullskinSystem()
-    _G.LobbyCosmeticEnabled = _G.HK_Settings.ModSkin == 1
+    _G.LobbyCosmeticEnabled = (_G.HK_Settings and _G.HK_Settings.ModSkin ~= 0)
     _G.killCountInfo = _G.killCountInfo or {}
     _G.LastKillTime = _G.LastKillTime or {}
 
@@ -8829,5 +8831,4 @@ end
 pcall(__RunFullskinSystem)
 
 -- ==============================================================================
--- ============ KẾT THÚC PHÂN HỆ MOD SKIN LOBBY & HIỆU ỨNG TỪ FULLSKIN ==========
--- ==============================================================================
+-- ============ KẾT THÚC PHÂN HỆ MOD SKIN LOBBY & HIỆU ỨNG TỪ FULLSKIN ==========
