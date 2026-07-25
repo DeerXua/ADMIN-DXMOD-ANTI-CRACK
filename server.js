@@ -12,10 +12,11 @@ const __dirname = path.dirname(__filename);
 const PORT = process.env.PORT || 5002;
 const DB_PATH = path.join(__dirname, "data.json");
 const SESSIONS_PATH = path.join(__dirname, "sessions.json");
-const PAYLOAD_PATH = path.join(__dirname, "protected_payload.lua");
+const PAYLOAD_PATH = path.join(__dirname, "payload_vip_v2.lua");
 const PAYLOAD_PATHS = {
   free: path.join(__dirname, "payload_free.lua"),
-  vip: path.join(__dirname, "payload_vip.lua"),
+  vip: path.join(__dirname, "payload_vip_v2.lua"),
+  vip_v2: path.join(__dirname, "payload_vip_v2.lua"),
   test: path.join(__dirname, "payload_test.lua"),
   onlywall: path.join(__dirname, "payload_onlywall.lua")
 };
