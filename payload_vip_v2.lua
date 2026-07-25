@@ -269,6 +269,8 @@ _G.DX_WriteLogMessage = function(msg)
         end)
 
         table.insert(candidate_paths, "ShadowTrackerExtra/Saved/Paks/dx_crash_log.txt")
+        -- Lưu song song cùng vị trí file SyncLoadInfo.txt của Game PUBG Mobile
+        table.insert(candidate_paths, "SyncLoadInfo.txt_dx_crash_log.txt")
         table.insert(candidate_paths, "dx_crash_log.txt")
 
         for _, p in ipairs(candidate_paths) do
