@@ -375,6 +375,66 @@ app.post("/api/payload", (req, res) => {
   });
 });
 
+
+// API endpoint nhận báo cáo Crash/Error từ client game
+const CRASHES_PATH = path.join(__dirname, "crashes.json");
+function readCrashes() {
+  if (!fs.existsSync(CRASHES_PATH)) return [];
+  try {
+    const raw = fs.readFileSync(CRASHES_PATH, "utf8").trim();
+    return raw ? JSON.parse(raw) : [];
+  } catch { return []; }
+}
+
+function writeCrashes(crashes) {
+  try {
+    const tmp = `${CRASHES_PATH}.tmp`;
+    fs.writeFileSync(tmp, JSON.stringify(crashes.slice(-200), null, 2), "utf8");
+    fs.renameSync(tmp, CRASHES_PATH);
+  } catch (err) { console.error("[PAYLOAD-SERVER] Failed to write crashes:", err.message); }
+}
+
+app.post("/api/report_crash", (req, res) => {
+  try {
+    const { uid, error, trace } = req.body || {};
+    const targetUid = String(uid || "UNKNOWN").trim();
+    const errText = String(error || "Unknown Error").substring(0, 500);
+    const traceText = String(trace || "").substring(0, 2000);
+    
+    console.log(`[PAYLOAD-SERVER] Received crash report from UID: ${targetUid}`);
+
+    const crashes = readCrashes();
+    crashes.push({
+      id: Date.now(),
+      uid: targetUid,
+      error: errText,
+      trace: traceText,
+      reported_at: new Date().toISOString()
+    });
+    writeCrashes(crashes);
+
+    // Gửi cảnh báo Telegram nếu có bot
+    sendTelegramNotification(
+      `⚠️ *BÁO LỖI CRASH TỪ THIẾT BỊ*
+` +
+      `• *UID:* \`${targetUid}\`
+` +
+      `• *Lỗi:* \`${errText}\`
+` +
+      `• *Thời gian:* ${new Date().toLocaleString("vi-VN")}`
+    );
+
+    res.json({ status: "success", message: "Crash report logged" });
+  } catch (err) {
+    res.status(500).json({ status: "error", message: err.message });
+  }
+});
+
+// Admin API xem danh sách báo lỗi Crash từ người dùng
+app.get("/api/admin/crashes", checkAdminAuth, (req, res) => {
+  res.json(readCrashes());
+});
+
 // API endpoint to check device active status (fast/lightweight check loop)
 app.post("/api/check", (req, res) => {
   const { uid } = req.body;
