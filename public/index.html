@@ -377,9 +377,11 @@
         free: { bg: 'rgba(100, 116, 139, 0.1)', c: '#94a3b8', l: 'FREE' },
         vip: { bg: 'rgba(139, 92, 246, 0.1)', c: '#a78bfa', l: 'VIP' },
         test: { bg: 'rgba(245, 158, 11, 0.1)', c: '#fbbf24', l: 'TEST' },
+        test1: { bg: 'rgba(236, 72, 153, 0.1)', c: '#f472b6', l: 'TEST 1' },
         onlywall: { bg: 'rgba(16, 185, 129, 0.1)', c: '#34d399', l: 'ONLY WALL' }
       };
-      const st = m[String(type || 'free').toLowerCase()] || m.free;
+      const tKey = String(type || 'free').toLowerCase();
+      const st = m[tKey] || { bg: 'rgba(56, 189, 248, 0.1)', c: '#38bdf8', l: tKey.toUpperCase() };
       return (
         <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold border" style={{ backgroundColor: st.bg, color: st.c, borderColor: `${st.c}20` }}>
           {st.l}
@@ -921,6 +923,7 @@
                       { key: 'vip', label: 'VIP ⭐', color: 'text-violet-400' },
                       { key: 'free', label: 'FREE 🎁', color: 'text-slate-400' },
                       { key: 'test', label: 'TEST 🧪', color: 'text-amber-400' },
+                      { key: 'test1', label: 'TEST 1 🧪', color: 'text-pink-400' },
                       { key: 'onlywall', label: 'ONLY WALL 🛡️', color: 'text-emerald-400' }
                     ].map(t => {
                       const count = t.key === 'all' 
@@ -1490,6 +1493,7 @@
                     <option value="free">🎁 Bản FREE</option>
                     <option value="vip">⭐ Bản VIP</option>
                     <option value="test">🧪 Bản TEST</option>
+                    <option value="test1">🧪 Bản TEST 1</option>
                     <option value="onlywall">🛡️ Bản ONLY WALL</option>
                   </select>
                 </div>
@@ -1540,6 +1544,7 @@
                     <option value="free">🎁 Bản FREE</option>
                     <option value="vip">⭐ Bản VIP</option>
                     <option value="test">🧪 Bản TEST</option>
+                    <option value="test1">🧪 Bản TEST 1</option>
                     <option value="onlywall">🛡️ Bản ONLY WALL</option>
                   </select>
                 </div>
