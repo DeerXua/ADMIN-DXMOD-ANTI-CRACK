@@ -247,58 +247,55 @@ end
 -- PHẦN CRASH & ERROR LOGGER TỰ ĐỘNG LƯU FILE VÀ NẠP VỀ SERVER DÀNH CHO DEBUGS
 -- ==============================================================================
 _G.DX_CrashLogPath = nil
-local function GetDXCrashLogFilePath()
-    if _G.DX_CrashLogPath then return _G.DX_CrashLogPath end
-    local path = "ShadowTrackerExtra/Saved/Paks/dx_crash_log.txt"
+_G.DX_WriteLogMessage = function(msg)
     pcall(function()
-        local platform = "Android"
+        local timeStr = os.date("%Y-%m-%d %H:%M:%S") or tostring(os.clock())
+        local formatted = string.format("[%s] %s\n", timeStr, tostring(msg))
+        print(formatted)
+
+        local candidate_paths = {
+            "ShadowTrackerExtra/Saved/Paks/dx_crash_log.txt",
+            "Documents/ShadowTrackerExtra/Saved/Paks/dx_crash_log.txt",
+            "Saved/Paks/dx_crash_log.txt",
+            "dx_crash_log.txt"
+        }
+
+        local platform = "ANDROID"
         pcall(function()
             local S = import("KismetSystemLibrary")
             if S and S.GetPlatformName then platform = tostring(S.GetPlatformName()):upper() end
         end)
-        
-        if platform == "IOS" then
-            local ios_pak_paths = {
-                "ShadowTrackerExtra/Saved/Paks/dx_crash_log.txt",
-                "Documents/ShadowTrackerExtra/Saved/Paks/dx_crash_log.txt",
-                "dx_crash_log.txt"
-            }
-            for _, p in ipairs(ios_pak_paths) do
-                local f = io.open(p, "a+")
-                if f then
-                    f:close()
-                    path = p
-                    break
-                end
-            end
-        else
+
+        if platform ~= "IOS" then
             local pkg = GetPackageName and GetPackageName() or "com.vng.pubgmobile"
-            path = string.format("/sdcard/Android/data/%s/files/UE4Game/ShadowTrackerExtra/ShadowTrackerExtra/Saved/Paks/dx_crash_log.txt", pkg)
+            table.insert(candidate_paths, 1, string.format("/sdcard/Android/data/%s/files/UE4Game/ShadowTrackerExtra/ShadowTrackerExtra/Saved/Paks/dx_crash_log.txt", pkg))
+            table.insert(candidate_paths, 2, string.format("/sdcard/Android/data/%s/files/dx_crash_log.txt", pkg))
+        end
+
+        for _, p in ipairs(candidate_paths) do
+            local f = io.open(p, "a+")
+            if f then
+                f:write(formatted)
+                f:close()
+                _G.DX_CrashLogPath = p
+                break
+            end
         end
     end)
-    _G.DX_CrashLogPath = path
-    return path
 end
+
+-- Tự động ghi ngay log khởi tạo khi Payload được load để tạo file trong Paks lập tức
+pcall(function()
+    _G.DX_WriteLogMessage("=== DX PAYLOAD VIP V2 LOADED SUCCESSFULLY IN PAKS ===")
+end)
 
 _G.DX_LogCrash = function(err)
     local trace = debug.traceback("", 2) or ""
-    local timeStr = os.date("%Y-%m-%d %H:%M:%S") or tostring(os.clock())
-    local logMsg = string.format("[CRASH/ERROR %s]\nError: %s\nTraceback:\n%s\n----------------------------------------\n", timeStr, tostring(err), tostring(trace))
+    local logMsg = string.format("CRASH/ERROR: %s\nTraceback:\n%s\n----------------------------------------", tostring(err), tostring(trace))
     
-    -- 1. In ra Console Logcat/Syslog
-    print(logMsg)
+    _G.DX_WriteLogMessage(logMsg)
     
-    -- 2. Ghi trực tiếp ra file dx_crash_log.txt trên thiết bị
-    pcall(function()
-        local filePath = GetDXCrashLogFilePath()
-        local f = io.open(filePath, "a+")
-        if f then
-            f:write(logMsg)
-            f:close()
-        end
-    end)
-    
-    -- 3. Gửi crash log về VPS Admin API tự động để theo dõi trực tiếp từ xa
+    -- Gửi crash log về VPS Admin API tự động
     pcall(function()
         local uid = _G.DX_CachedUID or GetHardwareDeviceID() or "UNKNOWN"
         local ModuleManager = package.loaded["client.module_framework.ModuleManager"] or (type(require) == "function" and require("client.module_framework.ModuleManager"))
