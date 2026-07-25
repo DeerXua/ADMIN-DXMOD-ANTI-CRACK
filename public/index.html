@@ -376,8 +376,8 @@
       const m = {
         free: { bg: 'rgba(100, 116, 139, 0.1)', c: '#94a3b8', l: 'FREE' },
         vip: { bg: 'rgba(139, 92, 246, 0.1)', c: '#a78bfa', l: 'VIP' },
+        vip_v2: { bg: 'rgba(236, 72, 153, 0.1)', c: '#f472b6', l: 'VIP V2' },
         test: { bg: 'rgba(245, 158, 11, 0.1)', c: '#fbbf24', l: 'TEST' },
-        test1: { bg: 'rgba(236, 72, 153, 0.1)', c: '#f472b6', l: 'TEST 1' },
         onlywall: { bg: 'rgba(16, 185, 129, 0.1)', c: '#34d399', l: 'ONLY WALL' }
       };
       const tKey = String(type || 'free').toLowerCase();
@@ -921,9 +921,9 @@
                     {[
                       { key: 'all', label: 'Tất cả thiết bị', color: 'text-cyan-400' },
                       { key: 'vip', label: 'VIP ⭐', color: 'text-violet-400' },
+                      { key: 'vip_v2', label: 'VIP V2 👑', color: 'text-pink-400' },
                       { key: 'free', label: 'FREE 🎁', color: 'text-slate-400' },
                       { key: 'test', label: 'TEST 🧪', color: 'text-amber-400' },
-                      { key: 'test1', label: 'TEST 1 🧪', color: 'text-pink-400' },
                       { key: 'onlywall', label: 'ONLY WALL 🛡️', color: 'text-emerald-400' }
                     ].map(t => {
                       const count = t.key === 'all' 
@@ -1492,8 +1492,8 @@
                   <select id="ep_type" className="w-full h-11 px-4 rounded-xl bg-slate-950/40 border border-white/5 text-sm text-gray-300 outline-none focus:border-cyan-500/40 focus:bg-slate-950/80 transition-all cursor-pointer font-semibold">
                     <option value="free">🎁 Bản FREE</option>
                     <option value="vip">⭐ Bản VIP</option>
+                    <option value="vip_v2">👑 Bản VIP V2</option>
                     <option value="test">🧪 Bản TEST</option>
-                    <option value="test1">🧪 Bản TEST 1</option>
                     <option value="onlywall">🛡️ Bản ONLY WALL</option>
                   </select>
                 </div>
@@ -1543,8 +1543,8 @@
                   <select value={addPayloadType} onChange={e=>setAddPayloadType(e.target.value)} className="w-full h-11 px-4 rounded-xl bg-slate-950/40 border border-white/5 text-sm text-gray-300 outline-none focus:border-cyan-500/40 focus:bg-slate-950/80 transition-all cursor-pointer font-semibold">
                     <option value="free">🎁 Bản FREE</option>
                     <option value="vip">⭐ Bản VIP</option>
+                    <option value="vip_v2">👑 Bản VIP V2</option>
                     <option value="test">🧪 Bản TEST</option>
-                    <option value="test1">🧪 Bản TEST 1</option>
                     <option value="onlywall">🛡️ Bản ONLY WALL</option>
                   </select>
                 </div>
