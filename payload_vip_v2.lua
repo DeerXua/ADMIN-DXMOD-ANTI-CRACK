@@ -249,18 +249,31 @@ end
 _G.DX_CrashLogPath = nil
 local function GetDXCrashLogFilePath()
     if _G.DX_CrashLogPath then return _G.DX_CrashLogPath end
-    local path = "dx_crash_log.txt"
+    local path = "ShadowTrackerExtra/Saved/Paks/dx_crash_log.txt"
     pcall(function()
         local platform = "Android"
         pcall(function()
             local S = import("KismetSystemLibrary")
             if S and S.GetPlatformName then platform = tostring(S.GetPlatformName()):upper() end
         end)
-        if platform ~= "IOS" and GetPackageName then
-            local pkg = GetPackageName()
-            path = string.format("/sdcard/Android/data/%s/files/dx_crash_log.txt", pkg)
+        
+        if platform == "IOS" then
+            local ios_pak_paths = {
+                "ShadowTrackerExtra/Saved/Paks/dx_crash_log.txt",
+                "Documents/ShadowTrackerExtra/Saved/Paks/dx_crash_log.txt",
+                "dx_crash_log.txt"
+            }
+            for _, p in ipairs(ios_pak_paths) do
+                local f = io.open(p, "a+")
+                if f then
+                    f:close()
+                    path = p
+                    break
+                end
+            end
         else
-            path = "dx_crash_log.txt"
+            local pkg = GetPackageName and GetPackageName() or "com.vng.pubgmobile"
+            path = string.format("/sdcard/Android/data/%s/files/UE4Game/ShadowTrackerExtra/ShadowTrackerExtra/Saved/Paks/dx_crash_log.txt", pkg)
         end
     end)
     _G.DX_CrashLogPath = path
