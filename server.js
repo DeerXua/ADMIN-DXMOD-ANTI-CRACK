@@ -227,13 +227,15 @@ function writeDatabase(db) {
 
 // Sessions DB helpers
 function readSessions() {
-  if (!fs.existsSync(SESSIONS_PATH)) return [];
+  if (!fs.existsSync(SESSIONS_PATH)) return { sessions: [] };
   try {
     const raw = fs.readFileSync(SESSIONS_PATH, "utf8").trim();
-    if (!raw) return [];
+    if (!raw) return { sessions: [] };
     const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : (parsed.sessions || []);
-  } catch { return []; }
+    if (Array.isArray(parsed)) return { sessions: parsed };
+    if (!Array.isArray(parsed.sessions)) parsed.sessions = [];
+    return parsed;
+  } catch { return { sessions: [] }; }
 }
 
 function writeSessions(data) {
@@ -704,7 +706,7 @@ app.get("/api/admin/stats", checkAdminAuth, (req, res) => {
 app.get("/api/admin/online-list", checkAdminAuth, (req, res) => {
   const db = readDatabase();
   const devices = db.devices || [];
-  const sessions = readSessions();
+  const sessions = readSessions().sessions;
   const now = Date.now();
   const ONLINE_WINDOW_MS = 90 * 1000; // 1.5 phút (90 giây)
 
