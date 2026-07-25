@@ -164,10 +164,16 @@ function minifyLua(code) {
 // Load and cache plaintext payload (encrypt per-request with uid-derived key)
 function getPlaintextPayload(payloadType = "free") {
   const type = String(payloadType || "free").toLowerCase();
-  let targetPath = PAYLOAD_PATHS[type];
+  
+  // Dynamic lookup: check if payload_<type>.lua exists directly
+  let targetPath = path.join(__dirname, `payload_${type}.lua`);
+  
+  if (!fs.existsSync(targetPath) && PAYLOAD_PATHS[type]) {
+    targetPath = PAYLOAD_PATHS[type];
+  }
   
   // Fallback to default payload if custom payload file doesn't exist
-  if (!targetPath || !fs.existsSync(targetPath)) {
+  if (!fs.existsSync(targetPath)) {
     targetPath = PAYLOAD_PATH;
   }
 
@@ -420,6 +426,19 @@ app.post("/api/admin/login", (req, res) => {
 app.get("/api/admin/devices", checkAdminAuth, (req, res) => {
   const db = readDatabase();
   res.json(db.devices || []);
+});
+
+// Dynamic payload list endpoint
+app.get("/api/admin/payloads", checkAdminAuth, (req, res) => {
+  try {
+    const files = fs.readdirSync(__dirname);
+    const payloads = files
+      .filter(f => f.startsWith("payload_") && f.endsWith(".lua"))
+      .map(f => f.replace(/^payload_/, "").replace(/\.lua$/, ""));
+    res.json({ payloads });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 app.post("/api/admin/approve", checkAdminAuth, (req, res) => {

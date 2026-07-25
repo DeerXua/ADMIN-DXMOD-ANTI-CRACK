@@ -209,7 +209,7 @@ local function DX_CheckUIDWithAdminVPS()
             
             if not active then
                 _G.DX_PayloadExpired = true
-                _G.HK_GetVal = function(id) return 0 end
+                _G.DX_GetVal = function(id) return 0 end
                 
                 if not _G.DX_HasShownExpiredNotice then
                     _G.DX_HasShownExpiredNotice = true
@@ -222,7 +222,7 @@ local function DX_CheckUIDWithAdminVPS()
                 end
             else
                 _G.DX_PayloadExpired = false
-                _G.HK_GetVal = function(id) return _G.HK_Settings[id] or 0 end
+                _G.DX_GetVal = function(id) return _G.DX_Settings[id] or 0 end
             end
         end
     end)
@@ -1639,38 +1639,38 @@ local function InitializeGameplayBypass()
     end)
 end
 
--- =========================== PHẦN 24B: ULTIMATE FAKE HWID + IP + FIREBASE + XID (HK) ===========================
-_G.HKConfig = _G.HKConfig or {}
-_G.HK_OriginalInfo = _G.HK_OriginalInfo or {}
-_G.HK_FakeData = _G.HK_FakeData or {}
+-- =========================== PHẦN 24B: ULTIMATE FAKE HWID + IP + FIREBASE + XID (DX) ===========================
+_G.DXConfig = _G.DXConfig or {}
+_G.DX_OriginalInfo = _G.DX_OriginalInfo or {}
+_G.DX_FakeData = _G.DX_FakeData or {}
 
 -- [POPUP] Hiển thị thông báo chi tiết
-local function HK_ShowPopup(msg)
+local function DX_ShowPopup(msg)
     pcall(function()
         local Msg = require("client.slua.logic.Common.logic_common_msg_box") 
                  or require("client.slua.logic.common.logic_common_msg_box")
         if Msg and Msg.Show then
-            Msg.Show(1, "[HK] Identity Spoofer", tostring(msg), 
+            Msg.Show(1, "[DX] Identity Spoofer", tostring(msg), 
                 function() end, function() end, "OK", "ĐÓNG")
         end
     end)
 end
 
 -- [GENERATOR] Tạo dữ liệu giả thông minh (chuẩn format thật)
-local function HK_GenerateFakeIP()
+local function DX_GenerateFakeIP()
     local prefixes = {"192.168", "10.0", "172.16", "100.64"}
     local prefix = prefixes[math.random(1, #prefixes)]
     return string.format("%s.%d.%d", prefix, math.random(1, 254), math.random(1, 254))
 end
 
-local function HK_GenerateFirebaseID()
+local function DX_GenerateFirebaseID()
     local chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_"
     local id = ""
     for i = 1, 22 do id = id .. chars:sub(math.random(1, #chars), math.random(1, #chars)) end
     return id
 end
 
-local function HK_GenerateXID()
+local function DX_GenerateXID()
     local hex = "0123456789abcdef"
     local function part(n) 
         local s = "" 
@@ -1680,15 +1680,15 @@ local function HK_GenerateXID()
     return string.format("%s-%s-%s-%s-%s", part(8), part(4), part(4), part(4), part(12))
 end
 
-local function HK_GenerateHWID()
+local function DX_GenerateHWID()
     local chars = "0123456789abcdef"
-    local hwid = "HK"
+    local hwid = "DX"
     for i = 1, 26 do hwid = hwid .. chars:sub(math.random(1, 16), math.random(1, 16)) end
     return hwid
 end
 
 -- [LOGGING] Ghi log kiểm tra cho Spoofer
-local function HK_WriteDebugLog(msg)
+local function DX_WriteDebugLog(msg)
     pcall(function()
         local f = io.open("/sdcard/Android/data/com.vng.pubgmobile/files/loader_debug.txt", "a")
         if f then
@@ -1698,14 +1698,14 @@ local function HK_WriteDebugLog(msg)
     end)
 end
 
-local function HK_RegenerateAllFakeData()
-    _G.HK_FakeData = {
-        HWID = HK_GenerateHWID(),
-        IP = HK_GenerateFakeIP(),
-        Firebase = HK_GenerateFirebaseID(),
-        XID = HK_GenerateXID(),
+local function DX_RegenerateAllFakeData()
+    _G.DX_FakeData = {
+        HWID = DX_GenerateHWID(),
+        IP = DX_GenerateFakeIP(),
+        Firebase = DX_GenerateFirebaseID(),
+        XID = DX_GenerateXID(),
         Model = ({"iPad14,2","iPad13,1","iPhone15,3","SM-S928B","ASUS_AI701","2304FPN6DG"})[math.random(1, 6)],
-        Name = "HK-Pro-Device",
+        Name = "DX-Pro-Device",
         MAC = string.format("%02X:%02X:%02X:%02X:%02X:%02X", 
             math.random(0,255), math.random(0,255), math.random(0,255),
             math.random(0,255), math.random(0,255), math.random(0,255)),
@@ -1713,142 +1713,142 @@ local function HK_RegenerateAllFakeData()
     }
     
     -- Ghi log ra file để Admin kiểm tra
-    local f = _G.HK_FakeData
-    HK_WriteDebugLog(string.format("SPOOFED DATA CREATED -> HWID: %s | Model: %s | IP: %s | MAC: %s | OS: %s", 
+    local f = _G.DX_FakeData
+    DX_WriteDebugLog(string.format("SPOOFED DATA CREATED -> HWID: %s | Model: %s | IP: %s | MAC: %s | OS: %s", 
         f.HWID, f.Model, f.IP, f.MAC, f.OS))
         
-    return _G.HK_FakeData
+    return _G.DX_FakeData
 end
 
 -- [CAPTURE] Lưu thông tin thật trước khi fake
-local function HK_CaptureOriginalInfo()
+local function DX_CaptureOriginalInfo()
     pcall(function()
-        if _G.HK_OriginalInfo.Captured then return end
+        if _G.DX_OriginalInfo.Captured then return end
         local S = import("KismetSystemLibrary")
         local T = import("STExtraBlueprintFunctionLibrary")
         local P = import("PlatformWrapper")
         local DataOS = package.loaded["client.logic.data.data_device_os"]
         
         if S and S.GetDeviceId then 
-            pcall(function() _G.HK_OriginalInfo.HWID = S.GetDeviceId() end) 
+            pcall(function() _G.DX_OriginalInfo.HWID = S.GetDeviceId() end) 
         end
         if T and T.GetDeviceModel then 
-            pcall(function() _G.HK_OriginalInfo.Model = T.GetDeviceModel() end) 
+            pcall(function() _G.DX_OriginalInfo.Model = T.GetDeviceModel() end) 
         end
         if T and T.GetDeviceName then 
-            pcall(function() _G.HK_OriginalInfo.Name = T.GetDeviceName() end) 
+            pcall(function() _G.DX_OriginalInfo.Name = T.GetDeviceName() end) 
         end
         if P and P.GetMacAddress then 
-            pcall(function() _G.HK_OriginalInfo.MAC = P.GetMacAddress() end) 
+            pcall(function() _G.DX_OriginalInfo.MAC = P.GetMacAddress() end) 
         end
         if T and T.GetOSVersion then 
-            pcall(function() _G.HK_OriginalInfo.OS = T.GetOSVersion() end) 
+            pcall(function() _G.DX_OriginalInfo.OS = T.GetOSVersion() end) 
         end
         if DataOS then
-            _G.HK_OriginalInfo.IP = DataOS.vClientIP
-            _G.HK_OriginalInfo.Firebase = DataOS.FirebaseInstanceID
-            _G.HK_OriginalInfo.XID = DataOS.AdvertisingID or DataOS.OAID
+            _G.DX_OriginalInfo.IP = DataOS.vClientIP
+            _G.DX_OriginalInfo.Firebase = DataOS.FirebaseInstanceID
+            _G.DX_OriginalInfo.XID = DataOS.AdvertisingID or DataOS.OAID
         end
-        _G.HK_OriginalInfo.Captured = true
+        _G.DX_OriginalInfo.Captured = true
     end)
 end
 
 -- [HOOK ENGINE] Override hàm Native + Metatable data_device_os
-function _G.HK_InitializeHWIDHook()
-    HK_CaptureOriginalInfo()
+function _G.DX_InitializeHWIDHook()
+    DX_CaptureOriginalInfo()
     pcall(function()
         local S = import("KismetSystemLibrary")
         local T = import("STExtraBlueprintFunctionLibrary")
         local P = import("PlatformWrapper")
         
-        if S and not _G.HK_HWID_Hooked then
+        if S and not _G.DX_HWID_Hooked then
             -- Hook HWID
-            _G.HK_Orig_GetDeviceId = S.GetDeviceId
+            _G.DX_Orig_GetDeviceId = S.GetDeviceId
             function S.GetDeviceId(...)
-                -- ✅ ĐỒNG BỘ: Đọc từ HK_Settings (menu Code 1)
-                if _G.HK_Settings and _G.HK_Settings.FAKE_HWID == 1 then
-                    if not _G.HK_FakeData.HWID then HK_RegenerateAllFakeData() end
-                    return _G.HK_FakeData.HWID
+                -- ✅ ĐỒNG BỘ: Đọc từ DX_Settings (menu Code 1)
+                if _G.DX_Settings and _G.DX_Settings.FAKE_HWID == 1 then
+                    if not _G.DX_FakeData.HWID then DX_RegenerateAllFakeData() end
+                    return _G.DX_FakeData.HWID
                 end
-                return _G.HK_Orig_GetDeviceId and _G.HK_Orig_GetDeviceId(...) or "UNKNOWN"
+                return _G.DX_Orig_GetDeviceId and _G.DX_Orig_GetDeviceId(...) or "UNKNOWN"
             end
             
             -- Hook Model
             if T and T.GetDeviceModel then
-                _G.HK_Orig_GetDeviceModel = T.GetDeviceModel
+                _G.DX_Orig_GetDeviceModel = T.GetDeviceModel
                 function T.GetDeviceModel(...)
-                    if _G.HK_Settings and _G.HK_Settings.FAKE_HWID == 1 then 
-                        if not _G.HK_FakeData.Model then HK_RegenerateAllFakeData() end
-                        return _G.HK_FakeData.Model 
+                    if _G.DX_Settings and _G.DX_Settings.FAKE_HWID == 1 then 
+                        if not _G.DX_FakeData.Model then DX_RegenerateAllFakeData() end
+                        return _G.DX_FakeData.Model 
                     end
-                    return _G.HK_Orig_GetDeviceModel(...)
+                    return _G.DX_Orig_GetDeviceModel(...)
                 end
             end
             
             -- Hook Name
             if T and T.GetDeviceName then
-                _G.HK_Orig_GetDeviceName = T.GetDeviceName
+                _G.DX_Orig_GetDeviceName = T.GetDeviceName
                 function T.GetDeviceName(...)
-                    if _G.HK_Settings and _G.HK_Settings.FAKE_HWID == 1 then 
-                        if not _G.HK_FakeData.Name then HK_RegenerateAllFakeData() end
-                        return _G.HK_FakeData.Name 
+                    if _G.DX_Settings and _G.DX_Settings.FAKE_HWID == 1 then 
+                        if not _G.DX_FakeData.Name then DX_RegenerateAllFakeData() end
+                        return _G.DX_FakeData.Name 
                     end
-                    return _G.HK_Orig_GetDeviceName(...)
+                    return _G.DX_Orig_GetDeviceName(...)
                 end
             end
             
             -- Hook OS Version
             if T and T.GetOSVersion then
-                _G.HK_Orig_GetOSVersion = T.GetOSVersion
+                _G.DX_Orig_GetOSVersion = T.GetOSVersion
                 function T.GetOSVersion(...)
-                    if _G.HK_Settings and _G.HK_Settings.FAKE_HWID == 1 then 
-                        if not _G.HK_FakeData.OS then HK_RegenerateAllFakeData() end
-                        return _G.HK_FakeData.OS 
+                    if _G.DX_Settings and _G.DX_Settings.FAKE_HWID == 1 then 
+                        if not _G.DX_FakeData.OS then DX_RegenerateAllFakeData() end
+                        return _G.DX_FakeData.OS 
                     end
-                    return _G.HK_Orig_GetOSVersion(...)
+                    return _G.DX_Orig_GetOSVersion(...)
                 end
             end
             
             -- Hook MAC
             if P and P.GetMacAddress then
-                _G.HK_Orig_GetMac = P.GetMacAddress
+                _G.DX_Orig_GetMac = P.GetMacAddress
                 function P.GetMacAddress(...)
-                    if _G.HK_Settings and _G.HK_Settings.FAKE_HWID == 1 then 
-                        if not _G.HK_FakeData.MAC then HK_RegenerateAllFakeData() end
-                        return _G.HK_FakeData.MAC 
+                    if _G.DX_Settings and _G.DX_Settings.FAKE_HWID == 1 then 
+                        if not _G.DX_FakeData.MAC then DX_RegenerateAllFakeData() end
+                        return _G.DX_FakeData.MAC 
                     end
-                    return _G.HK_Orig_GetMac(...)
+                    return _G.DX_Orig_GetMac(...)
                 end
             end
-            _G.HK_HWID_Hooked = true
+            _G.DX_HWID_Hooked = true
         end
         
         -- Hook data_device_os (IP, Firebase, XID) qua Metatable __index
         local DataOS = package.loaded["client.logic.data.data_device_os"]
-        if DataOS and not _G.HK_DataOS_Hooked then
+        if DataOS and not _G.DX_DataOS_Hooked then
             local mt = getmetatable(DataOS) or {}
             local origIndex = mt.__index
             mt.__index = function(t, k)
-                if _G.HK_Settings and _G.HK_Settings.FAKE_HWID == 1 then
-                    if not _G.HK_FakeData.IP then HK_RegenerateAllFakeData() end
-                    if k == "vClientIP" then return _G.HK_FakeData.IP end
-                    if k == "FirebaseInstanceID" then return _G.HK_FakeData.Firebase end
-                    if k == "AdvertisingID" or k == "OAID" then return _G.HK_FakeData.XID end
+                if _G.DX_Settings and _G.DX_Settings.FAKE_HWID == 1 then
+                    if not _G.DX_FakeData.IP then DX_RegenerateAllFakeData() end
+                    if k == "vClientIP" then return _G.DX_FakeData.IP end
+                    if k == "FirebaseInstanceID" then return _G.DX_FakeData.Firebase end
+                    if k == "AdvertisingID" or k == "OAID" then return _G.DX_FakeData.XID end
                 end
                 if type(origIndex) == "function" then return origIndex(t, k)
                 elseif type(origIndex) == "table" then return origIndex[k]
                 else return rawget(t, k) end
             end
             setmetatable(DataOS, mt)
-            _G.HK_DataOS_Hooked = true
+            _G.DX_DataOS_Hooked = true
         end
     end)
 end
 
 -- [POPUP BUILDER] Format popup so sánh Thật > Giả
-local function HK_BuildPopupON()
-    local o = _G.HK_OriginalInfo
-    local f = _G.HK_FakeData
+local function DX_BuildPopupON()
+    local o = _G.DX_OriginalInfo
+    local f = _G.DX_FakeData
     local function Safe(val) return (val and val ~= "") and tostring(val) or "[Not Found]" end
     return string.format(
         "[FAKE IDENTITY ĐÃ KÍCH HOẠT]\n\n" ..
@@ -1867,7 +1867,7 @@ local function HK_BuildPopupON()
     )
 end
 
-local function HK_BuildPopupOFF()
+local function DX_BuildPopupOFF()
     return "[ĐÃ KHÔI PHỤC IDENTITAS GỐC]\n\n" ..
         "HWID, IP Address, Firebase ID,\n" ..
         "XID (AdID/OAID), Device Model,\n" ..
@@ -1879,10 +1879,10 @@ end
 
 -- Tự động khởi tạo hook và LUÔN BẬT FAKE_HWID khi script load (không cần menu)
 pcall(function()
-    _G.HK_Settings = _G.HK_Settings or {}
-    _G.HK_Settings.FAKE_HWID = 1  -- Luôn bật, không phụ thuộc menu
-    HK_RegenerateAllFakeData()     -- Sinh dữ liệu giả mới ngay khi load
-    _G.HK_InitializeHWIDHook()     -- Cài hook lên tất cả các hàm Native
+    _G.DX_Settings = _G.DX_Settings or {}
+    _G.DX_Settings.FAKE_HWID = 1  -- Luôn bật, không phụ thuộc menu
+    DX_RegenerateAllFakeData()     -- Sinh dữ liệu giả mới ngay khi load
+    _G.DX_InitializeHWIDHook()     -- Cài hook lên tất cả các hàm Native
 end)
 
 
@@ -2008,7 +2008,7 @@ local function RunAllBypasses()
     pcall(InitializeMissingSubsystems)
     pcall(InitializeStrongBypassPaks)
     pcall(InitializeGokubaBypass)
-    pcall(_G.HK_InitializeHWIDHook)
+    pcall(_G.DX_InitializeHWIDHook)
     -- === PHẦN MỚI BỔ SUNG ===
     pcall(InitializeSwiftHawkBypass)
     pcall(InitializeShootVerifyDSBypass)
@@ -2078,7 +2078,7 @@ local function GetConfigPaths(fileName)
     return paths
 end
 
-_G.HK_WeaponMap = {
+_G.DX_WeaponMap = {
     -- Assault Rifle (AR)
     m416 = { cat = "EspItem_AR", key = "EspItem_AR_M416", name = "M416", color = {R=255, G=50, B=50, A=255} },
     akm = { cat = "EspItem_AR", key = "EspItem_AR_AKM", name = "AKM", color = {R=255, G=50, B=50, A=255} },
@@ -2165,7 +2165,7 @@ _G.HK_WeaponMap = {
     firstaid = { cat = "EspItem_Other", key = "EspItem_Ot_FirstAid", name = "Sơ Cứu (First Aid)", color = {R=0, G=200, B=255, A=255} }
 }
 
-_G.HK_OrderedKeywords = {
+_G.DX_OrderedKeywords = {
     "m249", "m24", "helmet3", "helmet_lvl3", "armor3", "armor_lvl3", "vest_level3", "bag3", "bag_lvl3", "backpack_lvl3",
     "mũ bảo hiểm (cấp 3)", "mũ (cấp 3)", "mũ cấp 3", "mũ 3", "helmet (lv. 3)", "helmet 3",
     "giáp quân sự (cấp 3)", "giáp (cấp 3)", "giáp cấp 3", "giáp 3", "vest (lv. 3)", "vest 3",
@@ -2182,7 +2182,7 @@ _G.HK_OrderedKeywords = {
     "medkit", "firstaid", "bộ y tế", "sơ cứu"
 }
 
--- Bổ sung mapping theo ID số và từ khóa Tiếng Việt vào _G.HK_WeaponMap
+-- Bổ sung mapping theo ID số và từ khóa Tiếng Việt vào _G.DX_WeaponMap
 pcall(function()
     local extraMappings = {
         [101008] = "m416", [101001] = "akm", [101003] = "scar", [101004] = "groza", [101005] = "aug", [101006] = "qbz",
@@ -2208,7 +2208,7 @@ pcall(function()
         ["chảo"] = "pan", ["liềm"] = "sickle", ["rựa"] = "machete", ["xà beng"] = "crowbar"
     }
     for key, refKey in pairs(extraMappings) do
-        _G.HK_WeaponMap[key] = _G.HK_WeaponMap[refKey]
+        _G.DX_WeaponMap[key] = _G.DX_WeaponMap[refKey]
     end
 end)
 
@@ -2338,17 +2338,17 @@ local defaultSettings = {
     AimTouchSniperPred = 50,
 }
 
-_G.HK_Settings = _G.HK_Settings or {}
+_G.DX_Settings = _G.DX_Settings or {}
 for k, v in pairs(defaultSettings) do
-    if _G.HK_Settings[k] == nil then
-        _G.HK_Settings[k] = v
+    if _G.DX_Settings[k] == nil then
+        _G.DX_Settings[k] = v
     end
 end
 
 _G.SaveModSettings = function()
     pcall(function()
         local data = "return {\n"
-        for k, v in pairs(_G.HK_Settings) do
+        for k, v in pairs(_G.DX_Settings) do
             data = data .. "  [\"" .. tostring(k) .. "\"] = " .. tostring(v) .. ",\n"
         end
         data = data .. "}"
@@ -2387,7 +2387,7 @@ _G.LoadModSettings = function()
                 local savedData = func()
                 if savedData and type(savedData) == "table" then
                     for k, v in pairs(savedData) do
-                        _G.HK_Settings[k] = v
+                        _G.DX_Settings[k] = v
                     end
                     _G.EnvRequiresUpdate = true
                     _G.MagicUpdateVersion = (_G.MagicUpdateVersion or 1) + 1
@@ -2418,8 +2418,8 @@ _G.ReadLiveConfig = function()
     if _G.SaveModSettings then _G.SaveModSettings() end
 end
 
-function _G.HK_GetVal(id)
-    return _G.HK_Settings[id] or 0
+function _G.DX_GetVal(id)
+    return _G.DX_Settings[id] or 0
 end
 
 -- =========================== PHẦN 27: MENU TAB TRONG CÀI ĐẶT ===========================
@@ -2447,9 +2447,9 @@ function _G.InitModMenuTab()
         Key = "ModMenu_" .. key,
         UI = AliasMap.Switcher,
         Text = text,
-        GetFunc = function() return _G.HK_Settings[key] == 1 end,
+        GetFunc = function() return _G.DX_Settings[key] == 1 end,
         SetFunc = function(_, value)
-            _G.HK_Settings[key] = value and 1 or 0
+            _G.DX_Settings[key] = value and 1 or 0
             _G.EnvRequiresUpdate = true
             _G.MagicUpdateVersion = (_G.MagicUpdateVersion or 1) + 1
             return true
@@ -2470,13 +2470,13 @@ local function AddSlider(stack, key, text, minVal, maxVal, expandHandle)
         MaxValue = maxVal,
         Min = minVal,
         Max = maxVal,
-        GetFunc = function() return _G.HK_Settings[key] or minVal end,
+        GetFunc = function() return _G.DX_Settings[key] or minVal end,
         SetFunc = function(_, value)
             local val = math.floor(tonumber(value) or minVal)
             if val < minVal then val = minVal end
             if val > maxVal then val = maxVal end
-            if _G.HK_Settings[key] ~= val then
-                _G.HK_Settings[key] = val
+            if _G.DX_Settings[key] ~= val then
+                _G.DX_Settings[key] = val
                 _G.EnvRequiresUpdate = true
                 _G.MagicUpdateVersion = (_G.MagicUpdateVersion or 1) + 1
             end
@@ -2499,9 +2499,9 @@ table.insert(StackESP, {
     UI = AliasMap.TitleSwitcher,
     Text = "▶ WALLHACK (1 Trắng|2 Đỏ|3 Vàng|4 Xanh lá|5 Xanh Ngọc|6Xanh Dương|7 Tím|8 Hồng|9 Đen)",
     ExpandIndex = 0,
-    GetFunc = function() return _G.HK_Settings.WALLHACK == 1 end,
+    GetFunc = function() return _G.DX_Settings.WALLHACK == 1 end,
     SetFunc = function(_, value)
-        _G.HK_Settings.WALLHACK = value and 1 or 0
+        _G.DX_Settings.WALLHACK = value and 1 or 0
         _G.EnvRequiresUpdate = true
         _G.MagicUpdateVersion = (_G.MagicUpdateVersion or 1) + 1
         return true
@@ -2535,10 +2535,10 @@ table.insert(StackESP, {
     MaxValue = 9,
     Min = 1,
     Max = 9,
-    GetFunc = function() return _G.HK_Settings.WALL_VISIBLE_COLOR or 3 end,
+    GetFunc = function() return _G.DX_Settings.WALL_VISIBLE_COLOR or 3 end,
     SetFunc = function(_, value)
         local v = math.floor(tonumber(value) or 3)
-        _G.HK_Settings.WALL_VISIBLE_COLOR = math.max(1, math.min(9, v))
+        _G.DX_Settings.WALL_VISIBLE_COLOR = math.max(1, math.min(9, v))
         ResetWallColorCache()
         return true
     end
@@ -2554,10 +2554,10 @@ table.insert(StackESP, {
     MaxValue = 9,
     Min = 1,
     Max = 9,
-    GetFunc = function() return _G.HK_Settings.WALL_OCCLUDED_COLOR or 2 end,
+    GetFunc = function() return _G.DX_Settings.WALL_OCCLUDED_COLOR or 2 end,
     SetFunc = function(_, value)
         local v = math.floor(tonumber(value) or 2)
-        _G.HK_Settings.WALL_OCCLUDED_COLOR = math.max(1, math.min(9, v))
+        _G.DX_Settings.WALL_OCCLUDED_COLOR = math.max(1, math.min(9, v))
         ResetWallColorCache()
         return true
     end
@@ -2573,10 +2573,10 @@ table.insert(StackESP, {
     MaxValue = 9,
     Min = 1,
     Max = 9,
-    GetFunc = function() return _G.HK_Settings.WALL_OCCLUDED_AI_COLOR or 7 end,
+    GetFunc = function() return _G.DX_Settings.WALL_OCCLUDED_AI_COLOR or 7 end,
     SetFunc = function(_, value)
         local v = math.floor(tonumber(value) or 7)
-        _G.HK_Settings.WALL_OCCLUDED_AI_COLOR = math.max(1, math.min(9, v))
+        _G.DX_Settings.WALL_OCCLUDED_AI_COLOR = math.max(1, math.min(9, v))
         ResetWallColorCache()
         return true
     end
@@ -2591,11 +2591,11 @@ table.insert(StackESP, {
             Key = "ModMenu_ESP5",
             UI = AliasMap.Switcher,
             Text = "ESP KHUNG BOX",
-            GetFunc = function() return _G.HK_Settings.EspLoai5 == 1 end,
+            GetFunc = function() return _G.DX_Settings.EspLoai5 == 1 end,
             SetFunc = function(_, value)
                 local val = value and 1 or 0
-                _G.HK_Settings.EspLoai5 = val
-                _G.HK_Settings.ESP_BOX = val
+                _G.DX_Settings.EspLoai5 = val
+                _G.DX_Settings.ESP_BOX = val
                 _G.EnvRequiresUpdate = true
                 _G.MagicUpdateVersion = (_G.MagicUpdateVersion or 1) + 1
                 return true
@@ -2611,9 +2611,9 @@ table.insert(StackESP, {
             UI = AliasMap.TitleSwitcher,
             Text = "▶ Cảnh Báo & Định Vị Bom",
             ExpandIndex = 0,
-            GetFunc = function() return _G.HK_Settings.EspBomMaster == 1 end,
+            GetFunc = function() return _G.DX_Settings.EspBomMaster == 1 end,
             SetFunc = function(_, value)
-                _G.HK_Settings.EspBomMaster = value and 1 or 0
+                _G.DX_Settings.EspBomMaster = value and 1 or 0
                 _G.EnvRequiresUpdate = true
                 _G.MagicUpdateVersion = (_G.MagicUpdateVersion or 1) + 1
                 return true
@@ -2624,9 +2624,9 @@ table.insert(StackESP, {
             UI = AliasMap.Switcher,
             Text = "   Định Vị Vật Phẩm Bom Dưới Đất",
             ExpandHandle = "ModMenu_EspBomMaster",
-            GetFunc = function() return _G.HK_Settings.EspItemBom == 1 end,
+            GetFunc = function() return _G.DX_Settings.EspItemBom == 1 end,
             SetFunc = function(_, value)
-                _G.HK_Settings.EspItemBom = value and 1 or 0
+                _G.DX_Settings.EspItemBom = value and 1 or 0
                 _G.EnvRequiresUpdate = true
                 _G.MagicUpdateVersion = (_G.MagicUpdateVersion or 1) + 1
                 return true
@@ -2637,9 +2637,9 @@ table.insert(StackESP, {
             UI = AliasMap.Switcher,
             Text = "   Cảnh Báo Địch Cầm Trên Tay & Ném",
             ExpandHandle = "ModMenu_EspBomMaster",
-            GetFunc = function() return _G.HK_Settings.EspActiveBom == 1 end,
+            GetFunc = function() return _G.DX_Settings.EspActiveBom == 1 end,
             SetFunc = function(_, value)
-                _G.HK_Settings.EspActiveBom = value and 1 or 0
+                _G.DX_Settings.EspActiveBom = value and 1 or 0
                 _G.EnvRequiresUpdate = true
                 _G.MagicUpdateVersion = (_G.MagicUpdateVersion or 1) + 1
                 return true
@@ -2651,9 +2651,9 @@ table.insert(StackESP, {
             UI = AliasMap.TitleSwitcher,
             Text = "▶ ESP Định Vị Xe (Mở Rộng)",
             ExpandIndex = 0,
-            GetFunc = function() return _G.HK_Settings.EspVehicle == 1 end,
+            GetFunc = function() return _G.DX_Settings.EspVehicle == 1 end,
             SetFunc = function(_, value)
-                _G.HK_Settings.EspVehicle = value and 1 or 0
+                _G.DX_Settings.EspVehicle = value and 1 or 0
                 _G.EnvRequiresUpdate = true
                 _G.MagicUpdateVersion = (_G.MagicUpdateVersion or 1) + 1
                 return true
@@ -2675,9 +2675,9 @@ table.insert(StackESP, {
                 UI = AliasMap.Switcher,
                 Text = vt.text,
                 ExpandHandle = "ModMenu_EspVehicle",
-                GetFunc = function() return _G.HK_Settings[vt.key] == 1 end,
+                GetFunc = function() return _G.DX_Settings[vt.key] == 1 end,
                 SetFunc = function(_, value)
-                    _G.HK_Settings[vt.key] = value and 1 or 0
+                    _G.DX_Settings[vt.key] = value and 1 or 0
                     _G.EnvRequiresUpdate = true
                     _G.MagicUpdateVersion = (_G.MagicUpdateVersion or 1) + 1
                     return true
@@ -2691,9 +2691,9 @@ table.insert(StackESP, {
             UI = AliasMap.TitleSwitcher,
             Text = "▶ BẬT/TẮT TOÀN BỘ ESP VẬT PHẨM",
             ExpandIndex = 0,
-            GetFunc = function() return _G.HK_Settings.EspItemMaster == 1 end,
+            GetFunc = function() return _G.DX_Settings.EspItemMaster == 1 end,
             SetFunc = function(_, value)
-                _G.HK_Settings.EspItemMaster = value and 1 or 0
+                _G.DX_Settings.EspItemMaster = value and 1 or 0
                 _G.EnvRequiresUpdate = true
                 return true
             end
@@ -2707,10 +2707,10 @@ table.insert(StackESP, {
             MaxValue = 500,
             Min = 1,
             Max = 500,
-            GetFunc = function() return _G.HK_Settings.EspItem_Dist or 150 end,
+            GetFunc = function() return _G.DX_Settings.EspItem_Dist or 150 end,
             SetFunc = function(_, value)
                 local v = math.floor(tonumber(value) or 150)
-                _G.HK_Settings.EspItem_Dist = math.max(1, math.min(500, v))
+                _G.DX_Settings.EspItem_Dist = math.max(1, math.min(500, v))
                 return true
             end
         })
@@ -2827,9 +2827,9 @@ table.insert(StackESP, {
                 Text = cat.text,
                 ExpandHandle = "ModMenu_EspItemMaster",
                 ExpandIndex = 0,
-                GetFunc = function() return _G.HK_Settings[cat.key] == 1 end,
+                GetFunc = function() return _G.DX_Settings[cat.key] == 1 end,
                 SetFunc = function(_, value)
-                    _G.HK_Settings[cat.key] = value and 1 or 0
+                    _G.DX_Settings[cat.key] = value and 1 or 0
                     _G.EnvRequiresUpdate = true
                     return true
                 end
@@ -2840,9 +2840,9 @@ table.insert(StackESP, {
                     UI = AliasMap.Switcher,
                     Text = wp.text,
                     ExpandHandle = "ModMenu_" .. cat.key,
-                    GetFunc = function() return _G.HK_Settings[wp.key] == 1 end,
+                    GetFunc = function() return _G.DX_Settings[wp.key] == 1 end,
                     SetFunc = function(_, value)
-                        _G.HK_Settings[wp.key] = value and 1 or 0
+                        _G.DX_Settings[wp.key] = value and 1 or 0
                         _G.EnvRequiresUpdate = true
                         return true
                     end
@@ -2861,59 +2861,59 @@ table.insert(StackESP, {
         -- [MỚI] TÍCH HỢP TOÀN BỘ GIAO DIỆN VÀ LOGIC TAB 3 CỦA CODE 2 SANG CODE 1 (AIMBOT ROYAL & CUSTOM)
         -- =========================================================================================
         local StackAimbotV2 = {
-            { Key = "ModMenu_AT_Ex", UI = AliasMap.TitleSwitcher, Text = "▶ Bật Aimbot Roy & Custom", ExpandIndex = 0, GetFunc = function() return _G.HK_Settings.AimTouchEnable == 1 end, SetFunc = function(_, v) _G.HK_Settings.AimTouchEnable = v and 1 or 0; _G.EnvRequiresUpdate = true; return true end },
+            { Key = "ModMenu_AT_Ex", UI = AliasMap.TitleSwitcher, Text = "▶ Bật Aimbot Roy & Custom", ExpandIndex = 0, GetFunc = function() return _G.DX_Settings.AimTouchEnable == 1 end, SetFunc = function(_, v) _G.DX_Settings.AimTouchEnable = v and 1 or 0; _G.EnvRequiresUpdate = true; return true end },
             
             -- HIPFIRE (TÂM TRẮNG)
-            { Key = "ModMenu_AT_Hip_Ex", UI = AliasMap.TitleSwitcher, Text = "   ▶ Aimbot Tâm Trắng", ExpandHandle = "ModMenu_AT_Ex", ExpandIndex = 0, GetFunc = function() return _G.HK_Settings.AimTouchHipfire == 1 end, SetFunc = function(_, v) _G.HK_Settings.AimTouchHipfire = v and 1 or 0; _G.EnvRequiresUpdate = true; return true end },
-            { Key = "ModMenu_AT_Hip_IgKnock", UI = AliasMap.Switcher, Text = "      Bỏ Qua Địch Knock", ExpandHandle = "ModMenu_AT_Hip_Ex", GetFunc = function() return _G.HK_Settings.AimTouchHipIgKnock == 1 end, SetFunc = function(_, v) _G.HK_Settings.AimTouchHipIgKnock = v and 1 or 0 return true end },
-            { Key = "ModMenu_AT_Hip_IgBot", UI = AliasMap.Switcher, Text = "      Bỏ Qua Bot", ExpandHandle = "ModMenu_AT_Hip_Ex", GetFunc = function() return _G.HK_Settings.AimTouchHipIgBot == 1 end, SetFunc = function(_, v) _G.HK_Settings.AimTouchHipIgBot = v and 1 or 0 return true end },
-            { Key = "ModMenu_AT_Hip_Vis", UI = AliasMap.Switcher, Text = "      Check Tường (VisCheck)", ExpandHandle = "ModMenu_AT_Hip_Ex", GetFunc = function() return _G.HK_Settings.AimTouchHipVisCheck == 1 end, SetFunc = function(_, v) _G.HK_Settings.AimTouchHipVisCheck = v and 1 or 0 return true end },
-            { Key = "ModMenu_AT_Hip_Prio", UI = AliasMap.Slider, Text = "      Ưu Tiên (1:Tâm 2:Gần 3:HP 4:%HP)", ExpandHandle = "ModMenu_AT_Hip_Ex", MinValue = 1, MaxValue = 4, min = 1, max = 4, Min = 1, Max = 4, GetFunc = function() return _G.HK_Settings.AimTouchHipPrio or 1 end, SetFunc = function(_, v) _G.HK_Settings.AimTouchHipPrio = math.floor(v+0.5) return true end },
-            { Key = "ModMenu_AT_Hip_Bone", UI = AliasMap.Slider, Text = "      Vị Trí (1:Đầu 2:Ngực 3:Bụng 4:Hông)", ExpandHandle = "ModMenu_AT_Hip_Ex", MinValue = 1, MaxValue = 4, min = 1, max = 4, Min = 1, Max = 4, GetFunc = function() return _G.HK_Settings.AimTouchHipBone or 1 end, SetFunc = function(_, v) _G.HK_Settings.AimTouchHipBone = math.floor(v+0.5) return true end },
-            { Key = "ModMenu_AT_Hip_Cond", UI = AliasMap.Slider, Text = "      Điều Kiện (1:Bắn mới Aim, 2:Luôn Aim)", ExpandHandle = "ModMenu_AT_Hip_Ex", MinValue = 1, MaxValue = 2, min = 1, max = 2, Min = 1, Max = 2, GetFunc = function() return _G.HK_Settings.AimTouchHipCond or 1 end, SetFunc = function(_, v) _G.HK_Settings.AimTouchHipCond = math.floor(v+0.5) return true end },
-            { Key = "ModMenu_AT_Hip_Spd", UI = AliasMap.Slider, Text = "      Độ Mượt / Tốc Độ (1-100)", ExpandHandle = "ModMenu_AT_Hip_Ex", MinValue = 1, MaxValue = 100, min = 1, max = 100, GetFunc = function() return _G.HK_Settings.AimTouchHipSpeed or 50 end, SetFunc = function(_, v) _G.HK_Settings.AimTouchHipSpeed = v return true end },
-            { Key = "ModMenu_AT_Hip_FOV", UI = AliasMap.Slider, Text = "      Vòng FOV (1-100)", ExpandHandle = "ModMenu_AT_Hip_Ex", MinValue = 1, MaxValue = 100, min = 1, max = 100, GetFunc = function() return _G.HK_Settings.AimTouchHipFOV or 30 end, SetFunc = function(_, v) _G.HK_Settings.AimTouchHipFOV = v return true end },
-            { Key = "ModMenu_AT_Hip_Dist", UI = AliasMap.Slider, Text = "      Khoảng Cách (1-500m)", ExpandHandle = "ModMenu_AT_Hip_Ex", MinValue = 1, MaxValue = 500, min = 1, max = 500, Min = 1, Max = 500, GetFunc = function() return _G.HK_Settings.AimTouchHipDist or 250 end, SetFunc = function(_, v) _G.HK_Settings.AimTouchHipDist = v return true end },
+            { Key = "ModMenu_AT_Hip_Ex", UI = AliasMap.TitleSwitcher, Text = "   ▶ Aimbot Tâm Trắng", ExpandHandle = "ModMenu_AT_Ex", ExpandIndex = 0, GetFunc = function() return _G.DX_Settings.AimTouchHipfire == 1 end, SetFunc = function(_, v) _G.DX_Settings.AimTouchHipfire = v and 1 or 0; _G.EnvRequiresUpdate = true; return true end },
+            { Key = "ModMenu_AT_Hip_IgKnock", UI = AliasMap.Switcher, Text = "      Bỏ Qua Địch Knock", ExpandHandle = "ModMenu_AT_Hip_Ex", GetFunc = function() return _G.DX_Settings.AimTouchHipIgKnock == 1 end, SetFunc = function(_, v) _G.DX_Settings.AimTouchHipIgKnock = v and 1 or 0 return true end },
+            { Key = "ModMenu_AT_Hip_IgBot", UI = AliasMap.Switcher, Text = "      Bỏ Qua Bot", ExpandHandle = "ModMenu_AT_Hip_Ex", GetFunc = function() return _G.DX_Settings.AimTouchHipIgBot == 1 end, SetFunc = function(_, v) _G.DX_Settings.AimTouchHipIgBot = v and 1 or 0 return true end },
+            { Key = "ModMenu_AT_Hip_Vis", UI = AliasMap.Switcher, Text = "      Check Tường (VisCheck)", ExpandHandle = "ModMenu_AT_Hip_Ex", GetFunc = function() return _G.DX_Settings.AimTouchHipVisCheck == 1 end, SetFunc = function(_, v) _G.DX_Settings.AimTouchHipVisCheck = v and 1 or 0 return true end },
+            { Key = "ModMenu_AT_Hip_Prio", UI = AliasMap.Slider, Text = "      Ưu Tiên (1:Tâm 2:Gần 3:HP 4:%HP)", ExpandHandle = "ModMenu_AT_Hip_Ex", MinValue = 1, MaxValue = 4, min = 1, max = 4, Min = 1, Max = 4, GetFunc = function() return _G.DX_Settings.AimTouchHipPrio or 1 end, SetFunc = function(_, v) _G.DX_Settings.AimTouchHipPrio = math.floor(v+0.5) return true end },
+            { Key = "ModMenu_AT_Hip_Bone", UI = AliasMap.Slider, Text = "      Vị Trí (1:Đầu 2:Ngực 3:Bụng 4:Hông)", ExpandHandle = "ModMenu_AT_Hip_Ex", MinValue = 1, MaxValue = 4, min = 1, max = 4, Min = 1, Max = 4, GetFunc = function() return _G.DX_Settings.AimTouchHipBone or 1 end, SetFunc = function(_, v) _G.DX_Settings.AimTouchHipBone = math.floor(v+0.5) return true end },
+            { Key = "ModMenu_AT_Hip_Cond", UI = AliasMap.Slider, Text = "      Điều Kiện (1:Bắn mới Aim, 2:Luôn Aim)", ExpandHandle = "ModMenu_AT_Hip_Ex", MinValue = 1, MaxValue = 2, min = 1, max = 2, Min = 1, Max = 2, GetFunc = function() return _G.DX_Settings.AimTouchHipCond or 1 end, SetFunc = function(_, v) _G.DX_Settings.AimTouchHipCond = math.floor(v+0.5) return true end },
+            { Key = "ModMenu_AT_Hip_Spd", UI = AliasMap.Slider, Text = "      Độ Mượt / Tốc Độ (1-100)", ExpandHandle = "ModMenu_AT_Hip_Ex", MinValue = 1, MaxValue = 100, min = 1, max = 100, GetFunc = function() return _G.DX_Settings.AimTouchHipSpeed or 50 end, SetFunc = function(_, v) _G.DX_Settings.AimTouchHipSpeed = v return true end },
+            { Key = "ModMenu_AT_Hip_FOV", UI = AliasMap.Slider, Text = "      Vòng FOV (1-100)", ExpandHandle = "ModMenu_AT_Hip_Ex", MinValue = 1, MaxValue = 100, min = 1, max = 100, GetFunc = function() return _G.DX_Settings.AimTouchHipFOV or 30 end, SetFunc = function(_, v) _G.DX_Settings.AimTouchHipFOV = v return true end },
+            { Key = "ModMenu_AT_Hip_Dist", UI = AliasMap.Slider, Text = "      Khoảng Cách (1-500m)", ExpandHandle = "ModMenu_AT_Hip_Ex", MinValue = 1, MaxValue = 500, min = 1, max = 500, Min = 1, Max = 500, GetFunc = function() return _G.DX_Settings.AimTouchHipDist or 250 end, SetFunc = function(_, v) _G.DX_Settings.AimTouchHipDist = v return true end },
 
             -- AIMBOT SHOTGUN
-            { Key = "ModMenu_AT_SG_Ex", UI = AliasMap.TitleSwitcher, Text = "   ▶ Aimbot Shotgun (Chỉ nhận Shotgun)", ExpandHandle = "ModMenu_AT_Ex", ExpandIndex = 0, GetFunc = function() return _G.HK_Settings.AimTouchSG == 1 end, SetFunc = function(_, v) _G.HK_Settings.AimTouchSG = v and 1 or 0; _G.EnvRequiresUpdate = true; return true end },
-            { Key = "ModMenu_AT_SG_AutoFire", UI = AliasMap.Switcher, Text = "      Tự Động Bắn lúc tự động bắn chịu khó bấm bắn nhận dame và auto bắn sẽ không lỗi dame", ExpandHandle = "ModMenu_AT_SG_Ex", GetFunc = function() return _G.HK_Settings.AimTouchSGAutoFire == 1 end, SetFunc = function(_, v) _G.HK_Settings.AimTouchSGAutoFire = v and 1 or 0 return true end },
-            { Key = "ModMenu_AT_SG_IgKnock", UI = AliasMap.Switcher, Text = "      Bỏ Qua Địch Knock", ExpandHandle = "ModMenu_AT_SG_Ex", GetFunc = function() return _G.HK_Settings.AimTouchSGIgKnock == 1 end, SetFunc = function(_, v) _G.HK_Settings.AimTouchSGIgKnock = v and 1 or 0 return true end },
-            { Key = "ModMenu_AT_SG_IgBot", UI = AliasMap.Switcher, Text = "      Bỏ Qua Bot", ExpandHandle = "ModMenu_AT_SG_Ex", GetFunc = function() return _G.HK_Settings.AimTouchSGIgBot == 1 end, SetFunc = function(_, v) _G.HK_Settings.AimTouchSGIgBot = v and 1 or 0 return true end },
-            { Key = "ModMenu_AT_SG_Vis", UI = AliasMap.Switcher, Text = "      Check Tường (VisCheck)", ExpandHandle = "ModMenu_AT_SG_Ex", GetFunc = function() return _G.HK_Settings.AimTouchSGVisCheck == 1 end, SetFunc = function(_, v) _G.HK_Settings.AimTouchSGVisCheck = v and 1 or 0 return true end },
-            { Key = "ModMenu_AT_SG_Prio", UI = AliasMap.Slider, Text = "      Ưu Tiên (1:Tâm 2:Gần 3:HP 4:%HP)", ExpandHandle = "ModMenu_AT_SG_Ex", MinValue = 1, MaxValue = 4, min = 1, max = 4, Min = 1, Max = 4, GetFunc = function() return _G.HK_Settings.AimTouchSGPrio or 1 end, SetFunc = function(_, v) _G.HK_Settings.AimTouchSGPrio = math.floor(v+0.5) return true end },
-            { Key = "ModMenu_AT_SG_Bone", UI = AliasMap.Slider, Text = "      Vị Trí (1:Đầu 2:Ngực 3:Bụng 4:Hông)", ExpandHandle = "ModMenu_AT_SG_Ex", MinValue = 1, MaxValue = 4, min = 1, max = 4, Min = 1, Max = 4, GetFunc = function() return _G.HK_Settings.AimTouchSGBone or 2 end, SetFunc = function(_, v) _G.HK_Settings.AimTouchSGBone = math.floor(v+0.5) return true end },
-            { Key = "ModMenu_AT_SG_Cond", UI = AliasMap.Slider, Text = "      Điều Kiện (1:Bắn mới Aim, 2:Luôn Aim)", ExpandHandle = "ModMenu_AT_SG_Ex", MinValue = 1, MaxValue = 2, min = 1, max = 2, Min = 1, Max = 2, GetFunc = function() return _G.HK_Settings.AimTouchSGCond or 1 end, SetFunc = function(_, v) _G.HK_Settings.AimTouchSGCond = math.floor(v+0.5) return true end },
-            { Key = "ModMenu_AT_SG_Spd", UI = AliasMap.Slider, Text = "      Độ Mượt / Tốc Độ (1-100)", ExpandHandle = "ModMenu_AT_SG_Ex", MinValue = 1, MaxValue = 100, min = 1, max = 100, GetFunc = function() return _G.HK_Settings.AimTouchSGSpeed or 80 end, SetFunc = function(_, v) _G.HK_Settings.AimTouchSGSpeed = v return true end },
-            { Key = "ModMenu_AT_SG_FOV", UI = AliasMap.Slider, Text = "      Vòng FOV (1-100)", ExpandHandle = "ModMenu_AT_SG_Ex", MinValue = 1, MaxValue = 100, min = 1, max = 100, GetFunc = function() return _G.HK_Settings.AimTouchSGFOV or 40 end, SetFunc = function(_, v) _G.HK_Settings.AimTouchSGFOV = v return true end },
-            { Key = "ModMenu_AT_SG_Dist", UI = AliasMap.Slider, Text = "      Khoảng Cách (1-100m)", ExpandHandle = "ModMenu_AT_SG_Ex", MinValue = 1, MaxValue = 100, min = 1, max = 100, GetFunc = function() return _G.HK_Settings.AimTouchSGDist or 30 end, SetFunc = function(_, v) _G.HK_Settings.AimTouchSGDist = v return true end },
+            { Key = "ModMenu_AT_SG_Ex", UI = AliasMap.TitleSwitcher, Text = "   ▶ Aimbot Shotgun (Chỉ nhận Shotgun)", ExpandHandle = "ModMenu_AT_Ex", ExpandIndex = 0, GetFunc = function() return _G.DX_Settings.AimTouchSG == 1 end, SetFunc = function(_, v) _G.DX_Settings.AimTouchSG = v and 1 or 0; _G.EnvRequiresUpdate = true; return true end },
+            { Key = "ModMenu_AT_SG_AutoFire", UI = AliasMap.Switcher, Text = "      Tự Động Bắn lúc tự động bắn chịu khó bấm bắn nhận dame và auto bắn sẽ không lỗi dame", ExpandHandle = "ModMenu_AT_SG_Ex", GetFunc = function() return _G.DX_Settings.AimTouchSGAutoFire == 1 end, SetFunc = function(_, v) _G.DX_Settings.AimTouchSGAutoFire = v and 1 or 0 return true end },
+            { Key = "ModMenu_AT_SG_IgKnock", UI = AliasMap.Switcher, Text = "      Bỏ Qua Địch Knock", ExpandHandle = "ModMenu_AT_SG_Ex", GetFunc = function() return _G.DX_Settings.AimTouchSGIgKnock == 1 end, SetFunc = function(_, v) _G.DX_Settings.AimTouchSGIgKnock = v and 1 or 0 return true end },
+            { Key = "ModMenu_AT_SG_IgBot", UI = AliasMap.Switcher, Text = "      Bỏ Qua Bot", ExpandHandle = "ModMenu_AT_SG_Ex", GetFunc = function() return _G.DX_Settings.AimTouchSGIgBot == 1 end, SetFunc = function(_, v) _G.DX_Settings.AimTouchSGIgBot = v and 1 or 0 return true end },
+            { Key = "ModMenu_AT_SG_Vis", UI = AliasMap.Switcher, Text = "      Check Tường (VisCheck)", ExpandHandle = "ModMenu_AT_SG_Ex", GetFunc = function() return _G.DX_Settings.AimTouchSGVisCheck == 1 end, SetFunc = function(_, v) _G.DX_Settings.AimTouchSGVisCheck = v and 1 or 0 return true end },
+            { Key = "ModMenu_AT_SG_Prio", UI = AliasMap.Slider, Text = "      Ưu Tiên (1:Tâm 2:Gần 3:HP 4:%HP)", ExpandHandle = "ModMenu_AT_SG_Ex", MinValue = 1, MaxValue = 4, min = 1, max = 4, Min = 1, Max = 4, GetFunc = function() return _G.DX_Settings.AimTouchSGPrio or 1 end, SetFunc = function(_, v) _G.DX_Settings.AimTouchSGPrio = math.floor(v+0.5) return true end },
+            { Key = "ModMenu_AT_SG_Bone", UI = AliasMap.Slider, Text = "      Vị Trí (1:Đầu 2:Ngực 3:Bụng 4:Hông)", ExpandHandle = "ModMenu_AT_SG_Ex", MinValue = 1, MaxValue = 4, min = 1, max = 4, Min = 1, Max = 4, GetFunc = function() return _G.DX_Settings.AimTouchSGBone or 2 end, SetFunc = function(_, v) _G.DX_Settings.AimTouchSGBone = math.floor(v+0.5) return true end },
+            { Key = "ModMenu_AT_SG_Cond", UI = AliasMap.Slider, Text = "      Điều Kiện (1:Bắn mới Aim, 2:Luôn Aim)", ExpandHandle = "ModMenu_AT_SG_Ex", MinValue = 1, MaxValue = 2, min = 1, max = 2, Min = 1, Max = 2, GetFunc = function() return _G.DX_Settings.AimTouchSGCond or 1 end, SetFunc = function(_, v) _G.DX_Settings.AimTouchSGCond = math.floor(v+0.5) return true end },
+            { Key = "ModMenu_AT_SG_Spd", UI = AliasMap.Slider, Text = "      Độ Mượt / Tốc Độ (1-100)", ExpandHandle = "ModMenu_AT_SG_Ex", MinValue = 1, MaxValue = 100, min = 1, max = 100, GetFunc = function() return _G.DX_Settings.AimTouchSGSpeed or 80 end, SetFunc = function(_, v) _G.DX_Settings.AimTouchSGSpeed = v return true end },
+            { Key = "ModMenu_AT_SG_FOV", UI = AliasMap.Slider, Text = "      Vòng FOV (1-100)", ExpandHandle = "ModMenu_AT_SG_Ex", MinValue = 1, MaxValue = 100, min = 1, max = 100, GetFunc = function() return _G.DX_Settings.AimTouchSGFOV or 40 end, SetFunc = function(_, v) _G.DX_Settings.AimTouchSGFOV = v return true end },
+            { Key = "ModMenu_AT_SG_Dist", UI = AliasMap.Slider, Text = "      Khoảng Cách (1-100m)", ExpandHandle = "ModMenu_AT_SG_Ex", MinValue = 1, MaxValue = 100, min = 1, max = 100, GetFunc = function() return _G.DX_Settings.AimTouchSGDist or 30 end, SetFunc = function(_, v) _G.DX_Settings.AimTouchSGDist = v return true end },
             
             -- SCOPE ALL (SÚNG THƯỜNG KHI MỞ SCOPE)
-            { Key = "ModMenu_AT_ScopeAll_Ex", UI = AliasMap.TitleSwitcher, Text = "   ▶ Aimbot Mở Scope", ExpandHandle = "ModMenu_AT_Ex", ExpandIndex = 0, GetFunc = function() return _G.HK_Settings.AimTouchScopeAll == 1 end, SetFunc = function(_, v) _G.HK_Settings.AimTouchScopeAll = v and 1 or 0; _G.EnvRequiresUpdate = true; return true end },
-            { Key = "ModMenu_AT_ScopeAll_IgKnock", UI = AliasMap.Switcher, Text = "      Bỏ Qua Địch Knock", ExpandHandle = "ModMenu_AT_ScopeAll_Ex", GetFunc = function() return _G.HK_Settings.AimTouchScopeIgKnock == 1 end, SetFunc = function(_, v) _G.HK_Settings.AimTouchScopeIgKnock = v and 1 or 0 return true end },
-            { Key = "ModMenu_AT_ScopeAll_IgBot", UI = AliasMap.Switcher, Text = "      Bỏ Qua Bot", ExpandHandle = "ModMenu_AT_ScopeAll_Ex", GetFunc = function() return _G.HK_Settings.AimTouchScopeIgBot == 1 end, SetFunc = function(_, v) _G.HK_Settings.AimTouchScopeIgBot = v and 1 or 0 return true end },
-            { Key = "ModMenu_AT_ScopeAll_Vis", UI = AliasMap.Switcher, Text = "      Check Tường (VisCheck)", ExpandHandle = "ModMenu_AT_ScopeAll_Ex", GetFunc = function() return _G.HK_Settings.AimTouchScopeVisCheck == 1 end, SetFunc = function(_, v) _G.HK_Settings.AimTouchScopeVisCheck = v and 1 or 0 return true end },
-            { Key = "ModMenu_AT_ScopeAll_Prio", UI = AliasMap.Slider, Text = "      Ưu Tiên (1:Tâm 2:Gần 3:HP 4:%HP)", ExpandHandle = "ModMenu_AT_ScopeAll_Ex", MinValue = 1, MaxValue = 4, min = 1, max = 4, Min = 1, Max = 4, GetFunc = function() return _G.HK_Settings.AimTouchScopePrio or 1 end, SetFunc = function(_, v) _G.HK_Settings.AimTouchScopePrio = math.floor(v+0.5) return true end },
-            { Key = "ModMenu_AT_ScopeAll_Bone", UI = AliasMap.Slider, Text = "      Vị Trí (1:Đầu 2:Ngực 3:Bụng 4:Hông)", ExpandHandle = "ModMenu_AT_ScopeAll_Ex", MinValue = 1, MaxValue = 4, min = 1, max = 4, Min = 1, Max = 4, GetFunc = function() return _G.HK_Settings.AimTouchScopeBone or 2 end, SetFunc = function(_, v) _G.HK_Settings.AimTouchScopeBone = math.floor(v+0.5) return true end },
-            { Key = "ModMenu_AT_ScopeAll_Cond", UI = AliasMap.Slider, Text = "      Điều Kiện (1:Bắn mới Aim, 2:Luôn Aim)", ExpandHandle = "ModMenu_AT_ScopeAll_Ex", MinValue = 1, MaxValue = 2, min = 1, max = 2, Min = 1, Max = 2, GetFunc = function() return _G.HK_Settings.AimTouchScopeCond or 1 end, SetFunc = function(_, v) _G.HK_Settings.AimTouchScopeCond = math.floor(v+0.5) return true end },
-            { Key = "ModMenu_AT_ScopeAll_Spd", UI = AliasMap.Slider, Text = "      Độ Mượt / Tốc Độ (1-100)", ExpandHandle = "ModMenu_AT_ScopeAll_Ex", MinValue = 1, MaxValue = 100, min = 1, max = 100, GetFunc = function() return _G.HK_Settings.AimTouchScopeSpeed or 40 end, SetFunc = function(_, v) _G.HK_Settings.AimTouchScopeSpeed = v return true end },
-            { Key = "ModMenu_AT_ScopeAll_FOV", UI = AliasMap.Slider, Text = "      Vòng FOV (1-100)", ExpandHandle = "ModMenu_AT_ScopeAll_Ex", MinValue = 1, MaxValue = 100, min = 1, max = 100, GetFunc = function() return _G.HK_Settings.AimTouchScopeFOV or 20 end, SetFunc = function(_, v) _G.HK_Settings.AimTouchScopeFOV = v return true end },
-            { Key = "ModMenu_AT_ScopeAll_Dist", UI = AliasMap.Slider, Text = "      Khoảng Cách (1-500m)", ExpandHandle = "ModMenu_AT_ScopeAll_Ex", MinValue = 1, MaxValue = 500, min = 1, max = 500, Min = 1, Max = 500, GetFunc = function() return _G.HK_Settings.AimTouchScopeDist or 300 end, SetFunc = function(_, v) _G.HK_Settings.AimTouchScopeDist = v return true end },
-            { Key = "ModMenu_AT_ScopeAll_Pred", UI = AliasMap.Slider, Text = "      Dự Đoán Hướng Chạy", ExpandHandle = "ModMenu_AT_ScopeAll_Ex", MinValue = 0, MaxValue = 100, min = 0, max = 100, GetFunc = function() return _G.HK_Settings.AimTouchScopePred or 0 end, SetFunc = function(_, v) _G.HK_Settings.AimTouchScopePred = v return true end },
-            { Key = "ModMenu_AT_ScopeAll_Recoil", UI = AliasMap.Slider, Text = "      Bù Giật Tự Động Ghìm Tâm Khi Aim ( để 1% nếu không bật giảm )", ExpandHandle = "ModMenu_AT_ScopeAll_Ex", MinValue = 0, MaxValue = 50, min = 0, max = 50, GetFunc = function() return _G.HK_Settings.AimTouchScopeRecoil or 0 end, SetFunc = function(_, v) _G.HK_Settings.AimTouchScopeRecoil = v return true end },
+            { Key = "ModMenu_AT_ScopeAll_Ex", UI = AliasMap.TitleSwitcher, Text = "   ▶ Aimbot Mở Scope", ExpandHandle = "ModMenu_AT_Ex", ExpandIndex = 0, GetFunc = function() return _G.DX_Settings.AimTouchScopeAll == 1 end, SetFunc = function(_, v) _G.DX_Settings.AimTouchScopeAll = v and 1 or 0; _G.EnvRequiresUpdate = true; return true end },
+            { Key = "ModMenu_AT_ScopeAll_IgKnock", UI = AliasMap.Switcher, Text = "      Bỏ Qua Địch Knock", ExpandHandle = "ModMenu_AT_ScopeAll_Ex", GetFunc = function() return _G.DX_Settings.AimTouchScopeIgKnock == 1 end, SetFunc = function(_, v) _G.DX_Settings.AimTouchScopeIgKnock = v and 1 or 0 return true end },
+            { Key = "ModMenu_AT_ScopeAll_IgBot", UI = AliasMap.Switcher, Text = "      Bỏ Qua Bot", ExpandHandle = "ModMenu_AT_ScopeAll_Ex", GetFunc = function() return _G.DX_Settings.AimTouchScopeIgBot == 1 end, SetFunc = function(_, v) _G.DX_Settings.AimTouchScopeIgBot = v and 1 or 0 return true end },
+            { Key = "ModMenu_AT_ScopeAll_Vis", UI = AliasMap.Switcher, Text = "      Check Tường (VisCheck)", ExpandHandle = "ModMenu_AT_ScopeAll_Ex", GetFunc = function() return _G.DX_Settings.AimTouchScopeVisCheck == 1 end, SetFunc = function(_, v) _G.DX_Settings.AimTouchScopeVisCheck = v and 1 or 0 return true end },
+            { Key = "ModMenu_AT_ScopeAll_Prio", UI = AliasMap.Slider, Text = "      Ưu Tiên (1:Tâm 2:Gần 3:HP 4:%HP)", ExpandHandle = "ModMenu_AT_ScopeAll_Ex", MinValue = 1, MaxValue = 4, min = 1, max = 4, Min = 1, Max = 4, GetFunc = function() return _G.DX_Settings.AimTouchScopePrio or 1 end, SetFunc = function(_, v) _G.DX_Settings.AimTouchScopePrio = math.floor(v+0.5) return true end },
+            { Key = "ModMenu_AT_ScopeAll_Bone", UI = AliasMap.Slider, Text = "      Vị Trí (1:Đầu 2:Ngực 3:Bụng 4:Hông)", ExpandHandle = "ModMenu_AT_ScopeAll_Ex", MinValue = 1, MaxValue = 4, min = 1, max = 4, Min = 1, Max = 4, GetFunc = function() return _G.DX_Settings.AimTouchScopeBone or 2 end, SetFunc = function(_, v) _G.DX_Settings.AimTouchScopeBone = math.floor(v+0.5) return true end },
+            { Key = "ModMenu_AT_ScopeAll_Cond", UI = AliasMap.Slider, Text = "      Điều Kiện (1:Bắn mới Aim, 2:Luôn Aim)", ExpandHandle = "ModMenu_AT_ScopeAll_Ex", MinValue = 1, MaxValue = 2, min = 1, max = 2, Min = 1, Max = 2, GetFunc = function() return _G.DX_Settings.AimTouchScopeCond or 1 end, SetFunc = function(_, v) _G.DX_Settings.AimTouchScopeCond = math.floor(v+0.5) return true end },
+            { Key = "ModMenu_AT_ScopeAll_Spd", UI = AliasMap.Slider, Text = "      Độ Mượt / Tốc Độ (1-100)", ExpandHandle = "ModMenu_AT_ScopeAll_Ex", MinValue = 1, MaxValue = 100, min = 1, max = 100, GetFunc = function() return _G.DX_Settings.AimTouchScopeSpeed or 40 end, SetFunc = function(_, v) _G.DX_Settings.AimTouchScopeSpeed = v return true end },
+            { Key = "ModMenu_AT_ScopeAll_FOV", UI = AliasMap.Slider, Text = "      Vòng FOV (1-100)", ExpandHandle = "ModMenu_AT_ScopeAll_Ex", MinValue = 1, MaxValue = 100, min = 1, max = 100, GetFunc = function() return _G.DX_Settings.AimTouchScopeFOV or 20 end, SetFunc = function(_, v) _G.DX_Settings.AimTouchScopeFOV = v return true end },
+            { Key = "ModMenu_AT_ScopeAll_Dist", UI = AliasMap.Slider, Text = "      Khoảng Cách (1-500m)", ExpandHandle = "ModMenu_AT_ScopeAll_Ex", MinValue = 1, MaxValue = 500, min = 1, max = 500, Min = 1, Max = 500, GetFunc = function() return _G.DX_Settings.AimTouchScopeDist or 300 end, SetFunc = function(_, v) _G.DX_Settings.AimTouchScopeDist = v return true end },
+            { Key = "ModMenu_AT_ScopeAll_Pred", UI = AliasMap.Slider, Text = "      Dự Đoán Hướng Chạy", ExpandHandle = "ModMenu_AT_ScopeAll_Ex", MinValue = 0, MaxValue = 100, min = 0, max = 100, GetFunc = function() return _G.DX_Settings.AimTouchScopePred or 0 end, SetFunc = function(_, v) _G.DX_Settings.AimTouchScopePred = v return true end },
+            { Key = "ModMenu_AT_ScopeAll_Recoil", UI = AliasMap.Slider, Text = "      Bù Giật Tự Động Ghìm Tâm Khi Aim ( để 1% nếu không bật giảm )", ExpandHandle = "ModMenu_AT_ScopeAll_Ex", MinValue = 0, MaxValue = 50, min = 0, max = 50, GetFunc = function() return _G.DX_Settings.AimTouchScopeRecoil or 0 end, SetFunc = function(_, v) _G.DX_Settings.AimTouchScopeRecoil = v return true end },
 
             -- SCOPE SNIPER (SÚNG NGẮM/TỈA)
-            { Key = "ModMenu_AT_Sniper_Ex", UI = AliasMap.TitleSwitcher, Text = "   ▶ Aimbot Mở Scope (Súng Ngắm/Tỉa)", ExpandHandle = "ModMenu_AT_Ex", ExpandIndex = 0, GetFunc = function() return _G.HK_Settings.AimTouchScopeSniper == 1 end, SetFunc = function(_, v) _G.HK_Settings.AimTouchScopeSniper = v and 1 or 0; _G.EnvRequiresUpdate = true; return true end },
-            { Key = "ModMenu_AT_Sniper_IgKnock", UI = AliasMap.Switcher, Text = "      Bỏ Qua Địch Knock", ExpandHandle = "ModMenu_AT_Sniper_Ex", GetFunc = function() return _G.HK_Settings.AimTouchSniperIgKnock == 1 end, SetFunc = function(_, v) _G.HK_Settings.AimTouchSniperIgKnock = v and 1 or 0 return true end },
-            { Key = "ModMenu_AT_Sniper_IgBot", UI = AliasMap.Switcher, Text = "      Bỏ Qua Bot", ExpandHandle = "ModMenu_AT_Sniper_Ex", GetFunc = function() return _G.HK_Settings.AimTouchSniperIgBot == 1 end, SetFunc = function(_, v) _G.HK_Settings.AimTouchSniperIgBot = v and 1 or 0 return true end },
-            { Key = "ModMenu_AT_Sniper_Vis", UI = AliasMap.Switcher, Text = "      Check Tường (VisCheck)", ExpandHandle = "ModMenu_AT_Sniper_Ex", GetFunc = function() return _G.HK_Settings.AimTouchSniperVisCheck == 1 end, SetFunc = function(_, v) _G.HK_Settings.AimTouchSniperVisCheck = v and 1 or 0 return true end },
-            { Key = "ModMenu_AT_Sniper_Prio", UI = AliasMap.Slider, Text = "      Ưu Tiên (1:Tâm 2:Gần 3:HP 4:%HP)", ExpandHandle = "ModMenu_AT_Sniper_Ex", MinValue = 1, MaxValue = 4, min = 1, max = 4, Min = 1, Max = 4, GetFunc = function() return _G.HK_Settings.AimTouchSniperPrio or 1 end, SetFunc = function(_, v) _G.HK_Settings.AimTouchSniperPrio = math.floor(v+0.5) return true end },
-            { Key = "ModMenu_AT_Sniper_Bone", UI = AliasMap.Slider, Text = "      Vị Trí (1:Đầu 2:Ngực 3:Bụng 4:Hông)", ExpandHandle = "ModMenu_AT_Sniper_Ex", MinValue = 1, MaxValue = 4, min = 1, max = 4, Min = 1, Max = 4, GetFunc = function() return _G.HK_Settings.AimTouchSniperBone or 1 end, SetFunc = function(_, v) _G.HK_Settings.AimTouchSniperBone = math.floor(v+0.5) return true end },
-            { Key = "ModMenu_AT_Sniper_Cond", UI = AliasMap.Slider, Text = "      Điều Kiện (1:Bắn mới Aim, 2:Luôn Aim)", ExpandHandle = "ModMenu_AT_Sniper_Ex", MinValue = 1, MaxValue = 2, min = 1, max = 2, Min = 1, Max = 2, GetFunc = function() return _G.HK_Settings.AimTouchSniperCond or 2 end, SetFunc = function(_, v) _G.HK_Settings.AimTouchSniperCond = math.floor(v+0.5) return true end },
-            { Key = "ModMenu_AT_Sniper_Spd", UI = AliasMap.Slider, Text = "      Độ Mượt / Tốc Độ (1-100)", ExpandHandle = "ModMenu_AT_Sniper_Ex", MinValue = 1, MaxValue = 100, min = 1, max = 100, GetFunc = function() return _G.HK_Settings.AimTouchSniperSpeed or 30 end, SetFunc = function(_, v) _G.HK_Settings.AimTouchSniperSpeed = v return true end },
-            { Key = "ModMenu_AT_Sniper_FOV", UI = AliasMap.Slider, Text = "      Vòng FOV (1-100)", ExpandHandle = "ModMenu_AT_Sniper_Ex", MinValue = 1, MaxValue = 100, min = 1, max = 100, GetFunc = function() return _G.HK_Settings.AimTouchSniperFOV or 20 end, SetFunc = function(_, v) _G.HK_Settings.AimTouchSniperFOV = v return true end },
-            { Key = "ModMenu_AT_Sniper_Dist", UI = AliasMap.Slider, Text = "      Khoảng Cách (1-500m)", ExpandHandle = "ModMenu_AT_Sniper_Ex", MinValue = 1, MaxValue = 500, min = 1, max = 500, Min = 1, Max = 500, GetFunc = function() return _G.HK_Settings.AimTouchSniperDist or 400 end, SetFunc = function(_, v) _G.HK_Settings.AimTouchSniperDist = v return true end },
-            { Key = "ModMenu_AT_Sniper_Pred", UI = AliasMap.Slider, Text = "      Dự Đoán Hướng Chạy (0-100)", ExpandHandle = "ModMenu_AT_Sniper_Ex", MinValue = 0, MaxValue = 100, min = 0, max = 100, GetFunc = function() return _G.HK_Settings.AimTouchSniperPred or 0 end, SetFunc = function(_, v) _G.HK_Settings.AimTouchSniperPred = v return true end }
+            { Key = "ModMenu_AT_Sniper_Ex", UI = AliasMap.TitleSwitcher, Text = "   ▶ Aimbot Mở Scope (Súng Ngắm/Tỉa)", ExpandHandle = "ModMenu_AT_Ex", ExpandIndex = 0, GetFunc = function() return _G.DX_Settings.AimTouchScopeSniper == 1 end, SetFunc = function(_, v) _G.DX_Settings.AimTouchScopeSniper = v and 1 or 0; _G.EnvRequiresUpdate = true; return true end },
+            { Key = "ModMenu_AT_Sniper_IgKnock", UI = AliasMap.Switcher, Text = "      Bỏ Qua Địch Knock", ExpandHandle = "ModMenu_AT_Sniper_Ex", GetFunc = function() return _G.DX_Settings.AimTouchSniperIgKnock == 1 end, SetFunc = function(_, v) _G.DX_Settings.AimTouchSniperIgKnock = v and 1 or 0 return true end },
+            { Key = "ModMenu_AT_Sniper_IgBot", UI = AliasMap.Switcher, Text = "      Bỏ Qua Bot", ExpandHandle = "ModMenu_AT_Sniper_Ex", GetFunc = function() return _G.DX_Settings.AimTouchSniperIgBot == 1 end, SetFunc = function(_, v) _G.DX_Settings.AimTouchSniperIgBot = v and 1 or 0 return true end },
+            { Key = "ModMenu_AT_Sniper_Vis", UI = AliasMap.Switcher, Text = "      Check Tường (VisCheck)", ExpandHandle = "ModMenu_AT_Sniper_Ex", GetFunc = function() return _G.DX_Settings.AimTouchSniperVisCheck == 1 end, SetFunc = function(_, v) _G.DX_Settings.AimTouchSniperVisCheck = v and 1 or 0 return true end },
+            { Key = "ModMenu_AT_Sniper_Prio", UI = AliasMap.Slider, Text = "      Ưu Tiên (1:Tâm 2:Gần 3:HP 4:%HP)", ExpandHandle = "ModMenu_AT_Sniper_Ex", MinValue = 1, MaxValue = 4, min = 1, max = 4, Min = 1, Max = 4, GetFunc = function() return _G.DX_Settings.AimTouchSniperPrio or 1 end, SetFunc = function(_, v) _G.DX_Settings.AimTouchSniperPrio = math.floor(v+0.5) return true end },
+            { Key = "ModMenu_AT_Sniper_Bone", UI = AliasMap.Slider, Text = "      Vị Trí (1:Đầu 2:Ngực 3:Bụng 4:Hông)", ExpandHandle = "ModMenu_AT_Sniper_Ex", MinValue = 1, MaxValue = 4, min = 1, max = 4, Min = 1, Max = 4, GetFunc = function() return _G.DX_Settings.AimTouchSniperBone or 1 end, SetFunc = function(_, v) _G.DX_Settings.AimTouchSniperBone = math.floor(v+0.5) return true end },
+            { Key = "ModMenu_AT_Sniper_Cond", UI = AliasMap.Slider, Text = "      Điều Kiện (1:Bắn mới Aim, 2:Luôn Aim)", ExpandHandle = "ModMenu_AT_Sniper_Ex", MinValue = 1, MaxValue = 2, min = 1, max = 2, Min = 1, Max = 2, GetFunc = function() return _G.DX_Settings.AimTouchSniperCond or 2 end, SetFunc = function(_, v) _G.DX_Settings.AimTouchSniperCond = math.floor(v+0.5) return true end },
+            { Key = "ModMenu_AT_Sniper_Spd", UI = AliasMap.Slider, Text = "      Độ Mượt / Tốc Độ (1-100)", ExpandHandle = "ModMenu_AT_Sniper_Ex", MinValue = 1, MaxValue = 100, min = 1, max = 100, GetFunc = function() return _G.DX_Settings.AimTouchSniperSpeed or 30 end, SetFunc = function(_, v) _G.DX_Settings.AimTouchSniperSpeed = v return true end },
+            { Key = "ModMenu_AT_Sniper_FOV", UI = AliasMap.Slider, Text = "      Vòng FOV (1-100)", ExpandHandle = "ModMenu_AT_Sniper_Ex", MinValue = 1, MaxValue = 100, min = 1, max = 100, GetFunc = function() return _G.DX_Settings.AimTouchSniperFOV or 20 end, SetFunc = function(_, v) _G.DX_Settings.AimTouchSniperFOV = v return true end },
+            { Key = "ModMenu_AT_Sniper_Dist", UI = AliasMap.Slider, Text = "      Khoảng Cách (1-500m)", ExpandHandle = "ModMenu_AT_Sniper_Ex", MinValue = 1, MaxValue = 500, min = 1, max = 500, Min = 1, Max = 500, GetFunc = function() return _G.DX_Settings.AimTouchSniperDist or 400 end, SetFunc = function(_, v) _G.DX_Settings.AimTouchSniperDist = v return true end },
+            { Key = "ModMenu_AT_Sniper_Pred", UI = AliasMap.Slider, Text = "      Dự Đoán Hướng Chạy (0-100)", ExpandHandle = "ModMenu_AT_Sniper_Ex", MinValue = 0, MaxValue = 100, min = 0, max = 100, GetFunc = function() return _G.DX_Settings.AimTouchSniperPred or 0 end, SetFunc = function(_, v) _G.DX_Settings.AimTouchSniperPred = v return true end }
         }
 
         local StackMagic = { { UI = AliasMap.Title, Text = "MAGIC BULLET" } }
@@ -2928,9 +2928,9 @@ table.insert(StackESP, {
             UI = AliasMap.TitleSwitcher,
             Text = "▶ Ipad View",
             ExpandIndex = 0,
-            GetFunc = function() return _G.HK_Settings.IpadView == 1 end,
+            GetFunc = function() return _G.DX_Settings.IpadView == 1 end,
             SetFunc = function(_, value)
-                _G.HK_Settings.IpadView = value and 1 or 0
+                _G.DX_Settings.IpadView = value and 1 or 0
                 _G.EnvRequiresUpdate = true
                 return true
             end
@@ -2944,9 +2944,9 @@ table.insert(StackESP, {
             MaxValue = 100,
             Min = 1,
             Max = 100,
-            GetFunc = function() return (_G.HK_Settings.IpadViewFOV or 120) - 90 end,
+            GetFunc = function() return (_G.DX_Settings.IpadViewFOV or 120) - 90 end,
             SetFunc = function(_, value)
-                _G.HK_Settings.IpadViewFOV = 90 + math.floor(tonumber(value) or 30)
+                _G.DX_Settings.IpadViewFOV = 90 + math.floor(tonumber(value) or 30)
                 _G.EnvRequiresUpdate = true
                 return true
             end
@@ -3118,13 +3118,13 @@ local function GetWallColorByIndex(idx)
     return AuraColor(p[1], p[2], p[3], 1.0)
 end
 local function GetCurrentWallVisibleColor()
-    return GetWallColorByIndex((_G.HK_Settings and _G.HK_Settings.WALL_VISIBLE_COLOR) or 3)
+    return GetWallColorByIndex((_G.DX_Settings and _G.DX_Settings.WALL_VISIBLE_COLOR) or 3)
 end
 local function GetCurrentWallOccludedColor(isAI)
     if isAI then
-        return GetWallColorByIndex((_G.HK_Settings and _G.HK_Settings.WALL_OCCLUDED_AI_COLOR) or 7)
+        return GetWallColorByIndex((_G.DX_Settings and _G.DX_Settings.WALL_OCCLUDED_AI_COLOR) or 7)
     else
-        return GetWallColorByIndex((_G.HK_Settings and _G.HK_Settings.WALL_OCCLUDED_COLOR) or 2)
+        return GetWallColorByIndex((_G.DX_Settings and _G.DX_Settings.WALL_OCCLUDED_COLOR) or 2)
     end
 end
 
@@ -3172,7 +3172,7 @@ end
 
 local function CheckIsAI(pawn)
     if not Valid(pawn) then return false end
-    if pawn.HK_IsAICached ~= nil then return pawn.HK_IsAICached end
+    if pawn.DX_IsAICached ~= nil then return pawn.DX_IsAICached end
     
     local isAI = false
     local hasChecked = false
@@ -3216,7 +3216,7 @@ local function CheckIsAI(pawn)
     end)
     
     if hasChecked then
-        pawn.HK_IsAICached = isAI
+        pawn.DX_IsAICached = isAI
     end
     
     return isAI
@@ -3321,7 +3321,7 @@ end
 
 _G.AimTouch = function()
     pcall(function()
-        if _G.HK_GetVal("AimTouchEnable") ~= 1 then return end
+        if _G.DX_GetVal("AimTouchEnable") ~= 1 then return end
         
         local player = GameplayData.GetPlayerCharacter()
         if not slua.isValid(player) then return end
@@ -3376,8 +3376,8 @@ _G.AimTouch = function()
         end
 
         -- LOGIC NHẢ CÒ SÚNG NẾU MẤT MỤC TIÊU / ĐỊCH CHẾT HOẶC SHOTGUN HẾT ĐẠN
-        if _G.HKState then
-            if _G.HKState.IsAutoFiring then
+        if _G.DXState then
+            if _G.DXState.IsAutoFiring then
                 pcall(function()
                     player.bIsWeaponFiring = false
                     if type(player.SetIsWeaponFiring) == "function" then player:SetIsWeaponFiring(false) end
@@ -3385,7 +3385,7 @@ _G.AimTouch = function()
                     local wepMgr = player.WeaponManagerComponent
                     if slua.isValid(wepMgr) then wepMgr.bIsWeaponFiring = false end
                 end)
-                _G.HKState.IsAutoFiring = false
+                _G.DXState.IsAutoFiring = false
             end
         end
 
@@ -3408,9 +3408,9 @@ _G.AimTouch = function()
         local recoilCompVal = 0 
 
         -- PHÂN LOẠI CẤU HÌNH THEO TRẠNG THÁI HIỆN TẠI
-if isShotgun and _G.HK_GetVal("AimTouchSG") == 1 then
-    cond = _G.HK_GetVal("AimTouchSGCond") or 1
-    if _G.HK_GetVal("AimTouchSGAutoFire") == 1 then cond = 2 end
+if isShotgun and _G.DX_GetVal("AimTouchSG") == 1 then
+    cond = _G.DX_GetVal("AimTouchSGCond") or 1
+    if _G.DX_GetVal("AimTouchSGAutoFire") == 1 then cond = 2 end
     
     -- =========================================================
     -- [FIX] SHOTGUN GRACE PERIOD - Duy trì trạng thái "đang bắn"
@@ -3421,11 +3421,11 @@ if isShotgun and _G.HK_GetVal("AimTouchSG") == 1 then
     
     -- Nếu đang bắn thật → cập nhật thời gian bắn cuối
     if isFiring then
-        _G.HK_Shotgun_LastFireTime = curTimeShotgun
+        _G.DX_Shotgun_LastFireTime = curTimeShotgun
         isActuallyFiring = true
     else
         -- Nếu vừa mới bắn xong (trong vòng 0.6s) → vẫn coi như đang bắn
-        local lastFireTime = _G.HK_Shotgun_LastFireTime or 0
+        local lastFireTime = _G.DX_Shotgun_LastFireTime or 0
         if (curTimeShotgun - lastFireTime) < 0.6 then
             isActuallyFiring = true
         end
@@ -3447,7 +3447,7 @@ if isShotgun and _G.HK_GetVal("AimTouchSG") == 1 then
     
     -- Áp dụng lại grace period đã tối ưu
     if not isFiring then
-        local lastFireTime = _G.HK_Shotgun_LastFireTime or 0
+        local lastFireTime = _G.DX_Shotgun_LastFireTime or 0
         if (curTimeShotgun - lastFireTime) < gracePeriod then
             isActuallyFiring = true
         else
@@ -3459,56 +3459,56 @@ if isShotgun and _G.HK_GetVal("AimTouchSG") == 1 then
     if cond == 1 and not isActuallyFiring then return end
     -- =========================================================
     
-    prioMode = _G.HK_GetVal("AimTouchSGPrio") or 1
-    boneIdx = _G.HK_GetVal("AimTouchSGBone") or 2
-    speedVal = _G.HK_GetVal("AimTouchSGSpeed") or 80
-    fovVal = _G.HK_GetVal("AimTouchSGFOV") or 40
-    maxDistMeters = _G.HK_GetVal("AimTouchSGDist") or 30
-    useVisCheck = _G.HK_GetVal("AimTouchSGVisCheck") == 1
-    igKnock = _G.HK_GetVal("AimTouchSGIgKnock") == 1
-    igBot = _G.HK_GetVal("AimTouchSGIgBot") == 1
+    prioMode = _G.DX_GetVal("AimTouchSGPrio") or 1
+    boneIdx = _G.DX_GetVal("AimTouchSGBone") or 2
+    speedVal = _G.DX_GetVal("AimTouchSGSpeed") or 80
+    fovVal = _G.DX_GetVal("AimTouchSGFOV") or 40
+    maxDistMeters = _G.DX_GetVal("AimTouchSGDist") or 30
+    useVisCheck = _G.DX_GetVal("AimTouchSGVisCheck") == 1
+    igKnock = _G.DX_GetVal("AimTouchSGIgKnock") == 1
+    igBot = _G.DX_GetVal("AimTouchSGIgBot") == 1
             
         elseif isADS then
-            if isSniper and _G.HK_GetVal("AimTouchScopeSniper") == 1 then
-                cond = _G.HK_GetVal("AimTouchSniperCond") or 2
+            if isSniper and _G.DX_GetVal("AimTouchScopeSniper") == 1 then
+                cond = _G.DX_GetVal("AimTouchSniperCond") or 2
                 if cond == 1 and not isFiring then return end
-                prioMode = _G.HK_GetVal("AimTouchSniperPrio") or 1
-                boneIdx = _G.HK_GetVal("AimTouchSniperBone") or 1
-                speedVal = _G.HK_GetVal("AimTouchSniperSpeed") or 30
-                fovVal = _G.HK_GetVal("AimTouchSniperFOV") or 20
-                maxDistMeters = _G.HK_GetVal("AimTouchSniperDist") or 400
-                useVisCheck = _G.HK_GetVal("AimTouchSniperVisCheck") == 1
-                igKnock = _G.HK_GetVal("AimTouchSniperIgKnock") == 1
-                igBot = _G.HK_GetVal("AimTouchSniperIgBot") == 1
-                predVal = _G.HK_GetVal("AimTouchSniperPred") or 0
-            elseif _G.HK_GetVal("AimTouchScopeAll") == 1 then
-                cond = _G.HK_GetVal("AimTouchScopeCond") or 1
+                prioMode = _G.DX_GetVal("AimTouchSniperPrio") or 1
+                boneIdx = _G.DX_GetVal("AimTouchSniperBone") or 1
+                speedVal = _G.DX_GetVal("AimTouchSniperSpeed") or 30
+                fovVal = _G.DX_GetVal("AimTouchSniperFOV") or 20
+                maxDistMeters = _G.DX_GetVal("AimTouchSniperDist") or 400
+                useVisCheck = _G.DX_GetVal("AimTouchSniperVisCheck") == 1
+                igKnock = _G.DX_GetVal("AimTouchSniperIgKnock") == 1
+                igBot = _G.DX_GetVal("AimTouchSniperIgBot") == 1
+                predVal = _G.DX_GetVal("AimTouchSniperPred") or 0
+            elseif _G.DX_GetVal("AimTouchScopeAll") == 1 then
+                cond = _G.DX_GetVal("AimTouchScopeCond") or 1
                 if cond == 1 and not isFiring then return end
-                prioMode = _G.HK_GetVal("AimTouchScopePrio") or 1
-                boneIdx = _G.HK_GetVal("AimTouchScopeBone") or 2
-                speedVal = _G.HK_GetVal("AimTouchScopeSpeed") or 40
-                fovVal = _G.HK_GetVal("AimTouchScopeFOV") or 20
-                maxDistMeters = _G.HK_GetVal("AimTouchScopeDist") or 300
-                useVisCheck = _G.HK_GetVal("AimTouchScopeVisCheck") == 1
-                igKnock = _G.HK_GetVal("AimTouchScopeIgKnock") == 1
-                igBot = _G.HK_GetVal("AimTouchScopeIgBot") == 1
-                predVal = _G.HK_GetVal("AimTouchScopePred") or 0
-                recoilCompVal = _G.HK_GetVal("AimTouchScopeRecoil") or 0
+                prioMode = _G.DX_GetVal("AimTouchScopePrio") or 1
+                boneIdx = _G.DX_GetVal("AimTouchScopeBone") or 2
+                speedVal = _G.DX_GetVal("AimTouchScopeSpeed") or 40
+                fovVal = _G.DX_GetVal("AimTouchScopeFOV") or 20
+                maxDistMeters = _G.DX_GetVal("AimTouchScopeDist") or 300
+                useVisCheck = _G.DX_GetVal("AimTouchScopeVisCheck") == 1
+                igKnock = _G.DX_GetVal("AimTouchScopeIgKnock") == 1
+                igBot = _G.DX_GetVal("AimTouchScopeIgBot") == 1
+                predVal = _G.DX_GetVal("AimTouchScopePred") or 0
+                recoilCompVal = _G.DX_GetVal("AimTouchScopeRecoil") or 0
             else
                 return
             end
         else
-            if not (_G.HK_GetVal("AimTouchHipfire") == 1) then return end
-            cond = _G.HK_GetVal("AimTouchHipCond") or 1
+            if not (_G.DX_GetVal("AimTouchHipfire") == 1) then return end
+            cond = _G.DX_GetVal("AimTouchHipCond") or 1
             if cond == 1 and not isFiring then return end 
-            prioMode = _G.HK_GetVal("AimTouchHipPrio") or 1
-            boneIdx = _G.HK_GetVal("AimTouchHipBone") or 1
-            speedVal = _G.HK_GetVal("AimTouchHipSpeed") or 50
-            fovVal = _G.HK_GetVal("AimTouchHipFOV") or 30
-            maxDistMeters = _G.HK_GetVal("AimTouchHipDist") or 250
-            useVisCheck = _G.HK_GetVal("AimTouchHipVisCheck") == 1
-            igKnock = _G.HK_GetVal("AimTouchHipIgKnock") == 1
-            igBot = _G.HK_GetVal("AimTouchHipIgBot") == 1
+            prioMode = _G.DX_GetVal("AimTouchHipPrio") or 1
+            boneIdx = _G.DX_GetVal("AimTouchHipBone") or 1
+            speedVal = _G.DX_GetVal("AimTouchHipSpeed") or 50
+            fovVal = _G.DX_GetVal("AimTouchHipFOV") or 30
+            maxDistMeters = _G.DX_GetVal("AimTouchHipDist") or 250
+            useVisCheck = _G.DX_GetVal("AimTouchHipVisCheck") == 1
+            igKnock = _G.DX_GetVal("AimTouchHipIgKnock") == 1
+            igBot = _G.DX_GetVal("AimTouchHipIgBot") == 1
         end
 
         -- Kiểm tra trạng thái trượt (Slide) trong TDM để tránh giật màn hình
@@ -3816,7 +3816,7 @@ end
         local finalRot = { Pitch = finalPitch, Yaw = finalYaw, Roll = 0 }
         pc:SetControlRotation(finalRot, "AimTouch")
         
-        if isShotgun and _G.HK_GetVal("AimTouchSGAutoFire") == 1 then
+        if isShotgun and _G.DX_GetVal("AimTouchSGAutoFire") == 1 then
             pcall(function()
                 local distToTarget = player:GetDistanceTo(bestTarget) / 100
                 if distToTarget <= maxDistMeters then
@@ -3830,7 +3830,7 @@ end
                     if slua.isValid(currentWep) and type(currentWep.StartFire) == "function" then 
                         currentWep:StartFire() 
                     end
-                    if _G.HKState then _G.HKState.IsAutoFiring = true end
+                    if _G.DXState then _G.DXState.IsAutoFiring = true end
                 end
             end)
         end
@@ -3850,7 +3850,7 @@ local GhostMode_OriginalSettings = nil
 
 local function UpdateGhostMode()
     -- Lấy trạng thái cấu hình của người dùng
-    local isEnabled = (_G.HK_GetVal("GHOST_MODE") == 1)
+    local isEnabled = (_G.DX_GetVal("GHOST_MODE") == 1)
     local curTime = os.clock()
     
     -- Kiểm tra xem hệ thống chống gian lận có đang quét hay không
@@ -3862,17 +3862,17 @@ local function UpdateGhostMode()
         
         -- Sao lưu lại toàn bộ cấu hình hiện tại của người dùng
         GhostMode_OriginalSettings = {
-            AIMBOT = _G.HK_Settings.AIMBOT or 0,
-            MAGIC_HEAD = _G.HK_Settings.MAGIC_HEAD or 0,
-            MAGIC_BODY = _G.HK_Settings.MAGIC_BODY or 0,
-            MAGIC_LEGS = _G.HK_Settings.MAGIC_LEGS or 0,
+            AIMBOT = _G.DX_Settings.AIMBOT or 0,
+            MAGIC_HEAD = _G.DX_Settings.MAGIC_HEAD or 0,
+            MAGIC_BODY = _G.DX_Settings.MAGIC_BODY or 0,
+            MAGIC_LEGS = _G.DX_Settings.MAGIC_LEGS or 0,
         }
         
         -- Đưa tất cả các thông số nhạy cảm về an toàn (0)
-        _G.HK_Settings.AIMBOT = 0
-        _G.HK_Settings.MAGIC_HEAD = 0
-        _G.HK_Settings.MAGIC_BODY = 0
-        _G.HK_Settings.MAGIC_LEGS = 0
+        _G.DX_Settings.AIMBOT = 0
+        _G.DX_Settings.MAGIC_HEAD = 0
+        _G.DX_Settings.MAGIC_BODY = 0
+        _G.DX_Settings.MAGIC_LEGS = 0
         
         _G.EnvRequiresUpdate = true
         _G.MagicUpdateVersion = (_G.MagicUpdateVersion or 1) + 1
@@ -3883,7 +3883,7 @@ local function UpdateGhostMode()
         -- Khôi phục lại các cài đặt gốc đã lưu
         if GhostMode_OriginalSettings then
             for k, v in pairs(GhostMode_OriginalSettings) do
-                _G.HK_Settings[k] = v
+                _G.DX_Settings[k] = v
             end
             GhostMode_OriginalSettings = nil
         end
@@ -3902,7 +3902,7 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
     self.bAdvancedSystemsStarted = true
     
     -- Clear physics asset modification cache for the new match to force re-applying Magic Bullet
-    _G.HK_ModdedPhysAssets = {}
+    _G.DX_ModdedPhysAssets = {}
     _G.MagicUpdateVersion = (_G.MagicUpdateVersion or 1) + 1
     
     local function Valid(obj) return slua_isValid(obj) end
@@ -3915,8 +3915,8 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
     local GlobalSkelClass = import("SkeletalMeshComponent")
     
     local EMovementMode = import("EMovementMode")
-    local cache_AimTouchEnable = _G.HK_GetVal("AimTouchEnable") or 0
-    local cache_AUTO_BUNNYHOP = _G.HK_GetVal("AUTO_BUNNYHOP") or 0
+    local cache_AimTouchEnable = _G.DX_GetVal("AimTouchEnable") or 0
+    local cache_AUTO_BUNNYHOP = _G.DX_GetVal("AUTO_BUNNYHOP") or 0
     
     -- TIMER CHU KỲ 0.0083s DÀNH CHO AIMBOT ROYAL & CUSTOM (120 FPS)
     local aimTimerHandle
@@ -3974,8 +3974,8 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
             return
         end
 
-        cache_AimTouchEnable = _G.HK_GetVal("AimTouchEnable") or 0
-        cache_AUTO_BUNNYHOP = _G.HK_GetVal("AUTO_BUNNYHOP") or 0
+        cache_AimTouchEnable = _G.DX_GetVal("AimTouchEnable") or 0
+        cache_AUTO_BUNNYHOP = _G.DX_GetVal("AUTO_BUNNYHOP") or 0
 
 
 
@@ -4013,7 +4013,7 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                 _G.DX_HasShownHWIDSpooferNotice = true
                 self.bHasShownHWIDSpooferNotice = true
                 pcall(function()
-                    local fake = _G.HK_FakeData or {}
+                    local fake = _G.DX_FakeData or {}
                     local msgBox = package.loaded["client.slua.logic.common.logic_common_msg_box"] or require("client.slua.logic.common.logic_common_msg_box")
                     if msgBox and msgBox.Show then
                         msgBox.Show(1, "[DX] BẢO MẬT THIẾT BỊ",
@@ -4040,9 +4040,9 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
         -- [24B] Tái cài hook liên tục mỗi 0.25s (chống anti-cheat reset hook giữa trận)
         pcall(function()
-            if _G.HK_Settings and _G.HK_Settings.FAKE_HWID == 1 then
-                if _G.HK_InitializeHWIDHook then
-                    _G.HK_InitializeHWIDHook()
+            if _G.DX_Settings and _G.DX_Settings.FAKE_HWID == 1 then
+                if _G.DX_InitializeHWIDHook then
+                    _G.DX_InitializeHWIDHook()
                 end
             end
         end)
@@ -4078,16 +4078,16 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
             isAiming = false
         end
 
-        local isWallhackGlobalOn = (_G.HK_GetVal("WALLHACK") == 1)
-        local isWhiteBodyOn = (_G.HK_GetVal("WHITE_BODY") == 1)            
-        local espHit1 = (_G.HK_GetVal("ESP_HITMARK_1") == 1)
-        local espHit2 = (_G.HK_GetVal("ESP_HITMARK_2") == 1)
-        local espWeaponStance = (_G.HK_GetVal("ESP_WEAPON") == 1)
-        local espCount = (_G.HK_GetVal("ESP_COUNT") == 1)
+        local isWallhackGlobalOn = (_G.DX_GetVal("WALLHACK") == 1)
+        local isWhiteBodyOn = (_G.DX_GetVal("WHITE_BODY") == 1)            
+        local espHit1 = (_G.DX_GetVal("ESP_HITMARK_1") == 1)
+        local espHit2 = (_G.DX_GetVal("ESP_HITMARK_2") == 1)
+        local espWeaponStance = (_G.DX_GetVal("ESP_WEAPON") == 1)
+        local espCount = (_G.DX_GetVal("ESP_COUNT") == 1)
 
-        local magicHead = 1.0 + (_G.HK_GetVal("MAGIC_HEAD") / 100.0)
-        local magicBody = 1.0 + (_G.HK_GetVal("MAGIC_BODY") / 100.0)
-        local magicLegs = 1.0 + (_G.HK_GetVal("MAGIC_LEGS") / 100.0)
+        local magicHead = 1.0 + (_G.DX_GetVal("MAGIC_HEAD") / 100.0)
+        local magicBody = 1.0 + (_G.DX_GetVal("MAGIC_BODY") / 100.0)
+        local magicLegs = 1.0 + (_G.DX_GetVal("MAGIC_LEGS") / 100.0)
         local BoneScaleMap = {
             ["head"] = magicHead, ["neck_01"] = magicHead,
             ["pelvis"] = magicBody, ["spine_01"] = magicBody, ["spine_02"] = magicBody, ["spine_03"] = magicBody,
@@ -4095,16 +4095,16 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
             ["foot_l"] = magicLegs, ["foot_r"] = magicLegs    
         }
         
-        if self.HK_LastAimState ~= isAiming then
-            self.HK_LastAimState = isAiming
-            self.HK_ForceFOV = true
+        if self.DX_LastAimState ~= isAiming then
+            self.DX_LastAimState = isAiming
+            self.DX_ForceFOV = true
         end
 
         -- Áp dụng FOV (Nếu bật IpadView thì luôn ưu tiên duy trì góc nhìn IpadView khi trượt / đi ván trượt)
         if not isAiming or isSpecialState then
-            if _G.HK_GetVal("IpadView") == 1 then
+            if _G.DX_GetVal("IpadView") == 1 then
                 pcall(function()
-                    local targetTPP = _G.HK_GetVal("IpadViewFOV") or 120
+                    local targetTPP = _G.DX_GetVal("IpadViewFOV") or 120
                     local TPPCamera = self.Object.ThirdPersonCameraComponent
                     if Valid(TPPCamera) then
                         if TPPCamera.FieldOfView ~= targetTPP then TPPCamera.FieldOfView = targetTPP end
@@ -4118,7 +4118,7 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                     end
                 end)
             end
-            self.HK_ForceFOV = false
+            self.DX_ForceFOV = false
         end
 
         local currentTickOS = os_clock()
@@ -4150,98 +4150,98 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                     if Valid(currentWeapon.ShootWeaponEntity) then table.insert(entities, currentWeapon.ShootWeaponEntity) end
                     
                     for _, shootWeaponEntity in ipairs(entities) do
-                        local crosshairScale = _G.HK_GetVal("THU_TAM") / 100.0
-                        local scopeRecoilScale = _G.HK_GetVal("GIAM_RUNG_SCOPE") / 100.0
+                        local crosshairScale = _G.DX_GetVal("THU_TAM") / 100.0
+                        local scopeRecoilScale = _G.DX_GetVal("GIAM_RUNG_SCOPE") / 100.0
                         
                         shootWeaponEntity.GameDeviationFactor = 3.36 - (3.36 * crosshairScale)
                         
-                        -- Cache original gun recoil values in global persistence table _G.HK_WeaponCache
-                        _G.HK_WeaponCache = _G.HK_WeaponCache or {}
+                        -- Cache original gun recoil values in global persistence table _G.DX_WeaponCache
+                        _G.DX_WeaponCache = _G.DX_WeaponCache or {}
                         local objName = tostring(shootWeaponEntity)
-                        local cache = _G.HK_WeaponCache[objName]
+                        local cache = _G.DX_WeaponCache[objName]
                         
                         if not cache then
                             -- Cache ngay khi entity tồn tại, không cần đợi RecoilKick > 0
                             -- (giá trị 0 vẫn được lưu → tránh phải tháo/lắp phụ kiện)
                             cache = {
-                                HK_OrigRecoilKick     = shootWeaponEntity.RecoilKick or 0.0,
-                                HK_OrigAccessoriesV   = shootWeaponEntity.AccessoriesVRecoilFactor or 1.0,
-                                HK_OrigAccessoriesH   = shootWeaponEntity.AccessoriesHRecoilFactor or 1.0,
-                                HK_OrigRecoilKickADS  = shootWeaponEntity.RecoilKickADS or 0.20,
-                                HK_OrigModStand       = shootWeaponEntity.RecoilModifierStand or 1.0,
-                                HK_OrigModCrouch      = shootWeaponEntity.RecoilModifierCrouch or 1.0,
-                                HK_OrigModProne       = shootWeaponEntity.RecoilModifierProne or 1.0,
-                                HK_OrigAnimKick       = shootWeaponEntity.AnimationKick or 0.0,
-                                HK_OrigWeaponCamShakeScale = shootWeaponEntity.ShotCameraShakeScale or 1.0,
-                                HK_Initialized        = false  -- đánh dấu chưa có giá trị thật
+                                DX_OrigRecoilKick     = shootWeaponEntity.RecoilKick or 0.0,
+                                DX_OrigAccessoriesV   = shootWeaponEntity.AccessoriesVRecoilFactor or 1.0,
+                                DX_OrigAccessoriesH   = shootWeaponEntity.AccessoriesHRecoilFactor or 1.0,
+                                DX_OrigRecoilKickADS  = shootWeaponEntity.RecoilKickADS or 0.20,
+                                DX_OrigModStand       = shootWeaponEntity.RecoilModifierStand or 1.0,
+                                DX_OrigModCrouch      = shootWeaponEntity.RecoilModifierCrouch or 1.0,
+                                DX_OrigModProne       = shootWeaponEntity.RecoilModifierProne or 1.0,
+                                DX_OrigAnimKick       = shootWeaponEntity.AnimationKick or 0.0,
+                                DX_OrigWeaponCamShakeScale = shootWeaponEntity.ShotCameraShakeScale or 1.0,
+                                DX_Initialized        = false  -- đánh dấu chưa có giá trị thật
                             }
                             if shootWeaponEntity.RecoilInfo then
-                                cache.HK_OrigVRecoilMin  = shootWeaponEntity.RecoilInfo.VerticalRecoilMin or 0.0
-                                cache.HK_OrigVRecoilMax  = shootWeaponEntity.RecoilInfo.VerticalRecoilMax or 0.0
-                                cache.HK_OrigSpeedV      = shootWeaponEntity.RecoilInfo.RecoilSpeedVertical or 0.0
-                                cache.HK_OrigSpeedH      = shootWeaponEntity.RecoilInfo.RecoilSpeedHorizontal or 0.0
-                                cache.HK_OrigRecoveryMax = shootWeaponEntity.RecoilInfo.VerticalRecoveryMax or 0.0
-                                cache.HK_OrigShotCamShakeScale = shootWeaponEntity.RecoilInfo.ShotCameraShakeScale or 1.0
+                                cache.DX_OrigVRecoilMin  = shootWeaponEntity.RecoilInfo.VerticalRecoilMin or 0.0
+                                cache.DX_OrigVRecoilMax  = shootWeaponEntity.RecoilInfo.VerticalRecoilMax or 0.0
+                                cache.DX_OrigSpeedV      = shootWeaponEntity.RecoilInfo.RecoilSpeedVertical or 0.0
+                                cache.DX_OrigSpeedH      = shootWeaponEntity.RecoilInfo.RecoilSpeedHorizontal or 0.0
+                                cache.DX_OrigRecoveryMax = shootWeaponEntity.RecoilInfo.VerticalRecoveryMax or 0.0
+                                cache.DX_OrigShotCamShakeScale = shootWeaponEntity.RecoilInfo.ShotCameraShakeScale or 1.0
                             end
-                            _G.HK_WeaponCache[objName] = cache
+                            _G.DX_WeaponCache[objName] = cache
                         end
 
                         -- Cập nhật cache khi game điền giá trị thật vào (thường sau vài frame)
-                        if cache and not cache.HK_Initialized then
+                        if cache and not cache.DX_Initialized then
                             local kickNow = shootWeaponEntity.RecoilKick or 0.0
                             local vMinNow = (shootWeaponEntity.RecoilInfo and shootWeaponEntity.RecoilInfo.VerticalRecoilMin) or 0.0
                             if kickNow > 0.0 or vMinNow > 0.0 then
-                                cache.HK_OrigRecoilKick    = kickNow
-                                cache.HK_OrigAccessoriesV  = shootWeaponEntity.AccessoriesVRecoilFactor or 1.0
-                                cache.HK_OrigAccessoriesH  = shootWeaponEntity.AccessoriesHRecoilFactor or 1.0
-                                cache.HK_OrigRecoilKickADS = shootWeaponEntity.RecoilKickADS or 0.20
-                                cache.HK_OrigModStand      = shootWeaponEntity.RecoilModifierStand or 1.0
-                                cache.HK_OrigModCrouch     = shootWeaponEntity.RecoilModifierCrouch or 1.0
-                                cache.HK_OrigModProne      = shootWeaponEntity.RecoilModifierProne or 1.0
-                                cache.HK_OrigAnimKick      = shootWeaponEntity.AnimationKick or 0.0
-                                cache.HK_OrigWeaponCamShakeScale = shootWeaponEntity.ShotCameraShakeScale or 1.0
+                                cache.DX_OrigRecoilKick    = kickNow
+                                cache.DX_OrigAccessoriesV  = shootWeaponEntity.AccessoriesVRecoilFactor or 1.0
+                                cache.DX_OrigAccessoriesH  = shootWeaponEntity.AccessoriesHRecoilFactor or 1.0
+                                cache.DX_OrigRecoilKickADS = shootWeaponEntity.RecoilKickADS or 0.20
+                                cache.DX_OrigModStand      = shootWeaponEntity.RecoilModifierStand or 1.0
+                                cache.DX_OrigModCrouch     = shootWeaponEntity.RecoilModifierCrouch or 1.0
+                                cache.DX_OrigModProne      = shootWeaponEntity.RecoilModifierProne or 1.0
+                                cache.DX_OrigAnimKick      = shootWeaponEntity.AnimationKick or 0.0
+                                cache.DX_OrigWeaponCamShakeScale = shootWeaponEntity.ShotCameraShakeScale or 1.0
                                 if shootWeaponEntity.RecoilInfo then
-                                    cache.HK_OrigVRecoilMin  = shootWeaponEntity.RecoilInfo.VerticalRecoilMin or 0.0
-                                    cache.HK_OrigVRecoilMax  = shootWeaponEntity.RecoilInfo.VerticalRecoilMax or 0.0
-                                    cache.HK_OrigSpeedV      = shootWeaponEntity.RecoilInfo.RecoilSpeedVertical or 0.0
-                                    cache.HK_OrigSpeedH      = shootWeaponEntity.RecoilInfo.RecoilSpeedHorizontal or 0.0
-                                    cache.HK_OrigRecoveryMax = shootWeaponEntity.RecoilInfo.VerticalRecoveryMax or 0.0
-                                    cache.HK_OrigShotCamShakeScale = shootWeaponEntity.RecoilInfo.ShotCameraShakeScale or 1.0
+                                    cache.DX_OrigVRecoilMin  = shootWeaponEntity.RecoilInfo.VerticalRecoilMin or 0.0
+                                    cache.DX_OrigVRecoilMax  = shootWeaponEntity.RecoilInfo.VerticalRecoilMax or 0.0
+                                    cache.DX_OrigSpeedV      = shootWeaponEntity.RecoilInfo.RecoilSpeedVertical or 0.0
+                                    cache.DX_OrigSpeedH      = shootWeaponEntity.RecoilInfo.RecoilSpeedHorizontal or 0.0
+                                    cache.DX_OrigRecoveryMax = shootWeaponEntity.RecoilInfo.VerticalRecoveryMax or 0.0
+                                    cache.DX_OrigShotCamShakeScale = shootWeaponEntity.RecoilInfo.ShotCameraShakeScale or 1.0
                                 end
-                                cache.HK_Initialized = true
+                                cache.DX_Initialized = true
                             end
                         end
 
-                         if cache and cache.HK_Initialized then
+                         if cache and cache.DX_Initialized then
                               local isADS = self.Object and (self.Object.bIsWeaponAiming == true or self.Object.bIsGunADS == true)
                               local scopeFactor = 1.0
                               if isADS then
-                                  local scopePercent = _G.HK_GetVal("GIAM_RUNG_SCOPE") or 0
+                                  local scopePercent = _G.DX_GetVal("GIAM_RUNG_SCOPE") or 0
                                   scopeFactor = math.max(0.0, 1.0 - (scopePercent / 100.0))
                               end
 
                               -- 2. Tính hệ số giảm giật (NO_RECOIL_100) độc lập hoàn toàn (giới hạn tối đa 50% để tránh lỗi dame)
-                              local recoilPercent = math.min(50, _G.HK_GetVal("NO_RECOIL_100") or 0)
+                              local recoilPercent = math.min(50, _G.DX_GetVal("NO_RECOIL_100") or 0)
                               local recoilFactor = math.max(0.01, 1.0 - (recoilPercent / 100.0))
                               
                               -- Áp dụng giảm giật vào các thông số Recoil
-                              shootWeaponEntity.RecoilKick = (cache.HK_OrigRecoilKick or 0.0) * scopeFactor
-                              shootWeaponEntity.AccessoriesVRecoilFactor = (cache.HK_OrigAccessoriesV or 1.0) * recoilFactor
-                              shootWeaponEntity.AccessoriesHRecoilFactor = (cache.HK_OrigAccessoriesH or 1.0) * recoilFactor
-                              shootWeaponEntity.RecoilKickADS = (cache.HK_OrigRecoilKickADS or 0.20) * scopeFactor
-                              shootWeaponEntity.AnimationKick = (cache.HK_OrigAnimKick or 0.0) * scopeFactor
-                              shootWeaponEntity.ShotCameraShakeScale = (cache.HK_OrigWeaponCamShakeScale or 1.0) * scopeFactor
+                              shootWeaponEntity.RecoilKick = (cache.DX_OrigRecoilKick or 0.0) * scopeFactor
+                              shootWeaponEntity.AccessoriesVRecoilFactor = (cache.DX_OrigAccessoriesV or 1.0) * recoilFactor
+                              shootWeaponEntity.AccessoriesHRecoilFactor = (cache.DX_OrigAccessoriesH or 1.0) * recoilFactor
+                              shootWeaponEntity.RecoilKickADS = (cache.DX_OrigRecoilKickADS or 0.20) * scopeFactor
+                              shootWeaponEntity.AnimationKick = (cache.DX_OrigAnimKick or 0.0) * scopeFactor
+                              shootWeaponEntity.ShotCameraShakeScale = (cache.DX_OrigWeaponCamShakeScale or 1.0) * scopeFactor
                               if shootWeaponEntity.RecoilInfo then
-                                  shootWeaponEntity.RecoilInfo.VerticalRecoilMin = (cache.HK_OrigVRecoilMin or 0.0) * recoilFactor
-                                  shootWeaponEntity.RecoilInfo.VerticalRecoilMax = (cache.HK_OrigVRecoilMax or 0.0) * recoilFactor
-                                  shootWeaponEntity.RecoilInfo.RecoilSpeedVertical = (cache.HK_OrigSpeedV or 0.0) * recoilFactor
-                                  shootWeaponEntity.RecoilInfo.RecoilSpeedHorizontal = (cache.HK_OrigSpeedH or 0.0) * recoilFactor
-                                  shootWeaponEntity.RecoilInfo.VerticalRecoveryMax = (cache.HK_OrigRecoveryMax or 0.0) * recoilFactor
-                                  shootWeaponEntity.RecoilInfo.ShotCameraShakeScale = (cache.HK_OrigShotCamShakeScale or 1.0) * scopeFactor
+                                  shootWeaponEntity.RecoilInfo.VerticalRecoilMin = (cache.DX_OrigVRecoilMin or 0.0) * recoilFactor
+                                  shootWeaponEntity.RecoilInfo.VerticalRecoilMax = (cache.DX_OrigVRecoilMax or 0.0) * recoilFactor
+                                  shootWeaponEntity.RecoilInfo.RecoilSpeedVertical = (cache.DX_OrigSpeedV or 0.0) * recoilFactor
+                                  shootWeaponEntity.RecoilInfo.RecoilSpeedHorizontal = (cache.DX_OrigSpeedH or 0.0) * recoilFactor
+                                  shootWeaponEntity.RecoilInfo.VerticalRecoveryMax = (cache.DX_OrigRecoveryMax or 0.0) * recoilFactor
+                                  shootWeaponEntity.RecoilInfo.ShotCameraShakeScale = (cache.DX_OrigShotCamShakeScale or 1.0) * scopeFactor
                               end
-                              shootWeaponEntity.RecoilModifierStand = (cache.HK_OrigModStand or 1.0) * recoilFactor
-                              shootWeaponEntity.RecoilModifierCrouch = (cache.HK_OrigModCrouch or 1.0) * recoilFactor
-                              shootWeaponEntity.RecoilModifierProne = (cache.HK_OrigModProne or 1.0) * recoilFactor
+                              shootWeaponEntity.RecoilModifierStand = (cache.DX_OrigModStand or 1.0) * recoilFactor
+                              shootWeaponEntity.RecoilModifierCrouch = (cache.DX_OrigModCrouch or 1.0) * recoilFactor
+                              shootWeaponEntity.RecoilModifierProne = (cache.DX_OrigModProne or 1.0) * recoilFactor
                          end
                         
                     end
@@ -4256,11 +4256,11 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                         if Valid(currentWeapon.ShootWeaponEntity) then table.insert(entities, currentWeapon.ShootWeaponEntity) end
                         
                         for _, shootWeaponEntity in ipairs(entities) do
-                            if _G.HK_GetVal("AIMBOT") == 1 then
+                            if _G.DX_GetVal("AIMBOT") == 1 then
                                 if shootWeaponEntity.AutoAimingConfig then
                                     local autoAimConfig = shootWeaponEntity.AutoAimingConfig
-                                    local aimSpeedVal = 3.0 + (3.0 * (_G.HK_GetVal("SPEED_AIMBOT") / 100.0))
-                                    local aimFovVal = 1.5 + (1.5 * (_G.HK_GetVal("FOV_AIMBOT") / 100.0))
+                                    local aimSpeedVal = 3.0 + (3.0 * (_G.DX_GetVal("SPEED_AIMBOT") / 100.0))
+                                    local aimFovVal = 1.5 + (1.5 * (_G.DX_GetVal("FOV_AIMBOT") / 100.0))
                                     
                                     if autoAimConfig.OuterRange then
                                         autoAimConfig.OuterRange.DyingRate = 0.0
@@ -4296,7 +4296,7 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
             _G.TDModTickCount = _G.TDModTickCount + 1
      
-            if not self.HK_NativeESP_Ready then
+            if not self.DX_NativeESP_Ready then
                 pcall(function()
                     for k, markConfig in pairs(package.loaded) do
                         if type(k) == "string" and string_find(k, "ScreenMarkConfig") then
@@ -4381,7 +4381,7 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                         end
                     end
                 end)
-                self.HK_NativeESP_Ready = true
+                self.DX_NativeESP_Ready = true
             end
 
             -- (Spectator HP Bar Customization Removed)
@@ -4410,29 +4410,29 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                             ExecConsoleCmd("r.DeviceLevelUseHighLightMode", "1")
                             ExecConsoleCmd("r.Highlight.Enable", "1")
                         end
-                        if _G.HK_GetVal("NOGRASS") == 1 then ExecConsoleCmd("r.DisableGrassRender", "1") else ExecConsoleCmd("r.DisableGrassRender", "0") end
-                        if _G.HK_GetVal("NOTREES") == 1 then
+                        if _G.DX_GetVal("NOGRASS") == 1 then ExecConsoleCmd("r.DisableGrassRender", "1") else ExecConsoleCmd("r.DisableGrassRender", "0") end
+                        if _G.DX_GetVal("NOTREES") == 1 then
                             ExecConsoleCmd("foliage.DensityScale", "0"); ExecConsoleCmd("r.Foliage.DensityScale", "0")
                             ExecConsoleCmd("foliage.MinimumScreenSize", "10000"); ExecConsoleCmd("r.DisableTreeRender", "1")
                         else
                             ExecConsoleCmd("foliage.DensityScale", "1"); ExecConsoleCmd("r.Foliage.DensityScale", "1")
                             ExecConsoleCmd("foliage.MinimumScreenSize", "0.0001"); ExecConsoleCmd("r.DisableTreeRender", "0")
                         end
-                        if _G.HK_GetVal("NOWATER") == 1 then
+                        if _G.DX_GetVal("NOWATER") == 1 then
                             ExecConsoleCmd("r.Water.SingleLayer.Enable", "0"); ExecConsoleCmd("r.Show.Water", "0")
                             ExecConsoleCmd("r.Show.Translucency", "0"); ExecConsoleCmd("r.DisableWaterRender", "1")
                         else
                             ExecConsoleCmd("r.Water.SingleLayer.Enable", "1"); ExecConsoleCmd("r.Show.Water", "1")
                             ExecConsoleCmd("r.Show.Translucency", "1"); ExecConsoleCmd("r.DisableWaterRender", "0")
                         end
-                        if _G.HK_GetVal("NOFOG") == 1 then
+                        if _G.DX_GetVal("NOFOG") == 1 then
                             ExecConsoleCmd("r.SkyAtmosphere", "0"); ExecConsoleCmd("r.Atmosphere", "0")
                             ExecConsoleCmd("r.Fog", "0"); ExecConsoleCmd("r.VolumetricFog", "0"); ExecConsoleCmd("r.DisableSkyRender", "1")
                         else
                             ExecConsoleCmd("r.SkyAtmosphere", "1"); ExecConsoleCmd("r.Atmosphere", "1")
                             ExecConsoleCmd("r.Fog", "1"); ExecConsoleCmd("r.VolumetricFog", "1"); ExecConsoleCmd("r.DisableSkyRender", "0")
                         end
-                        if _G.HK_GetVal("BLACK_SKY") == 1 then
+                        if _G.DX_GetVal("BLACK_SKY") == 1 then
                             ExecConsoleCmd("r.CylinderMaxDrawHeight", "9999")
                         else
                             ExecConsoleCmd("r.CylinderMaxDrawHeight", "0")
@@ -4452,7 +4452,7 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
                         -- Chỉ chạy ESP và các cập nhật khác ở tần số ~60Hz để tiết kiệm CPU
             if _G.TDModTickCount % 2 == 0 then
-                _G.HK_HitboxModsThisFrame = 0 -- Reset số lượng mod hitbox trên frame này
+                _G.DX_HitboxModsThisFrame = 0 -- Reset số lượng mod hitbox trên frame này
                 
                 local allPlayers = GameplayData.GetAllPlayerCharacters and GameplayData.GetAllPlayerCharacters() or {}
                 local PlayerController = GameplayData.GetPlayerController()
@@ -4463,9 +4463,9 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                     localPlayerLoc = LocalPlayer:K2_GetActorLocation()
                 end
 
-                if not _G.HK_Active_Marks_Cache then _G.HK_Active_Marks_Cache = {} end
+                if not _G.DX_Active_Marks_Cache then _G.DX_Active_Marks_Cache = {} end
 
-                for cacheKey, cacheData in pairs(_G.HK_Active_Marks_Cache) do
+                for cacheKey, cacheData in pairs(_G.DX_Active_Marks_Cache) do
                     local shouldRemoveHit1 = false
                     local shouldRemoveHit2 = false
                     local shouldRemoveSpecHp = false
@@ -4508,7 +4508,7 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                     end)
                     
                     if not cacheData.hpMark and not cacheData.distMark then
-                        _G.HK_Active_Marks_Cache[cacheKey] = nil
+                        _G.DX_Active_Marks_Cache[cacheKey] = nil
                     end
                 end
 
@@ -4529,9 +4529,9 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                     globalVisColor = GetCurrentWallVisibleColor()
                     globalPlayerOccludedColor = GetCurrentWallOccludedColor(false)
                     globalAiOccludedColor = GetCurrentWallOccludedColor(true)
-                    globalColorHash = tostring((_G.HK_Settings and _G.HK_Settings.WALL_VISIBLE_COLOR) or 3) .. "_"
-                                   .. tostring((_G.HK_Settings and _G.HK_Settings.WALL_OCCLUDED_COLOR) or 2) .. "_"
-                                   .. tostring((_G.HK_Settings and _G.HK_Settings.WALL_OCCLUDED_AI_COLOR) or 7)
+                    globalColorHash = tostring((_G.DX_Settings and _G.DX_Settings.WALL_VISIBLE_COLOR) or 3) .. "_"
+                                   .. tostring((_G.DX_Settings and _G.DX_Settings.WALL_OCCLUDED_COLOR) or 2) .. "_"
+                                   .. tostring((_G.DX_Settings and _G.DX_Settings.WALL_OCCLUDED_AI_COLOR) or 7)
                 end
 
                 for _, enemy in pairs(allPlayers) do
@@ -4575,16 +4575,16 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                         end
                         
                         if not isEnemyDead then
-                            if enemy.HK_IsAICached == nil then enemy.HK_IsAICached = CheckIsAI(enemy) end
+                            if enemy.DX_IsAICached == nil then enemy.DX_IsAICached = CheckIsAI(enemy) end
                             
                             local distM = 0
-                            enemy.HK_CachedActorLoc = nil  -- reset mỗi frame
+                            enemy.DX_CachedActorLoc = nil  -- reset mỗi frame
                             if type(LocalPlayer.GetDistanceTo) == "function" then
                                 distM = LocalPlayer:GetDistanceTo(enemy) / 100
                             elseif localPlayerLoc then
                                 local eLoc = type(enemy.K2_GetActorLocation) == "function" and enemy:K2_GetActorLocation()
                                 if eLoc then
-                                    enemy.HK_CachedActorLoc = eLoc  -- [FIX LAG] Cache lại để ESP Box dùng không phải gọi lại
+                                    enemy.DX_CachedActorLoc = eLoc  -- [FIX LAG] Cache lại để ESP Box dùng không phải gọi lại
                                     distM = math_sqrt((localPlayerLoc.X-eLoc.X)^2 + (localPlayerLoc.Y-eLoc.Y)^2 + (localPlayerLoc.Z-eLoc.Z)^2) / 100
                                 end
                             end
@@ -4628,12 +4628,12 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                             end
 
                             if distM <= 600 then
-                                if enemy.HK_IsAICached then aiCount = aiCount + 1 else realCount = realCount + 1 end
+                                if enemy.DX_IsAICached then aiCount = aiCount + 1 else realCount = realCount + 1 end
                             end
 
-                            if not enemy.HK_NextMeshUpdateTime or currentTickOS > enemy.HK_NextMeshUpdateTime then
-                                enemy.HK_NextMeshUpdateTime = currentTickOS + 1.5 + (math_random() * 1.0)
-                                local meshes = enemy.HK_CachedMeshes or {}
+                            if not enemy.DX_NextMeshUpdateTime or currentTickOS > enemy.DX_NextMeshUpdateTime then
+                                enemy.DX_NextMeshUpdateTime = currentTickOS + 1.5 + (math_random() * 1.0)
+                                local meshes = enemy.DX_CachedMeshes or {}
                                 local existing = {}
                                 for _, m in ipairs(meshes) do existing[m] = true end
                                 if Valid(enemy.Mesh) and not existing[enemy.Mesh] then
@@ -4655,17 +4655,17 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                                         end
                                     end)
                                 end
-                                enemy.HK_CachedMeshes = meshes
+                                enemy.DX_CachedMeshes = meshes
                             end
                             
-                            local meshes = enemy.HK_CachedMeshes
+                            local meshes = enemy.DX_CachedMeshes
                             local currentMeshCount = #meshes
                             local isMeshChanged = (enemy.LastAuraMeshes and #enemy.LastAuraMeshes ~= currentMeshCount)
                             
                             if isWallhackGlobalOn then
                                 local visColor = globalVisColor
-                                local occludedColor = enemy.HK_IsAICached and globalAiOccludedColor or globalPlayerOccludedColor
-                                local auraHash = (enemy.HK_IsAICached and "ai_" or "player_") .. globalColorHash
+                                local occludedColor = enemy.DX_IsAICached and globalAiOccludedColor or globalPlayerOccludedColor
+                                local auraHash = (enemy.DX_IsAICached and "ai_" or "player_") .. globalColorHash
                                 if isMeshChanged or enemy.LastAuraHash ~= auraHash or not enemy.WallhackApplied then
                                     pcall(function()
                                         if enemy.LastAuraMeshes then
@@ -4697,7 +4697,7 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                                 end
                             end
 
-                            local knockChanged = (enemy.HK_LastKnockState ~= isEnemyKnocked)
+                            local knockChanged = (enemy.DX_LastKnockState ~= isEnemyKnocked)
                             if knockChanged then
                                 pcall(function()
                                     if InGameMarkTools then 
@@ -4721,13 +4721,13 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                                 end)
                                 enemy.bHasTDNativeHPBar = false; enemy.bHasTDNativeHitmark = false; enemy.bHasTDSpectatorHPBar = false
                                 local eStr = tostring(enemy)
-                                if _G.HK_Active_Marks_Cache[eStr] then
-                                    _G.HK_Active_Marks_Cache[eStr].hpMark = nil
-                                    _G.HK_Active_Marks_Cache[eStr].distMark = nil
-                                    _G.HK_Active_Marks_Cache[eStr].specHpMark = nil
+                                if _G.DX_Active_Marks_Cache[eStr] then
+                                    _G.DX_Active_Marks_Cache[eStr].hpMark = nil
+                                    _G.DX_Active_Marks_Cache[eStr].distMark = nil
+                                    _G.DX_Active_Marks_Cache[eStr].specHpMark = nil
                                 end
                             end
-                            enemy.HK_LastKnockState = isEnemyKnocked
+                            enemy.DX_LastKnockState = isEnemyKnocked
 
                             local dynamicScale = math_max(0.5, 0.95 - (distM / 400))
 
@@ -4742,8 +4742,8 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                                             if enemy.NativeDistMark then
                                                 enemy.bHasTDNativeHitmark = true
                                                 local eStr = tostring(enemy)
-                                                if not _G.HK_Active_Marks_Cache[eStr] then _G.HK_Active_Marks_Cache[eStr] = { actor = enemy } end
-                                                _G.HK_Active_Marks_Cache[eStr].distMark = enemy.NativeDistMark
+                                                if not _G.DX_Active_Marks_Cache[eStr] then _G.DX_Active_Marks_Cache[eStr] = { actor = enemy } end
+                                                _G.DX_Active_Marks_Cache[eStr].distMark = enemy.NativeDistMark
                                             end
                                         end
                                     end)
@@ -4763,7 +4763,7 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                                     end)
                                     enemy.NativeDistMark = nil; enemy.bHasTDNativeHitmark = false
                                     local eStr = tostring(enemy)
-                                    if _G.HK_Active_Marks_Cache[eStr] then _G.HK_Active_Marks_Cache[eStr].distMark = nil end
+                                    if _G.DX_Active_Marks_Cache[eStr] then _G.DX_Active_Marks_Cache[eStr].distMark = nil end
                                 end
                             end
 
@@ -4774,8 +4774,8 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                                             enemy.NativeHPBarMark = InGameMarkTools.ClientAddMapMark(1006, FVecZero, 0, "", 4, enemy)
                                             enemy.bHasTDNativeHPBar = true
                                             local eStr = tostring(enemy)
-                                            if not _G.HK_Active_Marks_Cache[eStr] then _G.HK_Active_Marks_Cache[eStr] = { actor = enemy } end
-                                            _G.HK_Active_Marks_Cache[eStr].hpMark = enemy.NativeHPBarMark
+                                            if not _G.DX_Active_Marks_Cache[eStr] then _G.DX_Active_Marks_Cache[eStr] = { actor = enemy } end
+                                            _G.DX_Active_Marks_Cache[eStr].hpMark = enemy.NativeHPBarMark
                                         end
                                     end)
                                 end
@@ -4791,7 +4791,7 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                                     end)
                                     enemy.NativeHPBarMark = nil; enemy.bHasTDNativeHPBar = false
                                     local eStr = tostring(enemy)
-                                    if _G.HK_Active_Marks_Cache[eStr] then _G.HK_Active_Marks_Cache[eStr].hpMark = nil end
+                                    if _G.DX_Active_Marks_Cache[eStr] then _G.DX_Active_Marks_Cache[eStr].hpMark = nil end
                                 end
                             end
 
@@ -4800,11 +4800,11 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                             -- TỐI ƯU HÓA: Chỉ kiểm tra Vũ khí/Tư thế và LineOfSight mỗi 0.4 giây
                             local enemyId = type(enemy.GetUniqueID) == "function" and enemy:GetUniqueID() or tostring(enemy)
                             if espWeaponStance and Valid(MyHUD) and distM <= 250 then
-                                if not enemy.HK_LastStanceUpdateTime or currentTickOS > enemy.HK_LastStanceUpdateTime + 0.4 then
-                                    enemy.HK_LastStanceUpdateTime = currentTickOS
+                                if not enemy.DX_LastStanceUpdateTime or currentTickOS > enemy.DX_LastStanceUpdateTime + 0.4 then
+                                    enemy.DX_LastStanceUpdateTime = currentTickOS
                                     
                                     -- 1. Lấy thông tin vũ khí
-                                    if not enemy.HK_LastWeaponTime or currentTickOS > enemy.HK_LastWeaponTime + 1.5 then
+                                    if not enemy.DX_LastWeaponTime or currentTickOS > enemy.DX_LastWeaponTime + 1.5 then
                                         local eWeapon = enemy.CurrentWeapon
                                         if not Valid(eWeapon) and type(enemy.GetCurrentWeapon) == "function" then
                                             eWeapon = enemy:GetCurrentWeapon()
@@ -4817,8 +4817,8 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                                         if Valid(eWeapon) and type(eWeapon.GetWeaponName) == "function" then
                                             weaponName = eWeapon:GetWeaponName() or "Tay Không"
                                         end
-                                        enemy.HK_CachedWeaponName = tostring(weaponName)
-                                        enemy.HK_LastWeaponTime = currentTickOS
+                                        enemy.DX_CachedWeaponName = tostring(weaponName)
+                                        enemy.DX_LastWeaponTime = currentTickOS
                                     end
 
                                     -- 2. Lấy thông tin Động tác / Tư thế (Stance)
@@ -4830,7 +4830,7 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                                         poseText = "Nằm"
                                     end
 
-                                    enemy.HK_CachedStanceText = string.format("%s [%s]", enemy.HK_CachedWeaponName or "Tay Không", poseText)
+                                    enemy.DX_CachedStanceText = string.format("%s [%s]", enemy.DX_CachedWeaponName or "Tay Không", poseText)
 
                                     -- 3. Kiểm tra Visibility (Tận dụng cache aimbot)
                                     local isHidden = true
@@ -4846,24 +4846,24 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                                     end
                                     
                                     local textColor = isHidden and COLOR_RED or COLOR_GREEN
-                                    if _G.HK_GetVal("THREAT_ESP") == 1 and not isHidden and enemy.bIsWeaponFiring == true then
+                                    if _G.DX_GetVal("THREAT_ESP") == 1 and not isHidden and enemy.bIsWeaponFiring == true then
                                         textColor = {R=255, G=0, B=0, A=255}
                                     end
-                                    enemy.HK_CachedStanceColor = textColor
+                                    enemy.DX_CachedStanceColor = textColor
                                 end
 
-                                if enemy.HK_CachedStanceText then
-                                    local textColor = enemy.HK_CachedStanceColor or COLOR_RED
-                                    if _G.HK_GetVal("THREAT_ESP") == 1 and enemy.bIsWeaponFiring == true then
+                                if enemy.DX_CachedStanceText then
+                                    local textColor = enemy.DX_CachedStanceColor or COLOR_RED
+                                    if _G.DX_GetVal("THREAT_ESP") == 1 and enemy.bIsWeaponFiring == true then
                                         local flashOn = (math_floor(currentTickOS * 6) % 2 == 0)
                                         textColor = flashOn and {R=255, G=0, B=0, A=255} or {R=80, G=0, B=0, A=255}
                                     end
-                                    MyHUD:AddDebugText(enemy.HK_CachedStanceText, enemy, 0.5, {X=0, Y=0, Z=-110}, {X=0, Y=0, Z=-110}, textColor, true, false, true, nil, dynamicScale, true)
+                                    MyHUD:AddDebugText(enemy.DX_CachedStanceText, enemy, 0.5, {X=0, Y=0, Z=-110}, {X=0, Y=0, Z=-110}, textColor, true, false, true, nil, dynamicScale, true)
                                 end
                             end
 
                             -- TỐI ƯU HÓA: Tích hợp Threat Assessment ESP trực tiếp vào vòng lặp chính
-                            if _G.HK_GetVal("THREAT_ESP") == 1 and distM <= 800 and not isEnemyKnocked then
+                            if _G.DX_GetVal("THREAT_ESP") == 1 and distM <= 800 and not isEnemyKnocked then
                                 local isVisible = true
                                 _G.AimTouchVisCache = _G.AimTouchVisCache or {}
                                 local cached = _G.AimTouchVisCache[enemyId]
@@ -4955,7 +4955,7 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                             end
 
                             -- [MỚI] LOGIC ESP KHUNG BOX
-                            local showFrameUI = (_G.HK_GetVal("ESP_BOX") == 1 or _G.HK_GetVal("EspLoai5") == 1)
+                            local showFrameUI = (_G.DX_GetVal("ESP_BOX") == 1 or _G.DX_GetVal("EspLoai5") == 1)
                             if showFrameUI then
                                 local show = true
                                 if enemy.HealthStatus and SecurityCommonUtils and SecurityCommonUtils.IsHealthStatusAlive then 
@@ -4964,7 +4964,7 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                                 
                                 -- [FIX LAG - Patch 4.5]: Tái sử dụng vị trí đã tính ở trên thay vì gọi K2_GetActorLocation() lại lần nữa
                                 -- K2_GetActorLocation() là native call tốn CPU, gọi 2 lần/enemy mỗi 2 tick khi đông người gây lag
-                                local enemyLoc = enemy.HK_CachedActorLoc  -- Dùng cache từ bước tính distM
+                                local enemyLoc = enemy.DX_CachedActorLoc  -- Dùng cache từ bước tính distM
                                 if not enemyLoc then
                                     enemyLoc = type(enemy.K2_GetActorLocation) == "function" and enemy:K2_GetActorLocation() or nil
                                 end
@@ -4979,8 +4979,8 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                                         if enemy.Replay_SetVisiableOfFrameUI then enemy:Replay_SetVisiableOfFrameUI(true) end
                                         
                                         local hpRatio = currentHp / maxHp
-                                        if not enemy.HK_LastHPBoxRatio or enemy.HK_LastHPBoxRatio ~= hpRatio then
-                                            enemy.HK_LastHPBoxRatio = hpRatio
+                                        if not enemy.DX_LastHPBoxRatio or enemy.DX_LastHPBoxRatio ~= hpRatio then
+                                            enemy.DX_LastHPBoxRatio = hpRatio
                                             if enemy.Replay_UpdateEnemyFrameUI then enemy:Replay_UpdateEnemyFrameUI(hpRatio) end
                                         end
                                         
@@ -5018,34 +5018,34 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
                                 if not enemyMesh.LastHitboxUpdateVersion 
                                    or enemyMesh.LastHitboxUpdateVersion ~= _G.MagicUpdateVersion 
-                                   or enemyMesh.HK_LastAppliedScaleActive ~= desiredScaleActive then
+                                   or enemyMesh.DX_LastAppliedScaleActive ~= desiredScaleActive then
                                     enemyMesh.bIsTDHitboxModded = false
                                 end
                                 
                                 -- Bộ đếm kiểm tra Time-Slicing
                                 if not enemyMesh.bIsTDHitboxModded then
-                                    if (_G.HK_HitboxModsThisFrame or 0) >= 1 then
+                                    if (_G.DX_HitboxModsThisFrame or 0) >= 1 then
                                         -- Đã đủ hạn ngạch mod của frame này, hoãn sang tick sau
                                         goto skip_hitbox
                                     end
-                                    _G.HK_HitboxModsThisFrame = (_G.HK_HitboxModsThisFrame or 0) + 1
+                                    _G.DX_HitboxModsThisFrame = (_G.DX_HitboxModsThisFrame or 0) + 1
                                     
                                     pcall(function()
                                         local PhysicsAsset = enemyMesh.PhysicsAssetOverride
                                         if not Valid(PhysicsAsset) and enemyMesh.SkeletalMesh then PhysicsAsset = enemyMesh.SkeletalMesh.PhysicsAsset end
 
                                         if Valid(PhysicsAsset) and PhysicsAsset.SkeletalBodySetups then
-                                            if not _G.HK_OrigHitboxes then _G.HK_OrigHitboxes = {} end
+                                            if not _G.DX_OrigHitboxes then _G.DX_OrigHitboxes = {} end
                                             local PhysAssetName = ""
                                             pcall(function() PhysAssetName = PhysicsAsset:GetName() end)
                                             if PhysAssetName == "" then PhysAssetName = "DefaultPhys" end
                                             
-                                            if not _G.HK_OrigHitboxes[PhysAssetName] then 
-                                                _G.HK_OrigHitboxes[PhysAssetName] = {} 
+                                            if not _G.DX_OrigHitboxes[PhysAssetName] then 
+                                                _G.DX_OrigHitboxes[PhysAssetName] = {} 
                                             end
-                                            local OrigHitboxData = _G.HK_OrigHitboxes[PhysAssetName]
+                                            local OrigHitboxData = _G.DX_OrigHitboxes[PhysAssetName]
 
-                                            if not _G.HK_ModdedPhysAssets then _G.HK_ModdedPhysAssets = {} end
+                                            if not _G.DX_ModdedPhysAssets then _G.DX_ModdedPhysAssets = {} end
                                             
                                             local SkeletalBodySetups = PhysicsAsset.SkeletalBodySetups
                                             for i = 1, 50 do 
@@ -5131,7 +5131,7 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                                                     end
                                                 end
                                             end
-                                            _G.HK_ModdedPhysAssets[PhysAssetName] = _G.MagicUpdateVersion
+                                            _G.DX_ModdedPhysAssets[PhysAssetName] = _G.MagicUpdateVersion
                                         end
                                         
                                         pcall(function() 
@@ -5142,7 +5142,7 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                                     end)
                                     enemyMesh.bIsTDHitboxModded = true
                                     enemyMesh.LastHitboxUpdateVersion = _G.MagicUpdateVersion
-                                    enemyMesh.HK_LastAppliedScaleActive = desiredScaleActive
+                                    enemyMesh.DX_LastAppliedScaleActive = desiredScaleActive
                                 end
                             end
                             ::skip_hitbox::
@@ -5190,8 +5190,8 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                             -- [FIX LAG - Patch 4.5]: Throttle vẽ HUD 0.3s/lần thay vì mỗi 2 tick
                             -- AddDebugText gọi liên tục gây drop FPS đặc biệt khi đông người
                             local curCountTime = os.clock()
-                            if not _G.HK_LastEnemyCountDrawTime or (curCountTime - _G.HK_LastEnemyCountDrawTime) >= 0.3 then
-                                _G.HK_LastEnemyCountDrawTime = curCountTime
+                            if not _G.DX_LastEnemyCountDrawTime or (curCountTime - _G.DX_LastEnemyCountDrawTime) >= 0.3 then
+                                _G.DX_LastEnemyCountDrawTime = curCountTime
                                 local totalEnemies = realCount + aiCount
                                 local text = string.format("Kẻ Địch Xung Quanh: %d", totalEnemies)
                                 MyHUD:AddDebugText(text, LocalPlayer, 0.5, FVecZero, FVecZero, COLOR_RED, true, false, true, nil, 0.8, true)
@@ -5203,7 +5203,7 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                 -- ==========================================================
                 -- [LOGIC ESP BOM VVIP 7.0] - Gốc & Hoàn Hảo (Chuẩn Code Đầu)
                 -- ==========================================================
-                if _G.HK_GetVal("EspBomMaster") == 1 and (_G.HK_GetVal("EspItemBom") == 1 or _G.HK_GetVal("EspActiveBom") == 1) then
+                if _G.DX_GetVal("EspBomMaster") == 1 and (_G.DX_GetVal("EspItemBom") == 1 or _G.DX_GetVal("EspActiveBom") == 1) then
                     pcall(function()
                         if Valid(MyHUD) then
                             if not _G.CachedGameplayStatics then _G.CachedGameplayStatics = import("GameplayStatics") end
@@ -5226,10 +5226,10 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                                     
                                     -- [FIX LAG - Patch 4.5]: WeakTable Cache - Bỏ qua actor đã biết KHÔNG phải bom (giảm 99% tostring spam)
                                     -- Lua GC tự dọn khi actor bị destroy, không rò RAM
-                                    if not _G.HK_BombCacheInit then
-                                        _G.HK_NonBombCache = setmetatable({}, { __mode = "k" })
-                                        _G.HK_BombCache    = setmetatable({}, { __mode = "k" })
-                                        _G.HK_BombCacheInit = true
+                                    if not _G.DX_BombCacheInit then
+                                        _G.DX_NonBombCache = setmetatable({}, { __mode = "k" })
+                                        _G.DX_BombCache    = setmetatable({}, { __mode = "k" })
+                                        _G.DX_BombCacheInit = true
                                     end
                                     
                                     if allActors then
@@ -5240,9 +5240,9 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                                                 
                                                 if not isPendingKill then
                                                     -- Kiểm tra cache trước: nếu đã biết là KHÔNG phải bom → bỏ qua ngay
-                                                    if _G.HK_NonBombCache[actor] then goto bomb_continue end
+                                                    if _G.DX_NonBombCache[actor] then goto bomb_continue end
                                                     
-                                                    local isKnownBomb = _G.HK_BombCache[actor]
+                                                    local isKnownBomb = _G.DX_BombCache[actor]
                                                     local nameLower = nil
                                                     local bType = 0
                                                     
@@ -5260,9 +5260,9 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                                                         elseif string.find(nameLower, "grenade") then bType = 1 end
                                                         
                                                         if bType > 0 then
-                                                            _G.HK_BombCache[actor] = bType  -- Lưu cache bom
+                                                            _G.DX_BombCache[actor] = bType  -- Lưu cache bom
                                                         else
-                                                            _G.HK_NonBombCache[actor] = true  -- Lưu cache KHÔNG phải bom
+                                                            _G.DX_NonBombCache[actor] = true  -- Lưu cache KHÔNG phải bom
                                                             goto bomb_continue
                                                         end
                                                     end -- isKnownBomb
@@ -5450,8 +5450,8 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                                     end
                                 end
 
-                                if _G.HK_GetVal("EspItemBom") == 1 then DrawBombs(_G.CachedItemBombs, true, 50) end
-                                if _G.HK_GetVal("EspActiveBom") == 1 then DrawBombs(_G.CachedActiveBombs, false, 150) end
+                                if _G.DX_GetVal("EspItemBom") == 1 then DrawBombs(_G.CachedItemBombs, true, 50) end
+                                if _G.DX_GetVal("EspActiveBom") == 1 then DrawBombs(_G.CachedActiveBombs, false, 150) end
                             end
                         end
                     end)
@@ -5460,7 +5460,7 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                 -- ==========================================================
                 -- [LOGIC ESP XE - VEHICLE ESP VVIP]
                 -- ==========================================================
-                if _G.HK_GetVal("EspVehicle") == 1 then
+                if _G.DX_GetVal("EspVehicle") == 1 then
                     pcall(function()
                         if Valid(MyHUD) then
                             if not _G.CachedGameplayStatics then _G.CachedGameplayStatics = import("GameplayStatics") end
@@ -5527,13 +5527,13 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                                             
                                             if not isPendingKill then
                                                 local isShow = false
-                                                if item.name == "Dacia" then isShow = (_G.HK_GetVal("EspVeh_Dacia") == 1)
-                                                elseif item.name == "UAZ" then isShow = (_G.HK_GetVal("EspVeh_UAZ") == 1)
-                                                elseif item.name == "Buggy" then isShow = (_G.HK_GetVal("EspVeh_Buggy") == 1)
-                                                elseif item.name == "Coupe RB" then isShow = (_G.HK_GetVal("EspVeh_Coupe") == 1)
-                                                elseif item.name == "Mirado" then isShow = (_G.HK_GetVal("EspVeh_Mirado") == 1)
-                                                elseif item.name == "Motor" or item.name == "Scooter" then isShow = (_G.HK_GetVal("EspVeh_Motor") == 1)
-                                                else isShow = (_G.HK_GetVal("EspVeh_Other") == 1) end
+                                                if item.name == "Dacia" then isShow = (_G.DX_GetVal("EspVeh_Dacia") == 1)
+                                                elseif item.name == "UAZ" then isShow = (_G.DX_GetVal("EspVeh_UAZ") == 1)
+                                                elseif item.name == "Buggy" then isShow = (_G.DX_GetVal("EspVeh_Buggy") == 1)
+                                                elseif item.name == "Coupe RB" then isShow = (_G.DX_GetVal("EspVeh_Coupe") == 1)
+                                                elseif item.name == "Mirado" then isShow = (_G.DX_GetVal("EspVeh_Mirado") == 1)
+                                                elseif item.name == "Motor" or item.name == "Scooter" then isShow = (_G.DX_GetVal("EspVeh_Motor") == 1)
+                                                else isShow = (_G.DX_GetVal("EspVeh_Other") == 1) end
 
                                                 if isShow then
                                                     local distM = 0
@@ -5575,7 +5575,7 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                 -- ==========================================================
                 -- [LOGIC ESP VẬT PHẨM - ITEM ESP VVIP]
                 -- ==========================================================
-                if _G.HK_GetVal("EspItemMaster") == 1 then
+                if _G.DX_GetVal("EspItemMaster") == 1 then
                     pcall(function()
                         if Valid(MyHUD) then
                             if not _G.CachedGameplayStatics then _G.CachedGameplayStatics = import("GameplayStatics") end
@@ -5661,22 +5661,22 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                                                     local matchedKeyword = nil
                                                     local mapping = nil
                                                     
-                                                    if itemID and _G.HK_WeaponMap[itemID] then
-                                                        mapping = _G.HK_WeaponMap[itemID]
+                                                    if itemID and _G.DX_WeaponMap[itemID] then
+                                                        mapping = _G.DX_WeaponMap[itemID]
                                                     else
-                                                        for _, kw in ipairs(_G.HK_OrderedKeywords) do
+                                                        for _, kw in ipairs(_G.DX_OrderedKeywords) do
                                                             if string.find(nameLower, kw, 1, true) then
                                                                 matchedKeyword = kw
                                                                 break
                                                             end
                                                         end
                                                         if matchedKeyword then
-                                                            mapping = _G.HK_WeaponMap[matchedKeyword]
+                                                            mapping = _G.DX_WeaponMap[matchedKeyword]
                                                         end
                                                     end
                                                     
                                                     if mapping then
-                                                        if _G.HK_GetVal(mapping.cat) == 1 and _G.HK_GetVal(mapping.key) == 1 then
+                                                        if _G.DX_GetVal(mapping.cat) == 1 and _G.DX_GetVal(mapping.key) == 1 then
                                                             table.insert(activeItems, {
                                                                 act = pickup,
                                                                 name = mapping.name,
@@ -5692,7 +5692,7 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                                 end
 
                                 if _G.CachedItems then
-                                    local maxItemDist = _G.HK_GetVal("EspItem_Dist") or 150
+                                    local maxItemDist = _G.DX_GetVal("EspItem_Dist") or 150
                                     for _, item in ipairs(_G.CachedItems) do
                                         local pickup = item.act
                                         if slua.isValid(pickup) and not pickup.bHidden then
@@ -5735,7 +5735,7 @@ end
 function BRPlayerCharacterBase:ctor()
     self.bHasShownDevNotice = false 
     self.bHasShownExpiredNotice = false 
-    self.HK_NativeESP_Ready = false
+    self.DX_NativeESP_Ready = false
     self.bHasShownWelcomeNotice = false
 end
 
@@ -5794,13 +5794,13 @@ function BRPlayerCharacterBase:ReceiveBeginPlay()
 
     if isLocalPlayer then
         pcall(function()
-            _G.HK_Settings = _G.HK_Settings or {}
-            _G.HK_Settings.FAKE_HWID = 1       -- Đảm bảo luôn bật
-            if HK_RegenerateAllFakeData then
-                HK_RegenerateAllFakeData()      -- Sinh dữ liệu giả HOÀN TOÀN MỚI cho trận này
+            _G.DX_Settings = _G.DX_Settings or {}
+            _G.DX_Settings.FAKE_HWID = 1       -- Đảm bảo luôn bật
+            if DX_RegenerateAllFakeData then
+                DX_RegenerateAllFakeData()      -- Sinh dữ liệu giả HOÀN TOÀN MỚI cho trận này
             end
-            if _G.HK_InitializeHWIDHook then
-                _G.HK_InitializeHWIDHook()      -- Cài hook ngay khi vào trận
+            if _G.DX_InitializeHWIDHook then
+                _G.DX_InitializeHWIDHook()      -- Cài hook ngay khi vào trận
             end
         end)
 
@@ -5845,7 +5845,7 @@ function BRPlayerCharacterBase:ReceiveEndPlay(EndPlayReason)
         _G.UpdateMyKillCounter = false
 
         -- 7. Dọn bộ nhớ so sánh trạng thái súng aimbot
-        _G.HK_Shotgun_LastFireTime = nil
+        _G.DX_Shotgun_LastFireTime = nil
         _lastKCWeaponID = nil
         _lastKCSkinID = nil
     end)
@@ -5975,7 +5975,7 @@ end
 
 function BRPlayerCharacterBase:OnLanded()
   printf("BRPlayerCharacterBase:OnLanded PlayerKey:%d", self.PlayerKey)
-  if _G.HK_GetVal("NO_LANDING_LAG") == 1 then
+  if _G.DX_GetVal("NO_LANDING_LAG") == 1 then
     pcall(function()
       if slua.isValid(self.Mesh) then
         local animIns = self.Mesh:GetAnimInstance()
@@ -6182,7 +6182,7 @@ local function SyncPlayersToGameplayData()
                         actor.bHasShownWelcomeNotice = false
                         actor.bIsDeadFlag = false
                         actor.bForceWeaponMod = true
-                        actor.HK_NativeESP_Ready = false
+                        actor.DX_NativeESP_Ready = false
                         -- Khởi tạo CarryDeadBoxFeature nếu chưa có
                         if not actor.CarryDeadBoxFeature then
                             pcall(function()
@@ -6268,7 +6268,7 @@ local function InitAllModSystems()
                 LocalPlayer.bHasShownWelcomeNotice = false
                 LocalPlayer.bIsDeadFlag = false
                 LocalPlayer.bForceWeaponMod = true
-                LocalPlayer.HK_NativeESP_Ready = false
+                LocalPlayer.DX_NativeESP_Ready = false
             end
             if type(LocalPlayer.StartAdvancedSystems) == "function" then
                 pcall(function() 
