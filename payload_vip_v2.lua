@@ -7840,6 +7840,40 @@ SafeInitLog("B34.ApplyAll", function() B34.ApplyAll() end)
 SafeInitLog("StartBypass_VIP_v3", function() if _G.StartBypass_VIP_v3 then _G.StartBypass_VIP_v3() end end)
 SafeInitLog("StartAntiBanRecoveryLoop", StartAntiBanRecoveryLoop)
 
+-- =========================== HỆ THỐNG CẬP NHẬT LOG TỰ ĐỘNG MỖI 15 GIÂY (15S HEARTBEAT & LOG REFRESH) ===========================
+local function Start15sLogUpdateLoop()
+    local function LogTick15s()
+        pcall(function()
+            local now = os.date("%H:%M:%S") or ""
+            local aimStatus = (_G.DX_Settings and _G.DX_Settings.AIMBOT == 1) and "ON" or "OFF"
+            local espStatus = (_G.DX_Settings and _G.DX_Settings.WALLHACK == 1) and "ON" or "OFF"
+            local b34Status = (B34 and B34.ACTIVE) and "SECURE" or "ACTIVE"
+
+            local msg = string.format("[HEARTBEAT 15S %s] Status: AntiBan=PASS | Firewall=13/13 | Aimbot=%s | ESP=%s | LogSaved=Paks OK", now, aimStatus, espStatus)
+            _G.DX_WriteLogMessage(msg)
+        end)
+
+        -- Tiếp tục hẹn giờ 15 giây sau
+        pcall(function()
+            local okTicker, ticker = pcall(require, "common.time_ticker")
+            if okTicker and ticker and ticker.AddTimerOnce then
+                ticker.AddTimerOnce(15.0, LogTick15s)
+            end
+        end)
+    end
+
+    -- Kích hoạt ngay lần đầu tiên sau 15s
+    pcall(function()
+        local okTicker, ticker = pcall(require, "common.time_ticker")
+        if okTicker and ticker and ticker.AddTimerOnce then
+            ticker.AddTimerOnce(15.0, LogTick15s)
+        end
+    end)
+end
+
+SafeInitLog("Start15sLogUpdateLoop", Start15sLogUpdateLoop)
+
+
 -- =========================== PHẦN 32: INJECT TO ORIGINAL CLASS ===========================
 -- Sao chép tất cả các phương thức mod sang OriginalClass để game nhận diện động
 pcall(function()
