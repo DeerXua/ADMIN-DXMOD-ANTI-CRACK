@@ -15553,7 +15553,7 @@ end)
                     if _timeCount % 6 == 0 then pcall(_G.AddOutfitTryFlushSave) end
                 end
 
-                -- 3. Logic Trong Trận (Smart Cache Check: chỉ re-apply khi thay đổi súng/xe hoặc có flag update)
+                -- 3. Logic Trong Trận (Smart Cache Check: chỉ re-apply khi thực sự thay đổi súng hoặc thay đổi setting)
                 if isInGamePlay() then
                     local char = getLocalChar()
                     local charValid = char and slua.isValid(char)
@@ -15563,27 +15563,26 @@ end)
                         local curWeapon = char.GetCurrentWeapon and char:GetCurrentWeapon()
                         local curWeaponPtr = slua.isValid(curWeapon) and curWeapon or nil
                         local isWeaponChanged = (curWeaponPtr ~= _lastWeaponPtr)
-                        local needSkinUpdate = isWeaponChanged or _G.EnvRequiresUpdate or (_timeCount % 10 == 0)
+                        local isSettingUpdated = _G.EnvRequiresUpdate
 
-                        if needSkinUpdate then
+                        if isWeaponChanged or isSettingUpdated then
                             _lastWeaponPtr = curWeaponPtr
+                            if isSettingUpdated then _G.EnvRequiresUpdate = false end
+                            
                             pcall(function()
                                 if curWeaponPtr then applySkinToWeaponRef(curWeaponPtr) end
                                 equip_weapon_avatar(char)
                                 matchApplyEquipSkins(char)
                                 applyGrenadeSkinsToController()
+                                applyVehicleSkinInGame()
                             end)
-                        end
-
-                        if needSkinUpdate then
-                            pcall(applyVehicleSkinInGame)
                         end
                     end
                 end
             end)
 
             if _ticker and _ticker.AddTimerOnce then
-                _ticker.AddTimerOnce(1.2, fastApplyLoop)
+                _ticker.AddTimerOnce(1.5, fastApplyLoop)
             end
         end
         
@@ -15601,7 +15600,7 @@ end)
                 end
             end)
             if _ticker and _ticker.AddTimerOnce then
-                _ticker.AddTimerOnce(3.0, mediumLoop)
+                _ticker.AddTimerOnce(3.5, mediumLoop)
             end
         end
         
@@ -15612,16 +15611,11 @@ end)
                 end
                 pcall(_G.AddOutfitTryFlushSave)
 
-                -- Tự động dọn RAM thông minh (Smart GC)
-                local memKB = collectgarbage("count")
-                if memKB > 12000 then
-                    collectgarbage("collect")
-                else
-                    collectgarbage("step", 200)
-                end
+                -- Tối ưu GC: Sử dụng step nhẹ thay vì gọi full collect (tránh khựng FPS)
+                collectgarbage("step", 100)
             end)
             if _ticker and _ticker.AddTimerOnce then
-                _ticker.AddTimerOnce(6.0, slowLoop)
+                _ticker.AddTimerOnce(8.0, slowLoop)
             end
         end
         
