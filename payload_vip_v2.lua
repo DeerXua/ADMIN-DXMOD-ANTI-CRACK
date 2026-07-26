@@ -4950,14 +4950,21 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                                 local auraHash = (enemy.DX_IsAICached and "ai_" or "player_") .. globalColorHash
                                 if isMeshChanged or enemy.LastAuraHash ~= auraHash or not enemy.WallhackApplied then
                                     pcall(function()
-                                        if enemy.LastAuraMeshes then
-                                            for _, mesh in ipairs(enemy.LastAuraMeshes) do
-                                                if Valid(mesh) then ResetMeshAuraComponent(mesh) end
-                                            end
-                                        end
+                                        -- [FIX FLICKER] Apply NEW meshes TRƯỚC, reset OLD meshes SAU
+                                        -- Tránh khoảng trống 1 frame aura biến mất khi isMeshChanged
+                                        local newMeshSet = {}
                                         for _, mesh in ipairs(meshes) do
                                             if Valid(mesh) then
                                                 ApplyAuraToMeshComponent(mesh, visColor, occludedColor)
+                                                newMeshSet[mesh] = true
+                                            end
+                                        end
+                                        -- Chỉ reset mesh CŨ không còn trong danh sách mới
+                                        if enemy.LastAuraMeshes then
+                                            for _, mesh in ipairs(enemy.LastAuraMeshes) do
+                                                if Valid(mesh) and not newMeshSet[mesh] then
+                                                    ResetMeshAuraComponent(mesh)
+                                                end
                                             end
                                         end
                                         if enemy.DelayCustomDepth then pcall(function() enemy:DelayCustomDepth(true) end) end
