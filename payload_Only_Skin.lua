@@ -1,4 +1,4 @@
-﻿local OriginalClass = ...
+local OriginalClass = ...
 local BRPlayerCharacterBase = OriginalClass or {
   ServerRPC = {},
   ClientRPC = {},
@@ -3242,33 +3242,6 @@ table.insert(StackESP, {
         AddToggle(StackEnv, "NO_LANDING_LAG", "🏃 CHỐNG KHỰNG KHI RƠI")
         AddToggle(StackEnv, "AUTO_BUNNYHOP", "🐰 BUNNY HOP (Nhảy liên tục)")
 
-        -- ── Tab ĐỒ HỌA: GFX Slider ──────────────────────────────────
-        local StackGFX = {
-            { UI = AliasMap.Title, Text = "🎨 ĐIỀU CHỈNH ĐỒ HỌA" },
-            { UI = AliasMap.Title, Text = "Kéo slider để chọn mức 1 (FPS cao) → 10 (Đẹp nhất)" },
-        }
-        table.insert(StackGFX, {
-            Key = "ModMenu_GFX_LEVEL",
-            UI = AliasMap.Slider or "Slider",
-            Text = "🎚️ Chất lượng đồ họa (1-10)",
-            MinValue = 1, MaxValue = 10, Min = 1, Max = 10,
-            GetFunc = function() return _G.DX_Settings.GFX_LEVEL or 5 end,
-            SetFunc = function(_, value)
-                local v = math.max(1, math.min(10, math.floor(tonumber(value) or 5)))
-                _G.DX_Settings.GFX_LEVEL = v
-                pcall(DX_ApplyGfxLevel, v)
-                _G.EnvRequiresUpdate = true
-                _G.MagicUpdateVersion = (_G.MagicUpdateVersion or 1) + 1
-                return true
-            end
-        })
-        -- Nhãn giải thích từng mức
-        table.insert(StackGFX, { UI = AliasMap.Title, Text = "Mức 1-2: Siêu thấp (FPS tối đa, không shadow/bloom)" })
-        table.insert(StackGFX, { UI = AliasMap.Title, Text = "Mức 3-4: Thấp (60% resolution, texture thấp)" })
-        table.insert(StackGFX, { UI = AliasMap.Title, Text = "Mức 5-6: Trung bình (cân bằng FPS và chất lượng)" })
-        table.insert(StackGFX, { UI = AliasMap.Title, Text = "Mức 7-8: Cao (90% resolution, shadow cao)" })
-        table.insert(StackGFX, { UI = AliasMap.Title, Text = "Mức 9-10: Tối đa (140% resolution, full quality)" })
-
         -- ── Tab TỦ ĐỒ & SKIN (ADDOUTFIT) ───────────────────────────
         local StackSkin = {
             { UI = AliasMap.Title, Text = "👕 HỆ THỐNG SKIN & TỦ ĐỒ (ADDOUTFIT)" },
@@ -3317,7 +3290,6 @@ table.insert(StackESP, {
                 { Key = "ModMenu_Cat5", loc = "AIMTOUCH CUSTOM", text = "AIMTOUCH CUSTOM", Text = "AIMTOUCH CUSTOM", title = "AIMTOUCH CUSTOM", Title = "AIMTOUCH CUSTOM", Stack = StackAimbotV2 },
                 { Key = "ModMenu_Cat3", loc = "MAGIC BULLET", text = "MAGIC BULLET", Text = "MAGIC BULLET", title = "MAGIC BULLET", Title = "MAGIC BULLET", Stack = StackMagic },
                 { Key = "ModMenu_Cat4", loc = "GÓC NHÌN & MÔI TRƯỜNG", text = "GÓC NHÌN & MÔI TRƯỜNG", Text = "GÓC NHÌN & MÔI TRƯỜNG", title = "GÓC NHÌN & MÔI TRƯỜNG", Title = "GÓC NHÌN & MÔI TRƯỜNG", Stack = StackEnv },
-                { Key = "ModMenu_Cat7", loc = "ĐỒ HỌA GFX", text = "ĐỒ HỌA GFX", Text = "ĐỒ HỌA GFX", title = "ĐỒ HỌA GFX", Title = "ĐỒ HỌA GFX", Stack = StackGFX },
                 { Key = "ModMenu_Cat8", loc = "TỦ ĐỒ & SKIN", text = "TỦ ĐỒ & SKIN", Text = "TỦ ĐỒ & SKIN", title = "TỦ ĐỒ & SKIN", Title = "TỦ ĐỒ & SKIN", Stack = StackSkin },
             }
         }
