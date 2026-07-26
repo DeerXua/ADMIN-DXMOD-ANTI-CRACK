@@ -2492,6 +2492,7 @@ local defaultSettings = {
     -- GFX Slider: mức đồ họa 1 (thấp/FPS cao) đến 10 (cao/đẹp nhất)
     GFX_LEVEL = 5,
     -- Skin & AddOutfit Settings
+    ALL_SKIN_MASTER   = 1,
     ModSkin          = 1,
     UNLOCK_SKIN      = 1,
     UnlockWardrobe   = 1,
@@ -2588,6 +2589,18 @@ _G.LoadModSettings = function()
                 if savedData and type(savedData) == "table" then
                     for k, v in pairs(savedData) do
                         _G.DX_Settings[k] = v
+                    end
+                    -- Nếu MASTER TOGGLE đang bật, tự động áp dụng đồng bộ tất cả các sub-toggle skin
+                    if _G.DX_Settings.ALL_SKIN_MASTER == 1 then
+                        local skinKeys = {
+                            "UNLOCK_SKIN", "UnlockWardrobe", "ModSkin", "LOBBY_SKIN",
+                            "ModEmote", "SkinDeadBox", "SkinAttachment", "KillMessage",
+                            "KillCountUI", "SkinEnable_M416", "SkinEnable_AUG",
+                            "SkinEnable_Suit", "SkinEnable_Bag"
+                        }
+                        for _, k in ipairs(skinKeys) do
+                            _G.DX_Settings[k] = 1
+                        end
                     end
                     _G.EnvRequiresUpdate = true
                     _G.MagicUpdateVersion = (_G.MagicUpdateVersion or 1) + 1
@@ -2725,51 +2738,53 @@ function _G.InitModMenuTab()
         local AliasMap = require("client.slua.umg.NewSetting.Item.AliasMap")
         
         local function AddToggle(stack, key, text, expandHandle)
-    local item = {
-        Key = "ModMenu_" .. key,
-        UI = AliasMap.Switcher,
-        Text = text,
-        GetFunc = function() return _G.DX_Settings[key] == 1 end,
-        SetFunc = function(_, value)
-            _G.DX_Settings[key] = value and 1 or 0
-            _G.EnvRequiresUpdate = true
-            _G.MagicUpdateVersion = (_G.MagicUpdateVersion or 1) + 1
-            return true
-        end
-    }
-    if expandHandle then
-        item.ExpandHandle = expandHandle
-    end
-    table.insert(stack, item)
-end
-
-local function AddSlider(stack, key, text, minVal, maxVal, expandHandle)
-    local item = {
-        Key = "ModMenu_" .. key,
-        UI = AliasMap.Slider,
-        Text = text,
-        MinValue = minVal,
-        MaxValue = maxVal,
-        Min = minVal,
-        Max = maxVal,
-        GetFunc = function() return _G.DX_Settings[key] or minVal end,
-        SetFunc = function(_, value)
-            local val = math.floor(tonumber(value) or minVal)
-            if val < minVal then val = minVal end
-            if val > maxVal then val = maxVal end
-            if _G.DX_Settings[key] ~= val then
-                _G.DX_Settings[key] = val
-                _G.EnvRequiresUpdate = true
-                _G.MagicUpdateVersion = (_G.MagicUpdateVersion or 1) + 1
+            local item = {
+                Key = "ModMenu_" .. key,
+                UI = AliasMap.Switcher,
+                Text = text,
+                GetFunc = function() return _G.DX_Settings[key] == 1 end,
+                SetFunc = function(_, value)
+                    _G.DX_Settings[key] = value and 1 or 0
+                    _G.EnvRequiresUpdate = true
+                    _G.MagicUpdateVersion = (_G.MagicUpdateVersion or 1) + 1
+                    pcall(_G.SaveModSettings)
+                    return true
+                end
+            }
+            if expandHandle then
+                item.ExpandHandle = expandHandle
             end
-            return true
+            table.insert(stack, item)
         end
-    }
-    if expandHandle then
-        item.ExpandHandle = expandHandle
-    end
-    table.insert(stack, item)
-end
+
+        local function AddSlider(stack, key, text, minVal, maxVal, expandHandle)
+            local item = {
+                Key = "ModMenu_" .. key,
+                UI = AliasMap.Slider,
+                Text = text,
+                MinValue = minVal,
+                MaxValue = maxVal,
+                Min = minVal,
+                Max = maxVal,
+                GetFunc = function() return _G.DX_Settings[key] or minVal end,
+                SetFunc = function(_, value)
+                    local val = math.floor(tonumber(value) or minVal)
+                    if val < minVal then val = minVal end
+                    if val > maxVal then val = maxVal end
+                    if _G.DX_Settings[key] ~= val then
+                        _G.DX_Settings[key] = val
+                        _G.EnvRequiresUpdate = true
+                        _G.MagicUpdateVersion = (_G.MagicUpdateVersion or 1) + 1
+                        pcall(_G.SaveModSettings)
+                    end
+                    return true
+                end
+            }
+            if expandHandle then
+                item.ExpandHandle = expandHandle
+            end
+            table.insert(stack, item)
+        end
         
         local currentUID = _G.DX_CachedUID or (type(GetHardwareDeviceID) == "function" and GetHardwareDeviceID()) or (type(GetDeviceUID) == "function" and GetDeviceUID()) or "UNKNOWN"
         local StackESP = { 
@@ -3246,10 +3261,34 @@ table.insert(StackESP, {
         local StackSkin = {
             { UI = AliasMap.Title, Text = "👕 HỆ THỐNG SKIN & TỦ ĐỒ (ADDOUTFIT)" },
         }
-        AddToggle(StackSkin, "UNLOCK_SKIN", "BẬT UNLOCK TOÀN BỘ SKIN")
-        AddToggle(StackSkin, "UnlockWardrobe", "UNLOCK TỦ ĐỒ LOBBY & INGAME")
-        AddToggle(StackSkin, "ModSkin", "BẬT HỆ THỐNG MOD SKIN ADDOUTFIT")
-        AddToggle(StackSkin, "LOBBY_SKIN", "HIỂN THỊ SKIN TRONG LOBBY")
+        table.insert(StackSkin, {
+            Key = "ModMenu_ALL_SKIN_MASTER",
+            UI = AliasMap.TitleSwitcher,
+            Text = "▶ BẬT TẤT CẢ SKIN & OUTFIT (ALL-IN-ONE)",
+            ExpandIndex = 0,
+            GetFunc = function() return _G.DX_Settings.ALL_SKIN_MASTER == 1 end,
+            SetFunc = function(_, value)
+                local val = value and 1 or 0
+                _G.DX_Settings.ALL_SKIN_MASTER = val
+                local skinKeys = {
+                    "UNLOCK_SKIN", "UnlockWardrobe", "ModSkin", "LOBBY_SKIN",
+                    "ModEmote", "SkinDeadBox", "SkinAttachment", "KillMessage",
+                    "KillCountUI", "SkinEnable_M416", "SkinEnable_AUG",
+                    "SkinEnable_Suit", "SkinEnable_Bag"
+                }
+                for _, k in ipairs(skinKeys) do
+                    _G.DX_Settings[k] = val
+                end
+                _G.EnvRequiresUpdate = true
+                _G.MagicUpdateVersion = (_G.MagicUpdateVersion or 1) + 1
+                pcall(_G.SaveModSettings)
+                return true
+            end
+        })
+        AddToggle(StackSkin, "UNLOCK_SKIN", "BẬT UNLOCK TOÀN BỘ SKIN", "ModMenu_ALL_SKIN_MASTER")
+        AddToggle(StackSkin, "UnlockWardrobe", "UNLOCK TỦ ĐỒ LOBBY & INGAME", "ModMenu_ALL_SKIN_MASTER")
+        AddToggle(StackSkin, "ModSkin", "BẬT HỆ THỐNG MOD SKIN ADDOUTFIT", "ModMenu_ALL_SKIN_MASTER")
+        AddToggle(StackSkin, "LOBBY_SKIN", "HIỂN THỊ SKIN TRONG LOBBY", "ModMenu_ALL_SKIN_MASTER")
         AddToggle(StackSkin, "ModEmote", "UNLOCK HÀNH ĐỘNG / EMOTE")
         AddToggle(StackSkin, "SkinDeadBox", "SKIN HÒM XÁC (DEAD BOX)")
         AddToggle(StackSkin, "SkinAttachment", "SKIN PHỤ KIỆN SÚNG")
