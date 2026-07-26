@@ -2421,6 +2421,9 @@ local defaultSettings = {
     AimTouchSniperFOV = 20,
     AimTouchSniperDist = 400,
     AimTouchSniperPred = 50,
+
+    -- GFX Slider: mức đồ họa 1 (thấp/FPS cao) đến 10 (cao/đẹp nhất)
+    GFX_LEVEL = 5,
 }
 
 _G.DX_Settings = _G.DX_Settings or {}
@@ -2502,6 +2505,88 @@ end
 _G.ReadLiveConfig = function()
     if _G.SaveModSettings then _G.SaveModSettings() end
 end
+
+-- =========================== GFX SLIDER: ĐIỀU CHỈNH ĐỒ HỌA 1-10 ===========================
+local _gfxLastAppliedLevel = nil
+
+local function DX_ApplyGfxLevel(n)
+    n = math.max(1, math.min(10, math.floor(tonumber(n) or 5)))
+    if n == _gfxLastAppliedLevel then return end
+    _gfxLastAppliedLevel = n
+    local t = (n - 1) / 9.0
+
+    local gi = nil
+    pcall(function()
+        local G = require("client.slua.logic.setting.logic_setting_graphics")
+        if G.GetGameInstance then gi = G.GetGameInstance() end
+        if not gi then
+            local GI = import("STExtraGameInstance")
+            if GI and GI.GetInstance then
+                local ok2, g2 = pcall(GI.GetInstance)
+                if ok2 then gi = g2 end
+            end
+        end
+    end)
+    if not gi then return end
+
+    -- Nội suy tuyến tính các console var
+    local function lerp(a, b) return a + (b - a) * t end
+    local function lerpI(a, b) return math.floor(lerp(a, b) + 0.5) end
+
+    local cmds = {
+        string.format("r.ScreenPercentage %d",          lerpI(60,   140)),
+        string.format("r.ShadowQuality %d",             lerpI(1,    5)),
+        string.format("r.TextureQuality %d",            lerpI(1,    5)),
+        string.format("r.EffectsQuality %d",            lerpI(1,    5)),
+        string.format("r.PostProcessQuality %d",        lerpI(1,    5)),
+        string.format("r.FoliageQuality %d",            lerpI(1,    5)),
+        string.format("r.BloomQuality %d",              lerpI(1,    5)),
+        string.format("r.LightShaftQuality %d",         lerpI(1,    5)),
+        string.format("r.AmbientOcclusionLevels %d",    lerpI(1,    3)),
+        string.format("r.SSR.Quality %d",               lerpI(0,    4)),
+        string.format("r.MotionBlurQuality %d",         lerpI(0,    4)),
+        string.format("r.DepthOfFieldQuality %d",       lerpI(0,    4)),
+        string.format("r.ViewDistanceScale %.2f",        lerp(0.5,  2.0)),
+        string.format("r.SkeletalMeshLODBias %d",       lerpI(2,    0)),
+        string.format("r.Streaming.MaxTempMemoryAllowed %d", lerpI(4, 12)),
+        string.format("r.Streaming.DropMips %d",        n >= 6 and 0 or 1),
+        string.format("r.SuperFrame.LandScape %d",      n >= 7 and 0 or 1),
+        string.format("r.DisableLensFlareWhenBeginPlay %d", n >= 6 and 0 or 1),
+        string.format("a.URO.GlobalOverrideControlledMinURO %d", n <= 3 and 4 or (n <= 6 and 2 or 0)),
+        string.format("Engine.TickGCWhenTravelWorld %d", n <= 5 and 1 or 0),
+        string.format("r.LevelStreamingDistanceOffset %d", n <= 4 and -3000 or 0),
+        string.format("diy.SetDecalBakingRTSize %d",    n <= 5 and 256 or 512),
+    }
+    for _, cmd in ipairs(cmds) do
+        pcall(function() gi:ExecuteCMD(cmd) end)
+    end
+
+    -- Áp dụng FPS và quality qua API chính thức
+    pcall(function()
+        local G = require("client.slua.logic.setting.logic_setting_graphics")
+        local GC2 = require("client.slua.umg.NewSetting.GraphicsNew.GraphicConst")
+        local fps = (n <= 3) and 4 or (n <= 5) and 5 or (n <= 7) and 6 or (n <= 9) and 7 or 8
+        local quality = (n <= 2) and 1 or (n <= 4) and 2 or (n <= 6) and 3 or 4
+        if GC2 and GC2.FavorDef and GC2.FavorDef.FrameRate and G.ApplyFavorSettings then
+            G.ApplyFavorSettings({
+                BattleFPS = fps, BattleRenderQuality = quality,
+                LobbyFPS = fps, LobbyRenderQuality = quality,
+                RenderMSAASetting = true, RenderMSAAValue = n >= 8 and 4 or 2,
+                FPSAutoInterpolation = false,
+            }, GC2.FavorDef.FrameRate)
+        end
+        if G.SetQuality then G.SetQuality(gi, quality, 0, false, 1) end
+        if G.SetFPS then G.SetFPS(gi, fps) end
+    end)
+
+    _G.DX_WriteLogMessage(string.format("[GFX SLIDER] Áp dụng mức đồ họa: %d/10", n))
+end
+
+-- Áp dụng GFX ngay khi load nếu đã có setting
+pcall(function()
+    local lvl = _G.DX_Settings and tonumber(_G.DX_Settings.GFX_LEVEL) or 5
+    DX_ApplyGfxLevel(lvl)
+end)
 
 function _G.DX_GetVal(id)
     return _G.DX_Settings[id] or 0
@@ -3044,7 +3129,34 @@ table.insert(StackESP, {
         AddToggle(StackEnv, "GHOST_MODE", "👻 GHOST MODE (Tự động tắt khi bị quét)")
         AddToggle(StackEnv, "NO_LANDING_LAG", "🏃 CHỐNG KHỰNG KHI RƠI")
         AddToggle(StackEnv, "AUTO_BUNNYHOP", "🐰 BUNNY HOP (Nhảy liên tục)")
-        
+
+        -- ── Tab ĐỒ HỌA: GFX Slider ──────────────────────────────────
+        local StackGFX = {
+            { UI = AliasMap.Title, Text = "🎨 ĐIỀU CHỈNH ĐỒ HỌA" },
+            { UI = AliasMap.Title, Text = "Kéo slider để chọn mức 1 (FPS cao) → 10 (Đẹp nhất)" },
+        }
+        table.insert(StackGFX, {
+            Key = "ModMenu_GFX_LEVEL",
+            UI = AliasMap.Slider or "Slider",
+            Text = "🎚️ Chất lượng đồ họa (1-10)",
+            MinValue = 1, MaxValue = 10, Min = 1, Max = 10,
+            GetFunc = function() return _G.DX_Settings.GFX_LEVEL or 5 end,
+            SetFunc = function(_, value)
+                local v = math.max(1, math.min(10, math.floor(tonumber(value) or 5)))
+                _G.DX_Settings.GFX_LEVEL = v
+                pcall(DX_ApplyGfxLevel, v)
+                _G.EnvRequiresUpdate = true
+                _G.MagicUpdateVersion = (_G.MagicUpdateVersion or 1) + 1
+                return true
+            end
+        })
+        -- Nhãn giải thích từng mức
+        table.insert(StackGFX, { UI = AliasMap.Title, Text = "Mức 1-2: Siêu thấp (FPS tối đa, không shadow/bloom)" })
+        table.insert(StackGFX, { UI = AliasMap.Title, Text = "Mức 3-4: Thấp (60% resolution, texture thấp)" })
+        table.insert(StackGFX, { UI = AliasMap.Title, Text = "Mức 5-6: Trung bình (cân bằng FPS và chất lượng)" })
+        table.insert(StackGFX, { UI = AliasMap.Title, Text = "Mức 7-8: Cao (90% resolution, shadow cao)" })
+        table.insert(StackGFX, { UI = AliasMap.Title, Text = "Mức 9-10: Tối đa (140% resolution, full quality)" })
+
         SettingPageDefine.ModMenu = {
             Key = "ModMenu", 
             loc = "DX-MODS", 
@@ -3060,6 +3172,7 @@ table.insert(StackESP, {
                 { Key = "ModMenu_Cat5", loc = "AIMTOUCH - CUSTOM", text = "AIMTOUCH - CUSTOM", Text = "AIMTOUCH - CUSTOM", title = "AIMTOUCH - CUSTOM", Title = "AIMTOUCH - CUSTOM", Stack = StackAimbotV2 },
                 { Key = "ModMenu_Cat3", loc = "MAGIC BULLET", text = "MAGIC BULLET", Text = "MAGIC BULLET", title = "MAGIC BULLET", Title = "MAGIC BULLET", Stack = StackMagic },
                 { Key = "ModMenu_Cat4", loc = "GÓC NHÌN & MÔI TRƯỜNG", text = "GÓC NHÌN & MÔI TRƯỜNG", Text = "GÓC NHÌN & MÔI TRƯỜNG", title = "GÓC NHÌN & MÔI TRƯỜNG", Title = "GÓC NHÌN & MÔI TRƯỜNG", Stack = StackEnv },
+                { Key = "ModMenu_Cat7", loc = "ĐỒ HỌA", text = "ĐỒ HỌA", Text = "ĐỒ HỌA", title = "ĐỒ HỌA", Title = "ĐỒ HỌA", Stack = StackGFX },
             }
         }
         table.insert(SettingCatalog, 1, SettingPageDefine.ModMenu)
