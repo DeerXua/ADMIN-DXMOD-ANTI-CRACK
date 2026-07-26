@@ -3230,12 +3230,6 @@ table.insert(StackESP, {
             Title = "DX-MODS",
             UIKey = "Setting_Page_Privacy", 
             Category = {
-                { Key = "ModMenu_Cat1", loc = "ESP & WALLHACK", text = "ESP & WALLHACK", Text = "ESP & WALLHACK", title = "ESP & WALLHACK", Title = "ESP & WALLHACK", Stack = StackESP },
-                { Key = "ModMenu_Cat6", loc = "ESP VẬT PHẨM", text = "ESP VẬT PHẨM", Text = "ESP VẬT PHẨM", title = "ESP VẬT PHẨM", Title = "ESP VẬT PHẨM", Stack = StackItemESP },
-                { Key = "ModMenu_Cat2", loc = "VŨ KHÍ & GIẢM GIẬT", text = "VŨ KHÍ & GIẢM GIẬT", Text = "VŨ KHÍ & GIẢM GIẬT", title = "VŨ KHÍ & GIẢM GIẬT", Title = "VŨ KHÍ & GIẢM GIẬT", Stack = StackAimbot },
-                { Key = "ModMenu_Cat5", loc = "AIMTOUCH CUSTOM", text = "AIMTOUCH CUSTOM", Text = "AIMTOUCH CUSTOM", title = "AIMTOUCH CUSTOM", Title = "AIMTOUCH CUSTOM", Stack = StackAimbotV2 },
-                { Key = "ModMenu_Cat3", loc = "MAGIC BULLET", text = "MAGIC BULLET", Text = "MAGIC BULLET", title = "MAGIC BULLET", Title = "MAGIC BULLET", Stack = StackMagic },
-                { Key = "ModMenu_Cat4", loc = "GÓC NHÌN & MÔI TRƯỜNG", text = "GÓC NHÌN & MÔI TRƯỜNG", Text = "GÓC NHÌN & MÔI TRƯỜNG", title = "GÓC NHÌN & MÔI TRƯỜNG", Title = "GÓC NHÌN & MÔI TRƯỜNG", Stack = StackEnv },
                 { Key = "ModMenu_Cat8", loc = "TỦ ĐỒ & SKIN", text = "TỦ ĐỒ & SKIN", Text = "TỦ ĐỒ & SKIN", title = "TỦ ĐỒ & SKIN", Title = "TỦ ĐỒ & SKIN", Stack = StackSkin },
             }
         }
