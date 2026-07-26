@@ -639,6 +639,12 @@
       };
       const loadOnline = async () => { const d = await api('/api/admin/online-status'); setOnlineMap(d || {}); };
 
+      const reloadPayloads = async () => {
+        const res = await apiPost('/api/admin/reload-payloads', {});
+        if (res && res.success) toast(res.message || "Đã làm mới bộ đệm Payload thành công!", "success");
+        else toast(res ? res.error || "Có lỗi xảy ra" : "Không thể làm mới bộ đệm Payload", "error");
+      };
+
       // --- Auto-refresh refs để theo dõi thay đổi ---
       const prevDeviceCount = React.useRef(null);
       const prevSessionCount = React.useRef(null);
@@ -845,6 +851,13 @@
                     <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />
                     <span>Làm mới: {lastUpdated.toLocaleTimeString()}</span>
                   </div>
+                  <button 
+                    onClick={reloadPayloads} 
+                    className="h-10 px-3 rounded-xl bg-violet-500/10 border border-violet-500/20 text-violet-400 hover:bg-violet-500/20 text-xs font-bold transition-all flex items-center gap-1.5"
+                    title="Nạp lại bộ đệm (cache) tất cả các file Payload LUA trên server"
+                  >
+                    ⚡ <span className="hidden sm:inline">Làm mới Cache</span>
+                  </button>
                   <button 
                     onClick={() => setTgModalOpen(true)} 
                     className="h-10 px-3 rounded-xl bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 hover:bg-cyan-500/20 text-xs font-bold transition-all flex items-center gap-1.5"

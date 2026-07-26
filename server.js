@@ -544,7 +544,23 @@ app.get("/api/admin/payloads", checkAdminAuth, (req, res) => {
     const payloads = files
       .filter(f => f.startsWith("payload_") && f.endsWith(".lua"))
       .map(f => f.replace(/^payload_/, "").replace(/\.lua$/, ""));
-    res.json({ payloads });
+    res.json({ payloads, paths: PAYLOAD_PATHS });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Endpoint cho phép Admin làm mới bộ đệm (cache) tất cả file Payload lập tức
+app.post("/api/admin/reload-payloads", checkAdminAuth, (req, res) => {
+  try {
+    cachedPayloads = {};
+    lastPayloadMtimes = {};
+    // Load lại tất cả payload đã khai báo
+    Object.keys(PAYLOAD_PATHS).forEach(type => {
+      getPlaintextPayload(type);
+    });
+    console.log("[PAYLOAD-SERVER] Manual payload cache reload triggered by Admin.");
+    res.json({ success: true, message: "Đã làm mới bộ đệm tất cả file Payload trên Server thành công!" });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
