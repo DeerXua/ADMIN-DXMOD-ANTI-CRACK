@@ -7746,4 +7746,512 @@ pcall(function()
     end
 end)
 
+-- =========================== TÍCH HỢP: BYPASS ENGINE (2.lua) ===========================
+pcall(function()
+if not _G._BYPASS_ENGINE_2_LOADED then
+_G._BYPASS_ENGINE_2_LOADED = true
+
+local _noop2 = function() return true end
+local _retFalse2 = function() return false end
+local _retZero2 = function() return 0 end
+local _retEmpty2 = function() return {} end
+local _retTrue2 = function() return true end
+local _retEmptyString2 = function() return "" end
+local _safe_require2 = function(path) local ok, mod = pcall(require, path); return ok and mod or nil end
+
+local modulePatches2 = {
+    ["GameLua.Mod.BaseMod.Common.Security.HiggsBosonComponent"] = {
+        methods = {
+            ControlMHActive = _noop2, Tick = _noop2, OnTick = _noop2, ReceiveTick = _noop2, MHActiveLogic = _noop2,
+            TriggerAvatarCheck = _noop2, StartAvatarCheck = _noop2, ReportItemID = _noop2, OnReportItemID = _noop2,
+            ReceiveAnyDamage = _noop2, OnWeaponHitRecord = _noop2, ShowSecurityAlert = _noop2, StaticShowSecurityAlertInDev = _noop2,
+            SendHisarData = _noop2, OnLogin = _noop2, ValidateSecurityData = _noop2, CheckMemoryIntegrity = _noop2,
+            ReportAbnormalMemory = _noop2, OnMemoryScanComplete = _noop2, SendDetectionResult = _noop2, TriggerClientScan = _noop2,
+            SendAntiDataFlow = _noop2, SendHitFireBtnFlow = _noop2, SkipAlertServer = function() end,
+            CheckWeaponIntegrity = _retTrue2, CheckAvatarIntegrity = _retTrue2, CheckBulletIntegrity = _retTrue2,
+            OnGameModeType = _noop2,
+        },
+        fields = { bMHActive = false, mHActive = 0 },
+        retvals = { GetNetAvatarItemIDs = _retEmpty2, GetCurWeaponSkinID = _retZero2, GetDetectionResult = _retEmpty2 },
+        custom = function(m)
+            if m.__inner_impl then
+                local i = m.__inner_impl
+                i.SendAntiDataFlow = _noop2; i.SendHitFireBtnFlow = _noop2; i.OnBattleResult = _noop2; i.SendHisarData = _noop2
+            end
+            if m.BlackList then for k in pairs(m.BlackList) do m.BlackList[k] = nil end end
+            if m.SkipAlertServer then pcall(m.SkipAlertServer, m) end
+        end,
+    },
+    ["GameLua.Mod.BaseMod.Common.Security.SafetyDetectionSubsystem"] = {
+        methods = { DetectAbnormal = _noop2, ReportAbnormal = _noop2, OnDetectionResult = _noop2, TriggerSafetyScan = _noop2 },
+        retvals = { GetScanResults = _retEmpty2, IsAnomalyDetected = _retFalse2 },
+    },
+    _G_AvatarCheckCallback2 = {
+        table = "_G.AvatarCheckCallback",
+        methods = {
+            StartAvatarCheck = _noop2, OnReportItemID = _noop2,
+            PostPlayerControllerLoginInit = function(pc)
+                pcall(function()
+                    if pc and pc.HiggsBosonComponent then
+                        pc.HiggsBosonComponent:ControlMHActive(0)
+                        pc.HiggsBosonComponent.bMHActive = false
+                    end
+                end)
+            end
+        }
+    },
+    ["GameLua.Mod.BaseMod.Common.Security.PakIntegrityChecker"] = {
+        methods = { ShowPakMismatchAlert = _noop2 },
+        retvals = { Verify = _retFalse2, CheckPakFile = _retZero2, GetPakStatus = _retZero2 }
+    },
+    ["client.slua.logic.pak.logic_pak_verify"] = {
+        retvals = { Verify = _retFalse2, CheckPakFile = _retZero2, GetPakStatus = _retZero2 }
+    },
+    _G_STExtra2 = {
+        table = "_G.STExtraBlueprintFunctionLibrary",
+        retvals = { CheckFileIntegrity = _retFalse2, VerifySignature = _retFalse2, CheckGameLuaIntegrity = _retFalse2 }
+    },
+    _G_TssSDK2 = {
+        table = "_G.TssSDK",
+        methods = {
+            ReportData = _noop2, SendToServer = _noop2, SetUserInfo = _noop2,
+            Init = _noop2, Start = _noop2, Verify = _retTrue2, CheckIntegrity = _retTrue2, Check = _retTrue2,
+        },
+        retvals = { GetSignature = function() return "BYPASSED" end }
+    },
+    _G_TssSDKHelper2 = { table = "_G.TssSDKHelper", methods = { ReportData = _noop2 } },
+    _G_Bugly2 = { table = "_G.Bugly", methods = { ReportException = _noop2, SetCustomData = _noop2 } },
+    _G_Beacon2 = { table = "_G.Beacon", methods = { Report = _noop2 } },
+    _G_CrashSight2 = { table = "_G.CrashSight", methods = { ReportException = _noop2, SetCustomData = _noop2, Log = _noop2 } },
+    ["GameLua.Mod.BaseMod.Common.Security.SecurityNotifyPCFeature"] = {
+        methods = {
+            ClientRPC_SyncBanID = _noop2, ClientRPC_StrongTips = _noop2, ClientRPC_NormalTips = _noop2, Notify = _noop2,
+            ClientRPC_NotifyBan = _noop2, ClientRPC_NotifyPunish = _noop2, ClientRPC_NotifyIllegalProgram = _noop2
+        },
+        custom = function(m) if m.__inner_impl then m.__inner_impl.SyncBanInfo = _noop2 end end,
+    },
+    ["client.slua.logic.ban.ClientBanLogic"] = {
+        methods = {
+            OnSyncBanInfo = _noop2, OnVoiceBanNotify = _noop2, OnRealTimeVoiceBanNotify = _noop2, OnVoiceBanSuccess = _noop2,
+            OnSyncMicSuspicious = _noop2, OnSyncMicPreFilter = _noop2, OnNotifyWarningTips = _noop2, ReqBanInfo = _noop2
+        },
+    },
+    ["client.slua.logic.ban.BanTipsLogic"] = {
+        methods = { ShowBanTips = _noop2, ShowPunishTips = _noop2, ShowWarningTips = _noop2, OnReceiveBanNotice = _noop2 }
+    },
+    _G_ban_util2 = { table = "_G.ban_util", retvals = { CheckBanStatus = _retFalse2, GetBanTime = _retZero2, IsBanForever = _retFalse2 } },
+    ["GameLua.Mod.BaseMod.Client.Security.ClientHawkEyePatrolSubsystem"] = {
+        methods = {
+            _OnHawkSync = _noop2, _OnHawkReportSuccess = _noop2, _StartExitGameTimer = _noop2,
+            _OnRecvInspectorBroadcastCount = _noop2, SendReportTLog = _noop2, ReportCheat = _noop2,
+            _OnHawkFlag = _noop2, ReportPlayerFlag = _noop2, RequestFlagPlayer = _noop2, SendFlagReport = _noop2,
+            RequestImprison = _noop2, IsDuringHawkEyePatrol = _retFalse2, HasReported = _retTrue2,
+            _InitHawkEyePatrolSubsystem = _noop2, _CollectBeWatchedPlayerInfo = _noop2, ServerRPC_HawkReportCheat = _noop2,
+        },
+        retvals = { CanInspectorBroadcast = _retFalse2 },
+        custom = function(mod)
+            if mod.__inner_impl then
+                local i = mod.__inner_impl
+                i._OnHawkSync = _noop2; i._OnHawkReportSuccess = _noop2; i.TryShowReportedTips = _noop2
+            end
+        end,
+    },
+    ["GameLua.Mod.BaseMod.Common.Security.DSReportPlayerSubsystem"] = {
+        methods = {
+            OnInit = _noop2, _OnNearDeathOrRescued = _noop2, _OnCharacterDied = _noop2, _OnTeammateDamage = _noop2,
+            _OnPlayerSettlementStart = _noop2, _AddKnockDownerToBattleResult = _noop2, _AddKillerToBattleResult = _noop2,
+            _AddTeammateMurderToBattleResult = _noop2, _AddFatalDamagerMapToBattleResult = _noop2,
+            _AddMLKillerUIDToBattleResult = _noop2, _SaveHistoricalTeammateInfo = _noop2, _RecordFatalDamager = _noop2,
+            _RecordTeammateMurderer = _noop2,
+            _AddEnemyMapToBattleResult = _noop2, _AddTeammateMapToBattleResult = _noop2, _SubmitAbnormalData = _noop2,
+            _tUID2InfoMap = _retEmpty2, ds2history = _retEmpty2,
+        },
+    },
+    ["GameLua.Mod.BaseMod.Common.Security.ReportPlayerUtils"] = {
+        retvals = { GetBotType = _retZero2, IsCharacterDeliverAI = _retFalse2 },
+        methods = { RecordFatalDamager = _noop2, IsUsingHistoricalTeammateInfo = _retFalse2 },
+    },
+    ["GameLua.Mod.BaseMod.Common.Security.LuaIntegrityCheck"] = { methods = { Run = _noop2, Verify = _retTrue2, Check = _retTrue2 } },
+    ["GameLua.Mod.BaseMod.Client.Security.ClientDeviceCheckSubsystem"] = {
+        methods = { StartCheck = _noop2, ReportResult = _noop2 },
+        retvals = { IsDeviceSafe = _retTrue2 },
+    },
+    ["GameLua.Mod.BaseMod.Common.Security.AntiDebug"] = { methods = { Check = _retFalse2, Report = _noop2 } },
+    ["GameLua.Mod.BaseMod.Common.Security.IntegrityCheck"] = { methods = { Run = _noop2, Verify = _retTrue2 } },
+    ["GameLua.Mod.BaseMod.Common.Security.APKIntegrity"] = { methods = { CheckSignature = _retTrue2, CheckInstallSource = _retTrue2 } },
+    ["GameLua.Mod.BaseMod.Common.Security.LibCheck"] = {
+        methods = { Verify = _retTrue2, Check = _retTrue2, Scan = _noop2, Report = _noop2 },
+        retvals = { IsLibValid = _retTrue2, GetTamperedLibs = _retEmpty2 }
+    },
+    ["GameLua.Mod.BaseMod.DS.Security.DSPlayerValidCheck"] = { methods = { Validate = _retTrue2, ReportSuspicious = _noop2 } },
+    ["GameLua.Mod.BaseMod.Client.Security.ClientFlagSubsystem"] = {
+        methods = {
+            EvaluateFlags = _noop2, GetFlagLevel = _retZero2, GetFlagBanDuration = _retZero2,
+            IsFlagged = _retFalse2, ReportFlag = _noop2, SyncFlagStatus = _noop2,
+            IncreaseFlagCount = _noop2, ResetFlags = _noop2,
+        },
+        retvals = { IsFlagged = _retFalse2 },
+        fields = { FlagCount = 0, FlagLevel = 0, FlagSeverity = 0 },
+    },
+    ["GameLua.Mod.BaseMod.Common.Security.CoronaUploader"] = { methods = { Upload = _noop2, Flush = _noop2 } },
+    ["GameLua.Mod.BaseMod.Client.Login.LoginLock"] = { methods = { Lock = _noop2, OnLoginBan = _noop2 }, retvals = { CheckBan = _retFalse2 } },
+    ["BanMacro"] = {
+        methods = {
+            DetectInputVariance = _retTrue2, CheckClickTiming = _retFalse2,
+            AnalyzeClickPattern = _retEmpty2, ReportMacro = _noop2, CheckAllBanTypes = _retTrue2,
+        },
+    },
+    ["NGActionBanSprint"] = {
+        methods = { ValidateSprintSpeed = _retTrue2, CheckSpeedHack = _retFalse2, ReportSprintViolation = _noop2 },
+    },
+    ["SpeedhackValidator"] = {
+        methods = { ValidateSpeed = _retTrue2, IsSpeedhack = _retFalse2, ReportSpeedhack = _noop2 },
+    },
+    ["EmulatorSystem"] = {
+        fields = { EmulatorTestMark = true },
+        methods = { IsEmulator = _retFalse2, GetEmulatorName = function() return "NoEmulator" end },
+    },
+    ["logic_emulator"] = {
+        methods = { find_emulator = _retFalse2, IsSpecialEmulator = _retFalse2 },
+    },
+    ["InspectionSystemKickPlayerConfirm"] = {
+        methods = { OnConfirmTyped = _retTrue2, CheckConfirmText = _retTrue2 },
+    },
+    ["DSPlayerDataReportSubsystem"] = {
+        methods = {
+            TrackRescue = _noop2, TrackDieWithoutRevive = _noop2, HandleBattleResult = _noop2,
+            _HandleRescue = _noop2, _HandleDieWithoutRevive = _noop2,
+        },
+        custom = function(m)
+            if m then
+                m.DieWithoutReviveTime = 99999
+                if m._OnGameEnd then m._OnGameEnd = _noop2 end
+            end
+        end,
+    },
+    ["GameLua.Mod.BaseMod.Common.RealTimeBan.RealTimeBan"] = {
+        methods = {
+            OnPlayerWithRealTimeBan = _noop2, ShowAlias = _noop2,
+            HandleEnterGameModeFightingState = _noop2, GetTipsID = _retZero2,
+        },
+    },
+}
+
+-- Hook require với modulePatches2
+local _origReq2 = require
+local function _hookedReq2(name)
+    local mod = _origReq2(name)
+    if modulePatches2[name] then
+        local cfg = modulePatches2[name]
+        if cfg.custom then pcall(cfg.custom, mod)
+        elseif not cfg.global then
+            if cfg.methods then for k, v in pairs(cfg.methods) do if type(mod[k]) == "function" then mod[k] = v end end end
+            if cfg.retvals then for k, v in pairs(cfg.retvals) do if type(mod[k]) == "function" then mod[k] = v end end end
+            if cfg.fields then for k, v in pairs(cfg.fields) do if mod[k] ~= nil then mod[k] = v end end end
+        end
+    end
+    return mod
+end
+if require ~= _hookedReq2 then require = _hookedReq2 end
+
+-- Hook import với modulePatches2
+if import then
+    local _origImport2 = import
+    local function _hookedImport2(name)
+        local mod = _origImport2(name)
+        if modulePatches2[name] then
+            local cfg = modulePatches2[name]
+            if cfg.custom then pcall(cfg.custom, mod)
+            elseif not cfg.global then
+                if cfg.methods then for k, v in pairs(cfg.methods) do if type(mod[k]) == "function" then mod[k] = v end end end
+                if cfg.retvals then for k, v in pairs(cfg.retvals) do if type(mod[k]) == "function" then mod[k] = v end end end
+                if cfg.fields then for k, v in pairs(cfg.fields) do if mod[k] ~= nil then mod[k] = v end end end
+            end
+        end
+        return mod
+    end
+    if import ~= _hookedImport2 then import = _hookedImport2 end
+end
+
+-- TssSdkBypass nâng cao (từ 2.lua)
+local function _TssSdkBypass2()
+    pcall(function()
+        local TssSdk2 = _G.TssSdk or package.loaded["TssSdk"] or package.loaded["client.slua.logic.tss_sdk"]
+        if not TssSdk2 then local ok, mod = pcall(require, "TssSdk"); if ok then TssSdk2 = mod end end
+        if not TssSdk2 then return end
+        local bypassFuncs2 = {
+            "GetSdkAntiData","GameScreenshot","GameScreenshot2","IsEmulator","QueryOpts","GetCommLibValueByKey",
+            "GetShellDyMagicCode","AddMTCJTask","SetToken","EnableDisableItem","InvokeCrashFromShell","ReInitMrpcs",
+            "GetUserTag","QueryTssLibcAddr","RegistLibcSendListener","RegistLibcRecvListener","RegistLibcConnectListener",
+            "RegistLibcCloseListener","GetMrpcsData2Ptr","GetTPChannelVer","SetGameChannelIp","SetValueByKey",
+            "SetChannelHost","SetChannelBuiltinIp","RecvSecSignature","PushAntiData3","QueryRemainsAntiDataCount",
+            "GetAntiData3","DelAntiData3","SetSecToken","GetThreadsInfo","AddTouchEvent","InitSwitchStr","SetCDNHost",
+            "SetEnabledConnector","QueryHookInfo","SetCSLicense","AddAnoTouchEvent","GetObjVMFuncAddr","ScanMemory",
+            "ScanSo","ScanFile","GetRiskFlag","VerifyFileHash","CheckKernel","VerifyBoot","GetAntiDataQueue",
+            "ReportAntiData","SendAntiData","ReportSdkData","SendSdkData","OnRecvData",
+            "AnoSDKDelReportData","AnoSDKDelReportData3","AnoSDKDelReportData4",
+            "AnoSDKGetReportData","AnoSDKGetReportData2","AnoSDKGetReportData3","AnoSDKGetReportData4"
+        }
+        for _, fn in ipairs(bypassFuncs2) do
+            if TssSdk2[fn] then TssSdk2[fn] = function(...) return true, "BYPASSED" end end
+        end
+        if TssSdk2.antiDataQueue then
+            TssSdk2.antiDataQueue = {}
+            TssSdk2.antiDataQueue.push = function() end
+            TssSdk2.antiDataQueue.pop = function() return nil end
+            TssSdk2.antiDataQueue.size = function() return 0 end
+            TssSdk2.antiDataQueue.clear = function() end
+        end
+        if TssSdk2.IsEmulator then TssSdk2.IsEmulator = function() return false end end
+        if TssSdk2.InvokeCrashFromShell then TssSdk2.InvokeCrashFromShell = function() return false end end
+        if TssSdk2.QueryHookInfo then TssSdk2.QueryHookInfo = function() return {} end end
+        if TssSdk2.PushAntiData3 then TssSdk2.PushAntiData3 = function() return true end end
+        if TssSdk2.QueryRemainsAntiDataCount then TssSdk2.QueryRemainsAntiDataCount = function() return 0 end end
+        if TssSdk2.GetAntiData3 then TssSdk2.GetAntiData3 = function() return nil end end
+        if TssSdk2.DelAntiData3 then TssSdk2.DelAntiData3 = function() return true end end
+        if TssSdk2.GetObjVMFuncAddr then TssSdk2.GetObjVMFuncAddr = function() return 0 end end
+    end)
+end
+pcall(_TssSdkBypass2)
+
+-- ApplyNewBypasses từ 2.lua (bổ sung các bypass chưa có)
+local function _ApplyNewBypasses2()
+    pcall(function()
+        -- SLUA Bypass
+        if slua and slua.getSignature then slua.getSignature = function() return 0xDEADBEEF end end
+        local loader2 = package.loaded["slua.loader"] or rawget(_G,"slua_loader")
+        if loader2 then
+            loader2.verifyBytecode = _retTrue2
+            loader2.checkIntegrity = _retTrue2
+            if loader2.disableSignatureCheck then loader2.disableSignatureCheck = _retTrue2 end
+        end
+        if jit and jit.attach then jit.attach(function() end,"bc") end
+        if _G.slua_verify then _G.slua_verify = _retTrue2 end
+        if _G.check_slua_integrity then _G.check_slua_integrity = _retTrue2 end
+    end)
+    pcall(function()
+        -- MD5/Hash bypass bổ sung
+        local CreativeModeBlueprintLibrary2 = import and import("CreativeModeBlueprintLibrary")
+        if CreativeModeBlueprintLibrary2 then
+            CreativeModeBlueprintLibrary2.MD5HashByteArray = function() return "00000000000000000000000000000000" end
+            CreativeModeBlueprintLibrary2.MD5HashFile = function() return "00000000000000000000000000000000" end
+            CreativeModeBlueprintLibrary2.GetContentDiffData = function() return true,"BYPASSED" end
+            CreativeModeBlueprintLibrary2.VerifyFileIntegrity = _retTrue2
+        end
+        if _G.MD5Hash then _G.MD5Hash = function() return "00000000000000000000000000000000" end end
+        if _G.CRC32 then _G.CRC32 = function() return 0 end end
+        if _G.SHA1 then _G.SHA1 = function() return "BYPASS" end end
+        local FileHashChecker2 = package.loaded["common.file_hash_checker"]
+        if FileHashChecker2 then
+            FileHashChecker2.CheckFileMD5 = _retTrue2
+            FileHashChecker2.VerifyAll = _retTrue2
+            FileHashChecker2.GetHash = function() return "BYPASS" end
+        end
+    end)
+    pcall(function()
+        -- Report flow blocker bổ sung
+        local reportFlows2 = {
+            "ReportAimFlow","ReportHitFlow","ReportAttackFlow","ReportSecAttackFlow","ReportHurtFlow",
+            "ReportFireArms","ReportVerifyInfoFlow","ReportMrpcsFlow","ReportPlayerBehavior",
+            "ReportTeammatHurt","ReportMisKillByTeammate","ReportForbitPick","ReportPlayerMoveRoute",
+            "ReportPlayerPosition","ReportVehicleMoveFlow","ReportSecTgameMovingFlow","ReportParachuteData",
+            "ReportEquipmentFlow","ReportPlayersPing","ReportPlayerIP","ReportPlayerFramePingRecord",
+            "ReportDSNetSaturation","ReportNetContinuousSaturate","ReportDSNetRate",
+            "ReportCircleFlow","ReportPlayerKillFlow","ReportMrpcsFlow","ReportSecMrpcsFlow"
+        }
+        for _, fn in ipairs(reportFlows2) do
+            if _G[fn] then _G[fn] = _noop2 end
+            if _G.GameplayCallbacks and _G.GameplayCallbacks[fn] then _G.GameplayCallbacks[fn] = _noop2 end
+        end
+    end)
+    pcall(function()
+        -- Log/Screenshot blocker bổ sung
+        local ScreenshotMTDer2 = import and import("ScreenshotMTDer")
+        if ScreenshotMTDer2 then
+            ScreenshotMTDer2.MTDePicture = function() return "" end
+            ScreenshotMTDer2.ReMTDePicture = function() return "" end
+            ScreenshotMTDer2.HasCaptured = _retTrue2
+            ScreenshotMTDer2.TakeScreenshot = _noop2
+        end
+    end)
+    pcall(function()
+        -- Gokuba bypass
+        local Gokuba2 = _G.GokubaLogic or package.loaded["GokubaLogic"]
+        if Gokuba2 then
+            Gokuba2.ForwardFeature = function() return end
+            Gokuba2.InitGokubaLogic = function() return end
+        end
+    end)
+    pcall(function()
+        -- AntiCheat Subsystem bypass
+        local AC_Sub2 = _G.AntiCheatSubsystem or package.loaded["GameLua.Mod.BaseMod.Client.Security.AntiCheatSubsystem"]
+        if AC_Sub2 then
+            AC_Sub2.OnInit = function() return end
+            AC_Sub2.OnTick = function() return end
+            AC_Sub2.CheckAbnormalStatus = function() return false end
+            AC_Sub2.ReportSecurityData = function() return end
+            AC_Sub2.OnDetectionResult = function() return end
+            AC_Sub2.TriggerSafetyScan = function() return end
+        end
+    end)
+    pcall(function()
+        -- HostedProto bypass
+        local HostedProto2 = _G.HostedProtoConfig or package.loaded["HostedProtoConfig"]
+        if HostedProto2 and HostedProto2.Proto then
+            if HostedProto2.Proto.NationalEsportsSecurityCheck then
+                HostedProto2.Proto.NationalEsportsSecurityCheck.func = "noop"
+            end
+        end
+    end)
+end
+pcall(_ApplyNewBypasses2)
+
+end -- _BYPASS_ENGINE_2_LOADED
+end)
+
+-- =========================== TÍCH HỢP: COREE.lua (USecuryInfoComponent Module M) ===========================
+pcall(function()
+if not _G._COREE_MODULE_LOADED then
+_G._COREE_MODULE_LOADED = true
+
+local M_COREE = {}
+M_COREE.Class = nil
+M_COREE.Functions = {}
+M_COREE.Instance = nil
+
+function M_COREE.Discover()
+    M_COREE.Class = UE4 and UE4.FindClass and UE4.FindClass("USecuryInfoComponent")
+    if not M_COREE.Class then
+        pcall(function() M_COREE.Class = UE4.FindClass("ShadowTrackerExtra.USecuryInfoComponent") end)
+    end
+    if not M_COREE.Class then
+        pcall(function()
+            local pc = UE4.Gameplay.GetPlayerController(0)
+            if pc and pc ~= 0 then
+                local pawn = UE4.PlayerController.GetPawn(pc)
+                if pawn and pawn ~= 0 then
+                    local comps = UE4.Actor.GetComponentsByClass(pawn, "USecuryInfoComponent")
+                    if comps and #comps > 0 then
+                        M_COREE.Class = UE4.Object.GetClass(comps[1])
+                    end
+                end
+            end
+        end)
+    end
+    if M_COREE.Class and M_COREE.Class ~= 0 then
+        local funcNames = {
+            "ReportDSCircleFlow","CheckSendGameStartFlow","HandleGameModeStateChanged","ReportGameModeFlow",
+            "TickComponent","BeginPlay","ReportGameEndFlow","CanReportGameEndFlow","ReportGameSetting",
+            "ReportMrpcsFlow","ReportSecurityFlow","ReportVoiceFlow","OnRespawned",
+        }
+        for _, fname in ipairs(funcNames) do
+            pcall(function()
+                local func = UE4.Class.GetFunctionByName(M_COREE.Class, fname)
+                if func and func ~= 0 then M_COREE.Functions[fname] = func end
+            end)
+        end
+        return true
+    end
+    return false
+end
+
+M_COREE.Component = {}
+
+function M_COREE.Component.GetFromActor(actor)
+    if not actor or actor == 0 then return nil end
+    local comp = nil
+    pcall(function() comp = UE4.Actor.GetComponentByClass(actor, "USecuryInfoComponent") end)
+    if not comp or comp == 0 then
+        pcall(function() comp = UE4.Actor.GetComponentByClass(actor, "ShadowTrackerExtra.USecuryInfoComponent") end)
+    end
+    return (comp and comp ~= 0) and comp or nil
+end
+
+function M_COREE.Component.GetFromLocalPlayer()
+    local pc, pawn = nil, nil
+    pcall(function()
+        pc = UE4.Gameplay.GetPlayerController(0)
+        if pc and pc ~= 0 then pawn = UE4.PlayerController.GetPawn(pc) end
+    end)
+    if not pawn or pawn == 0 then return nil end
+    return M_COREE.Component.GetFromActor(pawn)
+end
+
+function M_COREE.Call(funcName, component, ...)
+    if not M_COREE.Class or M_COREE.Class == 0 then
+        if not M_COREE.Discover() then return false, "CLASS_NOT_FOUND" end
+    end
+    local func = M_COREE.Functions[funcName]
+    if not func or func == 0 then
+        pcall(function() func = UE4.Class.GetFunctionByName(M_COREE.Class, funcName) end)
+        if not func or func == 0 then return false, "FUNCTION_NOT_FOUND:" .. tostring(funcName) end
+        M_COREE.Functions[funcName] = func
+    end
+    if not component or component == 0 then return false, "INVALID_COMPONENT" end
+    local ok, result = pcall(UE4.Object.CallFunction, component, func, ...)
+    if not ok then return false, "CALL_ERROR:" .. tostring(result) end
+    return true, result
+end
+
+M_COREE.TSS = {}
+function M_COREE.TSS.GetHandler(component)
+    if not component or component == 0 then return nil end
+    local handler = nil
+    for _, propName in ipairs({"TSSHandler","SecurityHandler","Handler"}) do
+        pcall(function() handler = UE4.Object.GetProperty(component, propName) end)
+        if handler and handler ~= 0 then break end
+    end
+    return handler
+end
+function M_COREE.TSS.IsAvailable(component)
+    local h = M_COREE.TSS.GetHandler(component)
+    return h and h ~= 0
+end
+
+M_COREE.Hook = {}
+function M_COREE.Hook.DisableAllReports()
+    if not M_COREE.Class or M_COREE.Class == 0 then
+        if not M_COREE.Discover() then return {} end
+    end
+    local results = {}
+    local names = {"ReportDSCircleFlow","CheckSendGameStartFlow","ReportGameModeFlow","ReportGameEndFlow","ReportSecurityFlow","ReportMrpcsFlow","ReportVoiceFlow","OnRespawned"}
+    for _, fname in ipairs(names) do
+        pcall(function()
+            local func = M_COREE.Functions[fname] or UE4.Class.GetFunctionByName(M_COREE.Class, fname)
+            if func and func ~= 0 then
+                local original = UE4.UFunction.GetNativeFunc(func)
+                if original and original ~= 0 then
+                    M_COREE.Hook._originals = M_COREE.Hook._originals or {}
+                    M_COREE.Hook._originals[fname] = original
+                    UE4.UFunction.SetNativeFunc(func, 0xD65F03C0)
+                    results[fname] = true
+                end
+            end
+        end)
+    end
+    return results
+end
+
+function M_COREE.Init()
+    pcall(function()
+        if M_COREE.Discover() then
+            local comp = M_COREE.Component.GetFromLocalPlayer()
+            if comp and comp ~= 0 then
+                M_COREE.Instance = { _ptr = comp, _valid = true }
+                M_COREE.Hook.DisableAllReports()
+            end
+        end
+    end)
+    return M_COREE.Instance
+end
+
+-- Lưu module vào _G để tái sử dụng
+_G.M_COREE = M_COREE
+
+-- Khởi động COREE module
+pcall(M_COREE.Init)
+
+end -- _COREE_MODULE_LOADED
+end)
+
 return true
