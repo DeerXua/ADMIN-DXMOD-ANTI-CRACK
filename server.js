@@ -17,6 +17,8 @@ const PAYLOAD_PATHS = {
   free: path.join(__dirname, "payload_free.lua"),
   vip: path.join(__dirname, "payload_vip_v2.lua"),
   vip_v2: path.join(__dirname, "payload_vip_v2.lua"),
+  only_skin: path.join(__dirname, "payload_Only_Skin.lua"),
+  onlyskin: path.join(__dirname, "payload_Only_Skin.lua"),
   test: path.join(__dirname, "payload_test.lua"),
   onlywall: path.join(__dirname, "payload_onlywall.lua")
 };
@@ -166,12 +168,8 @@ function minifyLua(code) {
 function getPlaintextPayload(payloadType = "free") {
   const type = String(payloadType || "free").toLowerCase();
   
-  // Dynamic lookup: check if payload_<type>.lua exists directly
-  let targetPath = path.join(__dirname, `payload_${type}.lua`);
-  
-  if (!fs.existsSync(targetPath) && PAYLOAD_PATHS[type]) {
-    targetPath = PAYLOAD_PATHS[type];
-  }
+  // Dynamic lookup: check PAYLOAD_PATHS first then payload_<type>.lua
+  let targetPath = PAYLOAD_PATHS[type] || path.join(__dirname, `payload_${type}.lua`);
   
   // Fallback to default payload if custom payload file doesn't exist
   if (!fs.existsSync(targetPath)) {
@@ -652,6 +650,7 @@ app.get("/api/admin/stats", checkAdminAuth, (req, res) => {
   let vipCount = 0;
   let freeCount = 0;
   let testCount = 0;
+  let onlySkinCount = 0;
   let pendingCount = 0;
   let expiredCount = 0;
 
@@ -670,8 +669,10 @@ app.get("/api/admin/stats", checkAdminAuth, (req, res) => {
       pendingCount++;
     } else if (isExpired) {
       expiredCount++;
-    } else if (type === "vip") {
+    } else if (type === "vip" || type === "vip_v2") {
       vipCount++;
+    } else if (type === "only_skin" || type === "onlyskin") {
+      onlySkinCount++;
     } else if (type === "test") {
       testCount++;
     } else {
@@ -687,6 +688,7 @@ app.get("/api/admin/stats", checkAdminAuth, (req, res) => {
     onlineCount: onlineCount,
     counts: {
       vip: vipCount,
+      only_skin: onlySkinCount,
       free: freeCount,
       test: testCount,
       pending: pendingCount,
@@ -694,6 +696,7 @@ app.get("/api/admin/stats", checkAdminAuth, (req, res) => {
     },
     percentages: {
       vip: total > 0 ? Number(((vipCount / total) * 100).toFixed(1)) : 0,
+      only_skin: total > 0 ? Number(((onlySkinCount / total) * 100).toFixed(1)) : 0,
       free: total > 0 ? Number(((freeCount / total) * 100).toFixed(1)) : 0,
       test: total > 0 ? Number(((testCount / total) * 100).toFixed(1)) : 0,
       pending: total > 0 ? Number(((pendingCount / total) * 100).toFixed(1)) : 0,

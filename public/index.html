@@ -379,7 +379,9 @@
         vip: { bg: 'rgba(139, 92, 246, 0.1)', c: '#a78bfa', l: 'VIP' },
         vip_v2: { bg: 'rgba(236, 72, 153, 0.1)', c: '#f472b6', l: 'VIP V2' },
         test: { bg: 'rgba(245, 158, 11, 0.1)', c: '#fbbf24', l: 'TEST' },
-        onlywall: { bg: 'rgba(16, 185, 129, 0.1)', c: '#34d399', l: 'ONLY WALL' }
+        onlywall: { bg: 'rgba(16, 185, 129, 0.1)', c: '#34d399', l: 'ONLY WALL' },
+        only_skin: { bg: 'rgba(168, 85, 247, 0.1)', c: '#c084fc', l: 'ONLY SKIN' },
+        onlyskin: { bg: 'rgba(168, 85, 247, 0.1)', c: '#c084fc', l: 'ONLY SKIN' }
       };
       const tKey = String(type || 'free').toLowerCase();
       const st = m[tKey] || { bg: 'rgba(56, 189, 248, 0.1)', c: '#38bdf8', l: tKey.toUpperCase() };
@@ -923,6 +925,7 @@
                       { key: 'all', label: 'Tất cả thiết bị', color: 'text-cyan-400' },
                       { key: 'vip', label: 'VIP ⭐', color: 'text-violet-400' },
                       { key: 'vip_v2', label: 'VIP V2 👑', color: 'text-pink-400' },
+                      { key: 'only_skin', label: 'ONLY SKIN 👕', color: 'text-purple-400' },
                       { key: 'free', label: 'FREE 🎁', color: 'text-slate-400' },
                       { key: 'test', label: 'TEST 🧪', color: 'text-amber-400' },
                       { key: 'onlywall', label: 'ONLY WALL 🛡️', color: 'text-emerald-400' }
@@ -1494,6 +1497,7 @@
                     <option value="free">🎁 Bản FREE</option>
                     <option value="vip">⭐ Bản VIP</option>
                     <option value="vip_v2">👑 Bản VIP V2</option>
+                    <option value="only_skin">👕 Bản ONLY SKIN (Mod Outfit & Skin)</option>
                     <option value="test">🧪 Bản TEST</option>
                     <option value="onlywall">🛡️ Bản ONLY WALL</option>
                   </select>
@@ -1545,6 +1549,7 @@
                     <option value="free">🎁 Bản FREE</option>
                     <option value="vip">⭐ Bản VIP</option>
                     <option value="vip_v2">👑 Bản VIP V2</option>
+                    <option value="only_skin">👕 Bản ONLY SKIN (Mod Outfit & Skin)</option>
                     <option value="test">🧪 Bản TEST</option>
                     <option value="onlywall">🛡️ Bản ONLY WALL</option>
                   </select>
