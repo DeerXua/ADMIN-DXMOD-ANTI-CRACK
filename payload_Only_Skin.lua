@@ -34,63 +34,210 @@ BRPlayerCharacterBase.ClientRPC.RPC_Client_SetShouldCheckPassWall = {
   }
 }
 
-local ENetRole        = import("ENetRole")
-local EPawnState      = import("EPawnState")
-local GameplayData    = require("GameLua.GameCore.Data.GameplayData")
-local GamePlayTools   = require("GameLua.Mod.BaseMod.Common.GamePlayTools")
+local ENetRole = import("ENetRole")
+local EPawnState = import("EPawnState")
+local GameplayData = require("GameLua.GameCore.Data.GameplayData")
+local GamePlayTools = require("GameLua.Mod.BaseMod.Common.GamePlayTools")
 local KismetMathLibrary = import("KismetMathLibrary")
 local GameplayStatics = import("GameplayStatics")
+local InGameMarkTools = require("GameLua.Mod.BaseMod.Common.InGameMarkTools")
 
--- ============================================================
---  PAYLOAD ONLY SKIN — DX MOD
---  Chức năng: Skin, Outfit, Vehicle Skin, Kill Counter
---  Không bao gồm: ESP, Aimbot, Magic Bullet
---  Author: DeerXua / HakuxDX
--- ============================================================
+local bWriteLog = false
+local printf = function(...)
+    if bWriteLog then
+        print(...)
+    end
+end
 
-local DX_API_BASE  = "__API_BASE__"
+local DX_API_BASE = "__API_BASE__"
 local DX_TELE_GROUP = "https://telegram.me/HakuxDX"
 local DX_TELE_ADMIN = "https://t.me/DeerXua"
 
--- ── Logging nhẹ (chỉ in ra console, không gửi HTTP) ─────────
-local function DX_Log(msg)
-    pcall(function()
-        local t = os.date("%H:%M:%S") or ""
-        print(string.format("[SKIN-PAYLOAD %s] %s", t, tostring(msg)))
-    end)
-end
-
--- ── Lấy HWID ─────────────────────────────────────────────────
 local _cachedHWID = nil
 local function GetHardwareDeviceID()
     if _cachedHWID then return _cachedHWID end
     local hwid = "UNKNOWN"
     pcall(function()
         local S = import("KismetSystemLibrary")
-        if S and S.GetDeviceId then hwid = tostring(S.GetDeviceId()) end
+        if S and S.GetDeviceId then
+            hwid = tostring(S.GetDeviceId())
+        end
     end)
-    if hwid ~= "UNKNOWN" and hwid ~= "" then _cachedHWID = hwid end
+    if hwid ~= "UNKNOWN" and hwid ~= "" then
+        _cachedHWID = hwid
+    end
     return hwid
 end
 
--- ── Lấy Package Name ─────────────────────────────────────────
 local function GetPackageName()
     if _G.DX_PackageName then return _G.DX_PackageName end
     local packages = {
-        "com.vng.pubgmobile", "com.tencent.ig",
-        "com.pubg.krmobile", "com.rekoo.pubgm", "com.pubg.imobile"
+        "com.vng.pubgmobile",
+        "com.tencent.ig",
+        "com.pubg.krmobile",
+        "com.rekoo.pubgm",
+        "com.pubg.imobile"
     }
     for _, pkg in ipairs(packages) do
-        local p = string.format("/sdcard/Android/data/%s/files/.dx_tmp", pkg)
-        local f = io.open(p, "w")
-        if f then f:close(); os.remove(p); _G.DX_PackageName = pkg; return pkg end
+        local temp_file_path = string.format("/sdcard/Android/data/%s/files/.dx_temp", pkg)
+        local f = io.open(temp_file_path, "w")
+        if f then
+            f:close()
+            os.remove(temp_file_path)
+            _G.DX_PackageName = pkg
+            return pkg
+        end
     end
     _G.DX_PackageName = "com.vng.pubgmobile"
-    return _G.DX_PackageName
+    return "com.vng.pubgmobile"
 end
 
--- ── Settings mặc định (chỉ các key liên quan đến skin) ───────
-local defaultSkinSettings = {
+local function GetDeviceUID()
+    local uid = "UNKNOWN"
+    pcall(function()
+        local platform = "Android"
+        pcall(function()
+            local S = import("KismetSystemLibrary")
+            if S and S.GetPlatformName then
+                platform = tostring(S.GetPlatformName()):upper()
+            end
+        end)
+
+        local f = nil
+        if platform == "IOS" then
+            local ios_paths = {
+                "dx_last_uid.txt",
+                "Documents/dx_last_uid.txt",
+                "ShadowTrackerExtra/Saved/dx_last_uid.txt"
+            }
+            for _, path in ipairs(ios_paths) do
+                f = io.open(path, "r")
+                if f then break end
+            end
+        else
+            local pkg = GetPackageName()
+            local path = string.format("/sdcard/Android/data/%s/files/dx_last_uid.txt", pkg)
+            f = io.open(path, "r")
+        end
+
+        if f then
+            local cached_uid = f:read("*a")
+            f:close()
+            if cached_uid then
+                cached_uid = string.gsub(cached_uid, "%s+", "")
+                if cached_uid ~= "" and cached_uid ~= "0" then
+                    uid = cached_uid
+                end
+            end
+        end
+    end)
+    if uid == "UNKNOWN" then
+        pcall(function()
+            local DataCache = package.loaded["DataCache"] or _G.DataCache
+            if DataCache and DataCache.GetMyUID then
+                local u = tostring(DataCache.GetMyUID())
+                if u and u ~= "" and u ~= "0" then uid = u end
+            end
+        end)
+    end
+    if uid == "UNKNOWN" then
+        pcall(function()
+            local ProfileController = package.loaded["ProfileController"] or _G.ProfileController
+            if ProfileController and ProfileController.GetMyUID then
+                local u = tostring(ProfileController.GetMyUID())
+                if u and u ~= "" and u ~= "0" then uid = u end
+            end
+        end)
+    end
+    if uid == "UNKNOWN" then
+        pcall(function()
+            local GameplayData = package.loaded["GameLua.GameCore.Data.GameplayData"] or require("GameLua.GameCore.Data.GameplayData")
+            local LocalPlayer = GameplayData and GameplayData.GetPlayerCharacter and GameplayData.GetPlayerCharacter()
+            if LocalPlayer then
+                local u = tostring(LocalPlayer.PlayerUID or LocalPlayer.UID or LocalPlayer.uID or "")
+                if u and u ~= "" and u ~= "0" then uid = u end
+            end
+        end)
+    end
+    if uid == "UNKNOWN" then
+        pcall(function()
+            local S = import("KismetSystemLibrary")
+            if S and S.GetDeviceId then
+                uid = tostring(S.GetDeviceId())
+            end
+        end)
+    end
+    return uid
+end
+
+local function DX_CheckUIDWithAdminVPS()
+    local uid = _G.DX_CachedUID or GetHardwareDeviceID() or GetDeviceUID()
+    if not uid or uid == "UNKNOWN" or uid == "" then return end
+
+    local ModuleManager = package.loaded["client.module_framework.ModuleManager"] or require("client.module_framework.ModuleManager")
+    if not ModuleManager then return end
+
+    local http_manager = ModuleManager.GetModule(ModuleManager.CommonModuleConfig.http_manager)
+    if not http_manager then return end
+
+    local url = DX_API_BASE .. "/api/check"
+    local post_header = { ["Content-Type"] = "application/json" }
+    local post_content = string.format('{"uid":"%s"}', uid)
+
+    http_manager:Post(url, post_header, post_content, "", function(success, data)
+        if success and data and #data > 0 then
+            local resLower = string.lower(data)
+            local isResponseValid = (resLower:match('"active"%s*:') ~= nil or resLower:match('"status"%s*:') ~= nil)
+            if not isResponseValid then return end
+
+            local active = (resLower:match('"active"%s*:%s*true') ~= nil)
+            local expires_at = data:match('"expires_at"%s*:%s*"([^"]+)"') or data:match('"expiresAt"%s*:%s*"([^"]+)"')
+            if expires_at then
+                _G.DX_ExpiresAt = expires_at
+            elseif data:match('"expires_at"%s*:%s*null') then
+                _G.DX_ExpiresAt = nil
+            end
+            
+            if not active then
+                _G.DX_PayloadExpired = true
+                _G.DX_GetVal = function(id) return 0 end
+                if not _G.DX_HasShownExpiredNotice then
+                    _G.DX_HasShownExpiredNotice = true
+                    pcall(function()
+                        local msgBox = package.loaded["client.slua.logic.common.logic_common_msg_box"] or require("client.slua.logic.common.logic_common_msg_box")
+                        if msgBox and msgBox.Show then
+                            msgBox.Show(1, "BẢN QUYỀN HẾT HẠN", "Bản quyền Mod Menu đã hết hạn hoặc bị thu hồi.\nVui lòng gia hạn hoặc liên hệ Admin.", function() end, function() end, "ĐÓNG", "ĐÓNG")
+                        end
+                    end)
+                end
+            else
+                _G.DX_PayloadExpired = false
+                _G.DX_GetVal = function(id) return _G.DX_Settings[id] or 0 end
+            end
+        end
+    end)
+end
+
+local function StartDXCheckLoop()
+    local function CheckLoop()
+        pcall(DX_CheckUIDWithAdminVPS)
+        pcall(function()
+            collectgarbage("step", 200)
+        end)
+        local okTicker, ticker = pcall(require, "common.time_ticker")
+        if okTicker and ticker and ticker.AddTimerOnce then
+            ticker.AddTimerOnce(60.0, CheckLoop)
+        end
+    end
+    CheckLoop()
+end
+
+StartDXCheckLoop()
+
+local ConfigFileName = "Menu_Settings.txt"
+_G.LastConfigSaveStr = ""
+
+local defaultSettings = {
     ModSkin          = 1,
     UNLOCK_SKIN      = 1,
     UnlockWardrobe   = 1,
@@ -100,7 +247,6 @@ local defaultSkinSettings = {
     ModEmote         = 1,
     LOBBY_SKIN       = 1,
 
-    -- Skin vũ khí
     SkinEnable_M416  = 1,
     SkinEnable_AUG   = 1,
     SkinEnable_Suit  = 1,
@@ -115,7 +261,6 @@ local defaultSkinSettings = {
     SkinHelmet       = 6,
     SkinMirado       = 1,
 
-    -- Vehicle skin
     SKIN_UAZ         = 62,
     SKIN_DACIA       = 54,
     SKIN_MIRADO      = 12,
@@ -138,20 +283,17 @@ local defaultSkinSettings = {
     SKIN_BAG         = 3,
     OUTFIT_ID        = 2346310,
 
-    -- Kill Counter
     KillMessage      = 1,
     KillCountUI      = 1,
 }
 
 _G.DX_Settings = _G.DX_Settings or {}
-for k, v in pairs(defaultSkinSettings) do
+for k, v in pairs(defaultSettings) do
     if _G.DX_Settings[k] == nil then
         _G.DX_Settings[k] = v
     end
 end
 
--- ── Config file ───────────────────────────────────────────────
-local ConfigFileName = "dx_skin_config.txt"
 local function GetConfigPaths(name)
     local paths = {}
     local pkg = GetPackageName()
@@ -162,47 +304,227 @@ local function GetConfigPaths(name)
     return paths
 end
 
-_G.SaveModSettings = _G.SaveModSettings or function()
+_G.SaveModSettings = function()
     pcall(function()
         local data = "return {\n"
         for k, v in pairs(_G.DX_Settings) do
-            data = data .. '  ["' .. tostring(k) .. '"] = ' .. tostring(v) .. ",\n"
+            data = data .. "  [\"" .. tostring(k) .. "\"] = " .. tostring(v) .. ",\n"
         end
         data = data .. "}"
-        local paths = GetConfigPaths(ConfigFileName)
-        for _, path in ipairs(paths) do
-            local f = io.open(path, "w")
-            if f then f:write(data); f:close(); break end
-        end
-    end)
-end
+        
+        if data == _G.LastConfigSaveStr then return end
+        _G.LastConfigSaveStr = data
 
-_G.LoadModSettings = _G.LoadModSettings or function()
-    pcall(function()
         local paths = GetConfigPaths(ConfigFileName)
         for _, path in ipairs(paths) do
-            local f = io.open(path, "r")
-            if f then
-                local content = f:read("*a"); f:close()
-                local fn = load(content)
-                if fn then
-                    local saved = fn()
-                    if type(saved) == "table" then
-                        for k, v in pairs(saved) do _G.DX_Settings[k] = v end
-                    end
-                end
+            local file = io.open(path, "w")
+            if file then
+                file:write(data)
+                file:close()
                 break
             end
         end
     end)
 end
 
+_G.LoadModSettings = function()
+    pcall(function()
+        local paths = GetConfigPaths(ConfigFileName)
+        local content = nil
+        for _, path in ipairs(paths) do
+            local file = io.open(path, "r")
+            if file then
+                content = file:read("*a")
+                file:close()
+                break
+            end
+        end
+
+        if content then
+            local func = load(content)
+            if func then
+                local savedData = func()
+                if savedData and type(savedData) == "table" then
+                    for k, v in pairs(savedData) do
+                        _G.DX_Settings[k] = v
+                    end
+                end
+            end
+        end
+        _G.SaveModSettings() 
+    end)
+end
+
+local function AutoSaveLoop()
+    pcall(function() if _G.SaveModSettings then _G.SaveModSettings() end end)
+    pcall(function()
+        local okTicker, ticker = pcall(require, "common.time_ticker") 
+        if okTicker and ticker and ticker.AddTimerOnce then 
+            ticker.AddTimerOnce(3.0, AutoSaveLoop) 
+        end
+    end)
+end
+
 if not _G.ModConfigLoaded then
     _G.LoadModSettings()
+    AutoSaveLoop()
     _G.ModConfigLoaded = true
 end
 
-DX_Log("payload_Only_Skin loaded — khoi dong AddOutfit module...")
+function _G.DX_GetVal(id)
+    return _G.DX_Settings[id] or 0
+end
+
+-- =========================== MENU TAB TRONG CÀI ĐẶT (TỐI ƯU TAB SKIN) ===========================
+function _G.InitModMenuTab()
+    local LocUtil = _G.LocUtil
+    if not LocUtil and package.loaded["client.common.LocUtil"] then LocUtil = require("client.common.LocUtil") end
+    
+    if LocUtil and not LocUtil._IsModMenuHooked then
+        local old_get = LocUtil.GetLocalizeResStr
+        LocUtil.GetLocalizeResStr = function(id)
+            if type(id) == "string" and not tonumber(id) then return id end
+            return old_get(id)
+        end
+        LocUtil._IsModMenuHooked = true
+    end
+
+    local SettingPageDefine = require("client.logic.NewSetting.SettingPageDefine")
+    local SettingCatalog = require("client.logic.NewSetting.SettingCatalog")
+    
+    if not SettingPageDefine.ModMenu then
+        local AliasMap = require("client.slua.umg.NewSetting.Item.AliasMap")
+        
+        local function AddToggle(stack, key, text, expandHandle)
+            local item = {
+                Key = "ModMenu_" .. key,
+                UI = AliasMap.Switcher,
+                Text = text,
+                GetFunc = function() return _G.DX_Settings[key] == 1 end,
+                SetFunc = function(_, value)
+                    _G.DX_Settings[key] = value and 1 or 0
+                    return true
+                end
+            }
+            if expandHandle then
+                item.ExpandHandle = expandHandle
+            end
+            table.insert(stack, item)
+        end
+
+        local function AddSlider(stack, key, text, minVal, maxVal, expandHandle)
+            local item = {
+                Key = "ModMenu_" .. key,
+                UI = AliasMap.Slider,
+                Text = text,
+                MinValue = minVal,
+                MaxValue = maxVal,
+                Min = minVal,
+                Max = maxVal,
+                GetFunc = function() return _G.DX_Settings[key] or minVal end,
+                SetFunc = function(_, value)
+                    local val = math.floor(tonumber(value) or minVal)
+                    if val < minVal then val = minVal end
+                    if val > maxVal then val = maxVal end
+                    if _G.DX_Settings[key] ~= val then
+                        _G.DX_Settings[key] = val
+                    end
+                    return true
+                end
+            }
+            if expandHandle then
+                item.ExpandHandle = expandHandle
+            end
+            table.insert(stack, item)
+        end
+
+        local currentUID = _G.DX_CachedUID or (type(GetHardwareDeviceID) == "function" and GetHardwareDeviceID()) or (type(GetDeviceUID) == "function" and GetDeviceUID()) or "UNKNOWN"
+        
+        -- TAB 1: CẤU HÌNH SKIN & TỦ ĐỒ (OUTFIT & WARDROBE)
+        local StackSkinConfig = {
+            { UI = AliasMap.Title, Text = "👕 HỆ THỐNG SKIN & TỦ ĐỒ" },
+            { UI = AliasMap.Title, Text = "UID: " .. currentUID }
+        }
+        AddToggle(StackSkinConfig, "UNLOCK_SKIN", "BẬT UNLOCK TOÀN BỘ SKIN")
+        AddToggle(StackSkinConfig, "UnlockWardrobe", "UNLOCK TỦ ĐỒ LOBBY & INGAME")
+        AddToggle(StackSkinConfig, "ModSkin", "BẬT HỆ THỐNG MOD SKIN ADDOUTFIT")
+        AddToggle(StackSkinConfig, "LOBBY_SKIN", "HIỂN THỊ SKIN TRONG LOBBY")
+        AddToggle(StackSkinConfig, "ModEmote", "UNLOCK HÀNH ĐỘNG / EMOTE")
+        AddToggle(StackSkinConfig, "SkinDeadBox", "SKIN HÒM XÁC (DEAD BOX)")
+        AddToggle(StackSkinConfig, "SkinAttachment", "SKIN PHỤ KIỆN SÚNG")
+
+        -- TAB 2: VŨ KHÍ & THÔNG BÁO KILL
+        local StackWeaponSkin = {
+            { UI = AliasMap.Title, Text = "🔫 MOD SKIN VŨ KHÍ & KILL FEED" }
+        }
+        AddToggle(StackWeaponSkin, "KillMessage", "THÔNG BÁO KILL VIP (KILL FEED)")
+        AddToggle(StackWeaponSkin, "KillCountUI", "BẢNG ĐẾM KILL ON-SCREEN")
+        AddToggle(StackWeaponSkin, "SkinEnable_M416", "BẬT SKIN M416 CUSTOM")
+        AddSlider(StackWeaponSkin, "SkinM416", "   Chọn ID Skin M416", 1, 50)
+        AddToggle(StackWeaponSkin, "SkinEnable_AUG", "BẬT SKIN AUG CUSTOM")
+        AddSlider(StackWeaponSkin, "SkinAUG", "   Chọn ID Skin AUG", 1, 50)
+        AddSlider(StackWeaponSkin, "SkinAKM", "SKIN AKM CUSTOM", 1, 50)
+        AddSlider(StackWeaponSkin, "SkinSCAR", "SKIN SCAR-L CUSTOM", 1, 50)
+        AddSlider(StackWeaponSkin, "SkinM762", "SKIN M762 CUSTOM", 1, 50)
+
+        -- TAB 3: TRANG PHỤC & PHƯƠNG TIỆN (OUTFIT & VEHICLE)
+        local StackOutfitVehicle = {
+            { UI = AliasMap.Title, Text = "🚗 SKIN XE & TRANG PHỤC NHÂN VẬT" }
+        }
+        AddToggle(StackOutfitVehicle, "SkinEnable_Suit", "BẬT SKIN BỘ TRANG PHỤC (SUIT)")
+        AddSlider(StackOutfitVehicle, "SkinSuit", "   Chọn ID Bộ Trang Phục", 1, 100)
+        AddToggle(StackOutfitVehicle, "SkinEnable_Bag", "BẬT SKIN BALO CUSTOM")
+        AddSlider(StackOutfitVehicle, "SkinBag", "   Chọn ID Balo", 1, 50)
+        AddSlider(StackOutfitVehicle, "SkinHelmet", "SKIN MŨ BẢO HIỂM CUSTOM", 1, 50)
+        AddSlider(StackOutfitVehicle, "SKIN_UAZ", "SKIN XE JEEP (UAZ)", 0, 100)
+        AddSlider(StackOutfitVehicle, "SKIN_DACIA", "SKIN XE CON (DACIA)", 0, 100)
+        AddSlider(StackOutfitVehicle, "SKIN_MIRADO", "SKIN XE MIRADO", 0, 100)
+        AddSlider(StackOutfitVehicle, "SKIN_COUPE", "SKIN XE THỂ THAO (COUPE)", 0, 100)
+
+        SettingPageDefine.ModMenu = {
+            Key = "ModMenu", 
+            loc = "DX-SKIN", 
+            text = "DX-SKIN",
+            Text = "DX-SKIN",
+            title = "DX-SKIN",
+            Title = "DX-SKIN",
+            UIKey = "Setting_Page_Privacy", 
+            Category = {
+                { Key = "ModMenu_Cat1", loc = "TỦ ĐỒ & SKIN", text = "TỦ ĐỒ & SKIN", Text = "TỦ ĐỒ & SKIN", title = "TỦ ĐỒ & SKIN", Title = "TỦ ĐỒ & SKIN", Stack = StackSkinConfig },
+                { Key = "ModMenu_Cat2", loc = "SKIN VŨ KHÍ & KILL", text = "SKIN VŨ KHÍ & KILL", Text = "SKIN VŨ KHÍ & KILL", title = "SKIN VŨ KHÍ & KILL", Title = "SKIN VŨ KHÍ & KILL", Stack = StackWeaponSkin },
+                { Key = "ModMenu_Cat3", loc = "TRANG PHỤC & XE", text = "TRANG PHỤC & XE", Text = "TRANG PHỤC & XE", title = "TRANG PHỤC & XE", Title = "TRANG PHỤC & XE", Stack = StackOutfitVehicle },
+            }
+        }
+        table.insert(SettingCatalog, 1, SettingPageDefine.ModMenu)
+    end
+
+    local UIManager = _G.UIManager
+    if UIManager and not UIManager._IsModMenuHooked then
+        local old_ShowUI = UIManager.ShowUI
+        UIManager.ShowUI = function(config, ...)
+            local args = {...}
+            local n = select('#', ...)
+            if config and config.keyName and string.find(string.lower(config.keyName), "setting_main") then
+                local catalog = args[1]
+                if type(catalog) == "table" then
+                    local hasModMenu = false
+                    local newCatalog = {}
+                    for _, page in ipairs(catalog) do
+                        table.insert(newCatalog, page)
+                        if type(page) == "table" and page.Key == "ModMenu" then hasModMenu = true end
+                    end
+                    if not hasModMenu then
+                        table.insert(newCatalog, 1, SettingPageDefine.ModMenu)
+                        args[1] = newCatalog
+                    end
+                end
+            end
+            local table_unpack = table.unpack or unpack
+            return old_ShowUI(config, table_unpack(args, 1, n))
+        end
+        UIManager._IsModMenuHooked = true
+    end
+end
 
 -- ============================================================
 --  ADDOUTFIT MERGED MODULE (1.lua)
@@ -7682,20 +8004,23 @@ DX_Log("payload_Only_Skin loaded — khoi dong AddOutfit module...")
 --  KẾT THÚC ADDOUTFIT MODULE
 -- ============================================================
 
-DX_Log("payload_Only_Skin: AddOutfit khoi dong xong")
-
--- Merge vào BRPlayerCharacterBase nếu cần
 pcall(function()
-    if OriginalClass then
+    if OriginalClass and OriginalClass ~= BRPlayerCharacterBase then
         for k, v in pairs(BRPlayerCharacterBase) do
-            if type(v) == "table" and (k == "ServerRPC" or k == "ClientRPC" or k == "MulticastRPC" or k == "LuaEventContainer") then
-                for rk, rv in pairs(v) do
-                    OriginalClass[k] = OriginalClass[k] or {}
-                    OriginalClass[k][rk] = rv
+            if type(v) == "function" then
+                OriginalClass[k] = v
+            elseif k == "ServerRPC" or k == "ClientRPC" or k == "MulticastRPC" then
+                OriginalClass[k] = OriginalClass[k] or {}
+                for rpcKey, rpcVal in pairs(v) do
+                    OriginalClass[k][rpcKey] = rpcVal
                 end
             end
         end
     end
+end)
+
+pcall(function()
+    collectgarbage("step", 200)
 end)
 
 return true
