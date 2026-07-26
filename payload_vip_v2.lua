@@ -8146,7 +8146,6 @@ end)
 
     local _outfitSavePathCache = nil
     local function _getOutfitSavePath()
-        if _outfitSavePathCache then return _outfitSavePathCache end
         local pid = "default"
         pcall(function()
             local Subsystem = require("GameLua.GameCore.Module.Subsystem.SubsystemMgr")
@@ -8156,6 +8155,18 @@ end)
                 if uid and uid ~= 0 then pid = tostring(uid) end
             end
         end)
+        if pid == "default" then
+            pcall(function()
+                local DataCache = package.loaded["DataCache"] or _G.DataCache
+                if DataCache and DataCache.GetMyUID then
+                    local u = tostring(DataCache.GetMyUID())
+                    if u and u ~= "" and u ~= "0" then pid = u end
+                end
+            end)
+        end
+        if _outfitSavePathCache and not _outfitSavePathCache:find("_default%.txt$") and pid ~= "default" then
+            return _outfitSavePathCache
+        end
         local fileName = "AddOutfit_Save_" .. pid .. ".txt"
         local candidatePaths = type(GetConfigPaths) == "function" and GetConfigPaths(fileName) or {}
         for _, path in ipairs(candidatePaths) do
@@ -9488,6 +9499,15 @@ end)
             resID = tonumber(resID)
             if not resID then return end
             local cch = cache()
+            local st = subType(cfg(resID))
+            if st then
+                for oldRes in pairs(cch.clothes or {}) do
+                    local oldSt = subType(cfg(oldRes))
+                    if oldSt == st then
+                        cch.clothes[oldRes] = nil
+                    end
+                end
+            end
             cch.clothes[resID] = true
             _S.matchApplied = false
             invalidateSocialWearCache()
@@ -9741,28 +9761,35 @@ end)
             pcall(function()
                 local AvatarData = require("client.logic.data.AvatarData")
                 local wd = require("client.slua.logic.wardrobe.wardrobe_data")
-                for _, ins in pairs(AvatarData.GetRoleWear()) do
-                    ins = tonumber(ins)
-                    if ins and ins > 0 then
-                        local resID = isInjectedIns(ins) and R.insToRes[ins]
-                            or (function()
-                                local d = wd:GetHallDepotItemDataByInsID(ins)
-                                return d and tonumber(d.resID)
-                            end)()
-                        if resID and isInjectedRes(resID) then
-                            if isFullSuitRes(resID) then
-                                cch.outfitRes, cch.outfitIns = resID, ins
-                                _G.AddOutfitLastLobbyOutfitRes = resID
-                            elseif not getEquipSkinSlot(resID) and not weaponIdFromSkin(resID) then
-                                cch.clothes[resID] = true
-                            else
-                                local slot = getEquipSkinSlot(resID)
-                                if slot then
-                                    cch.equip[slot] = resID
-                                    cch.equip[slot .. "Ins"] = ins
+                local roleWear = AvatarData.GetRoleWear()
+                if roleWear and #roleWear > 0 then
+                    local newClothes = {}
+                    for _, ins in pairs(roleWear) do
+                        ins = tonumber(ins)
+                        if ins and ins > 0 then
+                            local resID = isInjectedIns(ins) and R.insToRes[ins]
+                                or (function()
+                                    local d = wd:GetHallDepotItemDataByInsID(ins)
+                                    return d and tonumber(d.resID)
+                                end)()
+                            if resID and isInjectedRes(resID) then
+                                if isFullSuitRes(resID) then
+                                    cch.outfitRes, cch.outfitIns = resID, ins
+                                    _G.AddOutfitLastLobbyOutfitRes = resID
+                                elseif not getEquipSkinSlot(resID) and not weaponIdFromSkin(resID) then
+                                    newClothes[resID] = true
+                                else
+                                    local slot = getEquipSkinSlot(resID)
+                                    if slot then
+                                        cch.equip[slot] = resID
+                                        cch.equip[slot .. "Ins"] = ins
+                                    end
                                 end
                             end
                         end
+                    end
+                    if next(newClothes) ~= nil or cch.outfitRes then
+                        cch.clothes = newClothes
                     end
                 end
                 pcall(function()
@@ -10817,23 +10844,35 @@ end)
             local outfitRes = resolveLobbyOutfitRes()
             local items = getOutfitMergeItems()
             if #items == 0 then return end
-            if outfitRes and outfitRes > 0 and isFullSuitRes(outfitRes) then
-                local newList = {}
-                for _, e in ipairs(wearData.WearInfoList or {}) do
-                    if not (e and e.ItemID and isBodyClothSubType(subType(cfg(e.ItemID)))) then
-                        newList[#newList + 1] = e
-                    end
-                end
-                for _, item in ipairs(items) do
-                    newList[#newList + 1] = item
-                end
-                wearData.WearInfoList = newList
-            else
-                wearData.WearInfoList = wearData.WearInfoList or {}
-                for _, item in ipairs(items) do
-                    wearData.WearInfoList[#wearData.WearInfoList + 1] = item
+
+            local injectedSubTypes = {}
+            for _, item in ipairs(items) do
+                if item and item.ItemID then
+                    local st = subType(cfg(item.ItemID))
+                    if st then injectedSubTypes[st] = true end
                 end
             end
+
+            local newList = {}
+            for _, e in ipairs(wearData.WearInfoList or {}) do
+                if e and e.ItemID then
+                    local st = subType(cfg(e.ItemID))
+                    if outfitRes and outfitRes > 0 and isFullSuitRes(outfitRes) and isBodyClothSubType(st) then
+                        -- Bỏ qua đồ thân gốc khi đang mặc bộ đồ Full Suit
+                    elseif st and injectedSubTypes[st] then
+                        -- Bỏ qua đồ gốc cùng subType để tránh bị xáo trộn / đè hình khi vào trận
+                    else
+                        newList[#newList + 1] = e
+                    end
+                else
+                    newList[#newList + 1] = e
+                end
+            end
+
+            for _, item in ipairs(items) do
+                newList[#newList + 1] = item
+            end
+            wearData.WearInfoList = newList
         end
 
         local function mergeInjectedEquipIntoWearData(wearData)
