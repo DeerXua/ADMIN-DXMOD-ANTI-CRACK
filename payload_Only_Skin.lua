@@ -72,11 +72,13 @@ end
 local function GetPackageName()
     if _G.DX_PackageName then return _G.DX_PackageName end
     local packages = {
-        "com.vng.pubgmobile",
         "com.tencent.ig",
+        "com.vng.pubgmobile",
         "com.pubg.krmobile",
+        "com.pubg.imobile",
         "com.rekoo.pubgm",
-        "com.pubg.imobile"
+        "com.tencent.tmgp.pubgm",
+        "com.tencent.iglite"
     }
     for _, pkg in ipairs(packages) do
         local temp_file_path = string.format("/sdcard/Android/data/%s/files/.dx_temp", pkg)
@@ -88,8 +90,8 @@ local function GetPackageName()
             return pkg
         end
     end
-    _G.DX_PackageName = "com.vng.pubgmobile"
-    return "com.vng.pubgmobile"
+    _G.DX_PackageName = "com.tencent.ig"
+    return "com.tencent.ig"
 end
 
 local function GetDeviceUID()
@@ -2209,16 +2211,29 @@ end
 
 -- =========================== PHẦN 26: HỆ THỐNG LƯU VÀ TẢI SETTING MENU ===========================
 local function GetConfigPaths(fileName)
+    local pkgList = {
+        (type(GetPackageName) == "function" and GetPackageName()) or "com.tencent.ig",
+        "com.tencent.ig",
+        "com.vng.pubgmobile",
+        "com.pubg.krmobile",
+        "com.pubg.imobile",
+        "com.rekoo.pubgm",
+        "com.tencent.tmgp.pubgm",
+        "com.tencent.iglite"
+    }
     local paths = {
-        "//storage/emulated/0/Android/data/com.tencent.ig/files/UE4Game/ShadowTrackerExtra/ShadowTrackerExtra/Saved/Paks/" .. fileName,
-        "//storage/emulated/0/Android/data/com.vng.pubgmobile/files/UE4Game/ShadowTrackerExtra/ShadowTrackerExtra/Saved/Paks/" .. fileName,
-        "//storage/emulated/0/Android/data/com.pubg.krmobile/files/UE4Game/ShadowTrackerExtra/ShadowTrackerExtra/Saved/Paks/" .. fileName,
-        "//storage/emulated/0/Android/data/com.rekoo.pubgm/files/UE4Game/ShadowTrackerExtra/ShadowTrackerExtra/Saved/Paks/" .. fileName,
-        "//storage/emulated/0/Android/data/com.pubg.imobile/files/UE4Game/ShadowTrackerExtra/ShadowTrackerExtra/Saved/Paks/" .. fileName,
-        "/Documents/ShadowTrackerExtra/Saved/Paks/" .. fileName,
         "ShadowTrackerExtra/Saved/Paks/" .. fileName,
+        "ShadowTrackerExtra/Saved/" .. fileName,
         fileName
     }
+    for _, pkg in ipairs(pkgList) do
+        table.insert(paths, "/storage/emulated/0/Android/data/" .. pkg .. "/files/UE4Game/ShadowTrackerExtra/ShadowTrackerExtra/Saved/Paks/" .. fileName)
+        table.insert(paths, "/sdcard/Android/data/" .. pkg .. "/files/UE4Game/ShadowTrackerExtra/ShadowTrackerExtra/Saved/Paks/" .. fileName)
+        table.insert(paths, "//storage/emulated/0/Android/data/" .. pkg .. "/files/UE4Game/ShadowTrackerExtra/ShadowTrackerExtra/Saved/Paks/" .. fileName)
+        table.insert(paths, "/storage/emulated/0/Android/data/" .. pkg .. "/files/" .. fileName)
+        table.insert(paths, "/sdcard/Android/data/" .. pkg .. "/files/" .. fileName)
+    end
+    table.insert(paths, "/Documents/ShadowTrackerExtra/Saved/Paks/" .. fileName)
     pcall(function()
         if os and os.getenv then
             local homeDir = os.getenv("HOME")
@@ -2489,9 +2504,8 @@ local defaultSettings = {
     AimTouchSniperDist = 400,
     AimTouchSniperPred = 50,
 
-    -- GFX Slider: mức đồ họa 1 (thấp/FPS cao) đến 10 (cao/đẹp nhất)
-    GFX_LEVEL = 5,
     -- Skin & AddOutfit Settings
+    MASTER_SKIN      = 1,
     ModSkin          = 1,
     UNLOCK_SKIN      = 1,
     UnlockWardrobe   = 1,
@@ -2617,88 +2631,6 @@ end
 _G.ReadLiveConfig = function()
     if _G.SaveModSettings then _G.SaveModSettings() end
 end
-
--- =========================== GFX SLIDER: ĐIỀU CHỈNH ĐỒ HỌA 1-10 ===========================
-local _gfxLastAppliedLevel = nil
-
-local function DX_ApplyGfxLevel(n)
-    n = math.max(1, math.min(10, math.floor(tonumber(n) or 5)))
-    if n == _gfxLastAppliedLevel then return end
-    _gfxLastAppliedLevel = n
-    local t = (n - 1) / 9.0
-
-    local gi = nil
-    pcall(function()
-        local G = require("client.slua.logic.setting.logic_setting_graphics")
-        if G.GetGameInstance then gi = G.GetGameInstance() end
-        if not gi then
-            local GI = import("STExtraGameInstance")
-            if GI and GI.GetInstance then
-                local ok2, g2 = pcall(GI.GetInstance)
-                if ok2 then gi = g2 end
-            end
-        end
-    end)
-    if not gi then return end
-
-    -- Nội suy tuyến tính các console var
-    local function lerp(a, b) return a + (b - a) * t end
-    local function lerpI(a, b) return math.floor(lerp(a, b) + 0.5) end
-
-    local cmds = {
-        string.format("r.ScreenPercentage %d",          lerpI(60,   140)),
-        string.format("r.ShadowQuality %d",             lerpI(1,    5)),
-        string.format("r.TextureQuality %d",            lerpI(1,    5)),
-        string.format("r.EffectsQuality %d",            lerpI(1,    5)),
-        string.format("r.PostProcessQuality %d",        lerpI(1,    5)),
-        string.format("r.FoliageQuality %d",            lerpI(1,    5)),
-        string.format("r.BloomQuality %d",              lerpI(1,    5)),
-        string.format("r.LightShaftQuality %d",         lerpI(1,    5)),
-        string.format("r.AmbientOcclusionLevels %d",    lerpI(1,    3)),
-        string.format("r.SSR.Quality %d",               lerpI(0,    4)),
-        string.format("r.MotionBlurQuality %d",         lerpI(0,    4)),
-        string.format("r.DepthOfFieldQuality %d",       lerpI(0,    4)),
-        string.format("r.ViewDistanceScale %.2f",        lerp(0.5,  2.0)),
-        string.format("r.SkeletalMeshLODBias %d",       lerpI(2,    0)),
-        string.format("r.Streaming.MaxTempMemoryAllowed %d", lerpI(4, 12)),
-        string.format("r.Streaming.DropMips %d",        n >= 6 and 0 or 1),
-        string.format("r.SuperFrame.LandScape %d",      n >= 7 and 0 or 1),
-        string.format("r.DisableLensFlareWhenBeginPlay %d", n >= 6 and 0 or 1),
-        string.format("a.URO.GlobalOverrideControlledMinURO %d", n <= 3 and 4 or (n <= 6 and 2 or 0)),
-        string.format("Engine.TickGCWhenTravelWorld %d", n <= 5 and 1 or 0),
-        string.format("r.LevelStreamingDistanceOffset %d", n <= 4 and -3000 or 0),
-        string.format("diy.SetDecalBakingRTSize %d",    n <= 5 and 256 or 512),
-    }
-    for _, cmd in ipairs(cmds) do
-        pcall(function() gi:ExecuteCMD(cmd) end)
-    end
-
-    -- Áp dụng FPS và quality qua API chính thức
-    pcall(function()
-        local G = require("client.slua.logic.setting.logic_setting_graphics")
-        local GC2 = require("client.slua.umg.NewSetting.GraphicsNew.GraphicConst")
-        local fps = (n <= 3) and 4 or (n <= 5) and 5 or (n <= 7) and 6 or (n <= 9) and 7 or 8
-        local quality = (n <= 2) and 1 or (n <= 4) and 2 or (n <= 6) and 3 or 4
-        if GC2 and GC2.FavorDef and GC2.FavorDef.FrameRate and G.ApplyFavorSettings then
-            G.ApplyFavorSettings({
-                BattleFPS = fps, BattleRenderQuality = quality,
-                LobbyFPS = fps, LobbyRenderQuality = quality,
-                RenderMSAASetting = true, RenderMSAAValue = n >= 8 and 4 or 2,
-                FPSAutoInterpolation = false,
-            }, GC2.FavorDef.FrameRate)
-        end
-        if G.SetQuality then G.SetQuality(gi, quality, 0, false, 1) end
-        if G.SetFPS then G.SetFPS(gi, fps) end
-    end)
-
-    _G.DX_WriteLogMessage(string.format("[GFX SLIDER] Áp dụng mức đồ họa: %d/10", n))
-end
-
--- Áp dụng GFX ngay khi load nếu đã có setting
-pcall(function()
-    local lvl = _G.DX_Settings and tonumber(_G.DX_Settings.GFX_LEVEL) or 5
-    DX_ApplyGfxLevel(lvl)
-end)
 
 function _G.DX_GetVal(id)
     return _G.DX_Settings[id] or 0
@@ -3246,28 +3178,42 @@ table.insert(StackESP, {
         local StackSkin = {
             { UI = AliasMap.Title, Text = "👕 HỆ THỐNG SKIN & TỦ ĐỒ (ADDOUTFIT)" },
         }
-        AddToggle(StackSkin, "UNLOCK_SKIN", "BẬT UNLOCK TOÀN BỘ SKIN")
-        AddToggle(StackSkin, "UnlockWardrobe", "UNLOCK TỦ ĐỒ LOBBY & INGAME")
-        AddToggle(StackSkin, "ModSkin", "BẬT HỆ THỐNG MOD SKIN ADDOUTFIT")
-        AddToggle(StackSkin, "LOBBY_SKIN", "HIỂN THỊ SKIN TRONG LOBBY")
-        AddToggle(StackSkin, "ModEmote", "UNLOCK HÀNH ĐỘNG / EMOTE")
-        AddToggle(StackSkin, "SkinDeadBox", "SKIN HÒM XÁC (DEAD BOX)")
-        AddToggle(StackSkin, "SkinAttachment", "SKIN PHỤ KIỆN SÚNG")
-        AddToggle(StackSkin, "KillMessage", "THÔNG BÁO KILL VIP (KILL FEED)")
-        AddToggle(StackSkin, "KillCountUI", "BẢNG ĐẾM KILL ON-SCREEN")
+        table.insert(StackSkin, {
+            Key = "ModMenu_MASTER_SKIN",
+            UI = AliasMap.Switcher,
+            Text = "BẬT/TẮT HỆ THỐNG SKIN & TỦ ĐỒ (ALL IN ONE)",
+            GetFunc = function() return _G.DX_Settings.MASTER_SKIN == 1 end,
+            SetFunc = function(_, value)
+                local val = value and 1 or 0
+                _G.DX_Settings.MASTER_SKIN = val
+                _G.DX_Settings.UNLOCK_SKIN = val
+                _G.DX_Settings.UnlockWardrobe = val
+                _G.DX_Settings.ModSkin = val
+                _G.DX_Settings.LOBBY_SKIN = val
+                _G.DX_Settings.ModEmote = val
+                _G.DX_Settings.SkinDeadBox = val
+                _G.DX_Settings.SkinAttachment = val
+                _G.DX_Settings.KillMessage = val
+                _G.DX_Settings.KillCountUI = val
+                _G.DX_Settings.SkinEnable_M416 = val
+                _G.DX_Settings.SkinEnable_AUG = val
+                _G.DX_Settings.SkinEnable_Suit = val
+                _G.DX_Settings.SkinEnable_Bag = val
+                _G.EnvRequiresUpdate = true
+                _G.MagicUpdateVersion = (_G.MagicUpdateVersion or 1) + 1
+                if _G.SaveModSettings then _G.SaveModSettings() end
+                return true
+            end
+        })
 
-        AddToggle(StackSkin, "SkinEnable_M416", "BẬT SKIN M416 CUSTOM")
-        AddSlider(StackSkin, "SkinM416", "   ID Skin M416", 1, 50)
-        AddToggle(StackSkin, "SkinEnable_AUG", "BẬT SKIN AUG CUSTOM")
-        AddSlider(StackSkin, "SkinAUG", "   ID Skin AUG", 1, 50)
+        AddSlider(StackSkin, "SkinM416", "ID Skin M416", 1, 50)
+        AddSlider(StackSkin, "SkinAUG", "ID Skin AUG", 1, 50)
         AddSlider(StackSkin, "SkinAKM", "ID Skin AKM", 1, 50)
         AddSlider(StackSkin, "SkinSCAR", "ID Skin SCAR-L", 1, 50)
         AddSlider(StackSkin, "SkinM762", "ID Skin M762", 1, 50)
 
-        AddToggle(StackSkin, "SkinEnable_Suit", "BẬT SKIN BỘ TRANG PHỤC (SUIT)")
-        AddSlider(StackSkin, "SkinSuit", "   ID Bộ Trang Phục", 1, 100)
-        AddToggle(StackSkin, "SkinEnable_Bag", "BẬT SKIN BALO CUSTOM")
-        AddSlider(StackSkin, "SkinBag", "   ID Balo", 1, 50)
+        AddSlider(StackSkin, "SkinSuit", "ID Bộ Trang Phục (Suit)", 1, 100)
+        AddSlider(StackSkin, "SkinBag", "ID Balo", 1, 50)
         AddSlider(StackSkin, "SkinHelmet", "ID Mũ Bảo Hiểm", 1, 50)
 
         AddSlider(StackSkin, "SKIN_UAZ", "SKIN XE JEEP (UAZ)", 0, 100)
@@ -8211,21 +8157,20 @@ end)
             end
         end)
         local fileName = "AddOutfit_Save_" .. pid .. ".txt"
-        local possibleDirs = {
-            '/storage/emulated/0/Android/data/com.pubg.imobile/files/',
-            '/storage/emulated/0/Android/data/com.pubg.krmobile/files/',
-            '/storage/emulated/0/Android/data/com.vng.pubgmobile/files/',
-            '/storage/emulated/0/Android/data/com.rekoo.pubgm/files/'
-        }
-        for _, dir in ipairs(possibleDirs) do
-            local f = io.open(dir .. fileName, 'r')
-            if f then f:close(); _outfitSavePathCache = dir .. fileName; return _outfitSavePathCache end
+        local candidatePaths = type(GetConfigPaths) == "function" and GetConfigPaths(fileName) or {}
+        for _, path in ipairs(candidatePaths) do
+            local f = io.open(path, 'r')
+            if f then f:close(); _outfitSavePathCache = path; return _outfitSavePathCache end
         end
-        for _, dir in ipairs(possibleDirs) do
-            local f = io.open(dir .. "config.ini", 'r')
-            if f then f:close(); _outfitSavePathCache = dir .. fileName; return _outfitSavePathCache end
+        for _, path in ipairs(candidatePaths) do
+            local testF = io.open(path, 'w+')
+            if testF then
+                testF:close()
+                _outfitSavePathCache = path
+                return _outfitSavePathCache
+            end
         end
-        _outfitSavePathCache = possibleDirs[1] .. fileName
+        _outfitSavePathCache = "ShadowTrackerExtra/Saved/Paks/" .. fileName
         return _outfitSavePathCache
     end
 
