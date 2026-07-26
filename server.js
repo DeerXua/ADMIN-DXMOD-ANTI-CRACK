@@ -15,7 +15,7 @@ const SESSIONS_PATH = path.join(__dirname, "sessions.json");
 const PAYLOAD_PATH = path.join(__dirname, "payload_vip_v2.lua");
 const PAYLOAD_PATHS = {
   free: path.join(__dirname, "payload_free.lua"),
-  vip: path.join(__dirname, "payload_vip_v2.lua"),
+  vip: path.join(__dirname, "payload_vip.lua"),
   vip_v2: path.join(__dirname, "payload_vip_v2.lua"),
   only_skin: path.join(__dirname, "payload_Only_Skin.lua"),
   onlyskin: path.join(__dirname, "payload_Only_Skin.lua"),
