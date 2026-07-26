@@ -7841,6 +7841,60 @@ SafeInitLog("StartBypass_VIP_v3", function() if _G.StartBypass_VIP_v3 then _G.St
 SafeInitLog("StartAntiBanRecoveryLoop", StartAntiBanRecoveryLoop)
 
 -- =========================== HỆ THỐNG CẬP NHẬT LOG TỰ ĐỘNG MỖI 15 GIÂY (15S HEARTBEAT & LOG REFRESH) ===========================
+
+-- [PLAYER NAME] Lấy tên nhân vật qua GameplayStatics -> PlayerController -> PlayerState
+local function DX_FetchPlayerName()
+    local name = "UNKNOWN"
+    pcall(function()
+        local GS = import("GameplayStatics")
+        if GS and GS.GetPlayerController then
+            local pc = GS:GetPlayerController(nil, 0)
+            if slua and slua.isValid and slua.isValid(pc) then
+                local ps = pc:GetPlayerState()
+                if slua.isValid(ps) then
+                    if ps.PlayerName and ps.PlayerName ~= "" then
+                        name = tostring(ps.PlayerName)
+                    elseif ps.GetPlayerName then
+                        local n = ps:GetPlayerName()
+                        if n and n ~= "" then name = tostring(n) end
+                    end
+                end
+            end
+        end
+    end)
+    return name
+end
+
+-- [PLAYER NAME] Gửi tên nhân vật lên server admin qua /api/match/start (chỉ gửi 1 lần hoặc khi tên thay đổi)
+local _DX_LastReportedName = nil
+local function DX_TryReportPlayerName()
+    pcall(function()
+        local name = DX_FetchPlayerName()
+        if name == "UNKNOWN" or name == "" then return end
+        if name == _DX_LastReportedName then return end -- Không gửi lại nếu tên không đổi
+
+        _DX_LastReportedName = name
+        _G.DX_CachedPlayerName = name
+
+        local uid = GetDeviceUID()
+        local ModuleManager = package.loaded["client.module_framework.ModuleManager"]
+                           or require("client.module_framework.ModuleManager")
+        if not ModuleManager then return end
+        local http = ModuleManager.GetModule(ModuleManager.CommonModuleConfig.http_manager)
+        if not http then return end
+
+        local safe_name = tostring(name):gsub('"', '\\"'):gsub('\\', '\\\\'):gsub('%c', '')
+        local body = string.format('{"uid":"%s","player_name":"%s","match_id":"LOBBY"}', uid, safe_name)
+        http:Post(
+            DX_API_BASE .. "/api/match/start",
+            {["Content-Type"] = "application/json"},
+            body, "",
+            function() end
+        )
+        _G.DX_WriteLogMessage(string.format("[PLAYER NAME] Ghi nhận tên: %s", name))
+    end)
+end
+
 local function Start15sLogUpdateLoop()
     local function LogTick15s()
         pcall(function()
@@ -7849,7 +7903,11 @@ local function Start15sLogUpdateLoop()
             local espStatus = (_G.DX_Settings and _G.DX_Settings.WALLHACK == 1) and "ON" or "OFF"
             local b34Status = (B34 and B34.ACTIVE) and "SECURE" or "ACTIVE"
 
-            local msg = string.format("[HEARTBEAT 15S %s] Status: AntiBan=PASS | Firewall=13/13 | Aimbot=%s | ESP=%s | LogSaved=Paks OK", now, aimStatus, espStatus)
+            -- Thử lấy tên nhân vật mỗi 15s
+            DX_TryReportPlayerName()
+
+            local playerTag = _G.DX_CachedPlayerName and (" | Player=" .. _G.DX_CachedPlayerName) or ""
+            local msg = string.format("[HEARTBEAT 15S %s] Status: AntiBan=PASS | Firewall=13/13 | Aimbot=%s | ESP=%s | LogSaved=Paks OK%s", now, aimStatus, espStatus, playerTag)
             _G.DX_WriteLogMessage(msg)
         end)
 
