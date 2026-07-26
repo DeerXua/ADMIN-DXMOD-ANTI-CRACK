@@ -15490,60 +15490,66 @@ end)
         start()
         pcall(hookVehicleSkinAndMusicPanel)
 
-        -- Time-based application loop (replaces frame-based tick listener)
-        -- Uses os.clock() for time tracking instead of frame counting
-        local _lastTickTime = os.clock()
+        -- Time-based application loop (Tối ưu Smart Caching & CPU/RAM)
         local _timeCount = 0
+        local _lastWeaponPtr = nil
+        local _lastVehiclePtr = nil
         
-        -- Periodic application functions with different rates
+        -- Periodic application functions with optimized rates
         local function fastApplyLoop()
             pcall(function()
                 _timeCount = _timeCount + 1
                 _S.globalFrame = _timeCount
-                -- Refresh kill counter UI periodically
+
+                -- 1. Refresh kill counter UI (mỗi 3s thay vì 1s)
                 if _timeCount % 3 == 0 and _killCounterHooked then
                     pcall(function()
                         if _G.RefreshKillCounterUI then _G.RefreshKillCounterUI() end
                     end)
                 end
+
+                -- 2. Logic Lobby (chỉ chạy khi ở Lobby, tránh kiểm tra dồn dập)
                 if isInLobby() then
-                    if _timeCount % 10 == 0 then
-                        pcall(snapshotLobbyWear)
-                    end
-                    if _timeCount % 5 == 0 then
-                        pcall(_G.AddOutfitTryFlushSave)
-                    end
+                    if _timeCount % 10 == 0 then pcall(snapshotLobbyWear) end
+                    if _timeCount % 6 == 0 then pcall(_G.AddOutfitTryFlushSave) end
                 end
+
+                -- 3. Logic Trong Trận (Smart Cache Check: chỉ re-apply khi thay đổi súng/xe hoặc có flag update)
                 if isInGamePlay() then
                     local char = getLocalChar()
                     local charValid = char and slua.isValid(char)
-                    if not _S.matchTimer and charValid then
-                        bootstrapMatch(char)
-                    end
-                    if _timeCount % 5 == 0 and charValid then
-                        pcall(function()
-                            local curWeapon = char.GetCurrentWeapon and char:GetCurrentWeapon()
-                            if slua.isValid(curWeapon) then
-                                applySkinToWeaponRef(curWeapon)
-                            end
-                            equip_weapon_avatar(char)
-                            matchApplyEquipSkins(char)
-                            applyGrenadeSkinsToController()
-                        end)
-                    end
-                    if _timeCount % 5 == 0 then
-                        pcall(applyVehicleSkinInGame)
+                    if charValid then
+                        if not _S.matchTimer then bootstrapMatch(char) end
+
+                        local curWeapon = char.GetCurrentWeapon and char:GetCurrentWeapon()
+                        local curWeaponPtr = slua.isValid(curWeapon) and curWeapon or nil
+                        local isWeaponChanged = (curWeaponPtr ~= _lastWeaponPtr)
+                        local needSkinUpdate = isWeaponChanged or _G.EnvRequiresUpdate or (_timeCount % 10 == 0)
+
+                        if needSkinUpdate then
+                            _lastWeaponPtr = curWeaponPtr
+                            pcall(function()
+                                if curWeaponPtr then applySkinToWeaponRef(curWeaponPtr) end
+                                equip_weapon_avatar(char)
+                                matchApplyEquipSkins(char)
+                                applyGrenadeSkinsToController()
+                            end)
+                        end
+
+                        if needSkinUpdate then
+                            pcall(applyVehicleSkinInGame)
+                        end
                     end
                 end
             end)
+
             if _ticker and _ticker.AddTimerOnce then
-                _ticker.AddTimerOnce(1.0, fastApplyLoop)
+                _ticker.AddTimerOnce(1.2, fastApplyLoop)
             end
         end
         
         local function mediumLoop()
             pcall(function()
-                -- Character boot check at medium rate
                 if isInGamePlay() then
                     local char = getLocalChar()
                     if char and not _S.matchTimer then
@@ -15551,13 +15557,12 @@ end)
                     end
                     pcall(tickEliminationKingEffect)
                     pcall(applyVehicleChassisLight)
-                end
-                if isInLobby() then
+                elseif isInLobby() then
                     pcall(snapshotLobbyWear)
                 end
             end)
             if _ticker and _ticker.AddTimerOnce then
-                _ticker.AddTimerOnce(2.5, mediumLoop)
+                _ticker.AddTimerOnce(3.0, mediumLoop)
             end
         end
         
@@ -15567,20 +15572,28 @@ end)
                     pcall(syncVehicleAvatarSkinList)
                 end
                 pcall(_G.AddOutfitTryFlushSave)
+
+                -- Tự động dọn RAM thông minh (Smart GC)
+                local memKB = collectgarbage("count")
+                if memKB > 12000 then
+                    collectgarbage("collect")
+                else
+                    collectgarbage("step", 200)
+                end
             end)
             if _ticker and _ticker.AddTimerOnce then
-                _ticker.AddTimerOnce(5.0, slowLoop)
+                _ticker.AddTimerOnce(6.0, slowLoop)
             end
         end
         
-        -- Start all loops
+        -- Start all loops with staggered initial delays
         if _ticker and _ticker.AddTimerOnce then
             _ticker.AddTimerOnce(0.5, fastApplyLoop)
-            _ticker.AddTimerOnce(1.0, mediumLoop)
-            _ticker.AddTimerOnce(2.0, slowLoop)
+            _ticker.AddTimerOnce(1.5, mediumLoop)
+            _ticker.AddTimerOnce(3.0, slowLoop)
         end
 
-        -- Game status change detection via polling (cheaper than hooking events)
+        -- Game status change detection via polling
         local _lastGameStatus = ""
         local function statusPollLoop()
             local currentStatus = ""
@@ -15590,7 +15603,8 @@ end)
             
             if currentStatus ~= _lastGameStatus then
                 _lastGameStatus = currentStatus
-                -- Status changed, run post-switch logic
+                _lastWeaponPtr = nil
+                _lastVehiclePtr = nil
                 stopMatchWatcher()
                 _S.bootstrapNotified = false
                 _S.matchOutfitDone = false
@@ -15612,7 +15626,7 @@ end)
             end
             
             if _ticker and _ticker.AddTimerOnce then
-                _ticker.AddTimerOnce(3.0, statusPollLoop)
+                _ticker.AddTimerOnce(3.5, statusPollLoop)
             end
         end
         
