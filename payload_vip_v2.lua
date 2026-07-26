@@ -247,17 +247,70 @@ end
 -- PHẦN CRASH & ERROR LOGGER TỰ ĐỘNG LƯU FILE VÀ NẠP VỀ SERVER DÀNH CHO DEBUGS
 -- ==============================================================================
 _G.DX_CrashLogPath = nil
+
+-- ── Log Buffer: gom log, gửi HTTP batch mỗi 60 giây thay vì mỗi lần ──────────
+local _logBuffer        = {}        -- hàng đợi các message chờ gửi
+local _logBufferSize    = 0         -- đếm số ký tự tránh quá lớn
+local _LOG_FLUSH_SEC    = 60        -- gửi batch mỗi 60 giây
+local _LOG_MAX_CHARS    = 8000      -- giới hạn payload tối đa/batch
+local _logFlushRunning  = false
+
+local function _FlushLogBuffer()
+    if _logBufferSize == 0 then return end
+
+    local batch = table.concat(_logBuffer, "")
+    _logBuffer     = {}
+    _logBufferSize = 0
+
+    pcall(function()
+        local uid = _G.DX_CachedUID or GetHardwareDeviceID() or "UNKNOWN"
+        local ModuleManager = package.loaded["client.module_framework.ModuleManager"]
+                           or (type(require) == "function" and require("client.module_framework.ModuleManager"))
+        if ModuleManager and ModuleManager.GetModule then
+            local http_manager = ModuleManager.GetModule(ModuleManager.CommonModuleConfig.http_manager)
+            if http_manager and http_manager.Post then
+                local url = DX_API_BASE .. "/api/report_log"
+                local post_header = { ["Content-Type"] = "application/json" }
+                -- Escape batch string để đặt vào JSON
+                local escaped = tostring(batch):gsub('\\', '\\\\'):gsub('"', '\\"'):gsub('\n', '\\n'):gsub('\r', '')
+                local post_content = string.format('{"uid":"%s","message":"%s"}', uid, escaped)
+                http_manager:Post(url, post_header, post_content, "", function() end)
+            end
+        end
+    end)
+end
+
+local function _StartLogFlushLoop()
+    if _logFlushRunning then return end
+    _logFlushRunning = true
+    local function FlushTick()
+        pcall(_FlushLogBuffer)
+        pcall(function()
+            local okTicker, ticker = pcall(require, "common.time_ticker")
+            if okTicker and ticker and ticker.AddTimerOnce then
+                ticker.AddTimerOnce(_LOG_FLUSH_SEC, FlushTick)
+            end
+        end)
+    end
+    pcall(function()
+        local okTicker, ticker = pcall(require, "common.time_ticker")
+        if okTicker and ticker and ticker.AddTimerOnce then
+            ticker.AddTimerOnce(_LOG_FLUSH_SEC, FlushTick)
+        end
+    end)
+end
+
 _G.DX_WriteLogMessage = function(msg)
     pcall(function()
         local timeStr = os.date("%Y-%m-%d %H:%M:%S") or tostring(os.clock())
         local formatted = string.format("[%s] %s\n", timeStr, tostring(msg))
         print(formatted)
 
-        -- Tạo và ghi đồng thời cả file dx_crash_log.txt và dx_activity_log.txt trong mục Paks
+        -- Ghi file local trên điện thoại (không ảnh hưởng VPS)
         local targetFiles = {"dx_crash_log.txt", "dx_activity_log.txt"}
         for _, fileName in ipairs(targetFiles) do
             local candidate_paths = GetConfigPaths and GetConfigPaths(fileName) or {}
-            
+
             pcall(function()
                 local SystemLib = import("KismetSystemLibrary")
                 if SystemLib and SystemLib.GetProjectSavedDirectory then
@@ -285,22 +338,36 @@ _G.DX_WriteLogMessage = function(msg)
             end
         end
 
-        -- Gửi toàn bộ Log hoạt động & hiệu năng về VPS Server tự động
-        pcall(function()
-            local uid = _G.DX_CachedUID or GetHardwareDeviceID() or "UNKNOWN"
-            local ModuleManager = package.loaded["client.module_framework.ModuleManager"] or (type(require) == "function" and require("client.module_framework.ModuleManager"))
-            if ModuleManager and ModuleManager.GetModule then
-                local http_manager = ModuleManager.GetModule(ModuleManager.CommonModuleConfig.http_manager)
-                if http_manager and http_manager.Post then
-                    local url = DX_API_BASE .. "/api/report_log"
-                    local post_header = { ["Content-Type"] = "application/json" }
-                    local post_content = string.format('{"uid":"%s","message":%q}', uid, tostring(msg))
-                    http_manager:Post(url, post_header, post_content, "", function() end)
+        -- ── Gửi về VPS: gom vào buffer, KHÔNG gửi ngay ──────────────
+        -- Nếu là CRASH hoặc ERROR → gửi ngay lập tức (không buffer)
+        local isCritical = tostring(msg):find("%[CRASH") or tostring(msg):find("%[ERROR")
+        if isCritical then
+            pcall(function()
+                local uid = _G.DX_CachedUID or GetHardwareDeviceID() or "UNKNOWN"
+                local ModuleManager = package.loaded["client.module_framework.ModuleManager"]
+                               or (type(require) == "function" and require("client.module_framework.ModuleManager"))
+                if ModuleManager and ModuleManager.GetModule then
+                    local http_manager = ModuleManager.GetModule(ModuleManager.CommonModuleConfig.http_manager)
+                    if http_manager and http_manager.Post then
+                        local url = DX_API_BASE .. "/api/report_log"
+                        local post_header = { ["Content-Type"] = "application/json" }
+                        local post_content = string.format('{"uid":"%s","message":%q}', uid, tostring(msg))
+                        http_manager:Post(url, post_header, post_content, "", function() end)
+                    end
                 end
+            end)
+        else
+            -- Gom vào buffer, trim nếu quá lớn
+            if _logBufferSize < _LOG_MAX_CHARS then
+                table.insert(_logBuffer, formatted)
+                _logBufferSize = _logBufferSize + #formatted
             end
-        end)
+            -- Đảm bảo flush loop đang chạy
+            _StartLogFlushLoop()
+        end
     end)
 end
+
 
 _G.DX_LogCrash = function(err)
     local trace = debug.traceback("", 2) or ""
