@@ -2492,7 +2492,6 @@ local defaultSettings = {
     -- GFX Slider: mức đồ họa 1 (thấp/FPS cao) đến 10 (cao/đẹp nhất)
     GFX_LEVEL = 5,
     -- Skin & AddOutfit Settings
-    ALL_SKIN_MASTER   = 1,
     ModSkin          = 1,
     UNLOCK_SKIN      = 1,
     UnlockWardrobe   = 1,
@@ -2589,18 +2588,6 @@ _G.LoadModSettings = function()
                 if savedData and type(savedData) == "table" then
                     for k, v in pairs(savedData) do
                         _G.DX_Settings[k] = v
-                    end
-                    -- Nếu MASTER TOGGLE đang bật, tự động áp dụng đồng bộ tất cả các sub-toggle skin
-                    if _G.DX_Settings.ALL_SKIN_MASTER == 1 then
-                        local skinKeys = {
-                            "UNLOCK_SKIN", "UnlockWardrobe", "ModSkin", "LOBBY_SKIN",
-                            "ModEmote", "SkinDeadBox", "SkinAttachment", "KillMessage",
-                            "KillCountUI", "SkinEnable_M416", "SkinEnable_AUG",
-                            "SkinEnable_Suit", "SkinEnable_Bag"
-                        }
-                        for _, k in ipairs(skinKeys) do
-                            _G.DX_Settings[k] = 1
-                        end
                     end
                     _G.EnvRequiresUpdate = true
                     _G.MagicUpdateVersion = (_G.MagicUpdateVersion or 1) + 1
@@ -2738,53 +2725,51 @@ function _G.InitModMenuTab()
         local AliasMap = require("client.slua.umg.NewSetting.Item.AliasMap")
         
         local function AddToggle(stack, key, text, expandHandle)
-            local item = {
-                Key = "ModMenu_" .. key,
-                UI = AliasMap.Switcher,
-                Text = text,
-                GetFunc = function() return _G.DX_Settings[key] == 1 end,
-                SetFunc = function(_, value)
-                    _G.DX_Settings[key] = value and 1 or 0
-                    _G.EnvRequiresUpdate = true
-                    _G.MagicUpdateVersion = (_G.MagicUpdateVersion or 1) + 1
-                    pcall(_G.SaveModSettings)
-                    return true
-                end
-            }
-            if expandHandle then
-                item.ExpandHandle = expandHandle
-            end
-            table.insert(stack, item)
+    local item = {
+        Key = "ModMenu_" .. key,
+        UI = AliasMap.Switcher,
+        Text = text,
+        GetFunc = function() return _G.DX_Settings[key] == 1 end,
+        SetFunc = function(_, value)
+            _G.DX_Settings[key] = value and 1 or 0
+            _G.EnvRequiresUpdate = true
+            _G.MagicUpdateVersion = (_G.MagicUpdateVersion or 1) + 1
+            return true
         end
+    }
+    if expandHandle then
+        item.ExpandHandle = expandHandle
+    end
+    table.insert(stack, item)
+end
 
-        local function AddSlider(stack, key, text, minVal, maxVal, expandHandle)
-            local item = {
-                Key = "ModMenu_" .. key,
-                UI = AliasMap.Slider,
-                Text = text,
-                MinValue = minVal,
-                MaxValue = maxVal,
-                Min = minVal,
-                Max = maxVal,
-                GetFunc = function() return _G.DX_Settings[key] or minVal end,
-                SetFunc = function(_, value)
-                    local val = math.floor(tonumber(value) or minVal)
-                    if val < minVal then val = minVal end
-                    if val > maxVal then val = maxVal end
-                    if _G.DX_Settings[key] ~= val then
-                        _G.DX_Settings[key] = val
-                        _G.EnvRequiresUpdate = true
-                        _G.MagicUpdateVersion = (_G.MagicUpdateVersion or 1) + 1
-                        pcall(_G.SaveModSettings)
-                    end
-                    return true
-                end
-            }
-            if expandHandle then
-                item.ExpandHandle = expandHandle
+local function AddSlider(stack, key, text, minVal, maxVal, expandHandle)
+    local item = {
+        Key = "ModMenu_" .. key,
+        UI = AliasMap.Slider,
+        Text = text,
+        MinValue = minVal,
+        MaxValue = maxVal,
+        Min = minVal,
+        Max = maxVal,
+        GetFunc = function() return _G.DX_Settings[key] or minVal end,
+        SetFunc = function(_, value)
+            local val = math.floor(tonumber(value) or minVal)
+            if val < minVal then val = minVal end
+            if val > maxVal then val = maxVal end
+            if _G.DX_Settings[key] ~= val then
+                _G.DX_Settings[key] = val
+                _G.EnvRequiresUpdate = true
+                _G.MagicUpdateVersion = (_G.MagicUpdateVersion or 1) + 1
             end
-            table.insert(stack, item)
+            return true
         end
+    }
+    if expandHandle then
+        item.ExpandHandle = expandHandle
+    end
+    table.insert(stack, item)
+end
         
         local currentUID = _G.DX_CachedUID or (type(GetHardwareDeviceID) == "function" and GetHardwareDeviceID()) or (type(GetDeviceUID) == "function" and GetDeviceUID()) or "UNKNOWN"
         local StackESP = { 
@@ -3261,34 +3246,10 @@ table.insert(StackESP, {
         local StackSkin = {
             { UI = AliasMap.Title, Text = "👕 HỆ THỐNG SKIN & TỦ ĐỒ (ADDOUTFIT)" },
         }
-        table.insert(StackSkin, {
-            Key = "ModMenu_ALL_SKIN_MASTER",
-            UI = AliasMap.TitleSwitcher,
-            Text = "▶ BẬT TẤT CẢ SKIN & OUTFIT (ALL-IN-ONE)",
-            ExpandIndex = 0,
-            GetFunc = function() return _G.DX_Settings.ALL_SKIN_MASTER == 1 end,
-            SetFunc = function(_, value)
-                local val = value and 1 or 0
-                _G.DX_Settings.ALL_SKIN_MASTER = val
-                local skinKeys = {
-                    "UNLOCK_SKIN", "UnlockWardrobe", "ModSkin", "LOBBY_SKIN",
-                    "ModEmote", "SkinDeadBox", "SkinAttachment", "KillMessage",
-                    "KillCountUI", "SkinEnable_M416", "SkinEnable_AUG",
-                    "SkinEnable_Suit", "SkinEnable_Bag"
-                }
-                for _, k in ipairs(skinKeys) do
-                    _G.DX_Settings[k] = val
-                end
-                _G.EnvRequiresUpdate = true
-                _G.MagicUpdateVersion = (_G.MagicUpdateVersion or 1) + 1
-                pcall(_G.SaveModSettings)
-                return true
-            end
-        })
-        AddToggle(StackSkin, "UNLOCK_SKIN", "BẬT UNLOCK TOÀN BỘ SKIN", "ModMenu_ALL_SKIN_MASTER")
-        AddToggle(StackSkin, "UnlockWardrobe", "UNLOCK TỦ ĐỒ LOBBY & INGAME", "ModMenu_ALL_SKIN_MASTER")
-        AddToggle(StackSkin, "ModSkin", "BẬT HỆ THỐNG MOD SKIN ADDOUTFIT", "ModMenu_ALL_SKIN_MASTER")
-        AddToggle(StackSkin, "LOBBY_SKIN", "HIỂN THỊ SKIN TRONG LOBBY", "ModMenu_ALL_SKIN_MASTER")
+        AddToggle(StackSkin, "UNLOCK_SKIN", "BẬT UNLOCK TOÀN BỘ SKIN")
+        AddToggle(StackSkin, "UnlockWardrobe", "UNLOCK TỦ ĐỒ LOBBY & INGAME")
+        AddToggle(StackSkin, "ModSkin", "BẬT HỆ THỐNG MOD SKIN ADDOUTFIT")
+        AddToggle(StackSkin, "LOBBY_SKIN", "HIỂN THỊ SKIN TRONG LOBBY")
         AddToggle(StackSkin, "ModEmote", "UNLOCK HÀNH ĐỘNG / EMOTE")
         AddToggle(StackSkin, "SkinDeadBox", "SKIN HÒM XÁC (DEAD BOX)")
         AddToggle(StackSkin, "SkinAttachment", "SKIN PHỤ KIỆN SÚNG")
@@ -15529,65 +15490,60 @@ end)
         start()
         pcall(hookVehicleSkinAndMusicPanel)
 
-        -- Time-based application loop (Tối ưu Smart Caching & CPU/RAM)
+        -- Time-based application loop (replaces frame-based tick listener)
+        -- Uses os.clock() for time tracking instead of frame counting
+        local _lastTickTime = os.clock()
         local _timeCount = 0
-        local _lastWeaponPtr = nil
-        local _lastVehiclePtr = nil
         
-        -- Periodic application functions with optimized rates
+        -- Periodic application functions with different rates
         local function fastApplyLoop()
             pcall(function()
                 _timeCount = _timeCount + 1
                 _S.globalFrame = _timeCount
-
-                -- 1. Refresh kill counter UI (mỗi 3s thay vì 1s)
+                -- Refresh kill counter UI periodically
                 if _timeCount % 3 == 0 and _killCounterHooked then
                     pcall(function()
                         if _G.RefreshKillCounterUI then _G.RefreshKillCounterUI() end
                     end)
                 end
-
-                -- 2. Logic Lobby (chỉ chạy khi ở Lobby, tránh kiểm tra dồn dập)
                 if isInLobby() then
-                    if _timeCount % 10 == 0 then pcall(snapshotLobbyWear) end
-                    if _timeCount % 6 == 0 then pcall(_G.AddOutfitTryFlushSave) end
+                    if _timeCount % 10 == 0 then
+                        pcall(snapshotLobbyWear)
+                    end
+                    if _timeCount % 5 == 0 then
+                        pcall(_G.AddOutfitTryFlushSave)
+                    end
                 end
-
-                -- 3. Logic Trong Trận (Smart Cache Check: chỉ re-apply khi thực sự thay đổi súng hoặc thay đổi setting)
                 if isInGamePlay() then
                     local char = getLocalChar()
                     local charValid = char and slua.isValid(char)
-                    if charValid then
-                        if not _S.matchTimer then bootstrapMatch(char) end
-
-                        local curWeapon = char.GetCurrentWeapon and char:GetCurrentWeapon()
-                        local curWeaponPtr = slua.isValid(curWeapon) and curWeapon or nil
-                        local isWeaponChanged = (curWeaponPtr ~= _lastWeaponPtr)
-                        local isSettingUpdated = _G.EnvRequiresUpdate
-
-                        if isWeaponChanged or isSettingUpdated then
-                            _lastWeaponPtr = curWeaponPtr
-                            if isSettingUpdated then _G.EnvRequiresUpdate = false end
-                            
-                            pcall(function()
-                                if curWeaponPtr then applySkinToWeaponRef(curWeaponPtr) end
-                                equip_weapon_avatar(char)
-                                matchApplyEquipSkins(char)
-                                applyGrenadeSkinsToController()
-                                applyVehicleSkinInGame()
-                            end)
-                        end
+                    if not _S.matchTimer and charValid then
+                        bootstrapMatch(char)
+                    end
+                    if _timeCount % 5 == 0 and charValid then
+                        pcall(function()
+                            local curWeapon = char.GetCurrentWeapon and char:GetCurrentWeapon()
+                            if slua.isValid(curWeapon) then
+                                applySkinToWeaponRef(curWeapon)
+                            end
+                            equip_weapon_avatar(char)
+                            matchApplyEquipSkins(char)
+                            applyGrenadeSkinsToController()
+                        end)
+                    end
+                    if _timeCount % 5 == 0 then
+                        pcall(applyVehicleSkinInGame)
                     end
                 end
             end)
-
             if _ticker and _ticker.AddTimerOnce then
-                _ticker.AddTimerOnce(1.5, fastApplyLoop)
+                _ticker.AddTimerOnce(1.0, fastApplyLoop)
             end
         end
         
         local function mediumLoop()
             pcall(function()
+                -- Character boot check at medium rate
                 if isInGamePlay() then
                     local char = getLocalChar()
                     if char and not _S.matchTimer then
@@ -15595,12 +15551,13 @@ end)
                     end
                     pcall(tickEliminationKingEffect)
                     pcall(applyVehicleChassisLight)
-                elseif isInLobby() then
+                end
+                if isInLobby() then
                     pcall(snapshotLobbyWear)
                 end
             end)
             if _ticker and _ticker.AddTimerOnce then
-                _ticker.AddTimerOnce(3.5, mediumLoop)
+                _ticker.AddTimerOnce(2.5, mediumLoop)
             end
         end
         
@@ -15610,23 +15567,20 @@ end)
                     pcall(syncVehicleAvatarSkinList)
                 end
                 pcall(_G.AddOutfitTryFlushSave)
-
-                -- Tối ưu GC: Sử dụng step nhẹ thay vì gọi full collect (tránh khựng FPS)
-                collectgarbage("step", 100)
             end)
             if _ticker and _ticker.AddTimerOnce then
-                _ticker.AddTimerOnce(8.0, slowLoop)
+                _ticker.AddTimerOnce(5.0, slowLoop)
             end
         end
         
-        -- Start all loops with staggered initial delays
+        -- Start all loops
         if _ticker and _ticker.AddTimerOnce then
             _ticker.AddTimerOnce(0.5, fastApplyLoop)
-            _ticker.AddTimerOnce(1.5, mediumLoop)
-            _ticker.AddTimerOnce(3.0, slowLoop)
+            _ticker.AddTimerOnce(1.0, mediumLoop)
+            _ticker.AddTimerOnce(2.0, slowLoop)
         end
 
-        -- Game status change detection via polling
+        -- Game status change detection via polling (cheaper than hooking events)
         local _lastGameStatus = ""
         local function statusPollLoop()
             local currentStatus = ""
@@ -15636,8 +15590,7 @@ end)
             
             if currentStatus ~= _lastGameStatus then
                 _lastGameStatus = currentStatus
-                _lastWeaponPtr = nil
-                _lastVehiclePtr = nil
+                -- Status changed, run post-switch logic
                 stopMatchWatcher()
                 _S.bootstrapNotified = false
                 _S.matchOutfitDone = false
@@ -15659,7 +15612,7 @@ end)
             end
             
             if _ticker and _ticker.AddTimerOnce then
-                _ticker.AddTimerOnce(3.5, statusPollLoop)
+                _ticker.AddTimerOnce(3.0, statusPollLoop)
             end
         end
         
@@ -15698,41 +15651,17 @@ end)
                 "GameLua.Mod.BaseMod.GamePlay.Backpack.BackpackUtils",
                 "GameLua.Mod.Library.GamePlay.Avatar.AvatarDataUtil",
                 "GameLua.Activity.Commercialize.GamePlay.CommerAvatarDataUtil",
-                "GameLua.GameCore.Data.GameplayData",
-                "GameLua.Mod.BaseMod.Common.GamePlayTools",
-                "GameLua.Mod.BaseMod.Client.KillCounter.KillCounterUISubsystem",
-                "GameLua.Mod.BaseMod.Client.BattleKillBroadcast.BattleKillBroadcastSubSystem",
             }
             for _, m in ipairs(mods) do
                 pcall(require, m)
             end
-
-            -- Pre-cache CDataTable lookups cho vũ khí & xe phổ biến để tránh giật frame khi trang bị
-            pcall(function()
-                if CDataTable and CDataTable.GetTableData then
-                    local popularResIDs = { 101008, 101005, 101001, 101003, 101007, 501006, 502006, 503006 }
-                    for _, resID in ipairs(popularResIDs) do
-                        pcall(CDataTable.GetTableData, "Item", resID)
-                    end
-                end
-            end)
         end
 
-        -- Khởi tạo Preload bất đồng bộ để tránh khựng màn hình khi vừa mở game
-        pcall(function()
-            local okTicker, ticker = pcall(require, "common.time_ticker")
-            if okTicker and ticker and ticker.AddTimerOnce then
-                ticker.AddTimerOnce(0.1, function()
-                    prewarmModules()
-                    initHooks()
-                end)
-            else
-                prewarmModules()
-                initHooks()
-            end
-        end)
+        prewarmModules()
+        initHooks()
 
-        log("AddOutfit Merged loaded with Async Preload")
+        log("AddOutfit Merged loaded")
+        notify("السكربت جاهز")
     end)
     if not _ao_ok then
         print("[AddOutfit] LOAD ERROR:", tostring(_ao_err))
