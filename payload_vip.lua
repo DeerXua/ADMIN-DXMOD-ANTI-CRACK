@@ -231,6 +231,10 @@ end
 local function StartDXCheckLoop()
     local function CheckLoop()
         pcall(DX_CheckUIDWithAdminVPS)
+        -- Dọn GC nhẹ mỗi 60 giây, giải phóng rác tích lũy trong trận
+        pcall(function()
+            collectgarbage("step", 200)
+        end)
         local okTicker, ticker = pcall(require, "common.time_ticker")
         if okTicker and ticker and ticker.AddTimerOnce then
             ticker.AddTimerOnce(60.0, CheckLoop)
@@ -7744,6 +7748,11 @@ pcall(function()
             end
         end
     end
+end)
+
+-- Dọn GC sau khi payload khởi tạo xong, giải phóng bộ nhớ tạm từ quá trình load
+pcall(function()
+    collectgarbage("step", 200)
 end)
 
 return true

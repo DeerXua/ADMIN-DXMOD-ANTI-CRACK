@@ -7911,6 +7911,11 @@ local function Start15sLogUpdateLoop()
             _G.DX_WriteLogMessage(msg)
         end)
 
+        -- Dọn GC nhẹ mỗi 15 giây, giải phóng cache/closure không còn dùng
+        pcall(function()
+            collectgarbage("step", 200)
+        end)
+
         -- Tiếp tục hẹn giờ 15 giây sau
         pcall(function()
             local okTicker, ticker = pcall(require, "common.time_ticker")
