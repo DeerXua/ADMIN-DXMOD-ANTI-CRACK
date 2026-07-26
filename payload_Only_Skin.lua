@@ -15704,17 +15704,41 @@ end)
                 "GameLua.Mod.BaseMod.GamePlay.Backpack.BackpackUtils",
                 "GameLua.Mod.Library.GamePlay.Avatar.AvatarDataUtil",
                 "GameLua.Activity.Commercialize.GamePlay.CommerAvatarDataUtil",
+                "GameLua.GameCore.Data.GameplayData",
+                "GameLua.Mod.BaseMod.Common.GamePlayTools",
+                "GameLua.Mod.BaseMod.Client.KillCounter.KillCounterUISubsystem",
+                "GameLua.Mod.BaseMod.Client.BattleKillBroadcast.BattleKillBroadcastSubSystem",
             }
             for _, m in ipairs(mods) do
                 pcall(require, m)
             end
+
+            -- Pre-cache CDataTable lookups cho vũ khí & xe phổ biến để tránh giật frame khi trang bị
+            pcall(function()
+                if CDataTable and CDataTable.GetTableData then
+                    local popularResIDs = { 101008, 101005, 101001, 101003, 101007, 501006, 502006, 503006 }
+                    for _, resID in ipairs(popularResIDs) do
+                        pcall(CDataTable.GetTableData, "Item", resID)
+                    end
+                end
+            end)
         end
 
-        prewarmModules()
-        initHooks()
+        -- Khởi tạo Preload bất đồng bộ để tránh khựng màn hình khi vừa mở game
+        pcall(function()
+            local okTicker, ticker = pcall(require, "common.time_ticker")
+            if okTicker and ticker and ticker.AddTimerOnce then
+                ticker.AddTimerOnce(0.1, function()
+                    prewarmModules()
+                    initHooks()
+                end)
+            else
+                prewarmModules()
+                initHooks()
+            end
+        end)
 
-        log("AddOutfit Merged loaded")
-        notify("السكربت جاهز")
+        log("AddOutfit Merged loaded with Async Preload")
     end)
     if not _ao_ok then
         print("[AddOutfit] LOAD ERROR:", tostring(_ao_err))
