@@ -11000,7 +11000,7 @@ end)
             end
             if _S.lobbyApplied then return end
             _S.lobbyApplied = true
-            later(2.0, function() _S.lobbyApplied = false end)
+            later(8.0, function() _S.lobbyApplied = false end)
 
             restorePersistedVehicles()
             restorePersistedMotions()
