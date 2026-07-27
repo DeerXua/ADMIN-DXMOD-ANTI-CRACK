@@ -7187,7 +7187,6 @@ end)
         end
 
         local function putOnEquipSkin(insID)
-            if not isSkinEnabled() then return end
             insID = tonumber(insID)
             local resID = R.insToRes[insID]
             if not resID then return end
@@ -7206,14 +7205,40 @@ end)
                     oldItem = { res_id = oldResID, instid = oldInsID, count = 1, color = 0, pattern = 0 }
                 end
                 local HT = require("client.logic.lobby.hall_theme_utils")
-                local wl = require("client.slua.logic.wardrobe.logic_wardrobe_new")
-                pcall(function()
-                    wl:on_puton_rsp(_K.NET_OK, item, oldItem, 1, insID, 0)
-                end)
                 if slot == "helmet" then
-                    pcall(function() HT.ProcPutOnHelmet(item, oldItem) end)
+                    HT.ProcPutOnHelmet(item, oldItem)
                 elseif slot == "bag" then
-                    pcall(function() HT.ProcPutOnBagSkin(item, oldItem) end)
+                    HT.ProcPutOnBagSkin(item, oldItem)
+                elseif slot == "parachute" then
+                    -- استدعاء on_puton_rsp مع تخطي AddToWearInfo للبراشوت فقط
+                    local wl = require("client.slua.logic.wardrobe.logic_wardrobe_new")
+                    local lav = require("client.slua.logic.wardrobe.logic_wardrobe_avatar")
+                    local origAddToWearInfo = lav.AddToWearInfo
+                    lav.AddToWearInfo = function(self2, subType, ...)
+                        if tonumber(subType) == 701 then return end
+                        return origAddToWearInfo(self2, subType, ...)
+                    end
+                    pcall(function()
+                        wl:on_puton_rsp(_K.NET_OK, item, oldItem, 1, insID, 0)
+                    end)
+                    lav.AddToWearInfo = origAddToWearInfo
+                elseif slot == "glider" then
+                    -- استدعاء on_puton_rsp مع تخطي AddToWearInfo للجلايدر فقط
+                    local wl = require("client.slua.logic.wardrobe.logic_wardrobe_new")
+                    local lav = require("client.slua.logic.wardrobe.logic_wardrobe_avatar")
+                    local origAddToWearInfo = lav.AddToWearInfo
+                    lav.AddToWearInfo = function(self2, subType, ...)
+                        local st = tonumber(subType)
+                        if st == 413 or st == 414 or st == 415 then return end
+                        return origAddToWearInfo(self2, subType, ...)
+                    end
+                    pcall(function()
+                        wl:on_puton_rsp(_K.NET_OK, item, oldItem, 1, insID, 0)
+                    end)
+                    lav.AddToWearInfo = origAddToWearInfo
+                else
+                    local wl = require("client.slua.logic.wardrobe.logic_wardrobe_new")
+                    wl:on_puton_rsp(_K.NET_OK, item, oldItem, 1, insID, 0)
                 end
                 saveEquipSkin(resID, insID)
                 if oldResID and oldResID > 0 and oldResID ~= resID then
@@ -7229,28 +7254,7 @@ end)
             _S.equipSkinApplying = false
         end
 
-        
-        local function isSkinEnabled()
-            local enabled = true
-            pcall(function()
-                if _G.DX_Settings then
-                    if _G.DX_Settings.MASTER_SKIN == 0 or _G.DX_Settings.ModSkin == 0 or _G.DX_Settings.UNLOCK_SKIN == 0 then
-                        enabled = false
-                        return
-                    end
-                end
-                if type(_G.DX_GetVal) == "function" then
-                    if _G.DX_GetVal("MASTER_SKIN") == 0 or _G.DX_GetVal("ModSkin") == 0 or _G.DX_GetVal("UNLOCK_SKIN") == 0 then
-                        enabled = false
-                        return
-                    end
-                end
-            end)
-            return enabled
-        end
-
         local function putOnCloth(insID)
-            if not isSkinEnabled() then return end
             insID = tonumber(insID)
             local resID = R.insToRes[insID]
             if not resID then
@@ -7359,7 +7363,6 @@ end)
         end
 
         local function equipWeaponSkin(weaponID, insID)
-            if not isSkinEnabled() then return end
             weaponID, insID = tonumber(weaponID), tonumber(insID)
             if not weaponID or not insID or not isInjectedIns(insID) then
                 log("EQUIP_WEAPON_ERR", "Invalid args: weaponID=" .. tostring(weaponID) .. ", insID=" .. tostring(insID))
@@ -7742,7 +7745,6 @@ end)
         end
 
         local function reapplyLobbyEquipped()
-            if not isSkinEnabled() then return end
             if not GameStatus or not GameStatus.IsInLobbyOrMainCity or not GameStatus.IsInLobbyOrMainCity() then
                 return
             end
@@ -7887,14 +7889,14 @@ end)
                 local oGetWear = AC.GetWearDataFromRoleData
                 AC.GetWearDataFromRoleData = function(roleData)
                     local wearData = oGetWear(roleData)
-                    if isSkinEnabled() and wearData and roleData and tonumber(roleData.uid) == tonumber(DataMgr.roleData.uid) then
+                    if wearData and roleData and tonumber(roleData.uid) == tonumber(DataMgr.roleData.uid) then
                         mergeInjectedIntoWearData(wearData)
                     end
                     return wearData
                 end
                 local oUp = AC.UpdateAvatar
                 AC.UpdateAvatar = function(avatar, wearData, isShowWeapon, isShowHelmet, isShowBag)
-                    if isSkinEnabled() and isMyWearData(wearData) then mergeInjectedIntoWearData(wearData) end
+                    if isMyWearData(wearData) then mergeInjectedIntoWearData(wearData) end
                     return oUp(avatar, wearData, isShowWeapon, isShowHelmet, isShowBag)
                 end
             end)
@@ -7952,7 +7954,7 @@ end)
                     if not o then return end
                     wd[name] = function(self, insID, ...)
                         insID = tonumber(insID)
-                        if isSkinEnabled() and isInjectedIns(insID) then
+                        if isInjectedIns(insID) then
                             local e = getEntity()
                             if e then return e:GetDataByInsID(insID) end
                         end
@@ -7965,7 +7967,7 @@ end)
                     local o = wd[name]
                     if not o then return end
                     wd[name] = function(self, id, ...)
-                        if isSkinEnabled() and (isInjectedRes(tonumber(id)) or isInjectedIns(tonumber(id))) then return true end
+                        if isInjectedRes(tonumber(id)) or isInjectedIns(tonumber(id)) then return true end
                         return o(self, id, ...)
                     end
                 end
@@ -7976,7 +7978,8 @@ end)
                     wd._lava_global_equip = true
                     local origGetEquipped = wd.GetEquippedSkinIDByWeaponID
                     wd.GetEquippedSkinIDByWeaponID = function(self, weaponID)
-                        if isSkinEnabled() then local w = cache().weapons[tonumber(weaponID)] if w and w.resID and w.resID > 0 then return w.resID end end
+                        local w = cache().weapons[tonumber(weaponID)]
+                        if w and w.resID and w.resID > 0 then return w.resID end
                         return origGetEquipped(self, weaponID)
                     end
                 end
@@ -8152,7 +8155,7 @@ end)
                     Arm._lava_global_own = true
                     local origIsOwn = Arm.IsSkinOwn
                     Arm.IsSkinOwn = function(weaponID, skinID)
-                        if isSkinEnabled() and isInjectedRes(skinID) then return 1 end
+                        if isInjectedRes(skinID) then return 1 end
                         return origIsOwn(weaponID, skinID)
                     end
                 end
@@ -8300,7 +8303,7 @@ end)
                             return
                         end
                         local wd = require("client.slua.logic.wardrobe.wardrobe_data")
-                        if true then -- Fix: support accessories (mask/glasses/hat) even if GetHallDepotItemDataByInsID returns nil on iOS
+                        if wd:GetHallDepotItemDataByInsID(insID) then
                             -- إكسسوار (ماسك/نظارة/طاقية): اخلع القديم بنفس النوع أولاً
                             -- كي لا تظهر أكثر من علامة صح على عناصر نفس الخانة
                             local itemSt = st or subType(cfg(resID))
@@ -9490,7 +9493,6 @@ end)
 
         local _lastMatchApplyEquip = 0
         local function matchApplyEquipSkins(char)
-            if not isSkinEnabled() then return end
             local now = 0
             pcall(function() now = os.clock() end)
             if (now - _lastMatchApplyEquip) < 0.5 then return false end  -- throttle: max 2x/sec
@@ -11299,7 +11301,6 @@ end)
         end
 
         local function bootstrapMatch(char)
-            if not isSkinEnabled() then return false end
             if _S.bootstrapped then return true end
             char = char or getLocalChar()
             if not char or not slua.isValid(char) then return false end
@@ -12524,12 +12525,7 @@ local function StartRAMCleaner()
     local function RunRAMCleanerCycle()
         pcall(function()
             local before = collectgarbage("count")
-            -- Dọn dẹp vi phân từng phần nhỏ (Incremental Step) tránh gây khựng/khung hình khi chơi
-            if isInGamePlay and isInGamePlay() then
-                collectgarbage("step", 200)
-            else
-                collectgarbage("collect")
-            end
+            collectgarbage("collect")
             local after = collectgarbage("count")
             local freed = before - after
             if freed > 0.1 then
