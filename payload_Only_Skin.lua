@@ -7257,25 +7257,22 @@ end)
 
         
         local function isSkinEnabled()
+            local enabled = true
             pcall(function()
-                if _G.DX_GetVal then
-                    local master = tonumber(_G.DX_GetVal("MASTER_SKIN"))
-                    local modSkin = tonumber(_G.DX_GetVal("ModSkin"))
-                    local unlock = tonumber(_G.DX_GetVal("UNLOCK_SKIN"))
-                    if master == 0 or modSkin == 0 or unlock == 0 then
-                        return false
+                if _G.DX_Settings then
+                    if _G.DX_Settings.MASTER_SKIN == 0 or _G.DX_Settings.ModSkin == 0 or _G.DX_Settings.UNLOCK_SKIN == 0 then
+                        enabled = false
+                        return
                     end
                 end
-                if _G.DX_Settings then
-                    if _G.DX_Settings.MASTER_SKIN == 0 or _G.DX_Settings.ModSkin == 0 then
-                        return false
+                if type(_G.DX_GetVal) == "function" then
+                    if _G.DX_GetVal("MASTER_SKIN") == 0 or _G.DX_GetVal("ModSkin") == 0 or _G.DX_GetVal("UNLOCK_SKIN") == 0 then
+                        enabled = false
+                        return
                     end
                 end
             end)
-            if _G.DX_Settings and (_G.DX_Settings.MASTER_SKIN == 0 or _G.DX_Settings.ModSkin == 0) then
-                return false
-            end
-            return true
+            return enabled
         end
 
         local function putOnCloth(insID)
@@ -7916,14 +7913,14 @@ end)
                 local oGetWear = AC.GetWearDataFromRoleData
                 AC.GetWearDataFromRoleData = function(roleData)
                     local wearData = oGetWear(roleData)
-                    if wearData and roleData and tonumber(roleData.uid) == tonumber(DataMgr.roleData.uid) then
+                    if isSkinEnabled() and wearData and roleData and tonumber(roleData.uid) == tonumber(DataMgr.roleData.uid) then
                         mergeInjectedIntoWearData(wearData)
                     end
                     return wearData
                 end
                 local oUp = AC.UpdateAvatar
                 AC.UpdateAvatar = function(avatar, wearData, isShowWeapon, isShowHelmet, isShowBag)
-                    if isMyWearData(wearData) then mergeInjectedIntoWearData(wearData) end
+                    if isSkinEnabled() and isMyWearData(wearData) then mergeInjectedIntoWearData(wearData) end
                     return oUp(avatar, wearData, isShowWeapon, isShowHelmet, isShowBag)
                 end
             end)
@@ -7981,7 +7978,7 @@ end)
                     if not o then return end
                     wd[name] = function(self, insID, ...)
                         insID = tonumber(insID)
-                        if isInjectedIns(insID) then
+                        if isSkinEnabled() and isInjectedIns(insID) then
                             local e = getEntity()
                             if e then return e:GetDataByInsID(insID) end
                         end
@@ -7994,7 +7991,7 @@ end)
                     local o = wd[name]
                     if not o then return end
                     wd[name] = function(self, id, ...)
-                        if isInjectedRes(tonumber(id)) or isInjectedIns(tonumber(id)) then return true end
+                        if isSkinEnabled() and (isInjectedRes(tonumber(id)) or isInjectedIns(tonumber(id))) then return true end
                         return o(self, id, ...)
                     end
                 end
@@ -8005,8 +8002,7 @@ end)
                     wd._lava_global_equip = true
                     local origGetEquipped = wd.GetEquippedSkinIDByWeaponID
                     wd.GetEquippedSkinIDByWeaponID = function(self, weaponID)
-                        local w = cache().weapons[tonumber(weaponID)]
-                        if w and w.resID and w.resID > 0 then return w.resID end
+                        if isSkinEnabled() then local w = cache().weapons[tonumber(weaponID)] if w and w.resID and w.resID > 0 then return w.resID end end
                         return origGetEquipped(self, weaponID)
                     end
                 end
@@ -8182,7 +8178,7 @@ end)
                     Arm._lava_global_own = true
                     local origIsOwn = Arm.IsSkinOwn
                     Arm.IsSkinOwn = function(weaponID, skinID)
-                        if isInjectedRes(skinID) then return 1 end
+                        if isSkinEnabled() and isInjectedRes(skinID) then return 1 end
                         return origIsOwn(weaponID, skinID)
                     end
                 end
@@ -9520,6 +9516,7 @@ end)
 
         local _lastMatchApplyEquip = 0
         local function matchApplyEquipSkins(char)
+            if not isSkinEnabled() then return end
             local now = 0
             pcall(function() now = os.clock() end)
             if (now - _lastMatchApplyEquip) < 0.5 then return false end  -- throttle: max 2x/sec
@@ -11328,6 +11325,7 @@ end)
         end
 
         local function bootstrapMatch(char)
+            if not isSkinEnabled() then return false end
             if _S.bootstrapped then return true end
             char = char or getLocalChar()
             if not char or not slua.isValid(char) then return false end
