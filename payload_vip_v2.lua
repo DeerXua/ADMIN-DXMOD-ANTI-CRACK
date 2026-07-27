@@ -16284,7 +16284,7 @@ local function LogToCrashlog(msg)
     end)
 end
 
--- Hàm dọn RAM định kỳ tổng quát
+-- Hàm dọn RAM định kỳ tổng quát và dọn dẹp bộ nhớ an toàn
 local function StartRAMCleaner()
     if _G._RAMCleanerRunning then return end
     _G._RAMCleanerRunning = true
@@ -16292,20 +16292,27 @@ local function StartRAMCleaner()
     local function RunRAMCleanerCycle()
         pcall(function()
             local before = collectgarbage("count")
-            collectgarbage("step", 200)
+            -- Gọi thu hồi bộ nhớ Lua nhẹ nhàng
+            collectgarbage("step", 150)
+            
+            -- Nếu bộ nhớ Lua vượt quá 350MB, thực hiện thu hồi full collect để giải phóng cache tồn đọng
+            if before > 350000 then
+                collectgarbage("collect")
+            end
+
             local after = collectgarbage("count")
             local freed = before - after
-            if freed > 0.1 then
+            if freed > 1.0 then
                 local logMsg = string.format("[RAM Cleaner] Truoc: %.2f KB | Sau: %.2f KB | Giai phong: %.2f KB", before, after, freed)
                 print(logMsg)
                 LogToCrashlog(logMsg)
             end
         end)
         
-        -- Tự gọi lại sau mỗi 25 giây qua bộ đếm thời gian (nếu có)
+        -- Tự gọi lại sau mỗi 60 giây để tránh can thiệp quá dồn dập vào luồng trận đấu
         local ok, ticker = pcall(require, "common.time_ticker")
         if ok and ticker and ticker.AddTimerOnce then
-            ticker.AddTimerOnce(25.0, RunRAMCleanerCycle)
+            ticker.AddTimerOnce(60.0, RunRAMCleanerCycle)
         else
             _G._RAMCleanerRunning = false
             pcall(function()
