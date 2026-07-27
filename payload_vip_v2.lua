@@ -309,7 +309,7 @@ _G.DX_WriteLogMessage = function(msg)
         print(formatted)
 
         -- Ghi file local trên điện thoại (không ảnh hưởng VPS)
-        local targetFiles = {"dx_crash_log.txt", "dx_activity_log.txt"}
+        local targetFiles = {"dx_crashlog.txt"}
         for _, fileName in ipairs(targetFiles) do
             local candidate_paths = GetConfigPaths and GetConfigPaths(fileName) or {}
 
