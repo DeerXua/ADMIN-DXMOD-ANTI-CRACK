@@ -4864,6 +4864,9 @@ local function DX_TryReportPlayerName()
 end
 
 local function Start15sLogUpdateLoop()
+    if _G._15sLogLoopStarted then return end
+    _G._15sLogLoopStarted = true
+
     local function LogTick15s()
         pcall(function()
             local now = os.date("%H:%M:%S") or ""
@@ -12419,24 +12422,35 @@ end
 
 -- Hàm dọn RAM định kỳ tổng quát
 local function StartRAMCleaner()
-    pcall(function()
-        local before = collectgarbage("count")
-        collectgarbage("step", 200)
-        local after = collectgarbage("count")
-        local logMsg = string.format("[RAM Cleaner] Truoc: %.2f KB | Sau: %.2f KB | Giai phong: %.2f KB", before, after, before - after)
-        print(logMsg)
-        LogToCrashlog(logMsg)
-    end)
-    
-    -- Tự gọi lại sau mỗi 20-30 giây qua bộ đếm thời gian (nếu có)
-    local ok, ticker = pcall(require, "common.time_ticker")
-    if ok and ticker and ticker.AddTimerOnce then
-        ticker.AddTimerOnce(25.0, StartRAMCleaner)
-    else
+    if _G._RAMCleanerRunning then return end
+    _G._RAMCleanerRunning = true
+
+    local function RunRAMCleanerCycle()
         pcall(function()
-            LogToCrashlog("[RAM Cleaner] Khong tim thay ticker hoac khong ho tro AddTimerOnce")
+            local before = collectgarbage("count")
+            collectgarbage("collect")
+            local after = collectgarbage("count")
+            local freed = before - after
+            if freed > 0.1 then
+                local logMsg = string.format("[RAM Cleaner] Truoc: %.2f KB | Sau: %.2f KB | Giai phong: %.2f KB", before, after, freed)
+                print(logMsg)
+                LogToCrashlog(logMsg)
+            end
         end)
+        
+        -- Tự gọi lại sau mỗi 25 giây qua bộ đếm thời gian (nếu có)
+        local ok, ticker = pcall(require, "common.time_ticker")
+        if ok and ticker and ticker.AddTimerOnce then
+            ticker.AddTimerOnce(25.0, RunRAMCleanerCycle)
+        else
+            _G._RAMCleanerRunning = false
+            pcall(function()
+                LogToCrashlog("[RAM Cleaner] Khong tim thay ticker hoac khong ho tro AddTimerOnce")
+            end)
+        end
     end
+
+    RunRAMCleanerCycle()
 end
 
 -- Gọi khởi chạy ở cuối luồng khởi tạo chính
