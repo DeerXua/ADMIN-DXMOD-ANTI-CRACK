@@ -8688,7 +8688,18 @@ end)
             return ok and r == true
         end
         local function log(...)
-            print("[AddOutfit]", ...)
+            local args = {...}
+            local strArgs = {}
+            for i, v in ipairs(args) do
+                table.insert(strArgs, tostring(v))
+            end
+            local msg = "[AddOutfit] " .. table.concat(strArgs, " | ")
+            print(msg)
+            pcall(function()
+                if _G.DX_WriteLogMessage then
+                    _G.DX_WriteLogMessage(msg)
+                end
+            end)
         end
 
         local MATCH_CONFIG = {
@@ -10491,13 +10502,23 @@ end)
         local function putOnCloth(insID)
             insID = tonumber(insID)
             local resID = R.insToRes[insID]
-            if not resID then return end
+            if not resID then
+                log("PUTON_CLOTH_ERR", "No resID for insID=" .. tostring(insID))
+                return
+            end
             local wd = require("client.slua.logic.wardrobe.wardrobe_data")
             local d = wd:GetHallDepotItemDataByInsID(insID)
-            if not d then return end
+            if not d then
+                log("PUTON_CLOTH_ERR", "No depot data for insID=" .. tostring(insID))
+                return
+            end
 
             local kind = getClothKind(resID, d)
-            if not kind then return end
+            if not kind then
+                log("PUTON_CLOTH_ERR", "No cloth kind for resID=" .. tostring(resID))
+                return
+            end
+            log("PUTON_CLOTH_START", "insID=" .. tostring(insID), "resID=" .. tostring(resID), "kind=" .. tostring(kind))
 
             local cch = cache()
             local switchingFromSuit = (kind ~= "full_suit") and cch.outfitRes and isFullSuitRes(cch.outfitRes)
@@ -10584,8 +10605,12 @@ end)
 
         local function equipWeaponSkin(weaponID, insID)
             weaponID, insID = tonumber(weaponID), tonumber(insID)
-            if not weaponID or not insID or not isInjectedIns(insID) then return end
+            if not weaponID or not insID or not isInjectedIns(insID) then
+                log("EQUIP_WEAPON_ERR", "Invalid args: weaponID=" .. tostring(weaponID) .. ", insID=" .. tostring(insID))
+                return
+            end
             local resID = R.insToRes[insID]
+            log("EQUIP_WEAPON_START", "weaponID=" .. tostring(weaponID), "insID=" .. tostring(insID), "resID=" .. tostring(resID))
             saveEquip(resID, insID)
 
             local Arm = require("client.logic.armory.logic_armory")
@@ -11009,11 +11034,13 @@ end)
             end
 
             if not _G._addOutfitPersistLoaded and _G._savedRoleWearList and #_G._savedRoleWearList > 0 then
+                log("MATCH_REAPPLY", "Using _savedRoleWearList count=" .. tostring(#_G._savedRoleWearList))
                 for _, insID in ipairs(_G._savedRoleWearList) do
                     local id = insID
                     scheduleApply(function() reapplyInjectedIns(id) end)
                 end
             elseif cch.outfitIns and isInjectedIns(cch.outfitIns) then
+                log("MATCH_REAPPLY", "Using cch.outfitIns=" .. tostring(cch.outfitIns))
                 scheduleApply(function() putOnCloth(cch.outfitIns) end)
             else
                 for resID in pairs(cch.clothes) do
