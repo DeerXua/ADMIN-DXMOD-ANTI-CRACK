@@ -14733,11 +14733,17 @@ end)
                     if not weaponID then return origSetGunID(self, weaponID, ...) end
 
                     local w = cache().weapons[weaponID]
-                    local injected = w and w.insID and w.insID > 0 and isInjectedIns(w.insID)
-                    -- تحقق مما إذا كان السكن الحالي مطابقاً للمطلوب
+                    local injected = false
+                    if w and w.insID and w.insID > 0 and isInjectedIns(w.insID) then
+                        local resID = R.insToRes[w.insID]
+                        if resID and weaponIdFromSkin(resID) == weaponID then
+                            injected = true
+                        end
+                    end
+
+                    -- Kiểm tra nếu skin đã được ứng dụng đúng cho weaponID này
                     local currentSkin = wgl.GetCurrentEquippedSkinInsID and wgl:GetCurrentEquippedSkinInsID(weaponID) or 0
                     if injected and currentSkin == w.insID then
-                        -- السكن مطبق بالفعل، لا تفعل شيئاً
                         return origSetGunID(self, weaponID, ...)
                     end
 
