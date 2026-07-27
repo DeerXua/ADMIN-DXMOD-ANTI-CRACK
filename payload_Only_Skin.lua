@@ -7206,40 +7206,14 @@ end)
                     oldItem = { res_id = oldResID, instid = oldInsID, count = 1, color = 0, pattern = 0 }
                 end
                 local HT = require("client.logic.lobby.hall_theme_utils")
-                if slot == "helmet" then
-                    HT.ProcPutOnHelmet(item, oldItem)
-                elseif slot == "bag" then
-                    HT.ProcPutOnBagSkin(item, oldItem)
-                elseif slot == "parachute" then
-                    -- استدعاء on_puton_rsp مع تخطي AddToWearInfo للبراشوت فقط
-                    local wl = require("client.slua.logic.wardrobe.logic_wardrobe_new")
-                    local lav = require("client.slua.logic.wardrobe.logic_wardrobe_avatar")
-                    local origAddToWearInfo = lav.AddToWearInfo
-                    lav.AddToWearInfo = function(self2, subType, ...)
-                        if tonumber(subType) == 701 then return end
-                        return origAddToWearInfo(self2, subType, ...)
-                    end
-                    pcall(function()
-                        wl:on_puton_rsp(_K.NET_OK, item, oldItem, 1, insID, 0)
-                    end)
-                    lav.AddToWearInfo = origAddToWearInfo
-                elseif slot == "glider" then
-                    -- استدعاء on_puton_rsp مع تخطي AddToWearInfo للجلايدر فقط
-                    local wl = require("client.slua.logic.wardrobe.logic_wardrobe_new")
-                    local lav = require("client.slua.logic.wardrobe.logic_wardrobe_avatar")
-                    local origAddToWearInfo = lav.AddToWearInfo
-                    lav.AddToWearInfo = function(self2, subType, ...)
-                        local st = tonumber(subType)
-                        if st == 413 or st == 414 or st == 415 then return end
-                        return origAddToWearInfo(self2, subType, ...)
-                    end
-                    pcall(function()
-                        wl:on_puton_rsp(_K.NET_OK, item, oldItem, 1, insID, 0)
-                    end)
-                    lav.AddToWearInfo = origAddToWearInfo
-                else
-                    local wl = require("client.slua.logic.wardrobe.logic_wardrobe_new")
+                local wl = require("client.slua.logic.wardrobe.logic_wardrobe_new")
+                pcall(function()
                     wl:on_puton_rsp(_K.NET_OK, item, oldItem, 1, insID, 0)
+                end)
+                if slot == "helmet" then
+                    pcall(function() HT.ProcPutOnHelmet(item, oldItem) end)
+                elseif slot == "bag" then
+                    pcall(function() HT.ProcPutOnBagSkin(item, oldItem) end)
                 end
                 saveEquipSkin(resID, insID)
                 if oldResID and oldResID > 0 and oldResID ~= resID then
