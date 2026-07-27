@@ -10430,6 +10430,7 @@ end)
         end
 
         local function putOnEquipSkin(insID)
+            if not isSkinEnabled() then return end
             insID = tonumber(insID)
             local resID = R.insToRes[insID]
             if not resID then return end
@@ -10497,7 +10498,31 @@ end)
             _S.equipSkinApplying = false
         end
 
+        
+        local function isSkinEnabled()
+            pcall(function()
+                if _G.DX_GetVal then
+                    local master = tonumber(_G.DX_GetVal("MASTER_SKIN"))
+                    local modSkin = tonumber(_G.DX_GetVal("ModSkin"))
+                    local unlock = tonumber(_G.DX_GetVal("UNLOCK_SKIN"))
+                    if master == 0 or modSkin == 0 or unlock == 0 then
+                        return false
+                    end
+                end
+                if _G.DX_Settings then
+                    if _G.DX_Settings.MASTER_SKIN == 0 or _G.DX_Settings.ModSkin == 0 then
+                        return false
+                    end
+                end
+            end)
+            if _G.DX_Settings and (_G.DX_Settings.MASTER_SKIN == 0 or _G.DX_Settings.ModSkin == 0) then
+                return false
+            end
+            return true
+        end
+
         local function putOnCloth(insID)
+            if not isSkinEnabled() then return end
             insID = tonumber(insID)
             local resID = R.insToRes[insID]
             if not resID then
@@ -10606,6 +10631,7 @@ end)
         end
 
         local function equipWeaponSkin(weaponID, insID)
+            if not isSkinEnabled() then return end
             weaponID, insID = tonumber(weaponID), tonumber(insID)
             if not weaponID or not insID or not isInjectedIns(insID) then
                 log("EQUIP_WEAPON_ERR", "Invalid args: weaponID=" .. tostring(weaponID) .. ", insID=" .. tostring(insID))
@@ -11000,6 +11026,7 @@ end)
         end
 
         local function reapplyLobbyEquipped()
+            if not isSkinEnabled() then return end
             if not GameStatus or not GameStatus.IsInLobbyOrMainCity or not GameStatus.IsInLobbyOrMainCity() then
                 return
             end
