@@ -15583,15 +15583,8 @@ end)
                                     applySkinToWeaponRef(curWeapon)
                                     equip_weapon_avatar(char)
                                 end)
-                            elseif _timeCount % 30 == 0 then
-                                pcall(matchApplyEquipSkins, char)
-                            elseif _timeCount % 50 == 0 then
-                                pcall(applyGrenadeSkinsToController)
                             end
                         end
-                    end
-                    if _timeCount % 10 == 0 then
-                        pcall(applyVehicleSkinInGame)
                     end
                 end
             end)
