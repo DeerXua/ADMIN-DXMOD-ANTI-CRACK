@@ -10610,6 +10610,50 @@ end)
         -- GetWeaponAvatarRes اللي بترجع السكن للـ backpack UI
         local _hookedGetWeaponAvatarRes = false
 
+                -- Hook fbd.SetBagLevel & SetHelmetLevel to apply full skin on Level 1, 2, 3 backpacks immediately
+        pcall(function()
+            local fbd = require("client.slua.logic.wardrobe.fashionbag.fashionbag_data")
+            if fbd and not fbd._lava_hooked_bag_level then
+                fbd._lava_hooked_bag_level = true
+                local origSetBagLevel = fbd.SetBagLevel
+                if origSetBagLevel then
+                    fbd.SetBagLevel = function(self, level, ...)
+                        local res = origSetBagLevel(self, level, ...)
+                        pcall(function()
+                            local cch = cache()
+                            if cch.equip and cch.equip.bag and cch.equip.bag > 0 then
+                                local insID = cch.equip.bagIns or R.resToIns[cch.equip.bag]
+                                if insID then putOnEquipSkin(insID) end
+                            end
+                            if cch.outfitIns and isInjectedIns(cch.outfitIns) then
+                                putOnCloth(cch.outfitIns)
+                            elseif cch.clothes then
+                                for resID in pairs(cch.clothes) do
+                                    local ins = R.resToIns[resID]
+                                    if ins and isInjectedIns(ins) then putOnCloth(ins) end
+                                end
+                            end
+                        end)
+                        return res
+                    end
+                end
+                local origSetHelmetLevel = fbd.SetHelmetLevel
+                if origSetHelmetLevel then
+                    fbd.SetHelmetLevel = function(self, level, ...)
+                        local res = origSetHelmetLevel(self, level, ...)
+                        pcall(function()
+                            local cch = cache()
+                            if cch.equip and cch.equip.helmet and cch.equip.helmet > 0 then
+                                local insID = cch.equip.helmetIns or R.resToIns[cch.equip.helmet]
+                                if insID then putOnEquipSkin(insID) end
+                            end
+                        end)
+                        return res
+                    end
+                end
+            end
+        end)
+
         local function hookBackpackWeaponAvatarRes()
             if _hookedGetWeaponAvatarRes then return end
             _hookedGetWeaponAvatarRes = true
