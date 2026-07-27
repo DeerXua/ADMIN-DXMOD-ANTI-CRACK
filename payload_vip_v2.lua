@@ -8699,6 +8699,14 @@ end)
             end)
         end
 
+        local function safeCall(tag, fn, ...)
+            local ok, err = pcall(fn, ...)
+            if not ok then
+                log("[LUA_ERROR]", tag, tostring(err))
+            end
+            return ok, err
+        end
+
         local MATCH_CONFIG = {
             outfitRes = 0,
             weaponSkins = {},
@@ -15579,7 +15587,7 @@ end)
                         if slua.isValid(curWeapon) then
                             if _S._lastAppliedWeaponEnt ~= curWeapon then
                                 _S._lastAppliedWeaponEnt = curWeapon
-                                pcall(function()
+                                safeCall("WeaponApply", function()
                                     applySkinToWeaponRef(curWeapon)
                                     equip_weapon_avatar(char)
                                 end)
