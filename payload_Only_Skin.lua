@@ -2734,20 +2734,7 @@ end
             end
         })
 
-        AddSlider(StackSkin, "SkinM416", "ID Skin M416", 1, 50)
-        AddSlider(StackSkin, "SkinAUG", "ID Skin AUG", 1, 50)
-        AddSlider(StackSkin, "SkinAKM", "ID Skin AKM", 1, 50)
-        AddSlider(StackSkin, "SkinSCAR", "ID Skin SCAR-L", 1, 50)
-        AddSlider(StackSkin, "SkinM762", "ID Skin M762", 1, 50)
-
-        AddSlider(StackSkin, "SkinSuit", "ID Bộ Trang Phục (Suit)", 1, 100)
-        AddSlider(StackSkin, "SkinBag", "ID Balo", 1, 50)
-        AddSlider(StackSkin, "SkinHelmet", "ID Mũ Bảo Hiểm", 1, 50)
-
-        AddSlider(StackSkin, "SKIN_UAZ", "SKIN XE JEEP (UAZ)", 0, 100)
-        AddSlider(StackSkin, "SKIN_DACIA", "SKIN XE CON (DACIA)", 0, 100)
-        AddSlider(StackSkin, "SKIN_MIRADO", "SKIN XE MIRADO", 0, 100)
-        AddSlider(StackSkin, "SKIN_COUPE", "SKIN XE THỂ THAO (COUPE)", 0, 100)
+        table.insert(StackSkin, { UI = AliasMap.Title, Text = "👕 Chọn trang phục, X-Suit, Súng & Balo trực tiếp trong Tủ Đồ Game (Wardrobe)" })
 
         SettingPageDefine.ModMenu = {
             Key = "ModMenu", 
