@@ -5442,6 +5442,8 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                             -- Các xử lý khi nhân vật đã chết
                             if enemy.WallhackApplied then
                                 pcall(function()
+                                    local enemyName = enemy.GetPlayerNameSafety and enemy:GetPlayerNameSafety() or "Target"
+                                    log("[AURA_CLEANUP]", "Enemy died, reset aura for: " .. tostring(enemyName))
                                     for _, comp in ipairs(enemy.LastAuraMeshes or {}) do
                                         if Valid(comp) then ResetMeshAuraComponent(comp) end
                                     end
@@ -5474,6 +5476,10 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                         end
                         ::continue::
                     end
+                end
+
+                if _G.TDModTickCount % 50 == 0 then
+                    log("[AURA_SCAN]", string.format("Scan Summary: TotalEnemies=%d | Players=%d | Bots=%d | WallhackStatus=%s", realCount + aiCount, realCount, aiCount, isWallhackGlobalOn and "ON" or "OFF"))
                 end
 
                 if espCount then
