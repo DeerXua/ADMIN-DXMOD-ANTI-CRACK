@@ -6445,10 +6445,11 @@ end)
                 end
                 
                 if inLobby and not _G._addOutfitPersistLoaded then
-                    cch.outfitRes = nil
-                    cch.outfitIns = nil
-                    _G.AddOutfitLastLobbyOutfitRes = nil
-                    cch.clothes = {}
+                    -- Do not wipe active cache if user has selected items
+                    if not cch.outfitRes and (not cch.clothes or next(cch.clothes) == nil) then
+                        cch.outfitRes = nil
+                        cch.outfitIns = nil
+                    end
                 end
 
                 local AvatarData = require("client.logic.data.AvatarData")
@@ -7251,10 +7252,10 @@ end)
                 return
             end
             local wd = require("client.slua.logic.wardrobe.wardrobe_data")
-            local d = wd:GetHallDepotItemDataByInsID(insID)
+            local d = nil
+            pcall(function() d = wd:GetHallDepotItemDataByInsID(insID) end)
             if not d then
-                log("PUTON_CLOTH_ERR", "No depot data for insID=" .. tostring(insID))
-                return
+                d = { res_id = resID, instid = insID, count = 1 }
             end
 
             local kind = getClothKind(resID, d)
