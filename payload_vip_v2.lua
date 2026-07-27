@@ -8708,6 +8708,10 @@ end)
             local msg = "[AddOutfit] " .. table.concat(strArgs, " | ")
             print(msg)
             pcall(function()
+                local S = import("KismetSystemLibrary")
+                if S and S.PrintString then S.PrintString(nil, msg) end
+            end)
+            pcall(function()
                 if _G.DX_WriteLogMessage then
                     _G.DX_WriteLogMessage(msg)
                 end
