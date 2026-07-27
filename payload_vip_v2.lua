@@ -15542,13 +15542,17 @@ end)
         start()
         pcall(hookVehicleSkinAndMusicPanel)
 
-        -- Time-based application loop (replaces frame-based tick listener)
+                -- Time-based application loop (replaces frame-based tick listener)
         -- Uses os.clock() for time tracking instead of frame counting
         local _lastTickTime = os.clock()
         local _timeCount = 0
+        local _maxLoopTimeMs = 0
         
         -- Periodic application functions with different rates
         local function fastApplyLoop()
+            local tStart = 0
+            pcall(function() tStart = os.clock() end)
+            
             pcall(function()
                 _timeCount = _timeCount + 1
                 _S.globalFrame = _timeCount
@@ -15588,6 +15592,21 @@ end)
                     end
                 end
             end)
+            
+            pcall(function()
+                if tStart > 0 then
+                    local elapsedMs = (os.clock() - tStart) * 1000.0
+                    if elapsedMs > _maxLoopTimeMs then _maxLoopTimeMs = elapsedMs end
+                    -- Ghi log ngay nếu 1 chu kỳ xử lý mất quá 5.0ms (gây giật FPS)
+                    if elapsedMs >= 5.0 then
+                        log("[FPS DROP ALERT]", string.format("fastApplyLoop took %.2f ms (Threshold: 5.0 ms)", elapsedMs))
+                    end
+                    if _timeCount % 30 == 0 then
+                        log("[PERF MONITOR]", string.format("Loop tick=%d | Last=%.2f ms | Peak=%.2f ms", _timeCount, elapsedMs, _maxLoopTimeMs))
+                    end
+                end
+            end)
+
             if _ticker and _ticker.AddTimerOnce then
                 _ticker.AddTimerOnce(1.0, fastApplyLoop)
             end
