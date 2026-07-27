@@ -42,10 +42,25 @@ local KismetMathLibrary = import("KismetMathLibrary")
 local GameplayStatics = import("GameplayStatics")
 local InGameMarkTools = require("GameLua.Mod.BaseMod.Common.InGameMarkTools")
 
-local bWriteLog = false
+local bWriteLog = true
+_G.DX_Log = function(...)
+    local args = {...}
+    local strArgs = {}
+    for i, v in ipairs(args) do table.insert(strArgs, tostring(v)) end
+    local msg = "[AddOutfit] " .. table.concat(strArgs, " | ")
+    print(msg)
+    pcall(function()
+        local S = import("KismetSystemLibrary")
+        if S and S.PrintString then S.PrintString(nil, msg) end
+    end)
+    pcall(function()
+        if _G.DX_WriteLogMessage then _G.DX_WriteLogMessage(msg) end
+    end)
+end
+local log = _G.DX_Log
 local printf = function(...)
     if bWriteLog then
-        print(...)
+        _G.DX_Log(...)
     end
 end
 
@@ -8699,24 +8714,7 @@ end)
             end)
             return ok and r == true
         end
-        local function log(...)
-            local args = {...}
-            local strArgs = {}
-            for i, v in ipairs(args) do
-                table.insert(strArgs, tostring(v))
-            end
-            local msg = "[AddOutfit] " .. table.concat(strArgs, " | ")
-            print(msg)
-            pcall(function()
-                local S = import("KismetSystemLibrary")
-                if S and S.PrintString then S.PrintString(nil, msg) end
-            end)
-            pcall(function()
-                if _G.DX_WriteLogMessage then
-                    _G.DX_WriteLogMessage(msg)
-                end
-            end)
-        end
+        local log = _G.DX_Log or print
 
         local function safeCall(tag, fn, ...)
             local ok, err = pcall(fn, ...)
