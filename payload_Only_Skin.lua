@@ -12395,8 +12395,51 @@ end)
     if not _ao_ok then
         print("[AddOutfit] LOAD ERROR:", tostring(_ao_err))
     end
--- ============================================================
---  KẾT THÚC ADDOUTFIT MODULE
--- ============================================================
+-- Ghi log vào file dx_crashlog.txt nằm cùng thư mục với Menu_Settings.txt
+local function LogToCrashlog(msg)
+    pcall(function()
+        local timeStr = ""
+        pcall(function()
+            if os and os.date then
+                timeStr = "[" .. os.date("%Y-%m-%d %H:%M:%S") .. "] "
+            end
+        end)
+        local formattedMsg = timeStr .. tostring(msg) .. "\n"
+        local paths = GetConfigPaths("dx_crashlog.txt")
+        for _, path in ipairs(paths) do
+            local file = io.open(path, "a")
+            if file then
+                file:write(formattedMsg)
+                file:close()
+                break
+            end
+        end
+    end)
+end
+
+-- Hàm dọn RAM định kỳ tổng quát
+local function StartRAMCleaner()
+    pcall(function()
+        local before = collectgarbage("count")
+        collectgarbage("step", 200)
+        local after = collectgarbage("count")
+        local logMsg = string.format("[RAM Cleaner] Truoc: %.2f KB | Sau: %.2f KB | Giai phong: %.2f KB", before, after, before - after)
+        print(logMsg)
+        LogToCrashlog(logMsg)
+    end)
+    
+    -- Tự gọi lại sau mỗi 20-30 giây qua bộ đếm thời gian (nếu có)
+    local ok, ticker = pcall(require, "common.time_ticker")
+    if ok and ticker and ticker.AddTimerOnce then
+        ticker.AddTimerOnce(25.0, StartRAMCleaner)
+    else
+        pcall(function()
+            LogToCrashlog("[RAM Cleaner] Khong tim thay ticker hoac khong ho tro AddTimerOnce")
+        end)
+    end
+end
+
+-- Gọi khởi chạy ở cuối luồng khởi tạo chính
+StartRAMCleaner()
 
 return true
