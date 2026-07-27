@@ -8284,7 +8284,6 @@ local function StartRAMCleaner()
     local function RunRAMCleanerCycle()
         pcall(function()
             local before = collectgarbage("count")
-            -- Dọn dẹp vi phân từng phần nhỏ (Incremental Step) tránh gây khựng/khung hình khi chơi
             collectgarbage("step", 200)
             local after = collectgarbage("count")
             local freed = before - after
@@ -8309,8 +8308,5 @@ local function StartRAMCleaner()
 
     RunRAMCleanerCycle()
 end
-
--- Gọi khởi chạy ở cuối luồng khởi tạo chính
-StartRAMCleaner()
 
 return true

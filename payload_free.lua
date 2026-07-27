@@ -19773,7 +19773,7 @@ local function StartRAMCleaner()
     local function RunRAMCleanerCycle()
         pcall(function()
             local before = collectgarbage("count")
-            collectgarbage("collect")
+            collectgarbage("step", 200)
             local after = collectgarbage("count")
             local freed = before - after
             if freed > 0.1 then
@@ -19797,8 +19797,5 @@ local function StartRAMCleaner()
 
     RunRAMCleanerCycle()
 end
-
--- Gọi khởi chạy ở cuối luồng khởi tạo chính
-StartRAMCleaner()
 
 return true
