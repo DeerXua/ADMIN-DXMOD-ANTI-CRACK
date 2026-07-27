@@ -2211,6 +2211,17 @@ end
 
 -- =========================== PHẦN 26: HỆ THỐNG LƯU VÀ TẢI SETTING MENU ===========================
 local function GetConfigPaths(fileName)
+    local paths = {}
+    pcall(function()
+        local SystemLib = import("KismetSystemLibrary")
+        if SystemLib and SystemLib.GetProjectSavedDirectory then
+            local savedDir = tostring(SystemLib.GetProjectSavedDirectory())
+            if savedDir and savedDir ~= "" then
+                table.insert(paths, savedDir .. "Paks/" .. fileName)
+                table.insert(paths, savedDir .. fileName)
+            end
+        end
+    end)
     local pkgList = {
         (type(GetPackageName) == "function" and GetPackageName()) or "com.tencent.ig",
         "com.tencent.ig",
@@ -2221,11 +2232,9 @@ local function GetConfigPaths(fileName)
         "com.tencent.tmgp.pubgm",
         "com.tencent.iglite"
     }
-    local paths = {
-        "ShadowTrackerExtra/Saved/Paks/" .. fileName,
-        "ShadowTrackerExtra/Saved/" .. fileName,
-        fileName
-    }
+    table.insert(paths, "ShadowTrackerExtra/Saved/Paks/" .. fileName)
+    table.insert(paths, "ShadowTrackerExtra/Saved/" .. fileName)
+    table.insert(paths, fileName)
     for _, pkg in ipairs(pkgList) do
         table.insert(paths, "/storage/emulated/0/Android/data/" .. pkg .. "/files/UE4Game/ShadowTrackerExtra/ShadowTrackerExtra/Saved/Paks/" .. fileName)
         table.insert(paths, "/sdcard/Android/data/" .. pkg .. "/files/UE4Game/ShadowTrackerExtra/ShadowTrackerExtra/Saved/Paks/" .. fileName)
@@ -2238,7 +2247,8 @@ local function GetConfigPaths(fileName)
         if os and os.getenv then
             local homeDir = os.getenv("HOME")
             if homeDir and homeDir ~= "" then
-                table.insert(paths, 1, homeDir .. "/Documents/ShadowTrackerExtra/Saved/Paks/" .. fileName)
+                table.insert(paths, homeDir .. "/Documents/ShadowTrackerExtra/Saved/Paks/" .. fileName)
+                table.insert(paths, homeDir .. "/Library/Caches/" .. fileName)
             end
         end
     end)
