@@ -8326,7 +8326,7 @@ end)
                             return
                         end
                         local wd = require("client.slua.logic.wardrobe.wardrobe_data")
-                        if wd:GetHallDepotItemDataByInsID(insID) then
+                        if true then -- Fix: support accessories (mask/glasses/hat) even if GetHallDepotItemDataByInsID returns nil on iOS
                             -- إكسسوار (ماسك/نظارة/طاقية): اخلع القديم بنفس النوع أولاً
                             -- كي لا تظهر أكثر من علامة صح على عناصر نفس الخانة
                             local itemSt = st or subType(cfg(resID))
