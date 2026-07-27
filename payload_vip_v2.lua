@@ -14797,20 +14797,7 @@ end)
                         end)
                         -- log("إعادة تطبيق سكن بعد تبديل سلاح", weaponID, w.resID)
                     else
-                        -- تحديث الواجهة لإزالة السكن
-                        later(0.05, function()
-                            pcall(function()
-                                local wgl2 = require("client.slua.logic.wardrobe.logic_wardrobe_gun")
-                                wgl2:UpdateCurrentGunAvatar(weaponID, 0)
-                                if EventSystem and EVENTTYPE_WARDROBE and EVENTID_WARDROBE_UPDATE_CURRENT_PUT_ON_GUN then
-                                    EventSystem:postEvent(EVENTTYPE_WARDROBE, EVENTID_WARDROBE_UPDATE_CURRENT_PUT_ON_GUN, 0)
-                                end
-                                if EventSystem and EVENTID_WARDROBE_UPDATE_GUN_LIST then
-                                    EventSystem:postEvent(EVENTTYPE_WARDROBE, EVENTID_WARDROBE_UPDATE_GUN_LIST, weaponID)
-                                end
-                            end)
-                        end)
-                        log("إزالة سكن السلاح", weaponID)
+                        -- Không can thiệp vào skin mặc định của game khi người dùng không chọn skin độ
                     end
                     
                     return result
