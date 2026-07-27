@@ -14608,6 +14608,7 @@ end)
                         pcall(function()
                             if self.IsLobbyActor and self:IsLobbyActor() then return end
                             if not (self.IsSelf and self:IsSelf()) then return end
+                            log("[MESH_LOADED]", "Local character mesh fully loaded, triggering bootstrapMatch")
                             local char = getLocalChar()
                             if char and char.AddGameTimer then
                                 char:AddGameTimer(0.5, false, function() bootstrapMatch(char) end)
@@ -15322,6 +15323,7 @@ end)
                             -- Inject weapon skin into kill message
                             if skinID then
                                 DamageRecordData.CauserWeaponAvatarID = skinID
+                                log("[KILL_FEED_INJECT]", "WeaponID=" .. tostring(weaponID), "SkinID=" .. tostring(skinID))
                             end
                             -- Inject outfit skin into kill message
                             if _G.SuitSkin and _G.SuitSkin ~= 0 then
@@ -15330,6 +15332,7 @@ end)
                             -- Golden name color
                             DamageRecordData.IsUseColor = true
                             DamageRecordData.UseColor = import("LinearColor")(1.0, 0.8, 0.0, 1.0)
+                            log("[KILL_FEED_INJECT]", "Golden name color applied for killer: " .. tostring(DamageRecordData.Causer))
                             -- Track kill count
                             if DamageRecordData.ResultHealthStatus == 2 then
                                 _G.AKFakeKillCounts[weaponID] = (_G.AKFakeKillCounts[weaponID] or 0) + 1
