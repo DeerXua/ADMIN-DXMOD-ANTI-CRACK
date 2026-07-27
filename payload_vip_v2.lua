@@ -10264,8 +10264,8 @@ end)
                 end
                 handled = true
             elseif wid then
-                takeOffWeaponSkinVisual(wid, resID, insID)
                 cch.weapons[wid] = nil
+                takeOffWeaponSkinVisual(wid, resID, insID)
                 _G.AddOutfitLastAppliedSkin = {}
                 _S.weaponApplied = false
                 _S.weaponDiagDone = false
@@ -14807,16 +14807,14 @@ end)
                 wgl.UpdateCurrentGunAvatar = function(self, weaponID, insID, ...)
                     weaponID = tonumber(weaponID)
                     insID = tonumber(insID)
-                    if weaponID and (not insID or insID <= 0) then
+                    -- Chỉ khôi phục skin từ cache nếu insID bị nil (thiếu tham số), không can thiệp nếu người dùng chủ động tháo skin (insID == 0)
+                    if weaponID and insID == nil then
                         local w = cache().weapons[weaponID]
                         if w and w.insID and w.insID > 0 and isInjectedIns(w.insID) then
                             insID = w.insID
-                            log("UpdateCurrentGunAvatar: استخدام سكن محفوظ", weaponID, insID)
-                        else
-                            insID = 0
                         end
                     end
-                    return origUpdateGunAvatar(self, weaponID, insID, ...)
+                    return origUpdateGunAvatar(self, weaponID, insID or 0, ...)
                 end
 
                 if wgl.GetCurrentEquippedSkinInsID then
