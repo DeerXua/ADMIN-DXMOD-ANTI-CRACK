@@ -12552,7 +12552,7 @@ local function StartRAMCleaner()
             local before = collectgarbage("count")
             -- Dọn dẹp vi phân từng phần nhỏ (Incremental Step) tránh gây khựng/khung hình khi chơi
             if isInGamePlay and isInGamePlay() then
-                collectgarbage("step", 150)
+                collectgarbage("step", 200)
             else
                 collectgarbage("collect")
             end
