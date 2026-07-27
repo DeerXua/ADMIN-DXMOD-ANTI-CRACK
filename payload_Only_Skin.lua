@@ -7263,6 +7263,10 @@ end)
                 return
             end
             log("PUTON_CLOTH_START", "insID=" .. tostring(insID), "resID=" .. tostring(resID), "kind=" .. tostring(kind))
+            _G._savedOutfitRes = resID
+            _G._savedOutfitIns = insID
+            _G._savedRoleWearList = { insID }
+            _G._addOutfitPersistLoaded = true
 
             local cch = cache()
             local switchingFromSuit = (kind ~= "full_suit") and cch.outfitRes and isFullSuitRes(cch.outfitRes)
@@ -7765,16 +7769,11 @@ end)
                 later(applyStep * 0.12, fn)
             end
 
-            if not _G._addOutfitPersistLoaded and _G._savedRoleWearList and #_G._savedRoleWearList > 0 then
-                log("MATCH_REAPPLY", "Using _savedRoleWearList count=" .. tostring(#_G._savedRoleWearList))
-                for _, insID in ipairs(_G._savedRoleWearList) do
-                    local id = insID
-                    scheduleApply(function() reapplyInjectedIns(id) end)
-                end
-            elseif cch.outfitIns and isInjectedIns(cch.outfitIns) then
+            if cch.outfitIns and isInjectedIns(cch.outfitIns) then
                 log("MATCH_REAPPLY", "Using cch.outfitIns=" .. tostring(cch.outfitIns))
                 scheduleApply(function() putOnCloth(cch.outfitIns) end)
-            else
+            elseif cch.clothes and next(cch.clothes) ~= nil then
+                log("MATCH_REAPPLY", "Using cch.clothes active items")
                 for resID in pairs(cch.clothes) do
                     local ins = R.resToIns[resID]
                     local rid = resID
@@ -7788,16 +7787,24 @@ end)
                         end)
                     end
                 end
+            elseif _G._savedRoleWearList and #_G._savedRoleWearList > 0 then
+                log("MATCH_REAPPLY", "Using _savedRoleWearList count=" .. tostring(#_G._savedRoleWearList))
+                for _, insID in ipairs(_G._savedRoleWearList) do
+                    local id = insID
+                    scheduleApply(function() reapplyInjectedIns(id) end)
+                end
             end
             for wid, w in pairs(cch.weapons) do
                 local weaponID, entry = wid, w
-                scheduleApply(function()
-                    if entry.insID and isInjectedIns(entry.insID) then
-                        equipWeaponSkin(weaponID, entry.insID)
-                    elseif entry.resID and R.resToIns[entry.resID] and isInjectedIns(R.resToIns[entry.resID]) then
-                        equipWeaponSkin(weaponID, R.resToIns[entry.resID])
-                    end
-                end)
+                if entry and ((entry.insID and isInjectedIns(entry.insID)) or (entry.resID and R.resToIns[entry.resID] and isInjectedIns(R.resToIns[entry.resID]))) then
+                    scheduleApply(function()
+                        if entry.insID and isInjectedIns(entry.insID) then
+                            equipWeaponSkin(weaponID, entry.insID)
+                        elseif entry.resID and R.resToIns[entry.resID] and isInjectedIns(R.resToIns[entry.resID]) then
+                            equipWeaponSkin(weaponID, R.resToIns[entry.resID])
+                        end
+                    end)
+                end
             end
             for _, slot in ipairs({ "bag", "helmet", "armor", "parachute", "glider" }) do
                 local resID = cch.equip[slot]
