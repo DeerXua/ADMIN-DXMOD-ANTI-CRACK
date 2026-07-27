@@ -4808,6 +4808,9 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                     globalColorHash = tostring((_G.DX_Settings and _G.DX_Settings.WALL_VISIBLE_COLOR) or 3) .. "_"
                                    .. tostring((_G.DX_Settings and _G.DX_Settings.WALL_OCCLUDED_COLOR) or 2) .. "_"
                                    .. tostring((_G.DX_Settings and _G.DX_Settings.WALL_OCCLUDED_AI_COLOR) or 7)
+                    if _G.TDModTickCount % 50 == 0 then
+                        log("[AURA_MENU_SETTING]", "ColorOption=" .. tostring(_G.DX_Settings and _G.DX_Settings.WALLHACK_COLOR_MODE or 1), "ColorHash=" .. globalColorHash)
+                    end
                 end
 
                 for _, enemy in pairs(allPlayers) do
@@ -4876,6 +4879,7 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                                             enemy.WallhackApplied = false
                                             enemy.LastAuraHash = nil
                                             enemy.LastAuraMeshes = nil
+                                            log("[AURA_CLEANUP]", "Enemy too far (>350m), reset aura: " .. tostring(enemy.GetPlayerNameSafety and enemy:GetPlayerNameSafety() or "Target"))
                                         end
                                         if InGameMarkTools then 
                                             if enemy.NativeHPBarMark then 
@@ -4909,32 +4913,37 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
                             if not enemy.DX_NextMeshUpdateTime or currentTickOS > enemy.DX_NextMeshUpdateTime then
                                 enemy.DX_NextMeshUpdateTime = currentTickOS + 1.5 + (math_random() * 1.0)
-                                local meshes = enemy.DX_CachedMeshes or {}
-                                local existing = {}
-                                for _, m in ipairs(meshes) do existing[m] = true end
-                                if Valid(enemy.Mesh) and not existing[enemy.Mesh] then
-                                    table.insert(meshes, enemy.Mesh)
-                                    existing[enemy.Mesh] = true
-                                end
-                                if GlobalSkelClass then
-                                    pcall(function()
-                                        local childs = enemy:GetComponentsByClass(GlobalSkelClass)
-                                        if childs then
-                                            local count = type(childs.Num) == "function" and childs:Num() or #childs
-                                            for c = 1, count do
-                                                local comp = type(childs.Get) == "function" and childs:Get(c-1) or childs[c]
-                                                if Valid(comp) and not existing[comp] then
-                                                    table.insert(meshes, comp)
-                                                    existing[comp] = true
+                                if not enemy.DX_CachedMeshes then
+                                    local meshes = {}
+                                    local existing = {}
+                                    local mainMesh = enemy.Mesh
+                                    if Valid(mainMesh) then
+                                        table.insert(meshes, mainMesh)
+                                        existing[mainMesh] = true
+                                    end
+                                    local GlobalSkelClass = import("SkeletalMeshComponent")
+                                    if GlobalSkelClass then
+                                        pcall(function()
+                                            local childs = enemy:GetComponentsByClass(GlobalSkelClass)
+                                            if childs then
+                                                local count = type(childs.Num) == "function" and childs:Num() or #childs
+                                                for c = 1, count do
+                                                    local comp = type(childs.Get) == "function" and childs:Get(c-1) or childs[c]
+                                                    if Valid(comp) and not existing[comp] then
+                                                        table.insert(meshes, comp)
+                                                        existing[comp] = true
+                                                    end
                                                 end
                                             end
-                                        end
-                                    end)
+                                        end)
+                                    end
+                                    enemy.DX_CachedMeshes = meshes
+                                    log("[AURA_MESH_EXTRACT]", "Extracted meshes count=" .. tostring(#meshes) .. " for enemy=" .. tostring(enemy.GetPlayerNameSafety and enemy:GetPlayerNameSafety() or "Target"))
                                 end
-                                enemy.DX_CachedMeshes = meshes
                             end
                             
                             local meshes = enemy.DX_CachedMeshes
+                            if not meshes then goto continue end
                             local currentMeshCount = #meshes
                             local isMeshChanged = (enemy.LastAuraMeshes and #enemy.LastAuraMeshes ~= currentMeshCount)
                             
