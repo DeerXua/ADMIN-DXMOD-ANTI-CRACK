@@ -9593,15 +9593,6 @@ end)
                 saveEquipSkin(resID, insID)
             elseif _K.GUN_SUB[st] then
                 local wid = weaponIdFromSkin(resID)
-                if not wid then
-                    pcall(function()
-                        local wgl = require("client.slua.logic.wardrobe.logic_wardrobe_gun")
-                        wid = wgl.GetCurGunID and wgl:GetCurGunID() or nil
-                        if not wid and wgl.GetCurrentGunID then
-                            wid = wgl:GetCurrentGunID()
-                        end
-                    end)
-                end
                 if wid then saveWeaponToCache(wid, resID, insID) end
             elseif st == _K.MELEE_ID then
                 saveWeaponToCache(_K.MELEE_ID, resID, insID)
