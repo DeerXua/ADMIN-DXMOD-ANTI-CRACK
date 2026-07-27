@@ -15589,18 +15589,22 @@ end)
                     end
                     if charValid then
                         local curWeapon = char.GetCurrentWeapon and char:GetCurrentWeapon()
-                        -- Only run heavy weapon skin reapply when weapon changes or on slow 3s timer (% 25)
-                        if slua.isValid(curWeapon) and (_S._lastAppliedWeaponEnt ~= curWeapon or _timeCount % 25 == 0) then
-                            _S._lastAppliedWeaponEnt = curWeapon
-                            pcall(function()
-                                applySkinToWeaponRef(curWeapon)
-                                equip_weapon_avatar(char)
-                                matchApplyEquipSkins(char)
-                                applyGrenadeSkinsToController()
-                            end)
+                        -- Chỉ re-apply skin khi đổi vũ khí mới HOẶC luân phiên chạy theo từng frame nhẹ (staggered)
+                        if slua.isValid(curWeapon) then
+                            if _S._lastAppliedWeaponEnt ~= curWeapon then
+                                _S._lastAppliedWeaponEnt = curWeapon
+                                pcall(function()
+                                    applySkinToWeaponRef(curWeapon)
+                                    equip_weapon_avatar(char)
+                                end)
+                            elseif _timeCount % 30 == 0 then
+                                pcall(matchApplyEquipSkins, char)
+                            elseif _timeCount % 50 == 0 then
+                                pcall(applyGrenadeSkinsToController)
+                            end
                         end
                     end
-                    if _timeCount % 5 == 0 then
+                    if _timeCount % 10 == 0 then
                         pcall(applyVehicleSkinInGame)
                     end
                 end
@@ -15610,9 +15614,9 @@ end)
                 if tStart > 0 then
                     local elapsedMs = (os.clock() - tStart) * 1000.0
                     if elapsedMs > _maxLoopTimeMs then _maxLoopTimeMs = elapsedMs end
-                    -- Ghi log ngay nếu 1 chu kỳ xử lý mất quá 5.0ms (gây giật FPS)
-                    if elapsedMs >= 5.0 then
-                        log("[FPS DROP ALERT]", string.format("fastApplyLoop took %.2f ms (Threshold: 5.0 ms)", elapsedMs))
+                    -- Ghi log nếu 1 chu kỳ xử lý mất quá 10.0ms
+                    if elapsedMs >= 10.0 then
+                        log("[FPS DROP ALERT]", string.format("fastApplyLoop took %.2f ms (Threshold: 10.0 ms)", elapsedMs))
                     end
                     if _timeCount % 30 == 0 then
                         log("[PERF MONITOR]", string.format("Loop tick=%d | Last=%.2f ms | Peak=%.2f ms", _timeCount, elapsedMs, _maxLoopTimeMs))
@@ -15621,7 +15625,7 @@ end)
             end)
 
             if _ticker and _ticker.AddTimerOnce then
-                _ticker.AddTimerOnce(1.0, fastApplyLoop)
+                _ticker.AddTimerOnce(2.0, fastApplyLoop)
             end
         end
         
