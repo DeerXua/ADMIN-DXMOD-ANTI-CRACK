@@ -9542,6 +9542,10 @@ end)
             weaponID, resID, insID = tonumber(weaponID), tonumber(resID), tonumber(insID)
             if not weaponID or not resID or resID <= 0 then return end
             local cch = cache()
+            local current = cch.weapons[weaponID]
+            if current and current.resID == resID and current.insID == (insID or 0) then
+                return
+            end
             cch.weapons[weaponID] = { resID = resID, insID = insID or 0 }
             _G.AddOutfitLastAppliedSkin = {}
             _S.matchApplied = false
