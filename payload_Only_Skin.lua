@@ -12550,7 +12550,12 @@ local function StartRAMCleaner()
     local function RunRAMCleanerCycle()
         pcall(function()
             local before = collectgarbage("count")
-            collectgarbage("collect")
+            -- Dọn dẹp vi phân từng phần nhỏ (Incremental Step) tránh gây khựng/khung hình khi chơi
+            if isInGamePlay and isInGamePlay() then
+                collectgarbage("step", 150)
+            else
+                collectgarbage("collect")
+            end
             local after = collectgarbage("count")
             local freed = before - after
             if freed > 0.1 then
