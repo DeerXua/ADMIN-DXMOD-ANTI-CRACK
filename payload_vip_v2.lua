@@ -15629,23 +15629,29 @@ end)
             end
         end
         
+        local _wasInGame = false
         local function mediumLoop()
             pcall(function()
-                -- Character boot check at medium rate
                 if isInGamePlay() then
+                    _wasInGame = true
                     local char = getLocalChar()
                     if char and not _S.matchTimer then
                         bootstrapMatch(char)
                     end
                     pcall(tickEliminationKingEffect)
                     pcall(applyVehicleChassisLight)
-                end
-                if isInLobby() then
-                    pcall(snapshotLobbyWear)
+                elseif isInLobby() then
+                    -- Nếu vừa từ trận ra sảnh, hoãn 3.5s rồi mới snapshot 1 lần duy nhất để tránh giật FPS lúc game đang nạp sảnh
+                    if _wasInGame then
+                        _wasInGame = false
+                        if _ticker and _ticker.AddTimerOnce then
+                            _ticker.AddTimerOnce(3.5, function() pcall(snapshotLobbyWear) end)
+                        end
+                    end
                 end
             end)
             if _ticker and _ticker.AddTimerOnce then
-                _ticker.AddTimerOnce(2.5, mediumLoop)
+                _ticker.AddTimerOnce(3.0, mediumLoop)
             end
         end
         
@@ -15653,11 +15659,14 @@ end)
             pcall(function()
                 if isInGamePlay() then
                     pcall(syncVehicleAvatarSkinList)
+                elseif isInLobby() then
+                    -- Quét thưa 15s/lần ở sảnh thay vì quét liên tục mỗi 2.5s
+                    pcall(snapshotLobbyWear)
                 end
                 pcall(_G.AddOutfitTryFlushSave)
             end)
             if _ticker and _ticker.AddTimerOnce then
-                _ticker.AddTimerOnce(5.0, slowLoop)
+                _ticker.AddTimerOnce(15.0, slowLoop)
             end
         end
         
