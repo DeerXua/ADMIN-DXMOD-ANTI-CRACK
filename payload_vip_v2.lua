@@ -15587,16 +15587,18 @@ end)
                     if not _S.matchTimer and charValid then
                         bootstrapMatch(char)
                     end
-                    if _timeCount % 5 == 0 and charValid then
-                        pcall(function()
-                            local curWeapon = char.GetCurrentWeapon and char:GetCurrentWeapon()
-                            if slua.isValid(curWeapon) then
+                    if charValid then
+                        local curWeapon = char.GetCurrentWeapon and char:GetCurrentWeapon()
+                        -- Only run heavy weapon skin reapply when weapon changes or on slow 3s timer (% 25)
+                        if slua.isValid(curWeapon) and (_S._lastAppliedWeaponEnt ~= curWeapon or _timeCount % 25 == 0) then
+                            _S._lastAppliedWeaponEnt = curWeapon
+                            pcall(function()
                                 applySkinToWeaponRef(curWeapon)
-                            end
-                            equip_weapon_avatar(char)
-                            matchApplyEquipSkins(char)
-                            applyGrenadeSkinsToController()
-                        end)
+                                equip_weapon_avatar(char)
+                                matchApplyEquipSkins(char)
+                                applyGrenadeSkinsToController()
+                            end)
+                        end
                     end
                     if _timeCount % 5 == 0 then
                         pcall(applyVehicleSkinInGame)
