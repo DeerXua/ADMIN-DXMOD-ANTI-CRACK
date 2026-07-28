@@ -311,6 +311,265 @@ end
 -- KÍCH HOẠT TÍNH NĂNG UNLOCK SKIN TỰ ĐỘNG NGAY KHI PAYLOAD CHẠY
 pcall(__InitializeGlobalSkinAutoUnlock)
 
+-- ==============================================================================
+-- [DX-MOD ADVANCED SKIN MOD & UNLOCK SYSTEM]: LOBBY AVATAR & BACKPACK HOOK
+-- ==============================================================================
+_G.X3 = _G.X3 or {}
+_G.X3.skinIdCache2 = _G.X3.skinIdCache2 or {}
+
+function _G.X3.InitializeSkinModSystem()
+    pcall(function()
+        local LobbyAvatar = package.loaded["client.logic.avatar.LobbyAvatar"] or (type(require) == "function" and pcall(require, "client.logic.avatar.LobbyAvatar") and require("client.logic.avatar.LobbyAvatar"))
+        if LobbyAvatar and not _G.X3.LobbyBypassHacked then
+            local originalPutonEquipment = LobbyAvatar.PutonEquipment
+            LobbyAvatar.PutonEquipment = function(self, itemID, tAvatarCustom, tExtraData)
+                local attachIndex = _G.X3.BaseAttachToIndex and _G.X3.BaseAttachToIndex[itemID]
+                if attachIndex then
+                    local holdingWeaponSkinID = self.GetCurHoldingWeaponSkinID and self:GetCurHoldingWeaponSkinID()
+                    if holdingWeaponSkinID and holdingWeaponSkinID >= 10000000 and _G.X3.VIP_Attachments and _G.X3.VIP_Attachments[holdingWeaponSkinID] then
+                        local vipAttachID = _G.X3.VIP_Attachments[holdingWeaponSkinID][attachIndex]
+                        if vipAttachID and vipAttachID > 0 then
+                            if self.HandleDownload then self:HandleDownload(vipAttachID, nil, nil, false) end
+                            itemID = vipAttachID
+                        end
+                    end
+                end
+                if originalPutonEquipment then return originalPutonEquipment(self, itemID, tAvatarCustom, tExtraData) end
+            end
+
+            local originalCharEquipWeaponByResId = LobbyAvatar.CharEquipWeaponByResId
+            LobbyAvatar.CharEquipWeaponByResId = function(self, resID, isUse, isAsync, SocketName)
+                local retValue = originalCharEquipWeaponByResId and originalCharEquipWeaponByResId(self, resID, isUse, isAsync, SocketName) or nil
+                if isUse and self.GetEquipments then
+                    local equipments = self:GetEquipments()
+                    for _, equip in ipairs(equipments) do
+                        if _G.X3.BaseAttachToIndex and _G.X3.BaseAttachToIndex[equip.itemID] then
+                            self:PutonEquipment(equip.itemID, equip.CustomInfo, {bIsUse = false})
+                        end
+                    end
+                end
+                return retValue
+            end
+            _G.X3.LobbyBypassHacked = true
+        end
+    end)
+
+    pcall(function()
+        local Common_Items_UIBP = package.loaded["client.slua.component.item.ItemChildren.Common_Items_UIBP"] or (type(require) == "function" and pcall(require, "client.slua.component.item.ItemChildren.Common_Items_UIBP") and require("client.slua.component.item.ItemChildren.Common_Items_UIBP"))
+        if Common_Items_UIBP and not _G.X3.IconBaloHacked then
+            local originalInitView = Common_Items_UIBP.InitView
+            Common_Items_UIBP.InitView = function(self, nItemId, nCount, nValidTime, tExtraData)
+                tExtraData = tExtraData or {}
+                local displayResId = nil
+
+                if _G.X3.get_skin_id then
+                    local skinID = _G.X3.get_skin_id(nItemId)
+                    if skinID and skinID ~= nItemId then displayResId = skinID end
+                end
+
+                local attachIndex = _G.X3.BaseAttachToIndex and _G.X3.BaseAttachToIndex[nItemId]
+                if not displayResId and attachIndex then
+                    local GameplayData = require("GameLua.GameCore.Data.GameplayData")
+                    local LocalPlayer = GameplayData and GameplayData.GetPlayerCharacter()
+                    if slua.isValid(LocalPlayer) then
+                        local currentWeapon = LocalPlayer:GetCurrentWeapon()
+                        if slua.isValid(currentWeapon) then
+                            local weaponID = currentWeapon:GetWeaponID()
+                            local finalSkinID = _G.X3.get_skin_id(weaponID) or weaponID
+                            if finalSkinID >= 10000000 and _G.X3.VIP_Attachments and _G.X3.VIP_Attachments[finalSkinID] then
+                                local vipAttachID = _G.X3.VIP_Attachments[finalSkinID][attachIndex]
+                                if vipAttachID and vipAttachID > 0 then displayResId = vipAttachID end
+                            end
+                        end
+                    end
+                end
+
+                if displayResId then
+                    tExtraData.displayResId = displayResId
+                    if not _G.X3.skinIdCache2[displayResId] then
+                        if _G.X3.download_item then pcall(_G.X3.download_item, displayResId) end
+                        _G.X3.skinIdCache2[displayResId] = true
+                    end
+                end
+                if originalInitView then return originalInitView(self, nItemId, nCount, nValidTime, tExtraData) end
+            end
+            _G.X3.IconBaloHacked = true
+        end
+    end)
+end
+
+_G.X3.SkinUnlockState = _G.X3.SkinUnlockState or {
+    HookedCount = 0,
+    ScanCount = 0,
+    LastScan = 0,
+}
+
+_G.X3.SkinUnlock_ModulePatterns = { "backpack", "wardrobe", "warehouse", "depot", "item", "skin", "avatar", "dress", "outfit", "garage", "theme", "border", "frame", "pet", "buddy", "collect", "hall" }
+_G.X3.SkinUnlock_OwnershipFns = {
+    "IsOwnItem", "HasItem", "IsHaveItem", "CheckOwnItem", "OwnItem",
+    "IsItemOwned", "CheckItemOwned", "IsUnlock", "CheckUnlock",
+    "IsItemUnlock", "CheckItemUnlock", "IsOwned", "CheckOwned",
+    "IsHave", "CheckHave", "HasOwned", "GetItemOwned",
+    "IsSkinOwn", "HasSkin", "IsSkinOwned", "CheckSkinOwn",
+    "IsPossess", "CheckPossess", "IsUnlocked", "CheckHasItem",
+    "IsItemHas", "HasItemById", "IsHasItem",
+}
+
+_G.X3.SkinUnlock_Log = function(msg)
+    print("[X3Team][SkinUnlock] " .. tostring(msg))
+    if _G.X3.L_Log then pcall(_G.X3.L_Log, "[SkinUnlock] " .. tostring(msg)) end
+end
+
+_G.X3.SkinUnlock_HookOne = function(tbl, fnName, tag)
+    local old = rawget(tbl, fnName)
+    if type(old) ~= "function" then return end
+    if rawget(tbl, "__x3su_" .. fnName) then return end
+    rawset(tbl, "__x3su_" .. fnName, old)
+    rawset(tbl, fnName, function(...)
+        if _G.X3.LexusConfig and _G.X3.LexusConfig.SkinUnlockAll then return true end
+        return old(...)
+    end)
+    _G.X3.SkinUnlockState.HookedCount = _G.X3.SkinUnlockState.HookedCount + 1
+    _G.X3.SkinUnlock_Log("HOOK " .. tostring(tag) .. "." .. fnName)
+end
+
+_G.X3.SkinUnlock_HookTable = function(tbl, tag)
+    if type(tbl) ~= "table" then return end
+    for _, fnName in ipairs(_G.X3.SkinUnlock_OwnershipFns) do
+        _G.X3.SkinUnlock_HookOne(tbl, fnName, tag)
+    end
+    local impl = rawget(tbl, "__inner_impl")
+    if type(impl) == "table" then
+        for _, fnName in ipairs(_G.X3.SkinUnlock_OwnershipFns) do
+            _G.X3.SkinUnlock_HookOne(impl, fnName, tag .. ".__inner_impl")
+        end
+    end
+end
+
+_G.X3.SkinUnlockScan = function(force)
+    if true then return end
+    if not _G.X3.LexusConfig or not _G.X3.LexusConfig.SkinUnlockAll then return end
+    local st = _G.X3.SkinUnlockState
+    local now = os.clock()
+    if not force and (now - (st.LastScan or 0)) < 5.0 then return end
+    st.LastScan = now
+    st.ScanCount = st.ScanCount + 1
+
+    pcall(function()
+        local ModuleManager = require("client.module_framework.ModuleManager")
+        local cfg = ModuleManager and ModuleManager.CommonModuleConfig
+        if type(cfg) == "table" then
+            for name, modId in pairs(cfg) do
+                local lname = tostring(name):lower()
+                for _, pat in ipairs(_G.X3.SkinUnlock_ModulePatterns) do
+                    if lname:find(pat) then
+                        local ok, mod = pcall(ModuleManager.GetModule, modId)
+                        if ok and type(mod) == "table" then
+                            _G.X3.SkinUnlock_HookTable(mod, "MM:" .. tostring(name))
+                        end
+                        break
+                    end
+                end
+            end
+        end
+    end)
+
+    pcall(function()
+        for modName, mod in pairs(package.loaded) do
+            if type(mod) == "table" then
+                local lname = tostring(modName):lower()
+                for _, pat in ipairs(_G.X3.SkinUnlock_ModulePatterns) do
+                    if lname:find(pat) then
+                        _G.X3.SkinUnlock_HookTable(mod, tostring(modName))
+                        break
+                    end
+                end
+            end
+        end
+    end)
+
+    if st.ScanCount == 1 then
+        _G.X3.SkinUnlock_Log("scan pertama selesai, hook aktif: " .. st.HookedCount)
+    end
+end
+
+_G.X3.SkinUnlockTick = function()
+    pcall(function()
+        if not (_G.X3.LexusConfig and _G.X3.LexusConfig.SkinUnlockAll) then return end
+        local stt = nil
+        local GameplayData = require("GameLua.GameCore.Data.GameplayData")
+        local gs = GameplayData and GameplayData.GetGameState and GameplayData.GetGameState()
+        if gs and slua.isValid(gs) then pcall(function() stt = gs:GetGameModeState() end) end
+        local inMatch = _G.X3._InCombatGS and _G.X3._InCombatGS(gs, stt) or (stt == "FightingState")
+        if _G.X3._SkinWasInMatch == true and not inMatch and stt ~= nil and stt ~= "" then
+            local lpAlive = false
+            pcall(function()
+                local lp = GameplayData.GetPlayerCharacter and GameplayData.GetPlayerCharacter()
+                if lp and slua.isValid(lp) and (lp.Health == nil or lp.Health > 0) then lpAlive = true end
+            end)
+            _G.X3._SkinNonFightN = (_G.X3._SkinNonFightN or 0) + 1
+            if _G.X3._CrashLog then pcall(_G.X3._CrashLog, "SKIN RESET GATE > state '" .. tostring(stt) .. "' konfirmasi " .. tostring(_G.X3._SkinNonFightN) .. "/2 (charAktif=" .. tostring(lpAlive) .. ")") end
+            if _G.X3._SkinNonFightN >= 2 and not lpAlive then
+                _G.X3._SkinNonFightN = 0
+                _G.X3._SkinWasInMatch = false
+                local ij = _G.X3.Inj
+                if ij then
+                    ij.allDone = false
+                    ij.injectDone = false
+                    ij.phase = 1
+                    ij.injectIdx = 1
+                    ij.injectRunning = false
+                end
+                _G.X3.EnumDone = false
+                if _G.X3._CrashLogUrgent then pcall(_G.X3._CrashLogUrgent, "SKIN RESET TERDETEKSI (match end TERKONFIRMASI 2x) > RE-INJECT") end
+            end
+        else
+            _G.X3._SkinNonFightN = 0
+            _G.X3._SkinWasInMatch = inMatch
+        end
+        if _G.X3.InjEnsure then pcall(_G.X3.InjEnsure) end
+    end)
+end
+
+_G.X3.SkinUnlock_InLobby = function()
+    local inBattle = false
+    pcall(function()
+        local GameplayData = require("GameLua.GameCore.Data.GameplayData")
+        local gs = GameplayData and GameplayData.GetGameState and GameplayData.GetGameState()
+        if gs and slua.isValid(gs) then
+            local st = gs:GetGameModeState() or ""
+            inBattle = (st == "FightingState")
+        end
+    end)
+    return not inBattle
+end
+
+_G.X3.ApplyLobbyPickedSkins = function()
+    local cData = _G.X3.LexusState and _G.X3.LexusState.CustomTextData
+    if not cData then return end
+    for k, v in pairs(cData) do
+        local base = tostring(k):match("^LobbyGun_(%d+)$")
+        if base and tonumber(v) then
+            _G.X3.WeaponSkinMap[tonumber(base)] = tonumber(v)
+        end
+    end
+    if tonumber(cData.LobbySuit) then _G.X3.OutfitMap.Suit = tonumber(cData.LobbySuit) end
+    if tonumber(cData.LobbyBag) then local n = tonumber(cData.LobbyBag) _G.X3.OutfitMap.Bag = { n, n, n } end
+    if tonumber(cData.LobbyHelmet) then local n = tonumber(cData.LobbyHelmet) _G.X3.OutfitMap.Helmet = { n, n, n } end
+    if tonumber(cData.LobbyPants) then _G.X3.OutfitMap.Pants = tonumber(cData.LobbyPants) end
+    if tonumber(cData.LobbyShoes) then _G.X3.OutfitMap.Shoes = tonumber(cData.LobbyShoes) end
+    for k, v in pairs(cData) do
+        local vb = tostring(k):match("^LobbyVeh_(%d+)$")
+        if vb and tonumber(v) then
+            _G.X3.VehicleSkinMap[tonumber(vb)] = tonumber(v)
+        end
+    end
+end
+
+-- KÍCH HOẠT HỆ THỐNG SKIN MOD LOBBY & ICON BALO
+pcall(_G.X3.InitializeSkinModSystem)
+
+
 
 
 
