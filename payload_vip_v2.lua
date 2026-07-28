@@ -8954,11 +8954,7 @@ end)
         end
 
         local function isInjectedIns(ins)
-            ins = tonumber(ins)
-            if not ins then return false end
-            if R.insToRes[ins] ~= nil then return true end
-            if weaponIdFromSkin and weaponIdFromSkin(ins) ~= nil then return true end
-            return false
+            return ins and R.insToRes[tonumber(ins)] ~= nil
         end
 
         local function isInjectedRes(res)
@@ -9095,9 +9091,6 @@ end)
             resID = tonumber(resID)
             if not resID then return nil end
             local st = subType(cfg(resID))
-            if not st and depotData then
-                st = tonumber(depotData.itemSubType or depotData.ItemSubType)
-            end
             if st == _K.ST_TOP then
                 return isFullSuitRes(resID, depotData) and "full_suit" or "top"
             end
@@ -9105,9 +9098,7 @@ end)
             if st == _K.ST_SHOES then return "shoes" end
             if st == _K.ST_UNDER_T then return "under_top" end
             if st == _K.ST_UNDER_P then return "under_pants" end
-            if st == 452 or st == 453 or st == 454 then return "gloves" end
-            if st then return "accessory_" .. tostring(st) end
-            return "top"
+            return nil
         end
 
         local function subTypesToClearForKind(kind)
@@ -9117,12 +9108,7 @@ end)
             if kind == "shoes" then return { [_K.ST_SHOES] = true } end
             if kind == "under_top" then return { [_K.ST_UNDER_T] = true } end
             if kind == "under_pants" then return { [_K.ST_UNDER_P] = true } end
-            if kind == "gloves" then return { [452] = true, [453] = true, [454] = true } end
-            if type(kind) == "string" and kind:sub(1, 10) == "accessory_" then
-                local st = tonumber(kind:sub(11))
-                if st then return { [st] = true } end
-            end
-            return { [_K.ST_TOP] = true }
+            return nil
         end
 
         local function isBodyClothSubType(st)
@@ -10533,16 +10519,10 @@ end)
 
         local function putOnCloth(insID)
             insID = tonumber(insID)
-            if not insID then return end
             local resID = R.insToRes[insID]
             if not resID then
-                if cfg(insID) then
-                    resID = insID
-                    insID = R.resToIns[resID] or insID
-                else
-                    log("PUTON_CLOTH_ERR", "No resID for insID=" .. tostring(insID))
-                    return
-                end
+                log("PUTON_CLOTH_ERR", "No resID for insID=" .. tostring(insID))
+                return
             end
             local wd = require("client.slua.logic.wardrobe.wardrobe_data")
             local d = nil
@@ -10647,33 +10627,11 @@ end)
 
         local function equipWeaponSkin(weaponID, insID)
             weaponID, insID = tonumber(weaponID), tonumber(insID)
-            if not weaponID or not insID then return end
-
-            local resID = R.insToRes[insID]
-            if not resID and weaponIdFromSkin and weaponIdFromSkin(insID) == weaponID then
-                resID = insID
-                R.insToRes[insID] = resID
-                R.resToIns[resID] = insID
-            elseif not resID then
-                pcall(function()
-                    local wd = require("client.slua.logic.wardrobe.wardrobe_data")
-                    local d = wd.GetHallDepotItemDataByInsID and wd.GetHallDepotItemDataByInsID(wd, insID)
-                    if d and d.resID then
-                        resID = tonumber(d.resID)
-                        R.insToRes[insID] = resID
-                        R.resToIns[resID] = insID
-                    end
-                end)
-            end
-
-            if insID == weaponID or insID == 0 or not resID then
-                pcall(function()
-                    takeOffWeaponSkinVisual(weaponID, 0, 0)
-                end)
-                log("Hủy skin súng", weaponID)
+            if not weaponID or not insID or not isInjectedIns(insID) then
+                log("EQUIP_WEAPON_ERR", "Invalid args: weaponID=" .. tostring(weaponID) .. ", insID=" .. tostring(insID))
                 return
             end
-
+            local resID = R.insToRes[insID]
             log("EQUIP_WEAPON_START", "weaponID=" .. tostring(weaponID), "insID=" .. tostring(insID), "resID=" .. tostring(resID))
             saveEquip(resID, insID)
 
@@ -10683,7 +10641,6 @@ end)
             local wgl = require("client.slua.logic.wardrobe.logic_wardrobe_gun")
 
             injectArmory(resID, insID)
-            Arm.rsp_list = Arm.rsp_list or { skin_list = {}, install_list = {} }
             Arm.rsp_list.install_list = Arm.rsp_list.install_list or {}
             Arm.rsp_list.install_list[weaponID] = { skin_id = insID }
             if fbd.UpdateCurrentFashionBagWeaponSkin then
@@ -11101,24 +11058,18 @@ end)
             if cch.outfitIns and isInjectedIns(cch.outfitIns) then
                 log("MATCH_REAPPLY", "Using cch.outfitIns=" .. tostring(cch.outfitIns))
                 scheduleApply(function() putOnCloth(cch.outfitIns) end)
-            elseif _G._savedOutfitIns and isInjectedIns(_G._savedOutfitIns) then
-                log("MATCH_REAPPLY", "Using _savedOutfitIns=" .. tostring(_G._savedOutfitIns))
-                scheduleApply(function() putOnCloth(_G._savedOutfitIns) end)
             elseif cch.clothes and next(cch.clothes) ~= nil then
                 log("MATCH_REAPPLY", "Using cch.clothes active items")
                 for resID in pairs(cch.clothes) do
                     local ins = R.resToIns[resID]
-                    if not ins then
-                        pcall(function()
-                            local wd = require("client.slua.logic.wardrobe.wardrobe_data")
-                            local d = wd.GetHallDepotItemDataByResID and wd:GetHallDepotItemDataByResID(resID)
-                            if d then ins = tonumber(d.instid or d.insID) end
-                        end)
-                    end
-                    local targetIns = ins or R.resToIns[resID]
-                    if targetIns then
+                    local rid = resID
+                    if ins and isInjectedIns(ins) then
                         scheduleApply(function()
-                            putOnCloth(targetIns)
+                            if getClothKind(rid) then
+                                putOnCloth(ins)
+                            else
+                                reapplyAccessoryIns(ins)
+                            end
                         end)
                     end
                 end
@@ -16361,7 +16312,14 @@ local function StartRAMCleaner()
     local function RunRAMCleanerCycle()
         pcall(function()
             local before = collectgarbage("count")
-            collectgarbage("step", 200)
+            -- Gọi thu hồi bộ nhớ Lua nhẹ nhàng
+            collectgarbage("step", 150)
+            
+            -- Nếu bộ nhớ Lua vượt quá 350MB, thực hiện thu hồi full collect để giải phóng cache tồn đọng
+            if before > 350000 then
+                collectgarbage("collect")
+            end
+
             local after = collectgarbage("count")
             local freed = before - after
             if freed > 1.0 then
