@@ -9091,6 +9091,9 @@ end)
             resID = tonumber(resID)
             if not resID then return nil end
             local st = subType(cfg(resID))
+            if not st and depotData then
+                st = tonumber(depotData.itemSubType or depotData.ItemSubType)
+            end
             if st == _K.ST_TOP then
                 return isFullSuitRes(resID, depotData) and "full_suit" or "top"
             end
@@ -9098,7 +9101,9 @@ end)
             if st == _K.ST_SHOES then return "shoes" end
             if st == _K.ST_UNDER_T then return "under_top" end
             if st == _K.ST_UNDER_P then return "under_pants" end
-            return nil
+            if st == 452 or st == 453 or st == 454 then return "gloves" end
+            if st then return "accessory_" .. tostring(st) end
+            return "top"
         end
 
         local function subTypesToClearForKind(kind)
@@ -9108,7 +9113,12 @@ end)
             if kind == "shoes" then return { [_K.ST_SHOES] = true } end
             if kind == "under_top" then return { [_K.ST_UNDER_T] = true } end
             if kind == "under_pants" then return { [_K.ST_UNDER_P] = true } end
-            return nil
+            if kind == "gloves" then return { [452] = true, [453] = true, [454] = true } end
+            if type(kind) == "string" and kind:sub(1, 10) == "accessory_" then
+                local st = tonumber(kind:sub(11))
+                if st then return { [st] = true } end
+            end
+            return { [_K.ST_TOP] = true }
         end
 
         local function isBodyClothSubType(st)
