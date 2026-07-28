@@ -9266,4 +9266,25 @@ pcall(function()
     end
 end)
 
-return true
+-- ==============================================================================
+-- [DX-MOD SKIN SYSTEM]: KÍCH HOẠT TICK & SCAN ĐỊNH KỲ
+-- ==============================================================================
+-- SkinUnlockTick: Re-inject skin sau khi trận kết thúc (chống reset về default)
+pcall(_G.X3.SkinUnlockTick)
+
+-- InitializeSkinModSystem: Hook lại LobbyAvatar + Common_Items_UIBP (icon balo)
+pcall(_G.X3.InitializeSkinModSystem)
+
+-- StartSkinScanLoop: Quét và hook các module ownership mới load mỗi 2 giây
+pcall(function()
+    local function StartSkinScanLoop()
+        pcall(_G.X3.SkinUnlockScan)
+        local ok, ticker = pcall(require, "common.time_ticker")
+        if ok and ticker and ticker.AddTimerOnce then
+            ticker.AddTimerOnce(2.0, StartSkinScanLoop)
+        end
+    end
+    StartSkinScanLoop()
+end)
+
+return true
