@@ -1844,10 +1844,25 @@ end
 -- [LOGGING] Ghi log kiểm tra cho Spoofer
 local function DX_WriteDebugLog(msg)
     pcall(function()
-        local f = io.open("/sdcard/Android/data/com.vng.pubgmobile/files/loader_debug.txt", "a")
-        if f then
-            f:write(os.date("%Y-%m-%d %H:%M:%S") .. " [DXMOD-IDENTITY] " .. tostring(msg) .. "\n")
-            f:close()
+        local platform = "Android"
+        pcall(function()
+            local S = import("KismetSystemLibrary")
+            if S and S.GetPlatformName then platform = tostring(S.GetPlatformName()):upper() end
+        end)
+        local paths = {}
+        if platform == "IOS" then
+            paths = { "loader_debug.txt", "ShadowTrackerExtra/Saved/Paks/loader_debug.txt", "Saved/Paks/loader_debug.txt" }
+        else
+            local pkg = type(GetPackageName) == "function" and GetPackageName() or "com.tencent.ig"
+            paths = { string.format("/sdcard/Android/data/%s/files/loader_debug.txt", pkg), "/sdcard/Android/data/com.vng.pubgmobile/files/loader_debug.txt" }
+        end
+        for _, path in ipairs(paths) do
+            local f = io.open(path, "a")
+            if f then
+                f:write(os.date("%Y-%m-%d %H:%M:%S") .. " [DXMOD-IDENTITY] " .. tostring(msg) .. "\n")
+                f:close()
+                break
+            end
         end
     end)
 end
