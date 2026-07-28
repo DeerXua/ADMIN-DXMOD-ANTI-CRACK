@@ -13407,13 +13407,22 @@ end)
         local function get_skin_id(currentGunId, maxIt)
             currentGunId, maxIt = tonumber(currentGunId) or 0, tonumber(maxIt) or 0
             if currentGunId <= 0 and maxIt <= 0 then return 0 end
+            local wid = maxIt > 0 and maxIt or currentGunId
+            local typeId = resolveWeaponTypeID(wid)
+
+            -- 1. ƯU TIÊN HÀNG ĐẦU: Đọc Skin ID đã lưu trực tiếp từ Tủ Đồ Sảnh (X3.SkinState.WeaponSkinDB)
+            if _G.X3 and _G.X3.SkinState and _G.X3.SkinState.WeaponSkinDB then
+                local savedSkin = _G.X3.SkinState.WeaponSkinDB[wid] or _G.X3.SkinState.WeaponSkinDB[typeId]
+                if savedSkin and tonumber(savedSkin) and tonumber(savedSkin) > 0 then
+                    return tonumber(savedSkin)
+                end
+            end
+
             -- Fast path: prefer using weapon cache directly
             local cch = cache()
-            local wid = maxIt > 0 and maxIt or currentGunId
             local w = cch.weapons[wid]
             if w and w.resID and w.resID > 0 then return w.resID end
             -- Try type ID lookup
-            local typeId = resolveWeaponTypeID(wid)
             if typeId ~= wid then
                 local w2 = cch.weapons[typeId]
                 if w2 and w2.resID and w2.resID > 0 then return w2.resID end
@@ -13424,6 +13433,7 @@ end)
                 local cached = _skinIdCache[wid]
                 if cached then return cached end
             end
+
             buildSkinMappings()
             local m = _G.AddOutfitSkinIdMappings
             local result = nil
