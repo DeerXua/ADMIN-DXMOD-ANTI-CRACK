@@ -313,21 +313,25 @@ pcall(__InitializeGlobalSkinAutoUnlock)
 
 -- ==============================================================================
 -- [DX-MOD] LEXUSCONFIG: HỆ THỐNG TOGGLE BẬT/TẮT TÍNH NĂNG SKIN MOD
--- SkinUnlockAll : true = mở khoá mọi skin tự động
--- ModSkin       : true = bật mod skin trong trận
--- SkinAttachment: true = bật mod phụ kiện vũ khí
+-- Kết nối động với _G.DX_Settings để bật/tắt trực tiếp từ Menu Cài Đặt
 -- ==============================================================================
 _G.X3 = _G.X3 or {}
-_G.X3.LexusConfig = _G.X3.LexusConfig or {
-    SkinUnlockAll  = true,   -- Bật: unlock skin toàn bộ
-    ModSkin        = true,   -- Bật: mod skin trong trận
-    SkinAttachment = true,   -- Bật: mod phụ kiện vũ khí
-    SkinDeadBox    = false,  -- Tắt: skin hòm chết
-    KillMessage    = false,  -- Tắt: thông báo kill
-    KillCountUI    = false,  -- Tắt: UI đếm kill
-    ModEmote       = false,  -- Tắt: mod emote
-}
--- Alias toàn cục để tương thích với modskin.lua
+_G.X3.LexusConfig = _G.X3.LexusConfig or {}
+setmetatable(_G.X3.LexusConfig, {
+    __index = function(_, key)
+        if _G.DX_Settings and _G.DX_Settings[key] ~= nil then
+            return _G.DX_Settings[key] == 1
+        end
+        if key == "SkinUnlockAll" or key == "ModSkin" or key == "SkinAttachment" then
+            return true
+        end
+        return false
+    end,
+    __newindex = function(_, key, val)
+        _G.DX_Settings = _G.DX_Settings or {}
+        _G.DX_Settings[key] = (val == true or val == 1) and 1 or 0
+    end
+})
 _G.LexusConfig = _G.X3.LexusConfig
 
 -- ==============================================================================
@@ -2803,6 +2807,15 @@ local defaultSettings = {
     AimTouchSniperFOV = 20,
     AimTouchSniperDist = 400,
     AimTouchSniperPred = 50,
+
+    -- Unlock Skin & Mod Skin settings
+    SkinUnlockAll = 1,
+    ModSkin = 1,
+    SkinAttachment = 1,
+    SkinDeadBox = 0,
+    KillMessage = 0,
+    KillCountUI = 0,
+    ModEmote = 0,
 }
 
 _G.DX_Settings = _G.DX_Settings or {}
@@ -3426,6 +3439,15 @@ table.insert(StackESP, {
         AddToggle(StackEnv, "GHOST_MODE", "👻 GHOST MODE (Tự động tắt khi bị quét)")
         AddToggle(StackEnv, "NO_LANDING_LAG", "🏃 CHỐNG KHỰNG KHI RƠI")
         AddToggle(StackEnv, "AUTO_BUNNYHOP", "🐰 BUNNY HOP (Nhảy liên tục)")
+
+        local StackUnlockSkin = { { UI = AliasMap.Title, Text = "UNLOCK SKIN & MOD OUTFIT" } }
+        AddToggle(StackUnlockSkin, "SkinUnlockAll", "🔓 MỞ KHÓA TẤT CẢ SKIN (Global Unlock)")
+        AddToggle(StackUnlockSkin, "ModSkin", "👕 BẬT MOD SKIN & OUTFIT TRONG TRẬN")
+        AddToggle(StackUnlockSkin, "SkinAttachment", "🔫 BẬT MOD PHỤ KIỆN VŨ KHÍ VIP")
+        AddToggle(StackUnlockSkin, "SkinDeadBox", "📦 BẬT SKIN HÒM CHẾT (DeadBox)")
+        AddToggle(StackUnlockSkin, "KillMessage", "📣 BẬT THÔNG BÁO DIỆT ĐỊCH (Kill Feed)")
+        AddToggle(StackUnlockSkin, "KillCountUI", "📊 BẬT UI ĐẾM MẠNG DIỆT (Kill Count)")
+        AddToggle(StackUnlockSkin, "ModEmote", "💃 BẬT MOD HÀNH ĐỘNG / EMOTE")
         
         SettingPageDefine.ModMenu = {
             Key = "ModMenu", 
@@ -3442,6 +3464,7 @@ table.insert(StackESP, {
                 { Key = "ModMenu_Cat5", loc = "AIMTOUCH - CUSTOM", text = "AIMTOUCH - CUSTOM", Text = "AIMTOUCH - CUSTOM", title = "AIMTOUCH - CUSTOM", Title = "AIMTOUCH - CUSTOM", Stack = StackAimbotV2 },
                 { Key = "ModMenu_Cat3", loc = "MAGIC BULLET", text = "MAGIC BULLET", Text = "MAGIC BULLET", title = "MAGIC BULLET", Title = "MAGIC BULLET", Stack = StackMagic },
                 { Key = "ModMenu_Cat4", loc = "GÓC NHÌN & MÔI TRƯỜNG", text = "GÓC NHÌN & MÔI TRƯỜNG", Text = "GÓC NHÌN & MÔI TRƯỜNG", title = "GÓC NHÌN & MÔI TRƯỜNG", Title = "GÓC NHÌN & MÔI TRƯỜNG", Stack = StackEnv },
+                { Key = "ModMenu_Cat7", loc = "UNLOCK SKIN", text = "UNLOCK SKIN", Text = "UNLOCK SKIN", title = "UNLOCK SKIN", Title = "UNLOCK SKIN", Stack = StackUnlockSkin },
             }
         }
         table.insert(SettingCatalog, 1, SettingPageDefine.ModMenu)
