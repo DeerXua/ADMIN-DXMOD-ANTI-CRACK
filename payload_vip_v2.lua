@@ -9673,7 +9673,9 @@ end)
                 local Arm = require("client.logic.armory.logic_armory")
                 if Arm.rsp_list and Arm.rsp_list.install_list then
                     for weaponID, entry in pairs(Arm.rsp_list.install_list) do
-                        cacheWeaponSkinFromIns(weaponID, entry and entry.skin_id)
+                        if not _G._addOutfitPersistLoaded or not cch.weapons or not cch.weapons[weaponID] then
+                            cacheWeaponSkinFromIns(weaponID, entry and entry.skin_id)
+                        end
                     end
                 end
             end)
