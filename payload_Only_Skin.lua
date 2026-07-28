@@ -7793,6 +7793,9 @@ end)
             if cch.outfitIns and isInjectedIns(cch.outfitIns) then
                 log("MATCH_REAPPLY", "Using cch.outfitIns=" .. tostring(cch.outfitIns))
                 scheduleApply(function() putOnCloth(cch.outfitIns) end)
+            elseif _G._savedOutfitIns and isInjectedIns(_G._savedOutfitIns) then
+                log("MATCH_REAPPLY", "Using _savedOutfitIns=" .. tostring(_G._savedOutfitIns))
+                scheduleApply(function() putOnCloth(_G._savedOutfitIns) end)
             elseif cch.clothes and next(cch.clothes) ~= nil then
                 log("MATCH_REAPPLY", "Using cch.clothes active items")
                 for resID in pairs(cch.clothes) do
@@ -7800,11 +7803,7 @@ end)
                     local rid = resID
                     if ins and isInjectedIns(ins) then
                         scheduleApply(function()
-                            if getClothKind(rid) then
-                                putOnCloth(ins)
-                            else
-                                reapplyAccessoryIns(ins)
-                            end
+                            putOnCloth(ins)
                         end)
                     end
                 end
