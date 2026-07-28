@@ -8427,7 +8427,7 @@ end)
             cch.equip = cch.equip or {}
             cch.weapons = cch.weapons or {}
 
-            if _G._savedOutfitRes then
+            if not _G._addOutfitPersistLoaded and _G._savedOutfitRes then
                 cch.outfitRes = _G._savedOutfitRes
                 cch.outfitIns = _G._savedOutfitIns
             end
@@ -8437,7 +8437,7 @@ end)
                 end
             end
 
-            if _G._savedOutfitEquip then
+            if not _G._addOutfitPersistLoaded and _G._savedOutfitEquip then
                 for k, v in pairs(_G._savedOutfitEquip) do
                     if k == "bag" then cch.equip.bag = v
                     elseif k == "helmet" then cch.equip.helmet = v
