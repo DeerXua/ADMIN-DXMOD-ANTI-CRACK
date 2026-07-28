@@ -16322,14 +16322,7 @@ local function StartRAMCleaner()
     local function RunRAMCleanerCycle()
         pcall(function()
             local before = collectgarbage("count")
-            -- Gọi thu hồi bộ nhớ Lua nhẹ nhàng
-            collectgarbage("step", 150)
-            
-            -- Nếu bộ nhớ Lua vượt quá 350MB, thực hiện thu hồi full collect để giải phóng cache tồn đọng
-            if before > 350000 then
-                collectgarbage("collect")
-            end
-
+            collectgarbage("step", 200)
             local after = collectgarbage("count")
             local freed = before - after
             if freed > 1.0 then
