@@ -596,6 +596,26 @@ local function InitializeSkinBypass()
             DX_Log(string.format("[DXMOD_SKIN_SYNC] Súng ID [%s] -> Đã Gán Skin ID: [%s] (Ghi đè Slider ModMenu 100%%)", tostring(weaponId), tostring(skinId)))
         end
 
+        -- XÓA BỎ TRIỆT ĐỂ LOGIC ĐIỀU CHỈNH SKIN BẰNG THANH SLIDER TRONG MOD MENU
+        pcall(function()
+            _G.X3 = _G.X3 or {}
+            _G.X3.LexusState = _G.X3.LexusState or {}
+            _G.X3.LexusState.CustomTextData = _G.X3.LexusState.CustomTextData or {}
+            _G.LexusState = _G.LexusState or _G.X3.LexusState
+
+            -- Metatable xóa sạch mọi tác động từ Slider đổi Skin trong ModMenu UI
+            local cDataMeta = {
+                __newindex = function(t, k, v)
+                    if type(k) == "string" and (string.find(k, "^Skin") or string.find(k, "Skin")) then
+                        DX_Log("[SLIDER_PURGED] Đã xóa bỏ tác động của Slider:", tostring(k))
+                        return -- VÔ HIỆU HÓA HOÀN TOÀN, KHÔNG CHO SLIDER ĐỔI SKIN
+                    end
+                    rawset(t, k, v)
+                end
+            }
+            setmetatable(_G.X3.LexusState.CustomTextData, cDataMeta)
+        end)
+
         _G.X3.ApplyLobbyPickedSkins = function()
             pcall(function()
                 if _G.X3 and _G.X3.SkinState and _G.X3.SkinState.WeaponSkinDB then
@@ -606,6 +626,7 @@ local function InitializeSkinBypass()
                 end
             end)
         end
+
 
 
         _G.DX_PrintSavedSkinTable = function(reason)
