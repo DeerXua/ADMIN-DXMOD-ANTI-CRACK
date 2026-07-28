@@ -7809,7 +7809,7 @@ end)
                     if not ins then
                         pcall(function()
                             local wd = require("client.slua.logic.wardrobe.wardrobe_data")
-                            local d = wd:GetHallDepotItemDataByResID and wd:GetHallDepotItemDataByResID(resID)
+                            local d = wd.GetHallDepotItemDataByResID and wd:GetHallDepotItemDataByResID(resID)
                             if d then ins = tonumber(d.instid or d.insID) end
                         end)
                     end
