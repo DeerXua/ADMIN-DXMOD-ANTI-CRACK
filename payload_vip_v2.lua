@@ -516,24 +516,28 @@ local function InitializeSkinBypass()
                     if mod.IsHaveItem then 
                         local orig = mod.IsHaveItem
                         mod.IsHaveItem = function(self, itemId, ...)
+                            if itemId then DX_SetWeaponSkin(itemId, itemId) end
                             DX_Log("[DXMOD_SKIN] Wardrobe/Skin Check IsHaveItem:", tostring(itemId))
                             return true 
                         end 
                     end
                     if mod.IsOwnSkin then 
                         mod.IsOwnSkin = function(self, skinId, ...)
+                            if skinId then DX_SetWeaponSkin(skinId, skinId) end
                             DX_Log("[DXMOD_SKIN] Skin Owned Check IsOwnSkin:", tostring(skinId))
                             return true 
                         end 
                     end
                     if mod.CheckItemUnlocked then 
                         mod.CheckItemUnlocked = function(self, itemId, ...)
+                            if itemId then DX_SetWeaponSkin(itemId, itemId) end
                             DX_Log("[DXMOD_SKIN] Item Unlocked Check:", tostring(itemId))
                             return true 
                         end 
                     end
                     if mod.CheckItemPossess then 
                         mod.CheckItemPossess = function(self, itemId, ...)
+                            if itemId then DX_SetWeaponSkin(itemId, itemId) end
                             DX_Log("[DXMOD_SKIN] Item Possess Check:", tostring(itemId))
                             return true 
                         end 
@@ -554,11 +558,13 @@ local function InitializeSkinBypass()
             if AvatarUtils.IsValidAvatar then 
                 local orig = AvatarUtils.IsValidAvatar
                 AvatarUtils.IsValidAvatar = function(avatarId, ...)
+                    if avatarId then DX_SetWeaponSkin(avatarId, avatarId) end
                     DX_Log("[DXMOD_SKIN] Avatar Unlocked & Validated:", tostring(avatarId))
                     return true 
                 end 
             end
         end
+
         
         local equipmentException = package.loaded["client.slua.logic.report.EquipmentExceptionReport"]
         if equipmentException then
