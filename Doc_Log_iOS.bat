@@ -11,8 +11,9 @@ echo   Dang ket noi toi thiet bi iOS qua USB...
 echo   (Luu y: Vui long mo khoa iPhone va chon "Tin cay may tinh nay")
 echo --------------------------------------------------------
 echo.
-"C:\ExtractedPak\TOOL PAK DX\Tools\libimobiledevice\idevicesyslog.exe" | findstr /i "ShadowTrackerExtra DXMOD_SKIN DXMOD AddOutfit EQUIP_WEAPON PUTON_CLOTH"
+"C:\ExtractedPak\TOOL PAK DX\Tools\libimobiledevice\idevicesyslog.exe" | findstr /i "DXMOD DXMOD_SKIN"
 pause
+
 
 
 
