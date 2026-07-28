@@ -8216,6 +8216,7 @@ end)
     end
 
     local function _saveEquippedCache()
+        if true then return end -- Tạm thời vô hiệu hóa ghi file AddOutfit_Save.txt
         pcall(function()
             local cch = _G.AddOutfitEquippedCache
             if not cch then return end
@@ -8337,6 +8338,7 @@ end)
     end
 
     local function _loadEquippedCache()
+        if true then return end -- Tạm thời vô hiệu hóa đọc file AddOutfit_Save.txt
         pcall(function()
             local path = _getOutfitSavePath()
             local file = io.open(path, 'r')
