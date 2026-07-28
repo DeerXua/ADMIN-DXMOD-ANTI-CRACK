@@ -597,9 +597,6 @@ local function InitializeSkinBypass()
 
         _G.DX_PrintSavedSkinTable("LOBBY_INIT")
         DX_Log("[DXMOD_SKIN] InitializeSkinBypass & Wardrobe Hook Loaded Successfully!")
-
-
-
     end)
 end
 
@@ -13788,7 +13785,129 @@ end)
                 local ok, attChanged = pcall(applyAttachmentSkins, AttachmentArray, tmp_id)
                 if ok and attChanged then
                     pcall(function()
-                local function matchApplyWeaponSkin(char)
+                        local char = getLocalChar()
+                        if char and char.AddGameTimer then
+                            for _, delay in ipairs({0.3, 0.6, 1.0}) do
+                                char:AddGameTimer(delay, false, function()
+                                    if slua.isValid(CurWeapon) then
+                                        local aa = CurWeapon.synData
+                                        if aa and slua.isValid(aa) then
+                                            pcall(applyAttachmentSkins, aa, tmp_id)
+                                        end
+                                    end
+                                end)
+                            end
+                        end
+                    end)
+                end
+                return true
+            end
+
+            _G.AddOutfitLastAppliedSkin[current_gunid] = tmp_id
+            pcall(function()
+                local defRef = slua.IndexReference(AttachmentData, "defineID")
+                defRef.TypeSpecificID = tmp_id
+                local c0 = cfg(tmp_id)
+                if c0 and c0.ItemType and defRef.Type ~= nil then defRef.Type = c0.ItemType end
+                AttachmentData.operationType = 0
+                AttachmentArray:Set(_K.GUN_MASTER_SYN_SLOT, AttachmentData)
+            end)
+            pcall(applyAttachmentSkins, AttachmentArray, tmp_id)
+            if CurWeapon.DelayHandleAvatarMeshChanged then CurWeapon:DelayHandleAvatarMeshChanged() end
+            -- Delayed re-application of attachment skins to ensure attachments
+            -- are updated after the weapon finishes loading its default attachments.
+            -- This fixes the issue where attachments don't update until you swap them.
+            pcall(function()
+                local char = getLocalChar()
+                if char and char.AddGameTimer then
+                    for _, delay in ipairs({0.3, 0.6, 1.0}) do
+                        char:AddGameTimer(delay, false, function()
+                            if slua.isValid(CurWeapon) then
+                                local aa = CurWeapon.synData
+                                if aa and slua.isValid(aa) then
+                                    pcall(applyAttachmentSkins, aa, tmp_id)
+                                end
+                            end
+                        end)
+                    end
+                end
+            end)
+            _S.weaponHookGuardUntil = _S.globalFrame + 45
+            _G.AddOutfitLastAppliedSkin[MaxIt] = tmp_id
+            _S.lastAppliedWeaponID = MaxIt
+            _S.lastAppliedSkinID = tmp_id
+            return true
+        end
+
+        function _G.equip_weapon_avatar(uCharacter)
+            if not uCharacter or not slua.isValid(uCharacter) then return false end
+            buildSkinMappings()
+            local WeaponManager = uCharacter:GetWeaponManager()
+            if not WeaponManager or not slua.isValid(WeaponManager) then return false end
+            local uWeaponList = WeaponManager:GetAllInventoryWeaponList(false)
+            if not uWeaponList or not slua.isValid(uWeaponList) then return false end
+            local appliedAny = false
+            for i = 0, uWeaponList:Num() - 1 do
+                local CurWeapon = uWeaponList:Get(i)
+                if slua.isValid(CurWeapon) and applySkinToWeaponRef(CurWeapon) then
+                    appliedAny = true
+                end
+            end
+            return appliedAny
+        end
+
+        local function getDesiredWeaponSkins()
+            syncWeaponCacheFromLobby()
+            local out, seen = {}, {}
+            local function add(res)
+                res = tonumber(res)
+                if res and res > 0 and not seen[res] then seen[res] = true; out[#out + 1] = res end
+            end
+            for _, w in pairs(cache().weapons) do add(w.resID) end
+            if MATCH_CONFIG.weaponSkins then
+                for _, res in pairs(MATCH_CONFIG.weaponSkins) do add(res) end
+            end
+            return out
+        end
+
+        local function registerWeaponAvatarItems(char)
+            local pc = char.GetPlayerControllerSafety and char:GetPlayerControllerSafety()
+            if not slua.isValid(pc) then return false end
+            local BU = import("BackpackUtils")
+            local AU = import("AvatarUtils")
+            local addedCount = 0
+            for _, resID in ipairs(getDesiredWeaponSkins()) do
+                local doneDirect = false
+                pcall(function()
+                    if pc.AddWeaponAvatarItem then
+                        pc:AddWeaponAvatarItem(tonumber(resID))
+                        doneDirect = true
+                        addedCount = addedCount + 1
+                    end
+                end)
+                if not doneDirect then
+                    pcall(function()
+                        local skinBPID = BU.GetBPIDByResID(tonumber(resID))
+                        local arr = slua.Array(UEnums.EPropertyClass.Int)
+                        local parents = AU.GetWeaponAvatarParentIDList(skinBPID, arr, false)
+                        if parents and parents.Num and parents:Num() > 0 and pc.WeaponAvatarItemList then
+                            for _, parentID in pairs(parents) do
+                                pc.WeaponAvatarItemList:Add(parentID, skinBPID)
+                            end
+                            addedCount = addedCount + 1
+                        end
+                    end)
+                end
+            end
+            if addedCount == 0 then return false end
+            pcall(function() if pc.InitWeaponAvatarItems then pc:InitWeaponAvatarItems() end end)
+            pcall(function() if pc.OnWeaponAvatarUpdate then pc:OnWeaponAvatarUpdate() end end)
+            notify("سجّلت " .. addedCount .. " سكن سلاح")
+            return true
+        end
+
+        local _lastMatchApplyWeapon = 0
+        local function matchApplyWeaponSkin(char)
             local now = 0
             pcall(function() now = os.clock() end)
             if (now - _lastMatchApplyWeapon) < 0.4 then return false end  -- throttle: max 2.5x/sec
@@ -13893,141 +14012,7 @@ end)
             log("Bắt đầu khởi tạo trang phục & skin trong trận (Single-Pass Lock)")
             pcall(matchApplyAll, char)
         end
-Num() > 0 and pc.WeaponAvatarItemList then
-                            for _, parentID in pairs(parents) do
-                                pc.WeaponAvatarItemList:Add(parentID, skinBPID)
-                            end
-                            addedCount = addedCount + 1
-                        end
-                    end)
-                end
-            end
-            if addedCount == 0 then return false end
-            pcall(function() if pc.InitWeaponAvatarItems then pc:InitWeaponAvatarItems() end end)
-            pcall(function() if pc.OnWeaponAvatarUpdate then pc:OnWeaponAvatarUpdate() end end)
-            notify("سجّلت " .. addedCount .. " سكن سلاح")
-            return true
-        end
 
-        local _lastMatchApplyWeapon = 0
-        local function matchApplyWeaponSkin(char)
-            local now = 0
-            pcall(function() now = os.clock() end)
-            if (now - _lastMatchApplyWeapon) < 0.4 then return false end  -- throttle: max 2.5x/sec
-            _lastMatchApplyWeapon = now
-            buildSkinMappings()
-            applyMatchWeaponSkinsToController()
-            if not _S.avatarItemsRegistered then
-                _S.avatarItemsRegistered = registerWeaponAvatarItems(char)
-            end
-            local curWeapon = char.GetCurrentWeapon and char:GetCurrentWeapon()
-            if not slua.isValid(curWeapon) then
-                return _G.equip_weapon_avatar(char)
-            end
-
-            local curWeaponResID = 0
-            pcall(function() curWeaponResID = curWeapon:GetItemDefineID().TypeSpecificID end)
-            local desiredSkin = get_skin_id(curWeaponResID, curWeaponResID)
-            if curWeaponResID == _S.lastAppliedWeaponID and desiredSkin == _S.lastAppliedSkinID then
-                pcall(_G.equip_weapon_avatar, char)
-                return true
-            end
-
-            local ok = applySkinToWeaponRef(curWeapon)
-            ok = _G.equip_weapon_avatar(char) or ok
-            if ok then
-                _S.lastAppliedWeaponID = curWeaponResID
-                _S.lastAppliedSkinID = desiredSkin
-                _S.weaponApplied = true
-                _S.weaponDiagDone = true
-                notify("سكن سلاح مطبق: " .. tostring(desiredSkin))
-            end
-            return ok
-        end
-
-        local function applyMatchThrowObjects()
-            local pc = getPlayerController()
-            if not pc or not slua.isValid(pc) then return false end
-            local cch = cache()
-            if not cch.throwObjects then
-                log("applyMatchThrowObjects: no throwObjects in cache")
-                return false
-            end
-            local hasThrow = false
-            for st, info in pairs(cch.throwObjects) do
-                if info.resID and info.resID > 0 then hasThrow = true end
-            end
-            if not hasThrow then
-                log("applyMatchThrowObjects: throwObjects cache empty")
-                return false
-            end
-            local applied = false
-            pcall(function()
-                -- Try setting InitialConsumableAvatar fields (works if Lua table reference)
-                if pc.InitialConsumableAvatar then
-                    for st, info in pairs(cch.throwObjects) do
-                        local key = _K.THROW_AVATAR_KEY[_K.THROW_SUB[st]]
-                        if key and info.resID and info.resID > 0 then
-                            pc.InitialConsumableAvatar[key] = info.resID
-                            -- log suppressed
-                        end
-                    end
-                end
-                -- Rebuild grenade avatar list from InitialConsumableAvatar
-                if pc.InitGrenadeAvatarList then
-                    pc:InitGrenadeAvatarList(false)
-                end
-                -- Fallback: directly add to GrenadeAvatarItemList (overwrites server entries)
-                if pc.AddToGrenadeAvatarItemList then
-                    for st, info in pairs(cch.throwObjects) do
-                        if info.resID and info.resID > 0 and _K.THROW_SUB[st] then
-                            pc:AddToGrenadeAvatarItemList(info.resID)
-                            applied = true
-                        end
-                    end
-                end
-            end)
-            return applied
-        end
-
-        local function matchApplyAll(char)
-            local ok = false
-            if not _S.matchOutfitDone then
-                _S.matchOutfitDone = matchApplyOutfit(char)
-                ok = _S.matchOutfitDone or ok
-            end
-            if applyMatchEquipAvatarToController() then ok = true end
-            if matchApplyEquipSkins(char) then ok = true; _S.matchApplied = true end
-            if matchApplyWeaponSkin(char) then ok = true end
-            if applyMatchThrowObjects() then ok = true end
-            return ok
-        end
-
-        -- تعديل startMatchWatcher لاستخدام محاولات محدودة
-        local function startMatchWatcher(char)
-            if _S.matchTimer then return end
-            _S.matchOutfitDone = false
-            _S.avatarItemsRegistered = false
-            _S.weaponApplied = false
-            _S.weaponDiagDone = false
-            _S.lastAppliedWeaponID = 0
-            _S.lastAppliedSkinID = 0
-
-            local attempts = 0
-            notify("بدأ المراقب في الماتش")
-
-            _S.matchTimer = char:AddGameTimer(1.0, true, function()
-                attempts = attempts + 1
-                local cur = getLocalChar()
-                if not cur or not slua.isValid(cur) then return end
-                pcall(matchApplyAll, cur)
-                if attempts >= 15 then
-                    pcall(function() if cur.RemoveGameTimer then cur:RemoveGameTimer(_S.matchTimer) end end)
-                    _S.matchTimer = nil
-                    log("توقف مؤقت الماتش بعد 15 محاولة")
-                end
-            end)
-        end
 
         -- ========== حقن سكنات الأسلحة في واجهة الشنطة داخل الجيم ==========
         -- بدل تعديل AdditionalData (اللي مش بيتعدل من Lua)، بنعمل hook على
