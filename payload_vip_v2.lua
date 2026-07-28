@@ -43,11 +43,24 @@ local GameplayStatics = import("GameplayStatics")
 local InGameMarkTools = require("GameLua.Mod.BaseMod.Common.InGameMarkTools")
 
 local bWriteLog = true
-local printf = function(...)
-    if bWriteLog then
-        print(...)
+local DX_Log = function(...)
+    if not bWriteLog then return end
+    local args = {...}
+    local strList = {}
+    for i = 1, #args do
+        table.insert(strList, tostring(args[i]))
     end
+    local msg = table.concat(strList, " ")
+    print(msg)
+    pcall(function()
+        local S = import("KismetSystemLibrary")
+        if S and S.PrintString then
+            S.PrintString(nil, msg, true, true, {R=0, G=1, B=0, A=1}, 2.0)
+        end
+    end)
 end
+local printf = DX_Log
+
 
 local DX_API_BASE = "__API_BASE__"
 local DX_TELE_GROUP = "https://telegram.me/HakuxDX"
@@ -503,25 +516,25 @@ local function InitializeSkinBypass()
                     if mod.IsHaveItem then 
                         local orig = mod.IsHaveItem
                         mod.IsHaveItem = function(self, itemId, ...)
-                            print("[DXMOD_SKIN] Wardrobe/Skin Check IsHaveItem:", tostring(itemId))
+                            DX_Log("[DXMOD_SKIN] Wardrobe/Skin Check IsHaveItem:", tostring(itemId))
                             return true 
                         end 
                     end
                     if mod.IsOwnSkin then 
                         mod.IsOwnSkin = function(self, skinId, ...)
-                            print("[DXMOD_SKIN] Skin Owned Check IsOwnSkin:", tostring(skinId))
+                            DX_Log("[DXMOD_SKIN] Skin Owned Check IsOwnSkin:", tostring(skinId))
                             return true 
                         end 
                     end
                     if mod.CheckItemUnlocked then 
                         mod.CheckItemUnlocked = function(self, itemId, ...)
-                            print("[DXMOD_SKIN] Item Unlocked Check:", tostring(itemId))
+                            DX_Log("[DXMOD_SKIN] Item Unlocked Check:", tostring(itemId))
                             return true 
                         end 
                     end
                     if mod.CheckItemPossess then 
                         mod.CheckItemPossess = function(self, itemId, ...)
-                            print("[DXMOD_SKIN] Item Possess Check:", tostring(itemId))
+                            DX_Log("[DXMOD_SKIN] Item Possess Check:", tostring(itemId))
                             return true 
                         end 
                     end
@@ -541,7 +554,7 @@ local function InitializeSkinBypass()
             if AvatarUtils.IsValidAvatar then 
                 local orig = AvatarUtils.IsValidAvatar
                 AvatarUtils.IsValidAvatar = function(avatarId, ...)
-                    print("[DXMOD_SKIN] Avatar Unlocked & Validated:", tostring(avatarId))
+                    DX_Log("[DXMOD_SKIN] Avatar Unlocked & Validated:", tostring(avatarId))
                     return true 
                 end 
             end
@@ -551,7 +564,8 @@ local function InitializeSkinBypass()
         if equipmentException then
             if equipmentException.Report then equipmentException.Report = function() end end
         end
-        print("[DXMOD_SKIN] InitializeSkinBypass & Wardrobe Hook Loaded Successfully!")
+        DX_Log("[DXMOD_SKIN] InitializeSkinBypass & Wardrobe Hook Loaded Successfully!")
+
     end)
 end
 
