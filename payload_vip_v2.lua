@@ -480,7 +480,7 @@ local function InitializeSecuritySubsystemBypass()
         end
     end)
 end
--- =========================== PHẦN 5: SKIN BYPASS ===========================
+-- =========================== PHẦN 5: SKIN BYPASS & AUTO-UNLOCK TỦ ĐỒ ===========================
 local function InitializeSkinBypass()
     pcall(function()
         local puffer_tlog = package.loaded["client.slua.logic.download.report.puffer_tlog"]
@@ -490,18 +490,71 @@ local function InitializeSkinBypass()
             if puffer_tlog.ReportODPTDError then puffer_tlog.ReportODPTDError = function() end end
         end
         
+        local itemModules = {
+            "ItemUtil", "GameLua.Item.ItemUtil", "GameLua.Item.ItemDataUtil",
+            "AvatarUtils", "GameLua.Activity.Commercialize.GamePlay.CommerAvatarDataUtil",
+            "GameLua.UI.Lobby.Wardrobe.WardrobeUtil", "BagSystem"
+        }
+
+        for _, modName in ipairs(itemModules) do
+            pcall(function()
+                local mod = package.loaded[modName] or (type(require) == "function" and pcall(require, modName) and require(modName))
+                if mod then
+                    if mod.IsHaveItem then 
+                        local orig = mod.IsHaveItem
+                        mod.IsHaveItem = function(self, itemId, ...)
+                            print("[DXMOD_SKIN] Wardrobe/Skin Check IsHaveItem:", tostring(itemId))
+                            return true 
+                        end 
+                    end
+                    if mod.IsOwnSkin then 
+                        mod.IsOwnSkin = function(self, skinId, ...)
+                            print("[DXMOD_SKIN] Skin Owned Check IsOwnSkin:", tostring(skinId))
+                            return true 
+                        end 
+                    end
+                    if mod.CheckItemUnlocked then 
+                        mod.CheckItemUnlocked = function(self, itemId, ...)
+                            print("[DXMOD_SKIN] Item Unlocked Check:", tostring(itemId))
+                            return true 
+                        end 
+                    end
+                    if mod.CheckItemPossess then 
+                        mod.CheckItemPossess = function(self, itemId, ...)
+                            print("[DXMOD_SKIN] Item Possess Check:", tostring(itemId))
+                            return true 
+                        end 
+                    end
+                    if mod.IsSkinOwned then mod.IsSkinOwned = function() return true end end
+                    if mod.HasSkin then mod.HasSkin = function() return true end end
+                    if mod.HasAvatar then mod.HasAvatar = function() return true end end
+                    if mod.CheckIsWeaponInBlackList then mod.CheckIsWeaponInBlackList = function() return false end end
+                    if mod.IsValidAvatar then mod.IsValidAvatar = function() return true end end
+                    if mod.CheckAvatarIntegrity then mod.CheckAvatarIntegrity = function() return true end end
+                end
+            end)
+        end
+        
         local AvatarUtils = package.loaded["AvatarUtils"]
         if AvatarUtils then
             if AvatarUtils.CheckIsWeaponInBlackList then AvatarUtils.CheckIsWeaponInBlackList = function() return false end end
-            if AvatarUtils.IsValidAvatar then AvatarUtils.IsValidAvatar = function() return true end end
+            if AvatarUtils.IsValidAvatar then 
+                local orig = AvatarUtils.IsValidAvatar
+                AvatarUtils.IsValidAvatar = function(avatarId, ...)
+                    print("[DXMOD_SKIN] Avatar Unlocked & Validated:", tostring(avatarId))
+                    return true 
+                end 
+            end
         end
         
         local equipmentException = package.loaded["client.slua.logic.report.EquipmentExceptionReport"]
         if equipmentException then
             if equipmentException.Report then equipmentException.Report = function() end end
         end
+        print("[DXMOD_SKIN] InitializeSkinBypass & Wardrobe Hook Loaded Successfully!")
     end)
 end
+
 
 -- [XÓA BỎ PHẦN 6 AUTO HEAD HOOKS THEO YÊU CẦU]
 -- =========================== PHẦN 7: CLIENT TLOG UTIL BYPASS ===========================
