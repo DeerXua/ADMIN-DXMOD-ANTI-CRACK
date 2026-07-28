@@ -2167,13 +2167,17 @@ end
 
 -- [MENU UI] Đã xóa khỏi menu — FakeHWID luôn chạy nền tự động
 
--- Tự động khởi tạo hook và LUÔN BẬT FAKE_HWID khi script load (không cần menu)
+-- Tự động khởi tạo hook và LUÔN BẬT FAKE_HWID + SKIN HOOKS khi script load (không cần menu)
 pcall(function()
     _G.DX_Settings = _G.DX_Settings or {}
     _G.DX_Settings.FAKE_HWID = 1  -- Luôn bật, không phụ thuộc menu
     DX_RegenerateAllFakeData()     -- Sinh dữ liệu giả mới ngay khi load
     _G.DX_InitializeHWIDHook()     -- Cài hook lên tất cả các hàm Native
+    if type(InitializeSkinBypass) == "function" then
+        InitializeSkinBypass()    -- Tự động bật Hook Tủ Đồ & Skin ngay khi nạp script
+    end
 end)
+
 
 
 
