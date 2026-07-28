@@ -8240,15 +8240,16 @@ end)
                     if #parts > 0 then lines[#lines + 1] = "motion=" .. table.concat(parts, ",") end
                 end
             end)
-            pcall(function()
-                local AvatarData = require("client.logic.data.AvatarData")
-                local parts = {}
-                for _, ins in pairs(AvatarData.GetRoleWear()) do
-                    ins = tonumber(ins)
-                    if ins and ins > 0 then parts[#parts + 1] = tostring(ins) end
-                end
-                if #parts > 0 then lines[#lines + 1] = "rolewear=" .. table.concat(parts, ",") end
-            end)
+            -- [TẮT ROLEWEAR MẶC ĐỊNH] Tránh việc đọc lại đồ mặc định của tài khoản đè lên đồ mod skin
+            -- pcall(function()
+            --     local AvatarData = require("client.logic.data.AvatarData")
+            --     local parts = {}
+            --     for _, ins in pairs(AvatarData.GetRoleWear()) do
+            --         ins = tonumber(ins)
+            --         if ins and ins > 0 then parts[#parts + 1] = tostring(ins) end
+            --     end
+            --     if #parts > 0 then lines[#lines + 1] = "rolewear=" .. table.concat(parts, ",") end
+            -- end)
             pcall(function()
                 if DataMgr and DataMgr.equipmentSkinInsIDTable then
                     for subType, ins in pairs(DataMgr.equipmentSkinInsIDTable) do
