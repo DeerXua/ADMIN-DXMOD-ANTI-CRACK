@@ -42,25 +42,10 @@ local KismetMathLibrary = import("KismetMathLibrary")
 local GameplayStatics = import("GameplayStatics")
 local InGameMarkTools = require("GameLua.Mod.BaseMod.Common.InGameMarkTools")
 
-local bWriteLog = true
-_G.DX_Log = function(...)
-    local args = {...}
-    local strArgs = {}
-    for i, v in ipairs(args) do table.insert(strArgs, tostring(v)) end
-    local msg = "[AddOutfit] " .. table.concat(strArgs, " | ")
-    print(msg)
-    pcall(function()
-        local S = import("KismetSystemLibrary")
-        if S and S.PrintString then S.PrintString(nil, msg) end
-    end)
-    pcall(function()
-        if _G.DX_WriteLogMessage then _G.DX_WriteLogMessage(msg) end
-    end)
-end
-local log = _G.DX_Log
+local bWriteLog = false
 local printf = function(...)
     if bWriteLog then
-        _G.DX_Log(...)
+        print(...)
     end
 end
 
@@ -4823,9 +4808,6 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                     globalColorHash = tostring((_G.DX_Settings and _G.DX_Settings.WALL_VISIBLE_COLOR) or 3) .. "_"
                                    .. tostring((_G.DX_Settings and _G.DX_Settings.WALL_OCCLUDED_COLOR) or 2) .. "_"
                                    .. tostring((_G.DX_Settings and _G.DX_Settings.WALL_OCCLUDED_AI_COLOR) or 7)
-                    if _G.TDModTickCount % 50 == 0 then
-                        log("[AURA_MENU_SETTING]", "ColorOption=" .. tostring(_G.DX_Settings and _G.DX_Settings.WALLHACK_COLOR_MODE or 1), "ColorHash=" .. globalColorHash)
-                    end
                 end
 
                 for _, enemy in pairs(allPlayers) do
@@ -4894,7 +4876,6 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                                             enemy.WallhackApplied = false
                                             enemy.LastAuraHash = nil
                                             enemy.LastAuraMeshes = nil
-                                            log("[AURA_CLEANUP]", "Enemy too far (>350m), reset aura: " .. tostring(enemy.GetPlayerNameSafety and enemy:GetPlayerNameSafety() or "Target"))
                                         end
                                         if InGameMarkTools then 
                                             if enemy.NativeHPBarMark then 
@@ -4928,37 +4909,32 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
                             if not enemy.DX_NextMeshUpdateTime or currentTickOS > enemy.DX_NextMeshUpdateTime then
                                 enemy.DX_NextMeshUpdateTime = currentTickOS + 1.5 + (math_random() * 1.0)
-                                if not enemy.DX_CachedMeshes then
-                                    local meshes = {}
-                                    local existing = {}
-                                    local mainMesh = enemy.Mesh
-                                    if Valid(mainMesh) then
-                                        table.insert(meshes, mainMesh)
-                                        existing[mainMesh] = true
-                                    end
-                                    local GlobalSkelClass = import("SkeletalMeshComponent")
-                                    if GlobalSkelClass then
-                                        pcall(function()
-                                            local childs = enemy:GetComponentsByClass(GlobalSkelClass)
-                                            if childs then
-                                                local count = type(childs.Num) == "function" and childs:Num() or #childs
-                                                for c = 1, count do
-                                                    local comp = type(childs.Get) == "function" and childs:Get(c-1) or childs[c]
-                                                    if Valid(comp) and not existing[comp] then
-                                                        table.insert(meshes, comp)
-                                                        existing[comp] = true
-                                                    end
+                                local meshes = enemy.DX_CachedMeshes or {}
+                                local existing = {}
+                                for _, m in ipairs(meshes) do existing[m] = true end
+                                if Valid(enemy.Mesh) and not existing[enemy.Mesh] then
+                                    table.insert(meshes, enemy.Mesh)
+                                    existing[enemy.Mesh] = true
+                                end
+                                if GlobalSkelClass then
+                                    pcall(function()
+                                        local childs = enemy:GetComponentsByClass(GlobalSkelClass)
+                                        if childs then
+                                            local count = type(childs.Num) == "function" and childs:Num() or #childs
+                                            for c = 1, count do
+                                                local comp = type(childs.Get) == "function" and childs:Get(c-1) or childs[c]
+                                                if Valid(comp) and not existing[comp] then
+                                                    table.insert(meshes, comp)
+                                                    existing[comp] = true
                                                 end
                                             end
-                                        end)
-                                    end
-                                    enemy.DX_CachedMeshes = meshes
-                                    log("[AURA_MESH_EXTRACT]", "Extracted meshes count=" .. tostring(#meshes) .. " for enemy=" .. tostring(enemy.GetPlayerNameSafety and enemy:GetPlayerNameSafety() or "Target"))
+                                        end
+                                    end)
                                 end
+                                enemy.DX_CachedMeshes = meshes
                             end
                             
                             local meshes = enemy.DX_CachedMeshes
-                            if not meshes then goto continue end
                             local currentMeshCount = #meshes
                             local isMeshChanged = (enemy.LastAuraMeshes and #enemy.LastAuraMeshes ~= currentMeshCount)
                             
@@ -5457,8 +5433,6 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                             -- Các xử lý khi nhân vật đã chết
                             if enemy.WallhackApplied then
                                 pcall(function()
-                                    local enemyName = enemy.GetPlayerNameSafety and enemy:GetPlayerNameSafety() or "Target"
-                                    log("[AURA_CLEANUP]", "Enemy died, reset aura for: " .. tostring(enemyName))
                                     for _, comp in ipairs(enemy.LastAuraMeshes or {}) do
                                         if Valid(comp) then ResetMeshAuraComponent(comp) end
                                     end
@@ -5491,10 +5465,6 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                         end
                         ::continue::
                     end
-                end
-
-                if _G.TDModTickCount % 50 == 0 then
-                    log("[AURA_SCAN]", string.format("Scan Summary: TotalEnemies=%d | Players=%d | Bots=%d | WallhackStatus=%s", realCount + aiCount, realCount, aiCount, isWallhackGlobalOn and "ON" or "OFF"))
                 end
 
                 if espCount then
@@ -8216,7 +8186,6 @@ end)
     end
 
     local function _saveEquippedCache()
-        if true then return end -- Tạm thời vô hiệu hóa ghi file AddOutfit_Save.txt
         pcall(function()
             local cch = _G.AddOutfitEquippedCache
             if not cch then return end
@@ -8255,15 +8224,15 @@ end)
                     if #parts > 0 then lines[#lines + 1] = "motion=" .. table.concat(parts, ",") end
                 end
             end)
-            -- pcall(function()
-            --     local AvatarData = require("client.logic.data.AvatarData")
-            --     local parts = {}
-            --     for _, ins in pairs(AvatarData.GetRoleWear()) do
-            --         ins = tonumber(ins)
-            --         if ins and ins > 0 then parts[#parts + 1] = tostring(ins) end
-            --     end
-            --     if #parts > 0 then lines[#lines + 1] = "rolewear=" .. table.concat(parts, ",") end
-            -- end)
+            pcall(function()
+                local AvatarData = require("client.logic.data.AvatarData")
+                local parts = {}
+                for _, ins in pairs(AvatarData.GetRoleWear()) do
+                    ins = tonumber(ins)
+                    if ins and ins > 0 then parts[#parts + 1] = tostring(ins) end
+                end
+                if #parts > 0 then lines[#lines + 1] = "rolewear=" .. table.concat(parts, ",") end
+            end)
             pcall(function()
                 if DataMgr and DataMgr.equipmentSkinInsIDTable then
                     for subType, ins in pairs(DataMgr.equipmentSkinInsIDTable) do
@@ -8338,7 +8307,6 @@ end)
     end
 
     local function _loadEquippedCache()
-        if true then return end -- Tạm thời vô hiệu hóa đọc file AddOutfit_Save.txt
         pcall(function()
             local path = _getOutfitSavePath()
             local file = io.open(path, 'r')
@@ -8716,14 +8684,19 @@ end)
             end)
             return ok and r == true
         end
-        local log = _G.DX_Log or print
-
-        local function safeCall(tag, fn, ...)
-            local ok, err = pcall(fn, ...)
-            if not ok then
-                log("[LUA_ERROR]", tag, tostring(err))
+        local function log(...)
+            local args = {...}
+            local strArgs = {}
+            for i, v in ipairs(args) do
+                table.insert(strArgs, tostring(v))
             end
-            return ok, err
+            local msg = "[AddOutfit] " .. table.concat(strArgs, " | ")
+            print(msg)
+            pcall(function()
+                if _G.DX_WriteLogMessage then
+                    _G.DX_WriteLogMessage(msg)
+                end
+            end)
         end
 
         local MATCH_CONFIG = {
@@ -9675,9 +9648,7 @@ end)
                 local Arm = require("client.logic.armory.logic_armory")
                 if Arm.rsp_list and Arm.rsp_list.install_list then
                     for weaponID, entry in pairs(Arm.rsp_list.install_list) do
-                        if not _G._addOutfitPersistLoaded or not cch.weapons or not cch.weapons[weaponID] then
-                            cacheWeaponSkinFromIns(weaponID, entry and entry.skin_id)
-                        end
+                        cacheWeaponSkinFromIns(weaponID, entry and entry.skin_id)
                     end
                 end
             end)
@@ -14629,7 +14600,6 @@ end)
                         pcall(function()
                             if self.IsLobbyActor and self:IsLobbyActor() then return end
                             if not (self.IsSelf and self:IsSelf()) then return end
-                            log("[MESH_LOADED]", "Local character mesh fully loaded, triggering bootstrapMatch")
                             local char = getLocalChar()
                             if char and char.AddGameTimer then
                                 char:AddGameTimer(0.5, false, function() bootstrapMatch(char) end)
@@ -15344,7 +15314,6 @@ end)
                             -- Inject weapon skin into kill message
                             if skinID then
                                 DamageRecordData.CauserWeaponAvatarID = skinID
-                                log("[KILL_FEED_INJECT]", "WeaponID=" .. tostring(weaponID), "SkinID=" .. tostring(skinID))
                             end
                             -- Inject outfit skin into kill message
                             if _G.SuitSkin and _G.SuitSkin ~= 0 then
@@ -15353,7 +15322,6 @@ end)
                             -- Golden name color
                             DamageRecordData.IsUseColor = true
                             DamageRecordData.UseColor = import("LinearColor")(1.0, 0.8, 0.0, 1.0)
-                            log("[KILL_FEED_INJECT]", "Golden name color applied for killer: " .. tostring(DamageRecordData.Causer))
                             -- Track kill count
                             if DamageRecordData.ResultHealthStatus == 2 then
                                 _G.AKFakeKillCounts[weaponID] = (_G.AKFakeKillCounts[weaponID] or 0) + 1
@@ -15611,7 +15579,7 @@ end)
                         if slua.isValid(curWeapon) then
                             if _S._lastAppliedWeaponEnt ~= curWeapon then
                                 _S._lastAppliedWeaponEnt = curWeapon
-                                safeCall("WeaponApply", function()
+                                pcall(function()
                                     applySkinToWeaponRef(curWeapon)
                                     equip_weapon_avatar(char)
                                 end)
