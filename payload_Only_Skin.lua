@@ -5702,7 +5702,11 @@ end)
         end
 
         local function isInjectedIns(ins)
-            return ins and R.insToRes[tonumber(ins)] ~= nil
+            ins = tonumber(ins)
+            if not ins then return false end
+            if R.insToRes[ins] ~= nil then return true end
+            if weaponIdFromSkin and weaponIdFromSkin(ins) ~= nil then return true end
+            return false
         end
 
         local function isInjectedRes(res)
@@ -7380,11 +7384,33 @@ end)
 
         local function equipWeaponSkin(weaponID, insID)
             weaponID, insID = tonumber(weaponID), tonumber(insID)
-            if not weaponID or not insID or not isInjectedIns(insID) then
-                log("EQUIP_WEAPON_ERR", "Invalid args: weaponID=" .. tostring(weaponID) .. ", insID=" .. tostring(insID))
+            if not weaponID or not insID then return end
+
+            local resID = R.insToRes[insID]
+            if not resID and weaponIdFromSkin and weaponIdFromSkin(insID) == weaponID then
+                resID = insID
+                R.insToRes[insID] = resID
+                R.resToIns[resID] = insID
+            elseif not resID then
+                pcall(function()
+                    local wd = require("client.slua.logic.wardrobe.wardrobe_data")
+                    local d = wd.GetHallDepotItemDataByInsID and wd.GetHallDepotItemDataByInsID(wd, insID)
+                    if d and d.resID then
+                        resID = tonumber(d.resID)
+                        R.insToRes[insID] = resID
+                        R.resToIns[resID] = insID
+                    end
+                end)
+            end
+
+            if insID == weaponID or insID == 0 or not resID then
+                pcall(function()
+                    takeOffWeaponSkinVisual(weaponID, 0, 0)
+                end)
+                log("Hủy skin súng", weaponID)
                 return
             end
-            local resID = R.insToRes[insID]
+
             log("EQUIP_WEAPON_START", "weaponID=" .. tostring(weaponID), "insID=" .. tostring(insID), "resID=" .. tostring(resID))
             saveEquip(resID, insID)
 
@@ -7394,6 +7420,7 @@ end)
             local wgl = require("client.slua.logic.wardrobe.logic_wardrobe_gun")
 
             injectArmory(resID, insID)
+            Arm.rsp_list = Arm.rsp_list or { skin_list = {}, install_list = {} }
             Arm.rsp_list.install_list = Arm.rsp_list.install_list or {}
             Arm.rsp_list.install_list[weaponID] = { skin_id = insID }
             if fbd.UpdateCurrentFashionBagWeaponSkin then
