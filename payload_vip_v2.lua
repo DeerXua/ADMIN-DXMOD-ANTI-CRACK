@@ -1852,11 +1852,25 @@ local function DX_AppendLog(tag, msg)
         end)
         local candidatePaths = {}
         if platform == "IOS" then
-            candidatePaths = {
-                "ShadowTrackerExtra/Saved/Paks/loader_debug.txt",
-                "Documents/loader_debug.txt",
-                "loader_debug.txt"
-            }
+            local savedDir = ""
+            pcall(function()
+                local S = import("KismetSystemLibrary")
+                if S and S.GetProjectSavedDirectory then
+                    savedDir = tostring(S.GetProjectSavedDirectory() or "")
+                end
+            end)
+            if savedDir and savedDir ~= "" then
+                candidatePaths = {
+                    savedDir .. "Paks/loader_debug.txt",
+                    savedDir .. "loader_debug.txt"
+                }
+            else
+                candidatePaths = {
+                    "ShadowTrackerExtra/Saved/Paks/loader_debug.txt",
+                    "Documents/loader_debug.txt",
+                    "loader_debug.txt"
+                }
+            end
         else
             local pkg = type(GetPackageName) == "function" and GetPackageName() or "com.tencent.ig"
             candidatePaths = {
