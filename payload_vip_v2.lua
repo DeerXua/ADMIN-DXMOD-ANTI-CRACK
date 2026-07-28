@@ -10529,10 +10529,16 @@ end)
 
         local function putOnCloth(insID)
             insID = tonumber(insID)
+            if not insID then return end
             local resID = R.insToRes[insID]
             if not resID then
-                log("PUTON_CLOTH_ERR", "No resID for insID=" .. tostring(insID))
-                return
+                if cfg(insID) then
+                    resID = insID
+                    insID = R.resToIns[resID] or insID
+                else
+                    log("PUTON_CLOTH_ERR", "No resID for insID=" .. tostring(insID))
+                    return
+                end
             end
             local wd = require("client.slua.logic.wardrobe.wardrobe_data")
             local d = nil
@@ -11075,10 +11081,17 @@ end)
                 log("MATCH_REAPPLY", "Using cch.clothes active items")
                 for resID in pairs(cch.clothes) do
                     local ins = R.resToIns[resID]
-                    local rid = resID
-                    if ins and isInjectedIns(ins) then
+                    if not ins then
+                        pcall(function()
+                            local wd = require("client.slua.logic.wardrobe.wardrobe_data")
+                            local d = wd:GetHallDepotItemDataByResID and wd:GetHallDepotItemDataByResID(resID)
+                            if d then ins = tonumber(d.instid or d.insID) end
+                        end)
+                    end
+                    local targetIns = ins or R.resToIns[resID]
+                    if targetIns then
                         scheduleApply(function()
-                            putOnCloth(ins)
+                            putOnCloth(targetIns)
                         end)
                     end
                 end
