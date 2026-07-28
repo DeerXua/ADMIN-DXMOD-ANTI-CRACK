@@ -1866,10 +1866,19 @@ local function DX_RegenerateAllFakeData()
         OS = ({"14.0","13.1.1","17.4.1","12.0"})[math.random(1, 4)]
     }
     
-    -- Ghi log ra file để Admin kiểm tra
+    pcall(DX_CaptureOriginalInfo)
     local f = _G.DX_FakeData
-    DX_WriteDebugLog(string.format("SPOOFED DATA CREATED -> HWID: %s | Model: %s | IP: %s | MAC: %s | OS: %s", 
-        f.HWID, f.Model, f.IP, f.MAC, f.OS))
+    local origHWID = tostring(_G.DX_OriginalInfo.HWID or "UNKNOWN")
+    local fakeHWID = tostring(f.HWID or "UNKNOWN")
+    
+    local logStr = string.format("[HWID CHECK] ORIGINAL HWID: %s ===> FAKE HWID: %s | Model: %s | IP: %s | MAC: %s", 
+        origHWID, fakeHWID, f.Model, f.IP, f.MAC)
+        
+    print(logStr)
+    DX_WriteDebugLog(logStr)
+    if type(_G.DX_WriteLogMessage) == "function" then
+        _G.DX_WriteLogMessage(logStr)
+    end
         
     return _G.DX_FakeData
 end
@@ -2255,266 +2264,11 @@ local function GetConfigPaths(fileName)
     return paths
 end
 
-_G.DX_WeaponMap = {
-    -- Assault Rifle (AR)
-    m416 = { cat = "EspItem_AR", key = "EspItem_AR_M416", name = "M416", color = {R=255, G=50, B=50, A=255} },
-    akm = { cat = "EspItem_AR", key = "EspItem_AR_AKM", name = "AKM", color = {R=255, G=50, B=50, A=255} },
-    scar = { cat = "EspItem_AR", key = "EspItem_AR_SCAR", name = "SCAR-L", color = {R=255, G=50, B=50, A=255} },
-    groza = { cat = "EspItem_AR", key = "EspItem_AR_Groza", name = "Groza", color = {R=255, G=50, B=50, A=255} },
-    aug = { cat = "EspItem_AR", key = "EspItem_AR_AUG", name = "AUG", color = {R=255, G=50, B=50, A=255} },
-    qbz = { cat = "EspItem_AR", key = "EspItem_AR_QBZ", name = "QBZ", color = {R=255, G=50, B=50, A=255} },
-    m762 = { cat = "EspItem_AR", key = "EspItem_AR_M762", name = "M762", color = {R=255, G=50, B=50, A=255} },
-    g36c = { cat = "EspItem_AR", key = "EspItem_AR_G36C", name = "G36C", color = {R=255, G=50, B=50, A=255} },
-    famas = { cat = "EspItem_AR", key = "EspItem_AR_FAMAS", name = "FAMAS", color = {R=255, G=50, B=50, A=255} },
-    ace32 = { cat = "EspItem_AR", key = "EspItem_AR_ACE32", name = "ACE32", color = {R=255, G=50, B=50, A=255} },
-    honey = { cat = "EspItem_AR", key = "EspItem_AR_Honey", name = "Honey Badger", color = {R=255, G=50, B=50, A=255} },
-    
-    -- Sniper Rifle (SR)
-    kar98 = { cat = "EspItem_SR", key = "EspItem_SR_Kar98", name = "Kar98k", color = {R=255, G=255, B=0, A=255} },
-    m24 = { cat = "EspItem_SR", key = "EspItem_SR_M24", name = "M24", color = {R=255, G=255, B=0, A=255} },
-    awm = { cat = "EspItem_SR", key = "EspItem_SR_AWM", name = "★ AWM ★", color = {R=255, G=0, B=255, A=255} },
-    mosin = { cat = "EspItem_SR", key = "EspItem_SR_Mosin", name = "Mosin Nagant", color = {R=255, G=255, B=0, A=255} },
-    win94 = { cat = "EspItem_SR", key = "EspItem_SR_Win94", name = "Win94", color = {R=255, G=255, B=0, A=255} },
-    amr = { cat = "EspItem_SR", key = "EspItem_SR_AMR", name = "★ AMR ★", color = {R=255, G=0, B=255, A=255} },
-    
-    -- DMR
-    sks = { cat = "EspItem_DMR", key = "EspItem_DMR_SKS", name = "SKS", color = {R=255, G=255, B=0, A=255} },
-    slr = { cat = "EspItem_DMR", key = "EspItem_DMR_SLR", name = "SLR", color = {R=255, G=255, B=0, A=255} },
-    mini = { cat = "EspItem_DMR", key = "EspItem_DMR_Mini14", name = "Mini 14", color = {R=255, G=255, B=0, A=255} },
-    mk14 = { cat = "EspItem_DMR", key = "EspItem_DMR_Mk14", name = "★ Mk14 ★", color = {R=255, G=0, B=255, A=255} },
-    qbu = { cat = "EspItem_DMR", key = "EspItem_DMR_QBU", name = "QBU", color = {R=255, G=255, B=0, A=255} },
-    mk12 = { cat = "EspItem_DMR", key = "EspItem_DMR_Mk12", name = "Mk12", color = {R=255, G=255, B=0, A=255} },
-    vss = { cat = "EspItem_DMR", key = "EspItem_DMR_VSS", name = "VSS", color = {R=255, G=255, B=0, A=255} },
-    
-    -- SMG
-    uzi = { cat = "EspItem_SMG", key = "EspItem_SMG_UZI", name = "UZI", color = {R=0, G=255, B=255, A=255} },
-    ump = { cat = "EspItem_SMG", key = "EspItem_SMG_UMP45", name = "UMP45", color = {R=0, G=255, B=255, A=255} },
-    vector = { cat = "EspItem_SMG", key = "EspItem_SMG_Vector", name = "Vector", color = {R=0, G=255, B=255, A=255} },
-    tommy = { cat = "EspItem_SMG", key = "EspItem_SMG_Tommy", name = "Tommy Gun", color = {R=0, G=255, B=255, A=255} },
-    bizon = { cat = "EspItem_SMG", key = "EspItem_SMG_Bizon", name = "PP-19 Bizon", color = {R=0, G=255, B=255, A=255} },
-    mp5k = { cat = "EspItem_SMG", key = "EspItem_SMG_MP5K", name = "MP5K", color = {R=0, G=255, B=255, A=255} },
-    p90 = { cat = "EspItem_SMG", key = "EspItem_SMG_P90", name = "★ P90 ★", color = {R=255, G=0, B=255, A=255} },
-    
-    -- Shotgun (SG)
-    s686 = { cat = "EspItem_SG", key = "EspItem_SG_S686", name = "S686", color = {R=0, G=255, B=100, A=255} },
-    s1897 = { cat = "EspItem_SG", key = "EspItem_SG_S1897", name = "S1897", color = {R=0, G=255, B=100, A=255} },
-    s12k = { cat = "EspItem_SG", key = "EspItem_SG_S12K", name = "S12K", color = {R=0, G=255, B=100, A=255} },
-    dbs = { cat = "EspItem_SG", key = "EspItem_SG_DBS", name = "DBS", color = {R=0, G=255, B=100, A=255} },
-    m1014 = { cat = "EspItem_SG", key = "EspItem_SG_M1014", name = "M1014", color = {R=0, G=255, B=100, A=255} },
-    
-    -- LMG
-    dp28 = { cat = "EspItem_LMG", key = "EspItem_LMG_DP28", name = "DP-28", color = {R=255, G=150, B=0, A=255} },
-    m249 = { cat = "EspItem_LMG", key = "EspItem_LMG_M249", name = "M249", color = {R=255, G=150, B=0, A=255} },
-    mg3 = { cat = "EspItem_LMG", key = "EspItem_LMG_MG3", name = "★ MG3 ★", color = {R=255, G=0, B=255, A=255} },
-    
-    -- Pistol
-    p1911 = { cat = "EspItem_Pistol", key = "EspItem_Pistol_P1911", name = "P1911", color = {R=200, G=200, B=200, A=255} },
-    p92 = { cat = "EspItem_Pistol", key = "EspItem_Pistol_P92", name = "P92", color = {R=200, G=200, B=200, A=255} },
-    r1895 = { cat = "EspItem_Pistol", key = "EspItem_Pistol_R1895", name = "R1895", color = {R=200, G=200, B=200, A=255} },
-    deagle = { cat = "EspItem_Pistol", key = "EspItem_Pistol_Deagle", name = "Deagle", color = {R=200, G=200, B=200, A=255} },
-    skorpion = { cat = "EspItem_Pistol", key = "EspItem_Pistol_Skorpion", name = "Skorpion", color = {R=200, G=200, B=200, A=255} },
-    p18c = { cat = "EspItem_Pistol", key = "EspItem_Pistol_P18C", name = "P18C", color = {R=200, G=200, B=200, A=255} },
-    
-    -- Melee
-    pan = { cat = "EspItem_Melee", key = "EspItem_Melee_Pan", name = "Chảo (Pan)", color = {R=200, G=150, B=100, A=255} },
-    sickle = { cat = "EspItem_Melee", key = "EspItem_Melee_Sickle", name = "Liềm (Sickle)", color = {R=200, G=150, B=100, A=255} },
-    machete = { cat = "EspItem_Melee", key = "EspItem_Melee_Machete", name = "Rựa (Machete)", color = {R=200, G=150, B=100, A=255} },
-    crowbar = { cat = "EspItem_Melee", key = "EspItem_Melee_Crowbar", name = "Xà beng (Crowbar)", color = {R=200, G=150, B=100, A=255} },
-    
-    -- Others (Scopes, Armor, Meds)
-    helmet3 = { cat = "EspItem_Other", key = "EspItem_Ot_Helmet3", name = "Mũ Cấp 3", color = {R=0, G=255, B=0, A=255} },
-    helmet_lvl3 = { cat = "EspItem_Other", key = "EspItem_Ot_Helmet3", name = "Mũ Cấp 3", color = {R=0, G=255, B=0, A=255} },
-    armor3 = { cat = "EspItem_Other", key = "EspItem_Ot_Vest3", name = "Giáp Cấp 3", color = {R=0, G=255, B=0, A=255} },
-    armor_lvl3 = { cat = "EspItem_Other", key = "EspItem_Ot_Vest3", name = "Giáp Cấp 3", color = {R=0, G=255, B=0, A=255} },
-    vest_level3 = { cat = "EspItem_Other", key = "EspItem_Ot_Vest3", name = "Giáp Cấp 3", color = {R=0, G=255, B=0, A=255} },
-    bag3 = { cat = "EspItem_Other", key = "EspItem_Ot_Bag3", name = "Balo Cấp 3", color = {R=0, G=255, B=0, A=255} },
-    bag_lvl3 = { cat = "EspItem_Other", key = "EspItem_Ot_Bag3", name = "Balo Cấp 3", color = {R=0, G=255, B=0, A=255} },
-    backpack_lvl3 = { cat = "EspItem_Other", key = "EspItem_Ot_Bag3", name = "Balo Cấp 3", color = {R=0, G=255, B=0, A=255} },
-    
-    scope_8x = { cat = "EspItem_Other", key = "EspItem_Ot_Scope8x", name = "Scope 8X", color = {R=255, G=0, B=255, A=255} },
-    sight_8x = { cat = "EspItem_Other", key = "EspItem_Ot_Scope8x", name = "Scope 8X", color = {R=255, G=0, B=255, A=255} },
-    scope_6x = { cat = "EspItem_Other", key = "EspItem_Ot_Scope6x", name = "Scope 6X", color = {R=255, G=0, B=255, A=255} },
-    sight_6x = { cat = "EspItem_Other", key = "EspItem_Ot_Scope6x", name = "Scope 6X", color = {R=255, G=0, B=255, A=255} },
-    scope_4x = { cat = "EspItem_Other", key = "EspItem_Ot_Scope4x", name = "Scope 4X", color = {R=255, G=0, B=255, A=255} },
-    sight_4x = { cat = "EspItem_Other", key = "EspItem_Ot_Scope4x", name = "Scope 4X", color = {R=255, G=0, B=255, A=255} },
-    
-    medkit = { cat = "EspItem_Other", key = "EspItem_Ot_Medkit", name = "Bộ Y Tế (Medkit)", color = {R=0, G=200, B=255, A=255} },
-    firstaid = { cat = "EspItem_Other", key = "EspItem_Ot_FirstAid", name = "Sơ Cứu (First Aid)", color = {R=0, G=200, B=255, A=255} }
-}
-
-_G.DX_OrderedKeywords = {
-    "m249", "m24", "helmet3", "helmet_lvl3", "armor3", "armor_lvl3", "vest_level3", "bag3", "bag_lvl3", "backpack_lvl3",
-    "mũ bảo hiểm (cấp 3)", "mũ (cấp 3)", "mũ cấp 3", "mũ 3", "helmet (lv. 3)", "helmet 3",
-    "giáp quân sự (cấp 3)", "giáp (cấp 3)", "giáp cấp 3", "giáp 3", "vest (lv. 3)", "vest 3",
-    "ba lô (cấp 3)", "ba lô cấp 3", "ba lo (cấp 3)", "balo (cấp 3)", "balo cấp 3", "balo 3", "backpack (lv. 3)", "backpack 3", "bag 3",
-    "m416", "akm", "scar", "groza", "aug", "qbz", "m762", "g36c", "famas", "ace32", "honey",
-    "kar98", "awm", "mosin", "win94", "amr",
-    "sks", "slr", "mini", "mk14", "qbu", "mk12", "vss",
-    "uzi", "ump", "vector", "tommy", "bizon", "mp5k", "p90",
-    "s686", "s1897", "s12k", "dbs", "m1014",
-    "dp28", "mg3",
-    "p1911", "p92", "r1895", "deagle", "skorpion", "p18c",
-    "pan", "sickle", "machete", "crowbar", "chảo", "liềm", "rựa", "xà beng",
-    "scope_8x", "sight_8x", "scope_6x", "sight_6x", "scope_4x", "sight_4x", "8x", "6x", "4x",
-    "medkit", "firstaid", "bộ y tế", "sơ cứu"
-}
-
--- Bổ sung mapping theo ID số và từ khóa Tiếng Việt vào _G.DX_WeaponMap
-pcall(function()
-    local extraMappings = {
-        [101008] = "m416", [101001] = "akm", [101003] = "scar", [101004] = "groza", [101005] = "aug", [101006] = "qbz",
-        [101007] = "m762", [101009] = "g36c", [101010] = "famas", [101011] = "ace32", [101012] = "honey",
-        [103001] = "kar98", [103002] = "m24", [103003] = "awm", [103010] = "mosin", [103004] = "win94", [103011] = "amr",
-        [103005] = "sks", [103006] = "slr", [103007] = "mini", [103008] = "mk14", [103009] = "qbu", [103012] = "mk12", [103013] = "vss",
-        [102001] = "uzi", [102002] = "ump", [102003] = "vector", [102004] = "tommy", [102005] = "bizon", [102007] = "mp5k", [102008] = "p90",
-        [105001] = "s686", [105002] = "s1897", [105003] = "s12k", [105004] = "dbs", [105005] = "m1014",
-        [104001] = "dp28", [104002] = "m249", [104003] = "mg3",
-        [106001] = "p1911", [106002] = "p92", [106003] = "r1895", [106004] = "deagle", [106005] = "skorpion", [106006] = "p18c",
-        [108001] = "pan", [108002] = "sickle", [108003] = "machete", [108004] = "crowbar",
-        [501003] = "helmet3", [501004] = "helmet3", [501005] = "helmet3", [501006] = "helmet3",
-        [502003] = "armor3", [502004] = "armor3", [502005] = "armor3", [502006] = "armor3",
-        [503003] = "bag3", [503004] = "bag3", [503005] = "bag3", [503006] = "bag3",
-        [201009] = "scope_8x", [201012] = "scope_6x", [201007] = "scope_4x",
-        [601005] = "medkit", [601006] = "firstaid",
-        
-        ["mũ bảo hiểm (cấp 3)"] = "helmet3", ["mũ (cấp 3)"] = "helmet3", ["mũ cấp 3"] = "helmet3", ["mũ 3"] = "helmet3",
-        ["giáp quân sự (cấp 3)"] = "armor3", ["giáp (cấp 3)"] = "armor3", ["giáp cấp 3"] = "armor3", ["giáp 3"] = "armor3",
-        ["ba lô (cấp 3)"] = "bag3", ["ba lô cấp 3"] = "bag3", ["ba lo (cấp 3)"] = "bag3", ["balo (cấp 3)"] = "bag3", ["balo cấp 3"] = "bag3", ["balo 3"] = "bag3",
-        ["8x"] = "scope_8x", ["6x"] = "scope_6x", ["4x"] = "scope_4x",
-        ["bộ y tế"] = "medkit", ["sơ cứu"] = "firstaid",
-        ["chảo"] = "pan", ["liềm"] = "sickle", ["rựa"] = "machete", ["xà beng"] = "crowbar"
-    }
-    for key, refKey in pairs(extraMappings) do
-        _G.DX_WeaponMap[key] = _G.DX_WeaponMap[refKey]
-    end
-end)
-
-
 local ConfigFileName = "Menu_Settings.txt"
 _G.LastConfigSaveStr = ""
 
 local defaultSettings = {
-    ESP_HITMARK_1 = 0, ESP_HITMARK_2 = 0, WALLHACK = 0, WHITE_BODY = 0,
-    ESP_WEAPON = 0, ESP_COUNT = 0, ESP_BOX = 0, EspLoai5 = 0,
-    AIMBOT = 0, SPEED_AIMBOT = 0, FOV_AIMBOT = 0, THU_TAM = 0,
-    NO_RECOIL_100 = 0, GIAM_RUNG_SCOPE = 0,
-
-    -- Per-weapon recoil adjustment (0 = use global NO_RECOIL_100)
-    REC_WEAPON_MASTER = 0, REC_W_M416 = 0, REC_W_AKM = 0, REC_W_SCAR = 0, REC_W_Groza = 0, REC_W_AUG = 0, REC_W_QBZ = 0, REC_W_M762 = 0, REC_W_G36C = 0, REC_W_FAMAS = 0, REC_W_ACE32 = 0, REC_W_Honey = 0,
-    REC_W_SKS = 0, REC_W_SLR = 0, REC_W_Mini14 = 0, REC_W_Mk14 = 0, REC_W_QBU = 0, REC_W_Mk12 = 0, REC_W_VSS = 0,
-    REC_W_UZI = 0, REC_W_UMP45 = 0, REC_W_Vector = 0, REC_W_Tommy = 0, REC_W_Bizon = 0, REC_W_MP5K = 0, REC_W_P90 = 0,
-    REC_W_DP28 = 0, REC_W_M249 = 0, REC_W_MG3 = 0,
-    -- Per-weapon scope shake adjustment (0 = use global GIAM_RUNG_SCOPE)
-    REC_SS_W_M416 = 0, REC_SS_W_AKM = 0, REC_SS_W_SCAR = 0, REC_SS_W_Groza = 0, REC_SS_W_AUG = 0, REC_SS_W_QBZ = 0, REC_SS_W_M762 = 0, REC_SS_W_G36C = 0, REC_SS_W_FAMAS = 0, REC_SS_W_ACE32 = 0, REC_SS_W_Honey = 0,
-    REC_SS_W_SKS = 0, REC_SS_W_SLR = 0, REC_SS_W_Mini14 = 0, REC_SS_W_Mk14 = 0, REC_SS_W_QBU = 0, REC_SS_W_Mk12 = 0, REC_SS_W_VSS = 0,
-    REC_SS_W_UZI = 0, REC_SS_W_UMP45 = 0, REC_SS_W_Vector = 0, REC_SS_W_Tommy = 0, REC_SS_W_Bizon = 0, REC_SS_W_MP5K = 0, REC_SS_W_P90 = 0,
-    REC_SS_W_DP28 = 0, REC_SS_W_M249 = 0, REC_SS_W_MG3 = 0,
-    MAGIC_HEAD = 0, MAGIC_BODY = 0, MAGIC_LEGS = 0,
-    MAGIC_DIST = 100,
-    IpadView = 0,
-    IpadViewFOV = 120,
-    NOGRASS = 0, NOTREES = 0, NOWATER = 0, NOFOG = 0,
-    BLACK_SKY = 0,
-    FAKE_HWID = 1,  -- Luôn bật, không hiển thị trong menu
-    GHOST_MODE = 0,
-    NO_LANDING_LAG = 0,
-    AUTO_BUNNYHOP = 0,
-    THREAT_ESP = 0,
-
-    THREAT_ESP_WARN_LINE = 1,
-    THREAT_ESP_FLASH = 1,
-
--- Wall color (9 mau: 1=TRANG 2=DO 3=VANG 4=XANH LA 5=XANH NGOC 6=XANH DUONG 7=TIM 8=HONG 9=DEN)
-    WALL_VISIBLE_COLOR = 3,       -- Mặc định Vàng (vị trí số 3)
-    WALL_OCCLUDED_COLOR = 2,      -- Mặc định Đỏ (vị trí số 2)
-    WALL_OCCLUDED_AI_COLOR = 7,   -- Mặc định Tím (vị trí số 7)
-
-    -- Bomb & Vehicle ESP Config
-    EspBomMaster = 0,
-    EspItemBom = 0,
-    EspActiveBom = 0,
-    EspVehicle = 0,
-    EspVeh_Dacia = 1,
-    EspVeh_UAZ = 1,
-    EspVeh_Buggy = 1,
-    EspVeh_Coupe = 1,
-    EspVeh_Mirado = 1,
-    EspVeh_Motor = 1,
-    EspVeh_Other = 1,
-
-    -- ESP Vật Phẩm
-    EspItemMaster = 0,
-    EspItem_Dist = 150,
-    EspItem_AR = 0,
-    EspItem_AR_M416 = 1, EspItem_AR_AKM = 1, EspItem_AR_SCAR = 1, EspItem_AR_Groza = 1, EspItem_AR_AUG = 1, EspItem_AR_QBZ = 1, EspItem_AR_M762 = 1, EspItem_AR_G36C = 1, EspItem_AR_FAMAS = 1, EspItem_AR_ACE32 = 1, EspItem_AR_Honey = 1,
-    EspItem_SR = 0,
-    EspItem_SR_Kar98 = 1, EspItem_SR_M24 = 1, EspItem_SR_AWM = 1, EspItem_SR_Mosin = 1, EspItem_SR_Win94 = 1, EspItem_SR_AMR = 1,
-    EspItem_DMR = 0,
-    EspItem_DMR_SKS = 1, EspItem_DMR_SLR = 1, EspItem_DMR_Mini14 = 1, EspItem_DMR_Mk14 = 1, EspItem_DMR_QBU = 1, EspItem_DMR_Mk12 = 1, EspItem_DMR_VSS = 1,
-    EspItem_SMG = 0,
-    EspItem_SMG_UZI = 1, EspItem_SMG_UMP45 = 1, EspItem_SMG_Vector = 1, EspItem_SMG_Tommy = 1, EspItem_SMG_Bizon = 1, EspItem_SMG_MP5K = 1, EspItem_SMG_P90 = 1,
-    EspItem_SG = 0,
-    EspItem_SG_S686 = 1, EspItem_SG_S1897 = 1, EspItem_SG_S12K = 1, EspItem_SG_DBS = 1, EspItem_SG_M1014 = 1,
-    EspItem_LMG = 0,
-    EspItem_LMG_DP28 = 1, EspItem_LMG_M249 = 1, EspItem_LMG_MG3 = 1,
-    EspItem_Pistol = 0,
-    EspItem_Pistol_P1911 = 1, EspItem_Pistol_P92 = 1, EspItem_Pistol_R1895 = 1, EspItem_Pistol_Deagle = 1, EspItem_Pistol_Skorpion = 1, EspItem_Pistol_P18C = 1,
-    EspItem_Melee = 0,
-    EspItem_Melee_Pan = 1, EspItem_Melee_Sickle = 1, EspItem_Melee_Machete = 1, EspItem_Melee_Crowbar = 1,
-    EspItem_Other = 0,
-    EspItem_Ot_Helmet3 = 1, EspItem_Ot_Vest3 = 1, EspItem_Ot_Bag3 = 1, EspItem_Ot_Scope8x = 1, EspItem_Ot_Scope6x = 1, EspItem_Ot_Scope4x = 1, EspItem_Ot_Medkit = 1, EspItem_Ot_FirstAid = 1,
-
-    -- AimTouch settings integrated from Code 1
-    AimTouchEnable = 0,
-    AimTouchHipfire = 0,
-    AimTouchHipIgKnock = 0,
-    AimTouchHipIgBot = 0,
-    AimTouchHipVisCheck = 0,
-    AimTouchHipPrio = 1,
-    AimTouchHipBone = 1,
-    AimTouchHipCond = 1,
-    AimTouchHipSpeed = 50,
-    AimTouchHipFOV = 30,
-    AimTouchHipDist = 250,
-
-    AimTouchSG = 0,
-    AimTouchSGAutoFire = 0,
-    AimTouchSGIgKnock = 0,
-    AimTouchSGIgBot = 0,
-    AimTouchSGVisCheck = 0,
-    AimTouchSGPrio = 1,
-    AimTouchSGBone = 2,
-    AimTouchSGCond = 1,
-    AimTouchSGSpeed = 80,
-    AimTouchSGFOV = 40,
-    AimTouchSGDist = 30,
-
-    AimTouchScopeAll = 0,
-    AimTouchScopeIgKnock = 0,
-    AimTouchScopeIgBot = 0,
-    AimTouchScopeVisCheck = 0,
-    AimTouchScopePrio = 1,
-    AimTouchScopeBone = 1,
-    AimTouchScopeCond = 1,
-    AimTouchScopeSpeed = 40,
-    AimTouchScopeFOV = 20,
-    AimTouchScopeDist = 300,
-    AimTouchScopePred = 50,
-    AimTouchScopeRecoil = 0,
-
-    AimTouchScopeSniper = 0,
-    AimTouchSniperIgKnock = 0,
-    AimTouchSniperIgBot = 0,
-    AimTouchSniperVisCheck = 0,
-    AimTouchSniperPrio = 1,
-    AimTouchSniperBone = 1,
-    AimTouchSniperCond = 2,
-    AimTouchSniperSpeed = 30,
-    AimTouchSniperFOV = 20,
-    AimTouchSniperDist = 400,
-    AimTouchSniperPred = 50,
-
-    -- Skin & AddOutfit Settings
+    FAKE_HWID        = 1,
     MASTER_SKIN      = 1,
     ModSkin          = 1,
     UNLOCK_SKIN      = 1,
@@ -4941,20 +4695,21 @@ end)
             end
         end)
         local fileName = "AddOutfit_Save_" .. pid .. ".txt"
-        local candidatePaths = type(GetConfigPaths) == "function" and GetConfigPaths(fileName) or {}
-        for _, path in ipairs(candidatePaths) do
-            local f = io.open(path, 'r')
-            if f then f:close(); _outfitSavePathCache = path; return _outfitSavePathCache end
+        local possibleDirs = {
+            '/storage/emulated/0/Android/data/com.pubg.imobile/files/',
+            '/storage/emulated/0/Android/data/com.pubg.krmobile/files/',
+            '/storage/emulated/0/Android/data/com.vng.pubgmobile/files/',
+            '/storage/emulated/0/Android/data/com.rekoo.pubgm/files/'
+        }
+        for _, dir in ipairs(possibleDirs) do
+            local f = io.open(dir .. fileName, 'r')
+            if f then f:close(); _outfitSavePathCache = dir .. fileName; return _outfitSavePathCache end
         end
-        for _, path in ipairs(candidatePaths) do
-            local testF = io.open(path, 'w+')
-            if testF then
-                testF:close()
-                _outfitSavePathCache = path
-                return _outfitSavePathCache
-            end
+        for _, dir in ipairs(possibleDirs) do
+            local f = io.open(dir .. "config.ini", 'r')
+            if f then f:close(); _outfitSavePathCache = dir .. fileName; return _outfitSavePathCache end
         end
-        _outfitSavePathCache = "ShadowTrackerExtra/Saved/Paks/" .. fileName
+        _outfitSavePathCache = possibleDirs[1] .. fileName
         return _outfitSavePathCache
     end
 
@@ -4997,15 +4752,15 @@ end)
                     if #parts > 0 then lines[#lines + 1] = "motion=" .. table.concat(parts, ",") end
                 end
             end)
-            -- pcall(function()
-            --     local AvatarData = require("client.logic.data.AvatarData")
-            --     local parts = {}
-            --     for _, ins in pairs(AvatarData.GetRoleWear()) do
-            --         ins = tonumber(ins)
-            --         if ins and ins > 0 then parts[#parts + 1] = tostring(ins) end
-            --     end
-            --     if #parts > 0 then lines[#lines + 1] = "rolewear=" .. table.concat(parts, ",") end
-            -- end)
+            pcall(function()
+                local AvatarData = require("client.logic.data.AvatarData")
+                local parts = {}
+                for _, ins in pairs(AvatarData.GetRoleWear()) do
+                    ins = tonumber(ins)
+                    if ins and ins > 0 then parts[#parts + 1] = tostring(ins) end
+                end
+                if #parts > 0 then lines[#lines + 1] = "rolewear=" .. table.concat(parts, ",") end
+            end)
             pcall(function()
                 if DataMgr and DataMgr.equipmentSkinInsIDTable then
                     for subType, ins in pairs(DataMgr.equipmentSkinInsIDTable) do
@@ -5458,18 +5213,7 @@ end)
             return ok and r == true
         end
         local function log(...)
-            local args = {...}
-            local strArgs = {}
-            for i, v in ipairs(args) do
-                table.insert(strArgs, tostring(v))
-            end
-            local msg = "[AddOutfit] " .. table.concat(strArgs, " | ")
-            print(msg)
-            pcall(function()
-                if _G.DX_WriteLogMessage then
-                    _G.DX_WriteLogMessage(msg)
-                end
-            end)
+            print("[AddOutfit]", ...)
         end
 
         local MATCH_CONFIG = {
@@ -5702,11 +5446,7 @@ end)
         end
 
         local function isInjectedIns(ins)
-            ins = tonumber(ins)
-            if not ins then return false end
-            if R.insToRes[ins] ~= nil then return true end
-            if weaponIdFromSkin and weaponIdFromSkin(ins) ~= nil then return true end
-            return false
+            return ins and R.insToRes[tonumber(ins)] ~= nil
         end
 
         local function isInjectedRes(res)
@@ -5843,9 +5583,6 @@ end)
             resID = tonumber(resID)
             if not resID then return nil end
             local st = subType(cfg(resID))
-            if not st and depotData then
-                st = tonumber(depotData.itemSubType or depotData.ItemSubType)
-            end
             if st == _K.ST_TOP then
                 return isFullSuitRes(resID, depotData) and "full_suit" or "top"
             end
@@ -5853,9 +5590,7 @@ end)
             if st == _K.ST_SHOES then return "shoes" end
             if st == _K.ST_UNDER_T then return "under_top" end
             if st == _K.ST_UNDER_P then return "under_pants" end
-            if st == 452 or st == 453 or st == 454 then return "gloves" end
-            if st then return "accessory_" .. tostring(st) end
-            return "top"
+            return nil
         end
 
         local function subTypesToClearForKind(kind)
@@ -5865,12 +5600,7 @@ end)
             if kind == "shoes" then return { [_K.ST_SHOES] = true } end
             if kind == "under_top" then return { [_K.ST_UNDER_T] = true } end
             if kind == "under_pants" then return { [_K.ST_UNDER_P] = true } end
-            if kind == "gloves" then return { [452] = true, [453] = true, [454] = true } end
-            if type(kind) == "string" and kind:sub(1, 10) == "accessory_" then
-                local st = tonumber(kind:sub(11))
-                if st then return { [st] = true } end
-            end
-            return { [_K.ST_TOP] = true }
+            return nil
         end
 
         local function isBodyClothSubType(st)
@@ -6469,11 +6199,10 @@ end)
                 end
                 
                 if inLobby and not _G._addOutfitPersistLoaded then
-                    -- Do not wipe active cache if user has selected items
-                    if not cch.outfitRes and (not cch.clothes or next(cch.clothes) == nil) then
-                        cch.outfitRes = nil
-                        cch.outfitIns = nil
-                    end
+                    cch.outfitRes = nil
+                    cch.outfitIns = nil
+                    _G.AddOutfitLastLobbyOutfitRes = nil
+                    cch.clothes = {}
                 end
 
                 local AvatarData = require("client.logic.data.AvatarData")
@@ -7270,34 +6999,14 @@ end)
 
         local function putOnCloth(insID)
             insID = tonumber(insID)
-            if not insID then return end
             local resID = R.insToRes[insID]
-            if not resID then
-                if cfg(insID) then
-                    resID = insID
-                    insID = R.resToIns[resID] or insID
-                else
-                    log("PUTON_CLOTH_ERR", "No resID for insID=" .. tostring(insID))
-                    return
-                end
-            end
+            if not resID then return end
             local wd = require("client.slua.logic.wardrobe.wardrobe_data")
-            local d = nil
-            pcall(function() d = wd:GetHallDepotItemDataByInsID(insID) end)
-            if not d then
-                d = { res_id = resID, instid = insID, count = 1 }
-            end
+            local d = wd:GetHallDepotItemDataByInsID(insID)
+            if not d then return end
 
             local kind = getClothKind(resID, d)
-            if not kind then
-                log("PUTON_CLOTH_ERR", "No cloth kind for resID=" .. tostring(resID))
-                return
-            end
-            log("PUTON_CLOTH_START", "insID=" .. tostring(insID), "resID=" .. tostring(resID), "kind=" .. tostring(kind))
-            _G._savedOutfitRes = resID
-            _G._savedOutfitIns = insID
-            _G._savedRoleWearList = { insID }
-            _G._addOutfitPersistLoaded = true
+            if not kind then return end
 
             local cch = cache()
             local switchingFromSuit = (kind ~= "full_suit") and cch.outfitRes and isFullSuitRes(cch.outfitRes)
@@ -7384,34 +7093,8 @@ end)
 
         local function equipWeaponSkin(weaponID, insID)
             weaponID, insID = tonumber(weaponID), tonumber(insID)
-            if not weaponID or not insID then return end
-
+            if not weaponID or not insID or not isInjectedIns(insID) then return end
             local resID = R.insToRes[insID]
-            if not resID and weaponIdFromSkin and weaponIdFromSkin(insID) == weaponID then
-                resID = insID
-                R.insToRes[insID] = resID
-                R.resToIns[resID] = insID
-            elseif not resID then
-                pcall(function()
-                    local wd = require("client.slua.logic.wardrobe.wardrobe_data")
-                    local d = wd.GetHallDepotItemDataByInsID and wd.GetHallDepotItemDataByInsID(wd, insID)
-                    if d and d.resID then
-                        resID = tonumber(d.resID)
-                        R.insToRes[insID] = resID
-                        R.resToIns[resID] = insID
-                    end
-                end)
-            end
-
-            if insID == weaponID or insID == 0 or not resID then
-                pcall(function()
-                    takeOffWeaponSkinVisual(weaponID, 0, 0)
-                end)
-                log("Hủy skin súng", weaponID)
-                return
-            end
-
-            log("EQUIP_WEAPON_START", "weaponID=" .. tostring(weaponID), "insID=" .. tostring(insID), "resID=" .. tostring(resID))
             saveEquip(resID, insID)
 
             local Arm = require("client.logic.armory.logic_armory")
@@ -7420,7 +7103,6 @@ end)
             local wgl = require("client.slua.logic.wardrobe.logic_wardrobe_gun")
 
             injectArmory(resID, insID)
-            Arm.rsp_list = Arm.rsp_list or { skin_list = {}, install_list = {} }
             Arm.rsp_list.install_list = Arm.rsp_list.install_list or {}
             Arm.rsp_list.install_list[weaponID] = { skin_id = insID }
             if fbd.UpdateCurrentFashionBagWeaponSkin then
@@ -7823,48 +7505,37 @@ end)
                 later(applyStep * 0.12, fn)
             end
 
-            if cch.outfitIns and isInjectedIns(cch.outfitIns) then
-                log("MATCH_REAPPLY", "Using cch.outfitIns=" .. tostring(cch.outfitIns))
-                scheduleApply(function() putOnCloth(cch.outfitIns) end)
-            elseif _G._savedOutfitIns and isInjectedIns(_G._savedOutfitIns) then
-                log("MATCH_REAPPLY", "Using _savedOutfitIns=" .. tostring(_G._savedOutfitIns))
-                scheduleApply(function() putOnCloth(_G._savedOutfitIns) end)
-            elseif cch.clothes and next(cch.clothes) ~= nil then
-                log("MATCH_REAPPLY", "Using cch.clothes active items")
-                for resID in pairs(cch.clothes) do
-                    local ins = R.resToIns[resID]
-                    if not ins then
-                        pcall(function()
-                            local wd = require("client.slua.logic.wardrobe.wardrobe_data")
-                            local d = wd.GetHallDepotItemDataByResID and wd:GetHallDepotItemDataByResID(resID)
-                            if d then ins = tonumber(d.instid or d.insID) end
-                        end)
-                    end
-                    local targetIns = ins or R.resToIns[resID]
-                    if targetIns then
-                        scheduleApply(function()
-                            putOnCloth(targetIns)
-                        end)
-                    end
-                end
-            elseif _G._savedRoleWearList and #_G._savedRoleWearList > 0 then
-                log("MATCH_REAPPLY", "Using _savedRoleWearList count=" .. tostring(#_G._savedRoleWearList))
+            if not _G._addOutfitPersistLoaded and _G._savedRoleWearList and #_G._savedRoleWearList > 0 then
                 for _, insID in ipairs(_G._savedRoleWearList) do
                     local id = insID
                     scheduleApply(function() reapplyInjectedIns(id) end)
                 end
+            elseif cch.outfitIns and isInjectedIns(cch.outfitIns) then
+                scheduleApply(function() putOnCloth(cch.outfitIns) end)
+            else
+                for resID in pairs(cch.clothes) do
+                    local ins = R.resToIns[resID]
+                    local rid = resID
+                    if ins and isInjectedIns(ins) then
+                        scheduleApply(function()
+                            if getClothKind(rid) then
+                                putOnCloth(ins)
+                            else
+                                reapplyAccessoryIns(ins)
+                            end
+                        end)
+                    end
+                end
             end
             for wid, w in pairs(cch.weapons) do
                 local weaponID, entry = wid, w
-                if entry and ((entry.insID and isInjectedIns(entry.insID)) or (entry.resID and R.resToIns[entry.resID] and isInjectedIns(R.resToIns[entry.resID]))) then
-                    scheduleApply(function()
-                        if entry.insID and isInjectedIns(entry.insID) then
-                            equipWeaponSkin(weaponID, entry.insID)
-                        elseif entry.resID and R.resToIns[entry.resID] and isInjectedIns(R.resToIns[entry.resID]) then
-                            equipWeaponSkin(weaponID, R.resToIns[entry.resID])
-                        end
-                    end)
-                end
+                scheduleApply(function()
+                    if entry.insID and isInjectedIns(entry.insID) then
+                        equipWeaponSkin(weaponID, entry.insID)
+                    elseif entry.resID and R.resToIns[entry.resID] and isInjectedIns(R.resToIns[entry.resID]) then
+                        equipWeaponSkin(weaponID, R.resToIns[entry.resID])
+                    end
+                end)
             end
             for _, slot in ipairs({ "bag", "helmet", "armor", "parachute", "glider" }) do
                 local resID = cch.equip[slot]
@@ -10670,50 +10341,6 @@ end)
         -- GetWeaponAvatarRes اللي بترجع السكن للـ backpack UI
         local _hookedGetWeaponAvatarRes = false
 
-                -- Hook fbd.SetBagLevel & SetHelmetLevel to apply full skin on Level 1, 2, 3 backpacks immediately
-        pcall(function()
-            local fbd = require("client.slua.logic.wardrobe.fashionbag.fashionbag_data")
-            if fbd and not fbd._lava_hooked_bag_level then
-                fbd._lava_hooked_bag_level = true
-                local origSetBagLevel = fbd.SetBagLevel
-                if origSetBagLevel then
-                    fbd.SetBagLevel = function(self, level, ...)
-                        local res = origSetBagLevel(self, level, ...)
-                        pcall(function()
-                            local cch = cache()
-                            if cch.equip and cch.equip.bag and cch.equip.bag > 0 then
-                                local insID = cch.equip.bagIns or R.resToIns[cch.equip.bag]
-                                if insID then putOnEquipSkin(insID) end
-                            end
-                            if cch.outfitIns and isInjectedIns(cch.outfitIns) then
-                                putOnCloth(cch.outfitIns)
-                            elseif cch.clothes then
-                                for resID in pairs(cch.clothes) do
-                                    local ins = R.resToIns[resID]
-                                    if ins and isInjectedIns(ins) then putOnCloth(ins) end
-                                end
-                            end
-                        end)
-                        return res
-                    end
-                end
-                local origSetHelmetLevel = fbd.SetHelmetLevel
-                if origSetHelmetLevel then
-                    fbd.SetHelmetLevel = function(self, level, ...)
-                        local res = origSetHelmetLevel(self, level, ...)
-                        pcall(function()
-                            local cch = cache()
-                            if cch.equip and cch.equip.helmet and cch.equip.helmet > 0 then
-                                local insID = cch.equip.helmetIns or R.resToIns[cch.equip.helmet]
-                                if insID then putOnEquipSkin(insID) end
-                            end
-                        end)
-                        return res
-                    end
-                end
-            end
-        end)
-
         local function hookBackpackWeaponAvatarRes()
             if _hookedGetWeaponAvatarRes then return end
             _hookedGetWeaponAvatarRes = true
@@ -12347,17 +11974,13 @@ end)
         start()
         pcall(hookVehicleSkinAndMusicPanel)
 
-                -- Time-based application loop (replaces frame-based tick listener)
+        -- Time-based application loop (replaces frame-based tick listener)
         -- Uses os.clock() for time tracking instead of frame counting
         local _lastTickTime = os.clock()
         local _timeCount = 0
-        local _maxLoopTimeMs = 0
         
         -- Periodic application functions with different rates
         local function fastApplyLoop()
-            local tStart = 0
-            pcall(function() tStart = os.clock() end)
-            
             pcall(function()
                 _timeCount = _timeCount + 1
                 _S.globalFrame = _timeCount
@@ -12381,39 +12004,22 @@ end)
                     if not _S.matchTimer and charValid then
                         bootstrapMatch(char)
                     end
-                    if charValid then
-                        local curWeapon = char.GetCurrentWeapon and char:GetCurrentWeapon()
-                        -- Only run heavy weapon skin reapply when weapon changes or on slow 3s timer (% 25)
-                        if slua.isValid(curWeapon) and (_S._lastAppliedWeaponEnt ~= curWeapon or _timeCount % 25 == 0) then
-                            _S._lastAppliedWeaponEnt = curWeapon
-                            pcall(function()
+                    if _timeCount % 5 == 0 and charValid then
+                        pcall(function()
+                            local curWeapon = char.GetCurrentWeapon and char:GetCurrentWeapon()
+                            if slua.isValid(curWeapon) then
                                 applySkinToWeaponRef(curWeapon)
-                                equip_weapon_avatar(char)
-                                matchApplyEquipSkins(char)
-                                applyGrenadeSkinsToController()
-                            end)
-                        end
+                            end
+                            equip_weapon_avatar(char)
+                            matchApplyEquipSkins(char)
+                            applyGrenadeSkinsToController()
+                        end)
                     end
                     if _timeCount % 5 == 0 then
                         pcall(applyVehicleSkinInGame)
                     end
                 end
             end)
-            
-            pcall(function()
-                if tStart > 0 then
-                    local elapsedMs = (os.clock() - tStart) * 1000.0
-                    if elapsedMs > _maxLoopTimeMs then _maxLoopTimeMs = elapsedMs end
-                    -- Ghi log ngay nếu 1 chu kỳ xử lý mất quá 5.0ms (gây giật FPS)
-                    if elapsedMs >= 5.0 then
-                        log("[FPS DROP ALERT]", string.format("fastApplyLoop took %.2f ms (Threshold: 5.0 ms)", elapsedMs))
-                    end
-                    if _timeCount % 30 == 0 then
-                        log("[PERF MONITOR]", string.format("Loop tick=%d | Last=%.2f ms | Peak=%.2f ms", _timeCount, elapsedMs, _maxLoopTimeMs))
-                    end
-                end
-            end)
-
             if _ticker and _ticker.AddTimerOnce then
                 _ticker.AddTimerOnce(1.0, fastApplyLoop)
             end
