@@ -574,12 +574,39 @@ local function InitializeSkinBypass()
         _G.X3 = _G.X3 or {}
         _G.X3.SkinState = _G.X3.SkinState or {}
         _G.X3.SkinState.WeaponSkinDB = _G.X3.SkinState.WeaponSkinDB or {}
+        _G.X3.WeaponSkinMap = _G.X3.WeaponSkinMap or {}
+        _G.WeaponSkinMap = _G.WeaponSkinMap or {}
 
         _G.DX_SetWeaponSkin = function(weaponId, skinId)
             if not weaponId then return end
+            weaponId = tonumber(weaponId) or 0
+            skinId = tonumber(skinId) or weaponId
+            if weaponId <= 0 then return end
+
             _G.X3.SkinState.WeaponSkinDB[weaponId] = skinId
-            DX_Log(string.format("[DXMOD_SKIN_SYNC] Súng ID [%s] -> Đã Gán Skin ID: [%s] (Khớp 100%% Sảnh & Trận)", tostring(weaponId), tostring(skinId)))
+            _G.X3.WeaponSkinMap[weaponId] = skinId
+            _G.WeaponSkinMap[weaponId] = skinId
+
+            local typeId = resolveWeaponTypeID and resolveWeaponTypeID(weaponId) or weaponId
+            if typeId and typeId > 0 then
+                _G.X3.SkinState.WeaponSkinDB[typeId] = skinId
+                _G.X3.WeaponSkinMap[typeId] = skinId
+                _G.WeaponSkinMap[typeId] = skinId
+            end
+            DX_Log(string.format("[DXMOD_SKIN_SYNC] Súng ID [%s] -> Đã Gán Skin ID: [%s] (Ghi đè Slider ModMenu 100%%)", tostring(weaponId), tostring(skinId)))
         end
+
+        _G.X3.ApplyLobbyPickedSkins = function()
+            pcall(function()
+                if _G.X3 and _G.X3.SkinState and _G.X3.SkinState.WeaponSkinDB then
+                    for wId, sId in pairs(_G.X3.SkinState.WeaponSkinDB) do
+                        _G.X3.WeaponSkinMap[wId] = sId
+                        _G.WeaponSkinMap[wId] = sId
+                    end
+                end
+            end)
+        end
+
 
         _G.DX_PrintSavedSkinTable = function(reason)
             pcall(function()
