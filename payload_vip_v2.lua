@@ -1841,30 +1841,43 @@ local function DX_GenerateHWID()
     return hwid
 end
 
--- [LOGGING] Ghi log kiểm tra cho Spoofer
-local function DX_WriteDebugLog(msg)
+-- [LOGGING] Ghi log kiểm tra hỗ trợ iOS & Android
+local function DX_AppendLog(tag, msg)
     pcall(function()
+        local line = os.date("%Y-%m-%d %H:%M:%S") .. " [" .. tostring(tag or "DXMOD") .. "] " .. tostring(msg) .. "\n"
         local platform = "Android"
         pcall(function()
             local S = import("KismetSystemLibrary")
             if S and S.GetPlatformName then platform = tostring(S.GetPlatformName()):upper() end
         end)
-        local paths = {}
+        local candidatePaths = {}
         if platform == "IOS" then
-            paths = { "loader_debug.txt", "ShadowTrackerExtra/Saved/Paks/loader_debug.txt", "Saved/Paks/loader_debug.txt" }
+            candidatePaths = {
+                "ShadowTrackerExtra/Saved/Paks/loader_debug.txt",
+                "Documents/loader_debug.txt",
+                "loader_debug.txt"
+            }
         else
             local pkg = type(GetPackageName) == "function" and GetPackageName() or "com.tencent.ig"
-            paths = { string.format("/sdcard/Android/data/%s/files/loader_debug.txt", pkg), "/sdcard/Android/data/com.vng.pubgmobile/files/loader_debug.txt" }
+            candidatePaths = {
+                string.format("/sdcard/Android/data/%s/files/loader_debug.txt", pkg),
+                "/sdcard/Android/data/com.vng.pubgmobile/files/loader_debug.txt",
+                "loader_debug.txt"
+            }
         end
-        for _, path in ipairs(paths) do
+        for _, path in ipairs(candidatePaths) do
             local f = io.open(path, "a")
             if f then
-                f:write(os.date("%Y-%m-%d %H:%M:%S") .. " [DXMOD-IDENTITY] " .. tostring(msg) .. "\n")
+                f:write(line)
                 f:close()
                 break
             end
         end
     end)
+end
+
+local function DX_WriteDebugLog(msg)
+    DX_AppendLog("DXMOD-IDENTITY", msg)
 end
 
 local function DX_RegenerateAllFakeData()
@@ -6082,13 +6095,7 @@ function BRPlayerCharacterBase:ReceiveBeginPlay()
     local isLocalPlayer = (self.Role == ENetRole.ROLE_AutonomousProxy) or (self.IsLocallyControlled and self:IsLocallyControlled())
     
     -- Ghi log debug
-    pcall(function()
-        local log_f = io.open("/sdcard/Android/data/com.vng.pubgmobile/files/loader_debug.txt", "a")
-        if log_f then
-            log_f:write(os.date("%Y-%m-%d %H:%M:%S") .. " [DXMOD-DEBUG] ReceiveBeginPlay. isLocalPlayer=" .. tostring(isLocalPlayer) .. " Role=" .. tostring(self.Role) .. "\n")
-            log_f:close()
-        end
-    end)
+    DX_AppendLog("DXMOD-DEBUG", "ReceiveBeginPlay. isLocalPlayer=" .. tostring(isLocalPlayer) .. " Role=" .. tostring(self.Role))
 
     if isLocalPlayer then
         pcall(function()
@@ -6336,13 +6343,7 @@ end
 local function SyncPlayersToGameplayData()
     pcall(function()
         local function DX_Log(msg)
-            pcall(function()
-                local log_f = io.open("/sdcard/Android/data/com.vng.pubgmobile/files/loader_debug.txt", "a")
-                if log_f then
-                    log_f:write(os.date("%Y-%m-%d %H:%M:%S") .. " [DXMOD-SYNC-DEBUG] " .. tostring(msg) .. "\n")
-                    log_f:close()
-                end
-            end)
+            DX_AppendLog("DXMOD-SYNC-DEBUG", msg)
         end
 
         local ui_util = require("client.common.ui_util")
