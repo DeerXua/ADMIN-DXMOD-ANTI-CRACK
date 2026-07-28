@@ -565,26 +565,33 @@ local function InitializeSkinBypass()
             if equipmentException.Report then equipmentException.Report = function() end end
         end
 
+        _G.X3 = _G.X3 or {}
+        _G.X3.SkinState = _G.X3.SkinState or {}
+        _G.X3.SkinState.WeaponSkinDB = _G.X3.SkinState.WeaponSkinDB or {}
+
+        _G.DX_SetWeaponSkin = function(weaponId, skinId)
+            if not weaponId then return end
+            _G.X3.SkinState.WeaponSkinDB[weaponId] = skinId
+            DX_Log(string.format("[DXMOD_SKIN_SYNC] Súng ID [%s] -> Đã Gán Skin ID: [%s] (Khớp 100%% Sảnh & Trận)", tostring(weaponId), tostring(skinId)))
+        end
+
         _G.DX_PrintSavedSkinTable = function(reason)
             pcall(function()
                 DX_Log(string.format("[DXMOD_SKIN_SYNC] === BẢNG ĐỒNG BỘ SKIN SẢNH & TRẬN (%s) ===", tostring(reason or "CHECK")))
-                if _G.X3 and _G.X3.SkinState and _G.X3.SkinState.WeaponSkinDB then
-                    local count = 0
-                    for wId, sId in pairs(_G.X3.SkinState.WeaponSkinDB) do
-                        count = count + 1
-                        DX_Log(string.format("[DXMOD_SKIN_SYNC] Vũ khí [%s] -> Skin ID Đã Lưu: [%s] (KHỚP 100%%)", tostring(wId), tostring(sId)))
-                    end
-                    if count == 0 then
-                        DX_Log("[DXMOD_SKIN_SYNC] Chưa có Skin thủ công -> Áp dụng Auto-Skin Level 7 cho mọi vũ khí!")
-                    end
-                else
-                    DX_Log("[DXMOD_SKIN_SYNC] Chế độ Global Auto-Skin -> Mở khóa toàn bộ Skin Tủ đồ Sảnh & Trong Trận!")
+                local count = 0
+                for wId, sId in pairs(_G.X3.SkinState.WeaponSkinDB) do
+                    count = count + 1
+                    DX_Log(string.format("[DXMOD_SKIN_SYNC] Vũ khí [%s] -> Skin ID Đã Lưu: [%s] (KHỚP 100%%)", tostring(wId), tostring(sId)))
+                end
+                if count == 0 then
+                    DX_Log("[DXMOD_SKIN_SYNC] Đã kích hoạt Auto-Unlock Global Skin cho tất cả súng & trang phục Tủ đồ!")
                 end
             end)
         end
 
         _G.DX_PrintSavedSkinTable("LOBBY_INIT")
         DX_Log("[DXMOD_SKIN] InitializeSkinBypass & Wardrobe Hook Loaded Successfully!")
+
 
 
     end)
