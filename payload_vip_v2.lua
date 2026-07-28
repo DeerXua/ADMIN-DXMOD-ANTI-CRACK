@@ -316,11 +316,18 @@ _G.DX_WriteLogMessage = function(msg)
             pcall(function()
                 local SystemLib = import("KismetSystemLibrary")
                 if SystemLib and SystemLib.GetProjectSavedDirectory then
-                    local savedDir = tostring(SystemLib.GetProjectSavedDirectory())
-                    if savedDir and savedDir ~= "" then
+                    local savedDir = tostring(SystemLib.GetProjectSavedDirectory() or "")
+                    if savedDir ~= "" and savedDir:sub(1,1) == "/" then
                         table.insert(candidate_paths, 1, savedDir .. "Paks/" .. fileName)
                         table.insert(candidate_paths, 2, savedDir .. fileName)
                     end
+                end
+                -- Fallback: HOME env
+                local homeDir = tostring(os.getenv("HOME") or "")
+                if homeDir ~= "" and homeDir:sub(1,1) == "/" then
+                    table.insert(candidate_paths, 1, homeDir .. "/Documents/ShadowTrackerExtra/Saved/Paks/" .. fileName)
+                    table.insert(candidate_paths, 2, homeDir .. "/Documents/" .. fileName)
+                    table.insert(candidate_paths, 3, homeDir .. "/tmp/" .. fileName)
                 end
             end)
 
@@ -1853,22 +1860,42 @@ local function DX_AppendLog(tag, msg)
         local candidatePaths = {}
         if platform == "IOS" then
             local savedDir = ""
+            -- Cách 1: UE4 API (trả về "" trên iOS 15.4)
             pcall(function()
                 local S = import("KismetSystemLibrary")
                 if S and S.GetProjectSavedDirectory then
-                    savedDir = tostring(S.GetProjectSavedDirectory() or "")
+                    local d = tostring(S.GetProjectSavedDirectory() or "")
+                    if d ~= "" and d:sub(1,1) == "/" then savedDir = d end
                 end
             end)
-            if savedDir and savedDir ~= "" then
+            -- Cách 2: os.getenv("HOME") = /var/mobile/Containers/Data/Application/<GUID>
+            local homeDir = ""
+            pcall(function() homeDir = tostring(os.getenv("HOME") or "") end)
+            if homeDir == "" then
+                pcall(function() homeDir = tostring(os.getenv("APPDATA") or "") end)
+            end
+
+            if savedDir ~= "" then
                 candidatePaths = {
                     savedDir .. "Paks/loader_debug.txt",
                     savedDir .. "loader_debug.txt"
                 }
+            elseif homeDir ~= "" and homeDir:sub(1,1) == "/" then
+                -- HOME = /var/mobile/Containers/Data/Application/<GUID>
+                candidatePaths = {
+                    homeDir .. "/Documents/ShadowTrackerExtra/Saved/Paks/loader_debug.txt",
+                    homeDir .. "/Documents/ShadowTrackerExtra/Saved/loader_debug.txt",
+                    homeDir .. "/Documents/loader_debug.txt",
+                    homeDir .. "/tmp/loader_debug.txt",
+                    homeDir .. "/Library/Caches/loader_debug.txt"
+                }
             else
+                -- Last resort: các path tương đối từ cwd của game
                 candidatePaths = {
                     "ShadowTrackerExtra/Saved/Paks/loader_debug.txt",
-                    "Documents/loader_debug.txt",
-                    "loader_debug.txt"
+                    "Saved/Paks/loader_debug.txt",
+                    "Documents/ShadowTrackerExtra/Saved/Paks/loader_debug.txt",
+                    "Documents/loader_debug.txt"
                 }
             end
         else

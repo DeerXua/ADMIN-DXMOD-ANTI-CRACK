@@ -9,3 +9,24 @@ ecosystem.config.*
 *.bak
 *.bak*
 *.tmp
+
+# Large binary tools - exclude from git
+Tools/jdk/
+Tools/jre/
+Tools/libimobiledevice/*.zip
+Tools/*.zip
+Tools/lua53.zip
+Tools/lua53_bin.zip
+platform-tools/
+__pycache__/
+*.pyc
+*.luac
+*.xlog
+dx_debug.txt
+dx_loaded.txt
+scratch/
+search_payload.py
+search_results.txt
+tool_pak.py
+samir.py
+bypass.js
