@@ -312,9 +312,27 @@ end
 pcall(__InitializeGlobalSkinAutoUnlock)
 
 -- ==============================================================================
--- [DX-MOD ADVANCED SKIN MOD & UNLOCK SYSTEM]: LOBBY AVATAR & BACKPACK HOOK
+-- [DX-MOD] LEXUSCONFIG: HỆ THỐNG TOGGLE BẬT/TẮT TÍNH NĂNG SKIN MOD
+-- SkinUnlockAll : true = mở khoá mọi skin tự động
+-- ModSkin       : true = bật mod skin trong trận
+-- SkinAttachment: true = bật mod phụ kiện vũ khí
 -- ==============================================================================
 _G.X3 = _G.X3 or {}
+_G.X3.LexusConfig = _G.X3.LexusConfig or {
+    SkinUnlockAll  = true,   -- Bật: unlock skin toàn bộ
+    ModSkin        = true,   -- Bật: mod skin trong trận
+    SkinAttachment = true,   -- Bật: mod phụ kiện vũ khí
+    SkinDeadBox    = false,  -- Tắt: skin hòm chết
+    KillMessage    = false,  -- Tắt: thông báo kill
+    KillCountUI    = false,  -- Tắt: UI đếm kill
+    ModEmote       = false,  -- Tắt: mod emote
+}
+-- Alias toàn cục để tương thích với modskin.lua
+_G.LexusConfig = _G.X3.LexusConfig
+
+-- ==============================================================================
+-- [DX-MOD ADVANCED SKIN MOD & UNLOCK SYSTEM]: LOBBY AVATAR & BACKPACK HOOK
+-- ==============================================================================
 _G.X3.skinIdCache2 = _G.X3.skinIdCache2 or {}
 
 -- Bảng map ID phụ kiện gốc ra index slot (22 slots)
@@ -564,7 +582,6 @@ _G.X3.SkinUnlock_HookTable = function(tbl, tag)
 end
 
 _G.X3.SkinUnlockScan = function(force)
-    if true then return end
     if not _G.X3.LexusConfig or not _G.X3.LexusConfig.SkinUnlockAll then return end
     local st = _G.X3.SkinUnlockState
     local now = os.clock()
