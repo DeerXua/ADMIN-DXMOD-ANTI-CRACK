@@ -5505,7 +5505,6 @@ end
             _G.X3._XFTipThrottled = true
         end)
     end
-end
 
 do
   if not _G.X3._LogEnriched then
