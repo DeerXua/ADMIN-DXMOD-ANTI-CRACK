@@ -8564,10 +8564,17 @@
     let lang = "en";
     const T = k => (LG[lang] && LG[lang][k] !== undefined ? LG[lang][k] : LG.en[k]) || k;
 
+    
     function setLang(l, el) {
+      if (!l) l = "vi";
       lang = l;
+      try { localStorage.setItem("dx_lang", l); } catch(e){}
+      
+      // Sync langSelect dropdown if present
+      const ls = document.getElementById("langSelect");
+      if (ls && ls.value !== l) ls.value = l;
+
       // Update all elements with id matching lbl_* keys
-      // Update all lbl_ ids
       document.querySelectorAll("[id^='lbl_']").forEach(function (e) {
         const t = T(e.id);
         if (t && t !== e.id && e.tagName !== "INPUT" && e.tagName !== "SELECT" && e.tagName !== "TEXTAREA") {
@@ -8590,89 +8597,43 @@
         if (t && t !== key) e.placeholder = t;
       });
       // Update page title
-      const pageNames = { dashboard: T("lbl_nav_dash"), keys: T("lbl_nav_keys"), log: T("lbl_log_title"), sellers: T("lbl_sellers_title"), owners_admins: T("lbl_owner_admins") };
+      const pageNames = { 
+        dashboard: T("lbl_nav_dash"), 
+        keys: T("lbl_nav_keys"), 
+        log: T("lbl_nav_log") || T("lbl_log_title"), 
+        sellers: T("lbl_nav_sellers") || T("lbl_sellers_title"), 
+        owners_admins: T("lbl_owner_admins") 
+      };
       const pt = document.getElementById("pageTitle");
       if (pt && pageNames[currentPage]) pt.textContent = pageNames[currentPage];
+
       // Lang buttons
       document.querySelectorAll(".lbtn-lang").forEach(b => {
         b.classList.remove("on");
         if (el && b === el) { b.classList.add("on"); return; }
-        const flags = { en: "🇬🇧", id: "🇮🇩", vi: "🇻🇳", zh: "🇨🇳" };
-        if (!el && b.textContent.includes(flags[l])) b.classList.add("on");
+        const flags = { en: "EN", id: "ID", vi: "VI", zh: "ZH" };
+        if (!el && (b.textContent.includes(flags[l]) || b.dataset.lang === l)) b.classList.add("on");
       });
       if (el) el.classList.add("on");
-      // Update lbtnEl
+
+      // Update login button & trial desc
       const lb = document.getElementById("lbtnEl"); if (lb) lb.textContent = T("login");
-      // Trial desc
       const td = document.getElementById("trialDesc"); if (td) td.textContent = T("trialDesc");
-      // Re-render dynamic content so JS-generated text updates too
-      // Re-render ALL dynamic content for full language sync
+
+      // Re-render ALL dynamic components immediately in pure selected language
       if (typeof renderCards === "function" && currentPage === "keys") renderCards();
       if (typeof renderLog === "function" && currentPage === "log") renderLog();
       if (typeof renderDashboard === "function" && currentPage === "dashboard") renderDashboard();
       if (typeof renderSellersList === "function" && currentPage === "sellers") renderSellersList();
       if (typeof renderOwnerAdminsList === "function" && currentPage === "owners_admins") renderOwnerAdminsList();
-      if (typeof updateTabCounts === "function") updateTabCounts();
-      if (typeof updateStats === "function") updateStats();
-      if (typeof buildDurPresets === "function") buildDurPresets();
-      if (typeof renderRenewalAlert === "function") renderRenewalAlert();
-      if (typeof updateExpireBadge === "function") updateExpireBadge();
-      // Persist
-      localStorage.setItem("lnLang", l);
-      if (loggedUser) addLog("🌐", "Language changed to " + l.toUpperCase(), "", "settings");
-      // Sync dropdown
-      const ls = document.getElementById("langSelect"); if (ls) ls.value = l;
     }
-    function setLangFromSelect(l) { setLang(l); }
 
-    // ── Auto-apply lang on DOM load ──
-    (function () {
-      const saved = localStorage.getItem("lnLang") || "en";
-      lang = saved;
-    })();
-
-
-    /* ══ THEME ══ */
-    function setTheme(t, el) {
-      document.body.className = document.body.className.replace(/theme-\w+/g, "").trim();
-      document.body.classList.add("theme-" + t);
-      document.querySelectorAll(".theme-dot").forEach(d => d.classList.remove("active"));
-      if (el) el.classList.add("active");
-      const k = loggedUser ? "lnTheme_" + loggedUser : "lnTheme";
-      localStorage.setItem(k, t); localStorage.setItem("lnTheme", t);
-      addLog("🎨", "Theme: " + t, "", "action");
-    }
-    function quickThemeToggle() {
-      const T2 = ["dark", "light", "neon", "gaming", "cyber", "ocean"];
-      const cur = document.body.className.match(/theme-(\w+)/)?.[1] || "dark";
-      const n = T2[(T2.indexOf(cur) + 1) % T2.length];
-      document.body.className = document.body.className.replace(/theme-\w+/g, "").trim();
-      document.body.classList.add("theme-" + n);
-      const k = loggedUser ? "lnTheme_" + loggedUser : "lnTheme";
-      localStorage.setItem(k, n); localStorage.setItem("lnTheme", n);
-      document.querySelectorAll(".theme-dot").forEach((d, i) => d.classList.toggle("active", T2[i] === n));
-      addLog("🎨", "Theme: " + n, "", "action");
-    }
-    (function () {
-      const t = localStorage.getItem("lnTheme") || "dark";
-      document.body.classList.add("theme-" + t);
-      setTimeout(() => {
-        const T2 = ["dark", "light", "neon", "gaming", "cyber", "ocean"];
-        document.querySelectorAll(".theme-dot").forEach((d, i) => d.classList.toggle("active", T2[i] === t));
-      }, 80);
-    })();
-
-    /* ══ CURSOR + BUBBLES ══ */
-    document.addEventListener("click", ev => {
-      if ('ontouchstart' in window) return; // skip FX on touch
-      for (let i = 0; i < 3; i++) {
-        const sz = 7 + Math.random() * 14, ox = (Math.random() - .5) * 40, oy = (Math.random() - .5) * 40;
-        const b = document.createElement("div"); b.className = "bubble-fx";
-        const clrs = ["rgba(0,200,255,.5)", "rgba(0,85,255,.4)", "rgba(136,51,255,.4)", "rgba(0,229,160,.4)", "rgba(255,123,0,.4)"];
-        b.style.cssText = `left:${ev.clientX - sz / 2 + ox}px;top:${ev.clientY - sz / 2 + oy}px;width:${sz}px;height:${sz}px;background:${clrs[i % clrs.length]};animation-delay:${i * .04}s`;
-        document.body.appendChild(b); setTimeout(() => b.remove(), 560);
-      }
+    // Auto-initialize saved language on load
+    document.addEventListener("DOMContentLoaded", function() {
+      const savedLang = (function(){ try{ return localStorage.getItem("dx_lang"); }catch(e){ return "vi"; } })() || "vi";
+      setLang(savedLang);
     });
+);
     (function () {
       if ('ontouchstart' in window) return; // skip on touch devices
       const clrs = ["rgba(0,200,255,.55)", "rgba(136,51,255,.45)", "rgba(0,229,160,.45)", "rgba(0,85,255,.4)"];
