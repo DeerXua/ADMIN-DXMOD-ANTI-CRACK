@@ -52,6 +52,9 @@ _G.DX.LexusConfig = _G.DX.LexusConfig or {
     DXSkinNewRandom = false,
 }
 _G.DX.LexusState = _G.DX.LexusState or {}
+_G.DX.L_Log = _G.DX.L_Log or function(msg) if bWriteLog then print("[DXMOD SKIN]", msg) end end
+_G.DX.Trace = _G.DX.Trace or function(msg) if bWriteLog then print("[DXMOD TRACE]", msg) end end
+
 
 local bWriteLog = true
 local printf = function(...)
@@ -4054,6 +4057,9 @@ _G.DX.LexusConfig = _G.DX.LexusConfig or {
     DXSkinNewRandom = false,
 }
 _G.DX.LexusState = _G.DX.LexusState or {}
+_G.DX.L_Log = _G.DX.L_Log or function(msg) if bWriteLog then print("[DXMOD SKIN]", msg) end end
+_G.DX.Trace = _G.DX.Trace or function(msg) if bWriteLog then print("[DXMOD TRACE]", msg) end end
+
 
 _G.DX.VIP_Attachments = {
     [1101004236]={1010042307,1010042306,1010042308,1010042304,1010042300,1010042305,1010042299,1010042298,1010042297,1010042296,1010042295,1010042294,0,1010042314,1010042309,1010042316,1010042317,1010042318,1010042310,1010042315,1010042319,0},
