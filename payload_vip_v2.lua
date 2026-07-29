@@ -12546,4 +12546,97 @@ pcall(function()
     end
 end)
 
+
+-- =========================== GLOBAL LOBBY SKIN KEEP-ALIVE & REAPPLY TICKER (DX MOD) ===========================
+pcall(function()
+    local ok, ticker = pcall(require, "common.time_ticker")
+    local GameplayData = package.loaded["GameLua.GameCore.Data.GameplayData"] or require("GameLua.GameCore.Data.GameplayData")
+    
+    local function Valid(obj)
+        return obj and slua.isValid(obj)
+    end
+
+    if ok and ticker and ticker.AddTimerLoop then
+        ticker.AddTimerLoop(0.03, function()
+            pcall(function()
+                -- 1. Quét nạp bảng dữ liệu Skin DataTable liên tục
+                if _G.DX and _G.DX.EnumState and _G.DX.EnumStep then pcall(_G.DX.EnumState and _G.DX.EnumStep) end
+                local ij = _G.DX and _G.DX.Inj
+                if ij and ij.injectRunning and not ij.allDone and _G.DX.InjInjectBatch then
+                    pcall(_G.DX.InjInjectBatch)
+                end
+
+                -- 2. Kiểm tra trạng thái Sảnh (Lobby) khi vừa thoát trận hoặc đăng nhập
+                local pc = GameplayData and GameplayData.GetPlayerController and GameplayData.GetPlayerController()
+                local localPlayer = GameplayData and GameplayData.GetPlayerCharacter and GameplayData.GetPlayerCharacter()
+                
+                local dxLobbyOK = false
+                if not Valid(localPlayer) then
+                    _G.DX._LpInvalidSince = _G.DX._LpInvalidSince or os.clock()
+                    if (os.clock() - _G.DX._LpInvalidSince) <= 10 then
+                        return -- grace period thoát trận/chết
+                    end
+                    _G.DX._LpInvalidSince = nil
+
+                    local dxSpect = false
+                    pcall(function()
+                        if pc and slua.isValid(pc) then
+                            local sp = pc.GetSpectatorPawn and pc:GetSpectatorPawn()
+                            if sp and slua.isValid(sp) then dxSpect = true end
+                            if not dxSpect and pc.PlayerState and pc.PlayerState.SpectatingCharacterOwner then
+                                local so = pc.PlayerState.SpectatingCharacterOwner
+                                if so and slua.isValid(so) then dxSpect = true end
+                            end
+                        end
+                    end)
+                    if not dxSpect then dxLobbyOK = true end
+                else
+                    if _G.DX._LpInvalidSince then
+                        _G.DX._LpInvalidSince = nil
+                        if _G.DX.InjEnsure then pcall(_G.DX.InjEnsure) end
+                    end
+                end
+
+                -- 3. Xử lý Nạp lại Skin trong Sảnh (Lobby Skin Burst & Keep-Alive)
+                if not Valid(localPlayer) and dxLobbyOK then
+                    if not _G.DX.LobbyTraced then
+                        _G.DX.LobbyTraced = true
+                        if _G.DX.LexusConfig and (_G.DX.LexusConfig.ModSkin or _G.DX.LexusConfig.SkinUnlockAll or _G.DX.LexusConfig.DXUnlockAll) then
+                            if _G.DX.InjEnsure then pcall(_G.DX.InjEnsure) end
+                            if _G.DX.InjInjectBatch then pcall(_G.DX.InjInjectBatch) end
+                            if _G.DX.InjReapplyLobby then pcall(_G.DX.InjReapplyLobby) end
+                            _G.DX._SkinBurst = { t0 = os.clock(), n = 0 }
+                        end
+                    end
+
+                    if _G.DX.LexusConfig and (_G.DX.LexusConfig.ModSkin or _G.DX.LexusConfig.SkinUnlockAll or _G.DX.LexusConfig.DXUnlockAll) then
+                        if _G.DX.InjEnsure then pcall(_G.DX.InjEnsure) end
+                        local sb = _G.DX._SkinBurst
+                        if sb and sb.n < 4 then
+                            local delays = { 0.5, 2.0, 5.0, 10.0 }
+                            if (os.clock() - sb.t0) >= delays[sb.n + 1] then
+                                sb.n = sb.n + 1
+                                if _G.DX.InjInjectBatch then pcall(_G.DX.InjInjectBatch) end
+                                if _G.DX.InjReapplyLobby then pcall(_G.DX.InjReapplyLobby) end
+                            end
+                        end
+                        local nowL = os.clock()
+                        if not _G.DX.LobbyReapplyT or (nowL - _G.DX.LobbyReapplyT) > 5 then
+                            _G.DX.LobbyReapplyT = nowL
+                            if _G.DX.Inj and _G.DX.Inj.injectDone and _G.DX.InjReapplyLobby then
+                                pcall(_G.DX.InjReapplyLobby)
+                            end
+                        end
+                    end
+                    return
+                end
+
+                if _G.DX.LobbyTraced then
+                    _G.DX.LobbyTraced = nil
+                end
+            end)
+        end)
+    end
+end)
+
 return true
