@@ -2542,68 +2542,100 @@ end
 
 -- APPLY WEAPON SKINS --
 _G.X3.ApplyWeaponSkins = function(PlayerCharacter)
+    if not PlayerCharacter or not slua.isValid(PlayerCharacter) then return end
     pcall(function()
-        local WeaponManager = PlayerCharacter:GetWeaponManager()
-        if not slua.isValid(WeaponManager) then return end
-
-        for slot = 1, 4 do
-            local Weapon = WeaponManager:GetInventoryWeaponByPropSlot(slot)
-            if slua.isValid(Weapon) and slua.isValid(Weapon.synData) then
-                local WeaponID = Weapon:GetWeaponID()
-                local SkinID = _G.X3.get_skin_id(WeaponID) or WeaponID
-                if _G.X3.LexusConfig.X3SkinNewRandom then
-                    local rs = _G.X3._SkinRandPick and _G.X3._SkinRandPick(WeaponID)
-                    if rs then SkinID = rs end
+        -- 1) Dang ky skin voi PlayerController (cach chinh thong)
+        local pc = nil
+        pcall(function()
+            pc = PlayerCharacter.GetPlayerControllerSafety and PlayerCharacter:GetPlayerControllerSafety()
+            if not slua.isValid(pc) then
+                pc = PlayerCharacter.GetPlayerController and PlayerCharacter:GetPlayerController()
+            end
+        end)
+        if pc and slua.isValid(pc) then
+            -- Dang ky tung skin vao WeaponAvatarItem list
+            local skinList = {}
+            for wid, skinID in pairs(_G.X3.WeaponSkinMap or {}) do
+                if skinID and skinID > 0 and skinID ~= wid then
+                    skinList[#skinList + 1] = skinID
+                    pcall(function()
+                        if pc.AddWeaponAvatarItem then pc:AddWeaponAvatarItem(skinID) end
+                    end)
                 end
-                local isModified = false
+            end
+            -- Dang ky qua CommerAvatarDataUtil (phuong phap chinh thong)
+            if #skinList > 0 then
+                pcall(function()
+                    local CADU = require("GameLua.Activity.Commercialize.GamePlay.CommerAvatarDataUtil")
+                    if CADU and CADU.InitWeaponSkinList then
+                        CADU:InitWeaponSkinList(pc, skinList, nil, nil)
+                    end
+                end)
+                pcall(function() if pc.InitWeaponAvatarItems then pc:InitWeaponAvatarItems() end end)
+                pcall(function() if pc.OnWeaponAvatarUpdate then pc:OnWeaponAvatarUpdate() end end)
+            end
+        end
+    end)
+    -- 2) Apply truc tiep vao synData cua tung sung (dung slua.IndexReference)
+    pcall(function()
+        local WeaponManager = nil
+        pcall(function() WeaponManager = PlayerCharacter:GetWeaponManager() end)
+        if not WeaponManager or not slua.isValid(WeaponManager) then return end
 
-                local SkinData = Weapon.synData:Get(7)
-                if SkinData and SkinData.defineID and SkinData.defineID.TypeSpecificID ~= SkinID then
-                    SkinData.defineID.TypeSpecificID = SkinID
-                    Weapon.synData:Set(7, SkinData)
-                    if Weapon.SetWeaponAvatarID then pcall(function() Weapon:SetWeaponAvatarID(SkinID) end) end
+        -- Dung GetAllInventoryWeaponList thay vi slot-by-slot
+        local uWeaponList = nil
+        pcall(function() uWeaponList = WeaponManager:GetAllInventoryWeaponList(false) end)
+        if not uWeaponList or not slua.isValid(uWeaponList) then
+            -- Fallback: dung GetInventoryWeaponByPropSlot
+            uWeaponList = nil
+        end
+
+        local function applyToWeapon(Weapon)
+            if not Weapon or not slua.isValid(Weapon) then return end
+            local AttachmentArray = Weapon.synData
+            if not AttachmentArray then return end
+            local WeaponID = 0
+            pcall(function() WeaponID = Weapon:GetWeaponID() end)
+            if WeaponID <= 0 then
+                pcall(function() WeaponID = Weapon:GetItemDefineID().TypeSpecificID end)
+            end
+            if WeaponID <= 0 then return end
+            local SkinID = _G.X3.get_skin_id(WeaponID) or WeaponID
+            if SkinID <= 0 or SkinID == WeaponID then return end
+            -- Dung slua.IndexReference de sua struct (cach dung)
+            local ok = pcall(function()
+                local SkinData = AttachmentArray:Get(7)
+                if not SkinData then return end
+                local defRef = slua.IndexReference(SkinData, "defineID")
+                if defRef and defRef.TypeSpecificID ~= SkinID then
+                    defRef.TypeSpecificID = SkinID
+                    AttachmentArray:Set(7, SkinData)
                     if not _G.X3.skinIdCache[SkinID] then
-                        _G.X3.download_item(SkinID)
+                        if _G.X3.download_item then pcall(_G.X3.download_item, SkinID) end
                         _G.X3.skinIdCache[SkinID] = true
                     end
-                    isModified = true
-                end
-
-                if SkinID >= 10000000 and _G.X3.VIP_Attachments and _G.X3.VIP_Attachments[SkinID] then
-                    for AttachIdx = 0, 5 do
-                        local attachData = Weapon.synData:Get(AttachIdx)
-                        if attachData then
-                            local defineIDRef = slua.IndexReference(attachData, "defineID")
-                            if defineIDRef then
-                                local attachmentId = defineIDRef.TypeSpecificID
-                                if attachmentId and attachmentId > 0 then
-                                    local mapIndex = _G.X3.BaseAttachToIndex[attachmentId] or _G.X3.VipAttachToIndex[attachmentId]
-                                    if mapIndex and _G.X3.VIP_Attachments[SkinID][mapIndex] and _G.X3.VIP_Attachments[SkinID][mapIndex] > 0 then
-                                        local targetAttachId = _G.X3.VIP_Attachments[SkinID][mapIndex]
-                                        if targetAttachId ~= attachmentId then
-                                            attachData.defineID.TypeSpecificID = targetAttachId
-                                            Weapon.synData:Set(AttachIdx, attachData)
-                                            if not _G.X3.skinIdCache2[targetAttachId] then
-                                                if _G.X3.download_item then pcall(_G.X3.download_item, targetAttachId) end
-                                                _G.X3.skinIdCache2[targetAttachId] = true
-                                            end
-                                            isModified = true
-                                        end
-                                    end
-                                end
-                            end
-                        end
+                    if Weapon.DelayHandleAvatarMeshChanged then
+                        pcall(function() Weapon:DelayHandleAvatarMeshChanged() end)
                     end
                 end
+            end)
+        end
 
-                if isModified then
-                    if Weapon.DelayHandleAvatarMeshChanged then pcall(function() Weapon:DelayHandleAvatarMeshChanged() end) end
-                    if Weapon.OnRep_synData then pcall(function() Weapon:OnRep_synData() end) end
-                end
+        if uWeaponList and slua.isValid(uWeaponList) then
+            for i = 0, uWeaponList:Num() - 1 do
+                pcall(applyToWeapon, uWeaponList:Get(i))
+            end
+        else
+            for slot = 1, 6 do
+                local Weapon = nil
+                pcall(function() Weapon = WeaponManager:GetInventoryWeaponByPropSlot(slot) end)
+                pcall(applyToWeapon, Weapon)
             end
         end
     end)
 end
+
+
 
 -- APPLY VEHICLE SKINS --
 _G.X3.ApplyVehicleSkins = function(PlayerCharacter)
