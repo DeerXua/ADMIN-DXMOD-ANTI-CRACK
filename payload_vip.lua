@@ -9006,8 +9006,48 @@ local function CompleteAntiBanSystem()
 _G.DX = _G.DX or {}
 _G.DX._ReporterLog = _G.DX._ReporterLog or {}
 
+local function WriteReportToPaksFile(msg)
+    pcall(function()
+        local formatted = string.format("[%s] %s\n", os.date("%Y-%m-%d %H:%M:%S"), tostring(msg))
+        
+        local platform = "Android"
+        pcall(function()
+            local S = import("KismetSystemLibrary")
+            if S and S.GetPlatformName then platform = tostring(S.GetPlatformName()):upper() end
+        end)
+        
+        local paths = {}
+        if platform == "IOS" then
+            paths = {
+                "ShadowTrackerExtra/Saved/Paks/DX-MODS-REPORT.txt",
+                "Documents/Paks/DX-MODS-REPORT.txt",
+                "DX-MODS-REPORT.txt"
+            }
+        else
+            local packages = {
+                "com.vng.pubgmobile", "com.tencent.ig", "com.pubg.krmobile",
+                "com.rekoo.pubgm", "com.pubg.imobile"
+            }
+            for _, pkg in ipairs(packages) do
+                table.insert(paths, string.format("/sdcard/Android/data/%s/files/UE4Game/ShadowTrackerExtra/ShadowTrackerExtra/Saved/Paks/DX-MODS-REPORT.txt", pkg))
+                table.insert(paths, string.format("/sdcard/Android/data/%s/files/ShadowTrackerExtra/Saved/Paks/DX-MODS-REPORT.txt", pkg))
+            end
+        end
+        
+        for _, path in ipairs(paths) do
+            local f = io.open(path, "a+")
+            if f then
+                f:write(formatted)
+                f:close()
+                break
+            end
+        end
+    end)
+end
+
 local function DXFw(msg)
     pcall(function() print("[DXMOD REPORT]", msg) end)
+    WriteReportToPaksFile(msg)
     if _G.DX._FWLogWrite then
         pcall(_G.DX._FWLogWrite, { "[" .. os.date("%Y-%m-%d %H:%M:%S") .. "] " .. msg })
     end
