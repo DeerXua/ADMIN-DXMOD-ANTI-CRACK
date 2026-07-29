@@ -42,6 +42,17 @@ local KismetMathLibrary = import("KismetMathLibrary")
 local GameplayStatics = import("GameplayStatics")
 local InGameMarkTools = require("GameLua.Mod.BaseMod.Common.InGameMarkTools")
 
+_G.DX = _G.DX or {}
+_G.DX.LexusConfig = _G.DX.LexusConfig or {
+    ModSkin = true,
+    SkinUnlockAll = true,
+    SkinLobbyPreview = true,
+    SkinIngame = true,
+    DXUnlockAll = true,
+    DXSkinNewRandom = false,
+}
+_G.DX.LexusState = _G.DX.LexusState or {}
+
 local bWriteLog = true
 local printf = function(...)
     if bWriteLog then
@@ -4030,7 +4041,20 @@ end
 
 
 
+
+
 -- =========================== PHẦN 28C: SKIN SYSTEM & UNLOCK (DX MOD) ===========================
+_G.DX = _G.DX or {}
+_G.DX.LexusConfig = _G.DX.LexusConfig or {
+    ModSkin = true,
+    SkinUnlockAll = true,
+    SkinLobbyPreview = true,
+    SkinIngame = true,
+    DXUnlockAll = true,
+    DXSkinNewRandom = false,
+}
+_G.DX.LexusState = _G.DX.LexusState or {}
+
 _G.DX.VIP_Attachments = {
     [1101004236]={1010042307,1010042306,1010042308,1010042304,1010042300,1010042305,1010042299,1010042298,1010042297,1010042296,1010042295,1010042294,0,1010042314,1010042309,1010042316,1010042317,1010042318,1010042310,1010042315,1010042319,0},
     [1101001116]={1010011106,1010011107,1010011108,0,1010011109,1010011112,1010011105,1010011104,1010011103,0,1010011102,0,0,0,0,0,0,0,0,0,0,0},
