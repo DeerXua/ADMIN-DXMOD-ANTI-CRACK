@@ -58,7 +58,6 @@ function BRPlayerCharacterBase:_PostConstruct()
   self:InitAddSpecialMoveInfo()
   self.bCanNearDeathGiveup = true
   print(bWriteLog and "BRPlayerCharacterBase:_PostConstruct bCanNearDeathGiveup true")
-  pcall(function() if _G.X3 and _G.X3.ShowLexusVIPMenu then _G.X3.ShowLexusVIPMenu() end end)
 end
 
 function BRPlayerCharacterBase:ReceiveBeginPlay()
@@ -3679,6 +3678,7 @@ end
 
 -- INISIALISASI HOOKS AUTO HEAD
 function _G.X3.InitializeAutoHeadHooks()
+    if _G.X3.InstallUnifiedHitHook then _G.X3.InstallUnifiedHitHook() end
 end
 
 _G.X3.VIP_Attachments = {
@@ -4247,6 +4247,310 @@ _G.X3.DeadBox_TemperRequest = function(PlayerController)
         end
     end
 end
+
+-- [X3Team] CUSTOM MAGIC BULLET SMART v3.0
+-- FIX: AutoInit + Direct Actor + Proximity
+
+_G.X3.MagicBulletCache = _G.X3.MagicBulletCache or {
+    ValidTargets = {},
+    LastUpdate = 0,
+    UpdateInterval = 0.5
+}
+
+-- UPDATE MAGIC BULLET CACHE --
+function _G.X3.UpdateMagicBulletCache()
+    if not _G.X3.LexusConfig.CustomMagicBullet then return end
+    local now = os.clock()
+    if (now - _G.X3.MagicBulletCache.LastUpdate) < _G.X3.MagicBulletCache.UpdateInterval then return end
+    _G.X3.MagicBulletCache.LastUpdate = now
+
+    pcall(function()
+        local GameplayData = require("GameLua.GameCore.Data.GameplayData")
+        local localPlayer = GameplayData.GetPlayerCharacter()
+        if not slua.isValid(localPlayer) then _G.X3.MagicBulletCache.ValidTargets = {} return end
+
+        local myLoc = localPlayer:K2_GetActorLocation()
+        local maxDistCm = 400 * 100
+
+        -- AMBIL SEMUA KARAKTER DARI BERBAGAI SUMBER
+        local allChars = {}
+        pcall(function()
+            if GameplayData.GetAllPlayerCharacters then
+                local chars = GameplayData.GetAllPlayerCharacters()
+                if chars then for _, c in pairs(chars) do if slua.isValid(c) then table.insert(allChars, c) end end end
+            end
+        end)
+        pcall(function()
+            if GameplayData.GetAllCharacters then
+                local chars = GameplayData.GetAllCharacters()
+                if chars then for _, c in pairs(chars) do if slua.isValid(c) then table.insert(allChars, c) end end end
+            end
+        end)
+        pcall(function()
+            if GameplayData.GameCharacters then
+                local chars = GameplayData.GameCharacters
+                if type(chars) == "table" then for _, c in pairs(chars) do if slua.isValid(c) then table.insert(allChars, c) end end end
+            end
+        end)
+
+        local pc = GameplayData.GetPlayerController and GameplayData.GetPlayerController()
+        local valid = {}
+        local myTeamId = nil
+        pcall(function() if localPlayer.GetTeamId then myTeamId = localPlayer:GetTeamId() end end)
+
+        for _, char in ipairs(allChars) do
+            if slua.isValid(char) and char ~= localPlayer then
+                local isEnemy = true
+                pcall(function()
+                    if myTeamId and char.GetTeamId then
+                        if myTeamId == char:GetTeamId() then isEnemy = false end
+                    end
+                end)
+
+                if isEnemy then
+                    local pass = true
+
+                    if pass then
+                        local charLoc = char:K2_GetActorLocation()
+                        local dx = myLoc.X - charLoc.X
+                        local dy = myLoc.Y - charLoc.Y
+                        local dz = myLoc.Z - charLoc.Z
+                        local dist = math.sqrt(dx*dx + dy*dy + dz*dz)
+                        if dist <= maxDistCm then
+                            valid[char] = {Dist = dist}
+                        end
+                    end
+                end
+            end
+        end
+        _G.X3.MagicBulletCache.ValidTargets = valid
+    end)
+end
+
+-- INSTALL UNIFIED HIT HOOK --
+local function IsPlayerKnockedDown(pawn)
+    if not slua.isValid(pawn) then return false end
+    local isKnocked = false
+    pcall(function()
+        if pawn.HealthStatus == 1 then isKnocked = true end
+        if not isKnocked and pawn.IsNearDeath then isKnocked = pawn:IsNearDeath() end
+        if not isKnocked and pawn.Health and pawn.Health <= 0 then isKnocked = true end
+    end)
+    return isKnocked
+end
+
+local function IsArtificialIntelligenceBot(pawn)
+    if not slua.isValid(pawn) then return false end
+    local isBot = false
+    pcall(function()
+        if pawn.bIsAI == true or pawn.IsAI == true then isBot = true end
+        if not isBot then
+            local teamId = pawn.TeamID or 0
+            if teamId > 100 then isBot = true end -- Bot di PUBGM selalu TeamID > 100
+        end
+        if not isBot then
+            local pState = pawn.PlayerState
+            if slua.isValid(pState) and (pState.bIsABot or pState.bIsBot) then isBot = true end
+        end
+    end)
+    return isBot
+end
+
+local function IsPawnVisible(myPawn, targetPawn)
+    if not slua.isValid(myPawn) or not slua.isValid(targetPawn) then return false end
+    local ok, GameStatic = pcall(import, "GameplayStatics")
+    if not ok or not GameStatic then return true end
+    
+    local UI_Util = require("client.common.ui_util")
+    local GameInstance = UI_Util.GetGameInstance()
+    if not GameInstance then return true end
+
+    local startLoc = myPawn:K2_GetActorLocation()
+    local endLoc = targetPawn:K2_GetActorLocation()
+    
+    local bHit, hitResult = false, nil
+    pcall(function()
+        -- TraceChannel 1 = ECC_Visibility
+        bHit, hitResult = GameStatic.LineTraceSingle(GameInstance, startLoc, endLoc, 1, false, nil, 0, nil, true)
+    end)
+    
+    if bHit and hitResult then
+        local hitActor = hitResult.Actor
+        if slua.isValid(hitActor) then
+            if hitActor == targetPawn then return true end
+            if hitActor.GetOwner and hitActor:GetOwner() == targetPawn then return true end
+        end
+    end
+    return false
+end
+
+-- FUNGSI UPDATE TARGET (Dipanggil di Mainloop)
+function _G.X3.UpdateMBTargets()
+    local d = _G.X3._MB
+    local now = os.clock()
+    if (now - d.CacheTime) < d.CacheInterval then return end
+    d.CacheTime = now
+
+    pcall(function()
+        local GameplayData = require("GameLua.GameCore.Data.GameplayData")
+        local localPlayer = GameplayData.GetPlayerCharacter()
+        if not slua.isValid(localPlayer) then 
+            d.ValidTargets = {} 
+            return 
+        end
+
+        local myLoc = localPlayer:K2_GetActorLocation()
+        local maxDistCm = (d.MaxDist or 250) * 100
+        local minDistCm = (d.MinDist or 10) * 100 
+
+        local allChars = {}
+        pcall(function()
+            if GameplayData.GetAllPlayerCharacters then
+                local chars = GameplayData.GetAllPlayerCharacters()
+                if chars then for _, c in pairs(chars) do if slua.isValid(c) then table.insert(allChars, c) end end end
+            end
+            if GameplayData.GameCharacters then
+                local chars = GameplayData.GameCharacters
+                if type(chars) == "table" then for _, c in pairs(chars) do if slua.isValid(c) then table.insert(allChars, c) end end end
+            end
+        end)
+
+        local myTeamId = nil
+        pcall(function() if localPlayer.GetTeamId then myTeamId = localPlayer:GetTeamId() end end)
+
+        local valid = {}
+        for _, char in ipairs(allChars) do
+            if slua.isValid(char) and char ~= localPlayer then
+                local isEnemy = true
+                pcall(function()
+                    if myTeamId and char.GetTeamId and myTeamId == char:GetTeamId() then isEnemy = false end
+                end)
+
+                if isEnemy then
+                    -- FILTER 1: IGNORE BOT
+                    if d.IgBot and IsArtificialIntelligenceBot(char) then isEnemy = false end
+                    -- FILTER 2: IGNORE KNOCKED
+                    if isEnemy and d.IgKnock and IsPlayerKnockedDown(char) then isEnemy = false end
+
+                    if isEnemy then
+                        local charLoc = char:K2_GetActorLocation()
+                        local dx = myLoc.X - charLoc.X
+                        local dy = myLoc.Y - charLoc.Y
+                        local dz = myLoc.Z - charLoc.Z
+                        local dist = math.sqrt(dx*dx + dy*dy + dz*dz)
+                        
+                        -- FILTER 3: DISTANCE (10m - MaxDist)
+                        if dist <= maxDistCm and dist >= minDistCm then
+                            -- FILTER 4: VISCHECK
+                            if d.VisCheck then
+                                if IsPawnVisible(localPlayer, char) then valid[char] = true end
+                            else
+                                valid[char] = true
+                            end
+                        end
+                    end
+                end
+            end
+        end
+        -- Timpa sepenuhnya agar referensi aktor mati hilang (Anti Memory Leak)
+        d.ValidTargets = valid
+    end)
+end
+
+-- INSTALL UNIFIED HIT HOOK (SMART MAGIC BULLET)
+function _G.X3.InstallUnifiedHitHook()
+    pcall(function()
+        local EADP = import("EAvatarDamagePosition")
+        if not EADP then return end
+
+        local modulesToHook = {
+            "GameLua.Mod.BaseMod.Common.Weapon.ShootWeaponEntity",
+            "GameLua.Logic.Weapon.ShootWeaponEntity"
+        }
+
+        for _, path in ipairs(modulesToHook) do
+            local hitLogic = package.loaded[path]
+            if hitLogic and not hitLogic._X3HitUnified then
+                hitLogic._X3HitUnified = true
+
+                if hitLogic._X3OrigGetHitBodyType == nil then
+                    hitLogic._X3OrigGetHitBodyType = hitLogic.GetHitBodyType
+                end
+                if hitLogic._X3OrigGetHitBodyTypeByHitPos == nil then
+                    hitLogic._X3OrigGetHitBodyTypeByHitPos = hitLogic.GetHitBodyTypeByHitPos
+                end
+
+                hitLogic.GetHitBodyType = function(self, ImpactResult, InImpactVec)
+                    if _G.X3.LexusConfig.AutoHead or _G.X3.LexusConfig.SmartAutoHead then return EADP.BigHead end
+
+                    if _G.X3.LexusConfig.CustomMagicBullet then
+                        local d = _G.X3._MB
+                        local hitActor = nil
+                        pcall(function() if ImpactResult and ImpactResult.Actor then hitActor = ImpactResult.Actor end end)
+
+                        -- Cek apakah peluru mengenai target valid
+                        if slua.isValid(hitActor) and d.ValidTargets[hitActor] then
+                            return EADP.BigHead
+                        end
+
+                        -- Fallback proximity 8 meter (Jika peluru meleset sedikit)
+                        if InImpactVec then
+                            for target, _ in pairs(d.ValidTargets) do
+                                if slua.isValid(target) then
+                                    local tLoc = target:K2_GetActorLocation()
+                                    local dx = InImpactVec.X - tLoc.X
+                                    local dy = InImpactVec.Y - tLoc.Y
+                                    local dz = InImpactVec.Z - tLoc.Z
+                                    if (dx*dx + dy*dy + dz*dz) < 640000 then -- 800cm = 8m
+                                        return EADP.BigHead
+                                    end
+                                end
+                            end
+                        end
+                    end
+
+                    local o = hitLogic._X3OrigGetHitBodyType
+                    if o then return o(self, ImpactResult, InImpactVec) end
+                end
+
+                hitLogic.GetHitBodyTypeByHitPos = function(self, InImpactVec)
+                    if _G.X3.LexusConfig.AutoHead or _G.X3.LexusConfig.SmartAutoHead then return EADP.BigHead end
+
+                    if _G.X3.LexusConfig.CustomMagicBullet then
+                        local d = _G.X3._MB
+                        if InImpactVec then
+                            for target, _ in pairs(d.ValidTargets) do
+                                if slua.isValid(target) then
+                                    local tLoc = target:K2_GetActorLocation()
+                                    local dx = InImpactVec.X - tLoc.X
+                                    local dy = InImpactVec.Y - tLoc.Y
+                                    local dz = InImpactVec.Z - tLoc.Z
+                                    if (dx*dx + dy*dy + dz*dz) < 640000 then
+                                        return EADP.BigHead
+                                    end
+                                end
+                            end
+                        end
+                    end
+
+                    local o = hitLogic._X3OrigGetHitBodyTypeByHitPos
+                    if o then return o(self, InImpactVec) end
+                end
+            end
+        end
+    end)
+end   
+
+-- MAGIC BULLET / HITBOX SCALING --
+function _G.X3.InitializeCustomMagicBulletHooks()
+    if _G.X3.InstallUnifiedHitHook then _G.X3.InstallUnifiedHitHook() end
+end
+
+_G.X3.InstallUnifiedHitHook()
+_G.X3.TDFTDeKillCounts = _G.X3.TDFTDeKillCounts or {}
+local CACHED_LinearColor = import("LinearColor")
+local CACHED_GoldColor = CACHED_LinearColor and CACHED_LinearColor(1.0, 0.8, 0.0, 1.0) or nil
+
 
 -- MOD SKIN / SKIN MOD --
 function _G.X3.InitializeSkinModSystem()
@@ -6769,6 +7073,208 @@ function _G.X3.InitModMenuTab()
 
     do
 
+local StackDeviceInfo = {
+                  {
+        UI = AliasMap.Title,
+        Text = "X3TEAM OFFICIAL"
+      },
+}
+
+if _G.X3.BuildX3HWIDMenu then
+    _G.X3.BuildX3HWIDMenu(StackDeviceInfo, AliasMap)
+end
+if _G.X3.BuildX3RareMenu then
+    _G.X3.BuildX3RareMenu(StackDeviceInfo, AliasMap, "ModMenu_FakeHWID_Ex")
+end
+
+        local StackGraphic = {
+                                          {
+        UI = AliasMap.Title,
+        Text = "X3TEAM OFFICIAL"
+      },
+        }
+
+if _G.X3.BuildX3BetaTestMenu then
+    _G.X3.BuildX3BetaTestMenu(StackGraphic, AliasMap)
+end
+if _G.X3.BuildX3GMHiddenMenu then
+    _G.X3.BuildX3GMHiddenMenu(StackGraphic, AliasMap)
+end
+
+        local StackESP = {
+                                          {
+        UI = AliasMap.Title,
+        Text = "X3TEAM OFFICIAL"
+      },
+    { Key = "ModMenu_EspEnemyCount", UI = AliasMap.TitleSwitcher, Text = "▶ ESP ENEMY COUNT V1 [ HITUNG MUSUH V1 ]", ExpandIndex = 0,
+        GetFunc = function() return _G.X3.LexusConfig.EspEnemyCount end,
+        SetFunc = function(c,v)
+            _G.X3.LexusConfig.EspEnemyCount = v
+            if not v and _G.X3.EspCountDestroy then pcall(_G.X3.EspCountDestroy) end
+            if v and _G.X3.EspCountV2Destroy then pcall(_G.X3.EspCountV2Destroy) end
+            return true
+        end },
+    { Key = "ModMenu_EspEnemyCountV2", UI = AliasMap.TitleSwitcher, Text = "▶ ESP ENEMY COUNT V2 [ HITUNG MUSUH V2 ]", ExpandIndex = 0,
+        GetFunc = function() return _G.X3.LexusConfig.EspEnemyCountV2 end,
+        SetFunc = function(c,v)
+            _G.X3.LexusConfig.EspEnemyCountV2 = v
+            if not v and _G.X3.EspCountV2Destroy then pcall(_G.X3.EspCountV2Destroy) end
+            if v and _G.X3.EspCountDestroy then pcall(_G.X3.EspCountDestroy) end
+            return true
+        end },
+    { Key = "ModMenu_X3MapMark", UI = AliasMap.TitleSwitcher, Text = "▶ MAP ENEMY MARK [ TANDA MUSUH DI MAP ]", ExpandIndex = 0,
+        GetFunc = function() return _G.X3.LexusConfig.X3MapMark == true end,
+        SetFunc = function(c,v)
+            _G.X3.LexusConfig.X3MapMark = v
+            if not v and _G.X3._MapMarkClearAll then pcall(_G.X3._MapMarkClearAll) end
+            if _G.X3.SaveModSettings then _G.X3.SaveModSettings() end
+            return true
+        end },
+    { Key = "ModMenu_X3MapIconP1", UI = AliasMap.TitleSwitcher, Text = "   Icon Player: DANGER [ SEGITIGA BAHAYA ]", ExpandHandle = "ModMenu_X3MapMark",
+        GetFunc = function() return (_G.X3.LexusConfig.X3MapIconP or 39) == 39 end,
+        SetFunc = function(c,v) _G.X3.LexusConfig.X3MapIconP = 39; if _G.X3._MapMarkClearAll then pcall(_G.X3._MapMarkClearAll) end; if _G.X3.SaveModSettings then _G.X3.SaveModSettings() end; return true end },
+    { Key = "ModMenu_X3MapIconP2", UI = AliasMap.TitleSwitcher, Text = "   Icon Player: ORANG [ PERSON ]", ExpandHandle = "ModMenu_X3MapMark",
+        GetFunc = function() return (_G.X3.LexusConfig.X3MapIconP or 39) == 70 end,
+        SetFunc = function(c,v) _G.X3.LexusConfig.X3MapIconP = 70; if _G.X3._MapMarkClearAll then pcall(_G.X3._MapMarkClearAll) end; if _G.X3.SaveModSettings then _G.X3.SaveModSettings() end; return true end },
+    { Key = "ModMenu_EspEnemyCountSize", UI = AliasMap.Slider, Text = "   Text Size [ UKURAN TEKS ] (10-28)", ExpandHandle = "ModMenu_EspEnemyCount",
+        MinValue = 10, MaxValue = 28, min = 10, max = 28, Min = 10, Max = 28,
+        GetFunc = function() return _G.X3.LexusConfig.EspEnemyCountSize or 13 end,
+        SetFunc = function(c,v)
+            _G.X3.LexusConfig.EspEnemyCountSize = math.max(10, math.min(28, math.floor(v + 0.5)))
+            if _G.X3.EspCountDestroy then pcall(_G.X3.EspCountDestroy) end
+            if _G.X3.EspCountV2Destroy then pcall(_G.X3.EspCountV2Destroy) end
+            return true
+        end },
+            { Key = "ModMenu_OutlineWep", UI = AliasMap.TitleSwitcher, Text = "▶ Weapon Glow [ GLOW SENJATA ]", ExpandIndex = 0,
+                GetFunc = function() return _G.X3.LexusConfig.OutlineWeapon end,
+                SetFunc = function(c, v) _G.X3.LexusConfig.OutlineWeapon = v; if not v then _G.X3.OutlineClearAll() end return true end },
+            { Key = "ModMenu_OutlineWepThick", UI = AliasMap.Slider, Text = "   Glow Thickness [ KETEBALAN GLOW ] (1-10)", ExpandHandle = "ModMenu_OutlineWep",
+                MinValue = 1, MaxValue = 10, min = 1, max = 10, Min = 1, Max = 10,
+                GetFunc = function() return _G.X3.LexusConfig.OutlineWepThick or 3 end,
+                SetFunc = function(c, v) _G.X3.LexusConfig.OutlineWepThick = math.max(1, math.min(10, math.floor(v + 0.5))) return true end },
+            { Key = "ModMenu_OutlineWepBright", UI = AliasMap.Slider, Text = "   Brightness [ KECERAHAN ] (50-300)", ExpandHandle = "ModMenu_OutlineWep",
+                MinValue = 50, MaxValue = 300, min = 50, max = 300, Min = 50, Max = 300,
+                GetFunc = function() return _G.X3.LexusConfig.OutlineWepBright or 180 end,
+                SetFunc = function(c, v) _G.X3.LexusConfig.OutlineWepBright = math.max(50, math.min(300, math.floor(v + 0.5))) return true end },
+            { Key = "ModMenu_OutlineWepRainbow", UI = AliasMap.Switcher, Text = "   Rainbow Color [ WARNA PELANGI ] (OFF = Emas)", ExpandHandle = "ModMenu_OutlineWep",
+                GetFunc = function() return _G.X3.LexusConfig.OutlineWepRainbow ~= false end,
+                SetFunc = function(c, v) _G.X3.LexusConfig.OutlineWepRainbow = v return true end },
+            { Key = "ModMenu_ESP2", UI = AliasMap.Switcher, Text = "ESP Distance [ JARAK MUSUH ] ", GetFunc = function() return _G.X3.LexusConfig.EspDistance end, SetFunc = function(c,v) _G.X3.LexusConfig.EspDistance = v return true end },
+            { Key = "ModMenu_ESP4", UI = AliasMap.Switcher, Text = "ESP Distance + 360 [ JARAK + 360 ]", GetFunc = function() return _G.X3.LexusConfig.EspRadar end, SetFunc = function(c,v) _G.X3.LexusConfig.EspRadar = v return true end },
+            { Key = "ModMenu_ESP6", UI = AliasMap.Switcher, Text = "ESP Skeleton [ TULANG MUSUH ]", GetFunc = function() return _G.X3.LexusConfig.EspLoai6 end, SetFunc = function(c,v) _G.X3.LexusConfig.EspLoai6 = v return true end },
+            { Key = "ModMenu_ESP7", UI = AliasMap.Switcher, Text = "ESP Enemy Count [ JUMLAH MUSUH ]", GetFunc = function() return _G.X3.LexusConfig.EspLoai7 end, SetFunc = function(c,v) _G.X3.LexusConfig.EspLoai7 = v return true end },
+            { Key = "ModMenu_ESP8", UI = AliasMap.Switcher, Text = "ESP Health & Name [ DARAH & NAMA ] ", GetFunc = function() return _G.X3.LexusConfig.EspLoai8 end, SetFunc = function(c,v) _G.X3.LexusConfig.EspLoai8 = v return true end }
+        }
+
+        local StackAimbot = {
+                  {
+        UI = AliasMap.Title,
+        Text = "X3TEAM OFFICIAL"
+      },
+            { Key = "ModMenu_BT", UI = AliasMap.TitleSwitcher, Text = "▶ Bullet Track [ PELURU MELACAK ]", ExpandIndex = 0,
+                GetFunc = function() return _G.X3.LexusConfig.BulletTrack end,
+                SetFunc = function(c, v) _G.X3.LexusConfig.BulletTrack = v return true end },
+            { Key = "ModMenu_BTRange", UI = AliasMap.Slider, Text = "   Crosshair Radius [ RADIUS CROSSHAIR ] (50-1000 px)", ExpandHandle = "ModMenu_BT",
+                MinValue = 50, MaxValue = 1000, min = 50, max = 1000, Min = 50, Max = 1000,
+                GetFunc = function() return _G.X3.LexusConfig.BTRange or 300 end,
+                SetFunc = function(c, v) _G.X3.LexusConfig.BTRange = math.max(50, math.min(1000, math.floor(v + 0.5))) return true end },
+            { Key = "ModMenu_BTPart", UI = AliasMap.Slider, Text = "   Body Part [ BAGIAN TUBUH ] (0:Kepala 1:Leher 2:Dada)", ExpandHandle = "ModMenu_BT",
+                MinValue = 0, MaxValue = 2, min = 0, max = 2, Min = 0, Max = 2,
+                GetFunc = function() return _G.X3.LexusConfig.BTPart or 0 end,
+                SetFunc = function(c, v) _G.X3.LexusConfig.BTPart = math.max(0, math.min(2, math.floor(v + 0.5))) return true end },
+            { Key = "ModMenu_BTProb", UI = AliasMap.Slider, Text = "   Track Chance [ PELUANG TRACK ] (10-100 %)", ExpandHandle = "ModMenu_BT",
+                MinValue = 10, MaxValue = 100, min = 10, max = 100, Min = 10, Max = 100,
+                GetFunc = function() return _G.X3.LexusConfig.BTProb or 100 end,
+                SetFunc = function(c, v) _G.X3.LexusConfig.BTProb = math.max(10, math.min(100, math.floor(v + 0.5))) return true end },
+
+          {
+        Key = "ModMenu_Aim_SmartHead",
+        UI = AliasMap.Switcher,
+        Text = "[BARU] Smart Auto Aim Head [ AIM KEPALA OTOMATIS ] (Bones Lock)",
+        ExpandHandle = "ModMenu_AT_Ex", -- Sesuaikan dengan nama handle menu aimbot Anda
+        GetFunc = function() return _G.X3.LexusConfig.SmartAutoHead == true end,
+        SetFunc = function(_, value)
+            _G.X3.LexusConfig.SmartAutoHead = value and true or false
+            return true
+        end
+    },
+{ Key = "ModMenu_Magic_Ex", UI = AliasMap.TitleSwitcher, Text = "▶ SMART CUSTOM MAGIC BULLET [ MAGIC BULLET PINTAR ]", ExpandIndex = 0, GetFunc = function() return _G.X3.LexusConfig.CustomMagicBullet end, SetFunc = function(c,v) _G.X3.LexusConfig.CustomMagicBullet = v return true end },
+{ Key = "ModMenu_Magic_Head", UI = AliasMap.Slider, Text = "   Magic Head [ DAMAGE KEPALA ] (0.0 - 5.0)", ExpandHandle = "ModMenu_Magic_Ex", MinValue = 0, MaxValue = 100, min = 0, max = 100, GetFunc = function() return math.floor(((_G.X3.LexusState.CustomTextData.MagicHead or 1.0) / 5.0) * 100 + 0.5) end, SetFunc = function(c,v) _G.X3.LexusState.CustomTextData.MagicHead = (v / 100.0) * 5.0 return true end },
+{ Key = "ModMenu_Magic_Neck", UI = AliasMap.Slider, Text = "   Magic Neck [ DAMAGE LEHER ] (0.0 - 5.0)", ExpandHandle = "ModMenu_Magic_Ex", MinValue = 0, MaxValue = 100, min = 0, max = 100, GetFunc = function() return math.floor(((_G.X3.LexusState.CustomTextData.MagicNeck or 1.0) / 5.0) * 100 + 0.5) end, SetFunc = function(c,v) _G.X3.LexusState.CustomTextData.MagicNeck = (v / 100.0) * 5.0 return true end },
+{ Key = "ModMenu_Magic_Body", UI = AliasMap.Slider, Text = "   Magic Body [ DAMAGE BADAN ] (0.0 - 5.0)", ExpandHandle = "ModMenu_Magic_Ex", MinValue = 0, MaxValue = 100, min = 0, max = 100, GetFunc = function() return math.floor(((_G.X3.LexusState.CustomTextData.MagicBody or 1.0) / 5.0) * 100 + 0.5) end, SetFunc = function(c,v) _G.X3.LexusState.CustomTextData.MagicBody = (v / 100.0) * 5.0 return true end },
+{ Key = "ModMenu_Magic_Pelvis", UI = AliasMap.Slider, Text = "   Magic Pelvis [ DAMAGE PANGGUL ] (0.0 - 5.0)", ExpandHandle = "ModMenu_Magic_Ex", MinValue = 0, MaxValue = 100, min = 0, max = 100, GetFunc = function() return math.floor(((_G.X3.LexusState.CustomTextData.MagicPelvis or 1.0) / 5.0) * 100 + 0.5) end, SetFunc = function(c,v) _G.X3.LexusState.CustomTextData.MagicPelvis = (v / 100.0) * 5.0 return true end },
+{ Key = "ModMenu_Magic_Legs", UI = AliasMap.Slider, Text = "   Magic Legs [ DAMAGE KAKI ] (0.0 - 5.0)", ExpandHandle = "ModMenu_Magic_Ex", MinValue = 0, MaxValue = 100, min = 0, max = 100, GetFunc = function() return math.floor(((_G.X3.LexusState.CustomTextData.MagicLegs or 1.0) / 5.0) * 100 + 0.5) end, SetFunc = function(c,v) _G.X3.LexusState.CustomTextData.MagicLegs = (v / 100.0) * 5.0 return true end },
+
+            { Key = "ModMenu_HRecoil_Ex", UI = AliasMap.TitleSwitcher, Text = "▶ Reduce Horizontal Recoil [ KURANGI RECOIL HORIZONTAL ]", ExpandIndex = 0, GetFunc = function() return _G.X3.LexusConfig.CustomHRecoil end, SetFunc = function(c,v) _G.X3.LexusConfig.CustomHRecoil = v return true end },
+
+            { Key = "ModMenu_HRecoil_Val", UI = AliasMap.Slider, Text = "   Horizontal Recoil Value [ NILAI RECOIL HORIZONTAL ]", ExpandHandle = "ModMenu_HRecoil_Ex", MinValue = 0, MaxValue = 100, min = 0, max = 100, GetFunc = function() return math.floor((((_G.X3.LexusState.CustomTextData.HRecoil or 0.3) - 0.3) / 4.7) * 100 + 0.5) end, SetFunc = function(c,v) _G.X3.LexusState.CustomTextData.HRecoil = 0.3 + (v / 100.0) * 4.7 return true end },
+
+            { Key = "ModMenu_VRecoil_Ex", UI = AliasMap.TitleSwitcher, Text = "▶ Reduce Vertical Recoil [ KURANGI RECOIL VERTIKAL ]", ExpandIndex = 0, GetFunc = function() return _G.X3.LexusConfig.CustomVRecoil end, SetFunc = function(c,v) _G.X3.LexusConfig.CustomVRecoil = v return true end },
+            { Key = "ModMenu_VRecoil_Val", UI = AliasMap.Slider, Text = "   Vertical Recoil Value [ NILAI RECOIL VERTIKAL ]", ExpandHandle = "ModMenu_VRecoil_Ex", MinValue = 0, MaxValue = 100, min = 0, max = 100, GetFunc = function() return math.floor((((_G.X3.LexusState.CustomTextData.VRecoil or 0.3) - 0.3) / 4.7) * 100 + 0.5) end, SetFunc = function(c,v) _G.X3.LexusState.CustomTextData.VRecoil = 0.3 + (v / 100.0) * 4.7 return true end },
+
+            { Key = "ModMenu_LessShake", UI = AliasMap.Switcher, Text = "Reduce Scope Shake [ KURANGI GUNCANGAN SCOPE ]", GetFunc = function() return _G.X3.LexusConfig.LessShake end, SetFunc = function(c,v) _G.X3.LexusConfig.LessShake = v return true end },
+            { Key = "ModMenu_Accuracy", UI = AliasMap.Switcher, Text = "Straight Bullet [ PELURU LURUS ]", GetFunc = function() return _G.X3.LexusConfig.Accuracy end, SetFunc = function(c,v) _G.X3.LexusConfig.Accuracy = v return true end },
+            { Key = "ModMenu_Crosshair", UI = AliasMap.Switcher, Text = "Small Crosshair [ CROSSHAIR KECIL ]", GetFunc = function() return _G.X3.LexusConfig.Crosshair end, SetFunc = function(c,v) _G.X3.LexusConfig.Crosshair = v return true end },
+            { Key = "ModMenu_AutoHead", UI = AliasMap.Switcher, Text = "Aimbot Head [ AIMBOT KEPALA ]", GetFunc = function() return _G.X3.LexusConfig.AutoHead end, SetFunc = function(c,v) _G.X3.LexusConfig.AutoHead = v return true end },
+            { Key = "ModMenu_GodMode", UI = AliasMap.Switcher, Text = "Rapid Fire [ TEMBAK SUPER CEPAT ]", GetFunc = function() return _G.X3.LexusConfig.GodMode end, SetFunc = function(c,v) _G.X3.LexusConfig.GodMode = v return true end }
+        }
+
+        local StackAimbotV2 = {
+                                          {
+        UI = AliasMap.Title,
+        Text = "X3TEAM OFFICIAL"
+      },
+            { Key = "ModMenu_AT_Ex", UI = AliasMap.TitleSwitcher, Text = "▶ Enable Aimbot Roy & Custom [ AKTIFKAN AIMBOT ROY & KUSTOM ]", ExpandIndex = 0, GetFunc = function() return _G.X3.LexusConfig.AimTouchEnable end, SetFunc = function(c,v) _G.X3.LexusConfig.AimTouchEnable = v return true end },
+
+            { Key = "ModMenu_AT_Hip_Ex", UI = AliasMap.TitleSwitcher, Text = "   ▶ Hipfire Aimbot [ AIMBOT HIPFIRE ]", ExpandHandle = "ModMenu_AT_Ex", ExpandIndex = 0, GetFunc = function() return _G.X3.LexusConfig.AimTouchHipfire end, SetFunc = function(c,v) _G.X3.LexusConfig.AimTouchHipfire = v return true end },
+            { Key = "ModMenu_AT_Hip_IgKnock", UI = AliasMap.Switcher, Text = "      Ignore Knocked Enemy [ ABAIKAN MUSUH KNOCK ]", ExpandHandle = "ModMenu_AT_Hip_Ex", GetFunc = function() return _G.X3.LexusConfig.AimTouchHipIgKnock end, SetFunc = function(c,v) _G.X3.LexusConfig.AimTouchHipIgKnock = v return true end },
+            { Key = "ModMenu_AT_Hip_IgBot", UI = AliasMap.Switcher, Text = "      Ignore Bot [ ABAIKAN BOT ]", ExpandHandle = "ModMenu_AT_Hip_Ex", GetFunc = function() return _G.X3.LexusConfig.AimTouchHipIgBot end, SetFunc = function(c,v) _G.X3.LexusConfig.AimTouchHipIgBot = v return true end },
+            { Key = "ModMenu_AT_Hip_Vis", UI = AliasMap.Switcher, Text = "      VisCheck [ TEMBUS TEMBOK ]", ExpandHandle = "ModMenu_AT_Hip_Ex", GetFunc = function() return _G.X3.LexusConfig.AimTouchHipVisCheck end, SetFunc = function(c,v) _G.X3.LexusConfig.AimTouchHipVisCheck = v return true end },
+            { Key = "ModMenu_AT_Hip_Prio", UI = AliasMap.Slider, Text = "      Priority [ PRIORITAS ] (1:Tengah 2:Dekat 3:HP 4:%HP)", ExpandHandle = "ModMenu_AT_Hip_Ex", MinValue = 1, MaxValue = 4, min = 1, max = 4, Min = 1, Max = 4, GetFunc = function() return _G.X3.LexusState.CustomTextData.AimTouchHipPrio or 1 end, SetFunc = function(c,v) local val = math.floor(v+0.5); if val < 1 then val = 1 end; if val > 4 then val = 4 end; _G.X3.LexusState.CustomTextData.AimTouchHipPrio = val return true end },
+            { Key = "ModMenu_AT_Hip_Bone", UI = AliasMap.Slider, Text = "      Target [ TARGET ] (1:Kepala 2:Dada 3:Perut 4:Pinggul)", ExpandHandle = "ModMenu_AT_Hip_Ex", MinValue = 1, MaxValue = 4, min = 1, max = 4, Min = 1, Max = 4, GetFunc = function() return _G.X3.LexusState.CustomTextData.AimTouchHipBone or 1 end, SetFunc = function(c,v) local val = math.floor(v+0.5); if val < 1 then val = 1 end; if val > 4 then val = 4 end; _G.X3.LexusState.CustomTextData.AimTouchHipBone = val return true end },
+            { Key = "ModMenu_AT_Hip_Cond", UI = AliasMap.Slider, Text = "      Condition [ KONDISI ] (1:Tembak baru Aim, 2:Aim terus)", ExpandHandle = "ModMenu_AT_Hip_Ex", MinValue = 1, MaxValue = 2, min = 1, max = 2, Min = 1, Max = 2, GetFunc = function() return _G.X3.LexusState.CustomTextData.AimTouchHipCond or 1 end, SetFunc = function(c,v) local val = math.floor(v+0.5); if val < 1 then val = 1 end; if val > 2 then val = 2 end; _G.X3.LexusState.CustomTextData.AimTouchHipCond = val return true end },
+            { Key = "ModMenu_AT_Hip_Spd", UI = AliasMap.Slider, Text = "      Speed [ KECEPATAN ] (1-100)", ExpandHandle = "ModMenu_AT_Hip_Ex", MinValue = 1, MaxValue = 100, min = 1, max = 100, GetFunc = function() return _G.X3.LexusState.CustomTextData.AimTouchHipSpeed or 50 end, SetFunc = function(c,v) _G.X3.LexusState.CustomTextData.AimTouchHipSpeed = v return true end },
+            { Key = "ModMenu_AT_Hip_FOV", UI = AliasMap.Slider, Text = "      FOV Radius [ RADIUS FOV ] (1-100)", ExpandHandle = "ModMenu_AT_Hip_Ex", MinValue = 1, MaxValue = 100, min = 1, max = 100, GetFunc = function() return _G.X3.LexusState.CustomTextData.AimTouchHipFOV or 30 end, SetFunc = function(c,v) _G.X3.LexusState.CustomTextData.AimTouchHipFOV = v return true end },
+            { Key = "ModMenu_AT_Hip_Dist", UI = AliasMap.Slider, Text = "      Distance [ JARAK ] (1-500m)", ExpandHandle = "ModMenu_AT_Hip_Ex", MinValue = 1, MaxValue = 100, min = 1, max = 100, GetFunc = function() return math.floor((_G.X3.LexusState.CustomTextData.AimTouchHipDist or 250) / 5) end, SetFunc = function(c,v) _G.X3.LexusState.CustomTextData.AimTouchHipDist = v * 5 return true end },
+
+            { Key = "ModMenu_AT_SG_Ex", UI = AliasMap.TitleSwitcher, Text = "   ▶ Shotgun Aimbot [ AIMBOT SHOTGUN ]", ExpandHandle = "ModMenu_AT_Ex", ExpandIndex = 0, GetFunc = function() return _G.X3.LexusConfig.AimTouchSG end, SetFunc = function(c,v) _G.X3.LexusConfig.AimTouchSG = v return true end },
+            { Key = "ModMenu_AT_SG_AutoFire", UI = AliasMap.Switcher, Text = "      Auto Fire [ TEMBAK OTOMATIS ]", ExpandHandle = "ModMenu_AT_SG_Ex", GetFunc = function() return _G.X3.LexusConfig.AimTouchSGAutoFire end, SetFunc = function(c,v) _G.X3.LexusConfig.AimTouchSGAutoFire = v return true end },
+            { Key = "ModMenu_AT_SG_IgKnock", UI = AliasMap.Switcher, Text = "      Ignore Knocked Enemy [ ABAIKAN MUSUH KNOCK ]", ExpandHandle = "ModMenu_AT_SG_Ex", GetFunc = function() return _G.X3.LexusConfig.AimTouchSGIgKnock end, SetFunc = function(c,v) _G.X3.LexusConfig.AimTouchSGIgKnock = v return true end },
+            { Key = "ModMenu_AT_SG_IgBot", UI = AliasMap.Switcher, Text = "      Ignore Bot [ ABAIKAN BOT ]", ExpandHandle = "ModMenu_AT_SG_Ex", GetFunc = function() return _G.X3.LexusConfig.AimTouchSGIgBot end, SetFunc = function(c,v) _G.X3.LexusConfig.AimTouchSGIgBot = v return true end },
+            { Key = "ModMenu_AT_SG_Vis", UI = AliasMap.Switcher, Text = "      VisCheck [ TEMBUS TEMBOK ]", ExpandHandle = "ModMenu_AT_SG_Ex", GetFunc = function() return _G.X3.LexusConfig.AimTouchSGVisCheck end, SetFunc = function(c,v) _G.X3.LexusConfig.AimTouchSGVisCheck = v return true end },
+            { Key = "ModMenu_AT_SG_Prio", UI = AliasMap.Slider, Text = "      Priority [ PRIORITAS ] (1:Tengah 2:Dekat 3:HP 4:%HP)", ExpandHandle = "ModMenu_AT_SG_Ex", MinValue = 1, MaxValue = 4, min = 1, max = 4, Min = 1, Max = 4, GetFunc = function() return _G.X3.LexusState.CustomTextData.AimTouchSGPrio or 1 end, SetFunc = function(c,v) local val = math.floor(v+0.5); if val < 1 then val = 1 end; if val > 4 then val = 4 end; _G.X3.LexusState.CustomTextData.AimTouchSGPrio = val return true end },
+            { Key = "ModMenu_AT_SG_Bone", UI = AliasMap.Slider, Text = "      Target [ TARGET ] (1:Kepala 2:Dada 3:Perut 4:Pinggul)", ExpandHandle = "ModMenu_AT_SG_Ex", MinValue = 1, MaxValue = 4, min = 1, max = 4, Min = 1, Max = 4, GetFunc = function() return _G.X3.LexusState.CustomTextData.AimTouchSGBone or 2 end, SetFunc = function(c,v) local val = math.floor(v+0.5); if val < 1 then val = 1 end; if val > 4 then val = 4 end; _G.X3.LexusState.CustomTextData.AimTouchSGBone = val return true end },
+            { Key = "ModMenu_AT_SG_Cond", UI = AliasMap.Slider, Text = "      Condition [ KONDISI ] (1:Tembak baru Aim, 2:Aim terus)", ExpandHandle = "ModMenu_AT_SG_Ex", MinValue = 1, MaxValue = 2, min = 1, max = 2, Min = 1, Max = 2, GetFunc = function() return _G.X3.LexusState.CustomTextData.AimTouchSGCond or 1 end, SetFunc = function(c,v) local val = math.floor(v+0.5); if val < 1 then val = 1 end; if val > 2 then val = 2 end; _G.X3.LexusState.CustomTextData.AimTouchSGCond = val return true end },
+            { Key = "ModMenu_AT_SG_Spd", UI = AliasMap.Slider, Text = "      Speed [ KECEPATAN ] (1-100)", ExpandHandle = "ModMenu_AT_SG_Ex", MinValue = 1, MaxValue = 100, min = 1, max = 100, GetFunc = function() return _G.X3.LexusState.CustomTextData.AimTouchSGSpeed or 80 end, SetFunc = function(c,v) _G.X3.LexusState.CustomTextData.AimTouchSGSpeed = v return true end },
+            { Key = "ModMenu_AT_SG_FOV", UI = AliasMap.Slider, Text = "      FOV Radius [ RADIUS FOV ] (1-100)", ExpandHandle = "ModMenu_AT_SG_Ex", MinValue = 1, MaxValue = 100, min = 1, max = 100, GetFunc = function() return _G.X3.LexusState.CustomTextData.AimTouchSGFOV or 40 end, SetFunc = function(c,v) _G.X3.LexusState.CustomTextData.AimTouchSGFOV = v return true end },
+            { Key = "ModMenu_AT_SG_Dist", UI = AliasMap.Slider, Text = "      Distance [ JARAK ] (1-100m)", ExpandHandle = "ModMenu_AT_SG_Ex", MinValue = 1, MaxValue = 100, min = 1, max = 100, GetFunc = function() return _G.X3.LexusState.CustomTextData.AimTouchSGDist or 30 end, SetFunc = function(c,v) _G.X3.LexusState.CustomTextData.AimTouchSGDist = v return true end },
+
+            { Key = "ModMenu_AT_ScopeAll_Ex", UI = AliasMap.TitleSwitcher, Text = "   ▶ Scope Aimbot (Normal) [ AIMBOT SCOPE BIASA ]", ExpandHandle = "ModMenu_AT_Ex", ExpandIndex = 0, GetFunc = function() return _G.X3.LexusConfig.AimTouchScopeAll end, SetFunc = function(c,v) _G.X3.LexusConfig.AimTouchScopeAll = v return true end },
+            { Key = "ModMenu_AT_ScopeAll_IgKnock", UI = AliasMap.Switcher, Text = "      Ignore Knocked Enemy [ ABAIKAN MUSUH KNOCK ]", ExpandHandle = "ModMenu_AT_ScopeAll_Ex", GetFunc = function() return _G.X3.LexusConfig.AimTouchScopeIgKnock end, SetFunc = function(c,v) _G.X3.LexusConfig.AimTouchScopeIgKnock = v return true end },
+            { Key = "ModMenu_AT_ScopeAll_IgBot", UI = AliasMap.Switcher, Text = "      Ignore Bot [ ABAIKAN BOT ]", ExpandHandle = "ModMenu_AT_ScopeAll_Ex", GetFunc = function() return _G.X3.LexusConfig.AimTouchScopeIgBot end, SetFunc = function(c,v) _G.X3.LexusConfig.AimTouchScopeIgBot = v return true end },
+            { Key = "ModMenu_AT_ScopeAll_Vis", UI = AliasMap.Switcher, Text = "      VisCheck [ TEMBUS TEMBOK ]", ExpandHandle = "ModMenu_AT_ScopeAll_Ex", GetFunc = function() return _G.X3.LexusConfig.AimTouchScopeVisCheck end, SetFunc = function(c,v) _G.X3.LexusConfig.AimTouchScopeVisCheck = v return true end },
+            { Key = "ModMenu_AT_ScopeAll_Prio", UI = AliasMap.Slider, Text = "      Priority [ PRIORITAS ] (1:Tengah 2:Dekat 3:HP 4:%HP)", ExpandHandle = "ModMenu_AT_ScopeAll_Ex", MinValue = 1, MaxValue = 4, min = 1, max = 4, Min = 1, Max = 4, GetFunc = function() return _G.X3.LexusState.CustomTextData.AimTouchScopePrio or 1 end, SetFunc = function(c,v) local val = math.floor(v+0.5); if val < 1 then val = 1 end; if val > 4 then val = 4 end; _G.X3.LexusState.CustomTextData.AimTouchScopePrio = val return true end },
+            { Key = "ModMenu_AT_ScopeAll_Bone", UI = AliasMap.Slider, Text = "      Target [ TARGET ] (1:Kepala 2:Dada 3:Perut 4:Pinggul)", ExpandHandle = "ModMenu_AT_ScopeAll_Ex", MinValue = 1, MaxValue = 4, min = 1, max = 4, Min = 1, Max = 4, GetFunc = function() return _G.X3.LexusState.CustomTextData.AimTouchScopeBone or 2 end, SetFunc = function(c,v) local val = math.floor(v+0.5); if val < 1 then val = 1 end; if val > 4 then val = 4 end; _G.X3.LexusState.CustomTextData.AimTouchScopeBone = val return true end },
+            { Key = "ModMenu_AT_ScopeAll_Cond", UI = AliasMap.Slider, Text = "      Condition [ KONDISI ] (1:Tembak baru Aim, 2:Aim terus)", ExpandHandle = "ModMenu_AT_ScopeAll_Ex", MinValue = 1, MaxValue = 2, min = 1, max = 2, Min = 1, Max = 2, GetFunc = function() return _G.X3.LexusState.CustomTextData.AimTouchScopeCond or 1 end, SetFunc = function(c,v) local val = math.floor(v+0.5); if val < 1 then val = 1 end; if val > 2 then val = 2 end; _G.X3.LexusState.CustomTextData.AimTouchScopeCond = val return true end },
+            { Key = "ModMenu_AT_ScopeAll_Spd", UI = AliasMap.Slider, Text = "      Speed [ KECEPATAN ] (1-100)", ExpandHandle = "ModMenu_AT_ScopeAll_Ex", MinValue = 1, MaxValue = 100, min = 1, max = 100, GetFunc = function() return _G.X3.LexusState.CustomTextData.AimTouchScopeSpeed or 40 end, SetFunc = function(c,v) _G.X3.LexusState.CustomTextData.AimTouchScopeSpeed = v return true end },
+            { Key = "ModMenu_AT_ScopeAll_FOV", UI = AliasMap.Slider, Text = "      FOV Radius [ RADIUS FOV ] (1-100)", ExpandHandle = "ModMenu_AT_ScopeAll_Ex", MinValue = 1, MaxValue = 100, min = 1, max = 100, GetFunc = function() return _G.X3.LexusState.CustomTextData.AimTouchScopeFOV or 20 end, SetFunc = function(c,v) _G.X3.LexusState.CustomTextData.AimTouchScopeFOV = v return true end },
+            { Key = "ModMenu_AT_ScopeAll_Dist", UI = AliasMap.Slider, Text = "      Distance [ JARAK ] (1-500m)", ExpandHandle = "ModMenu_AT_ScopeAll_Ex", MinValue = 1, MaxValue = 100, min = 1, max = 100, GetFunc = function() return math.floor((_G.X3.LexusState.CustomTextData.AimTouchScopeDist or 300) / 5) end, SetFunc = function(c,v) _G.X3.LexusState.CustomTextData.AimTouchScopeDist = v * 5 return true end },
+            { Key = "ModMenu_AT_ScopeAll_Pred", UI = AliasMap.Slider, Text = "      Run Prediction [ PREDIKSI ARAH LARI ]", ExpandHandle = "ModMenu_AT_ScopeAll_Ex", MinValue = 0, MaxValue = 100, min = 0, max = 100, GetFunc = function() return _G.X3.LexusState.CustomTextData.AimTouchScopePred or 0 end, SetFunc = function(c,v) _G.X3.LexusState.CustomTextData.AimTouchScopePred = v return true end },
+            { Key = "ModMenu_AT_ScopeAll_Recoil", UI = AliasMap.Slider, Text = "      Recoil Compensation While Aim [ KOMPENSASI RECOIL SAAT AIM ]", ExpandHandle = "ModMenu_AT_ScopeAll_Ex", MinValue = 0, MaxValue = 50, min = 0, max = 50, GetFunc = function() return _G.X3.LexusState.CustomTextData.AimTouchScopeRecoil or 0 end, SetFunc = function(c,v) _G.X3.LexusState.CustomTextData.AimTouchScopeRecoil = v return true end },
+
+            { Key = "ModMenu_AT_Sniper_Ex", UI = AliasMap.TitleSwitcher, Text = "   ▶ Scope Aimbot (Sniper) [ AIMBOT SCOPE SNIPER ]", ExpandHandle = "ModMenu_AT_Ex", ExpandIndex = 0, GetFunc = function() return _G.X3.LexusConfig.AimTouchScopeSniper end, SetFunc = function(c,v) _G.X3.LexusConfig.AimTouchScopeSniper = v return true end },
+            { Key = "ModMenu_AT_Sniper_IgKnock", UI = AliasMap.Switcher, Text = "      Ignore Knocked Enemy [ ABAIKAN MUSUH KNOCK ]", ExpandHandle = "ModMenu_AT_Sniper_Ex", GetFunc = function() return _G.X3.LexusConfig.AimTouchSniperIgKnock end, SetFunc = function(c,v) _G.X3.LexusConfig.AimTouchSniperIgKnock = v return true end },
+            { Key = "ModMenu_AT_Sniper_IgBot", UI = AliasMap.Switcher, Text = "      Ignore Bot [ ABAIKAN BOT ]", ExpandHandle = "ModMenu_AT_Sniper_Ex", GetFunc = function() return _G.X3.LexusConfig.AimTouchSniperIgBot end, SetFunc = function(c,v) _G.X3.LexusConfig.AimTouchSniperIgBot = v return true end },
+            { Key = "ModMenu_AT_Sniper_Vis", UI = AliasMap.Switcher, Text = "      VisCheck [ TEMBUS TEMBOK ]", ExpandHandle = "ModMenu_AT_Sniper_Ex", GetFunc = function() return _G.X3.LexusConfig.AimTouchSniperVisCheck end, SetFunc = function(c,v) _G.X3.LexusConfig.AimTouchSniperVisCheck = v return true end },
+            { Key = "ModMenu_AT_Sniper_Prio", UI = AliasMap.Slider, Text = "      Priority [ PRIORITAS ] (1:Tengah 2:Dekat 3:HP 4:%HP)", ExpandHandle = "ModMenu_AT_Sniper_Ex", MinValue = 1, MaxValue = 4, min = 1, max = 4, Min = 1, Max = 4, GetFunc = function() return _G.X3.LexusState.CustomTextData.AimTouchSniperPrio or 1 end, SetFunc = function(c,v) local val = math.floor(v+0.5); if val < 1 then val = 1 end; if val > 4 then val = 4 end; _G.X3.LexusState.CustomTextData.AimTouchSniperPrio = val return true end },
+            { Key = "ModMenu_AT_Sniper_Bone", UI = AliasMap.Slider, Text = "      Target [ TARGET ] (1:Kepala 2:Dada 3:Perut 4:Pinggul)", ExpandHandle = "ModMenu_AT_Sniper_Ex", MinValue = 1, MaxValue = 4, min = 1, max = 4, Min = 1, Max = 4, GetFunc = function() return _G.X3.LexusState.CustomTextData.AimTouchSniperBone or 1 end, SetFunc = function(c,v) local val = math.floor(v+0.5); if val < 1 then val = 1 end; if val > 4 then val = 4 end; _G.X3.LexusState.CustomTextData.AimTouchSniperBone = val return true end },
+            { Key = "ModMenu_AT_Sniper_Cond", UI = AliasMap.Slider, Text = "      Condition [ KONDISI ] (1:Tembak baru Aim, 2:Aim terus)", ExpandHandle = "ModMenu_AT_Sniper_Ex", MinValue = 1, MaxValue = 2, min = 1, max = 2, Min = 1, Max = 2, GetFunc = function() return _G.X3.LexusState.CustomTextData.AimTouchSniperCond or 2 end, SetFunc = function(c,v) local val = math.floor(v+0.5); if val < 1 then val = 1 end; if val > 2 then val = 2 end; _G.X3.LexusState.CustomTextData.AimTouchSniperCond = val return true end },
+            { Key = "ModMenu_AT_Sniper_Spd", UI = AliasMap.Slider, Text = "      Speed [ KECEPATAN ] (1-100)", ExpandHandle = "ModMenu_AT_Sniper_Ex", MinValue = 1, MaxValue = 100, min = 1, max = 100, GetFunc = function() return _G.X3.LexusState.CustomTextData.AimTouchSniperSpeed or 30 end, SetFunc = function(c,v) _G.X3.LexusState.CustomTextData.AimTouchSniperSpeed = v return true end },
+            { Key = "ModMenu_AT_Sniper_FOV", UI = AliasMap.Slider, Text = "      FOV Radius [ RADIUS FOV ] (1-100)", ExpandHandle = "ModMenu_AT_Sniper_Ex", MinValue = 1, MaxValue = 100, min = 1, max = 100, GetFunc = function() return _G.X3.LexusState.CustomTextData.AimTouchSniperFOV or 20 end, SetFunc = function(c,v) _G.X3.LexusState.CustomTextData.AimTouchSniperFOV = v return true end },
+            { Key = "ModMenu_AT_Sniper_Dist", UI = AliasMap.Slider, Text = "      Distance [ JARAK ] (1-500m)", ExpandHandle = "ModMenu_AT_Sniper_Ex", MinValue = 1, MaxValue = 100, min = 1, max = 100, GetFunc = function() return math.floor((_G.X3.LexusState.CustomTextData.AimTouchSniperDist or 400) / 5) end, SetFunc = function(c,v) _G.X3.LexusState.CustomTextData.AimTouchSniperDist = v * 5 return true end },
+            { Key = "ModMenu_AT_Sniper_Pred", UI = AliasMap.Slider, Text = "      Run Prediction [ PREDIKSI ARAH LARI ] (0-100)", ExpandHandle = "ModMenu_AT_Sniper_Ex", MinValue = 0, MaxValue = 100, min = 0, max = 100, GetFunc = function() return _G.X3.LexusState.CustomTextData.AimTouchSniperPred or 0 end, SetFunc = function(c,v) _G.X3.LexusState.CustomTextData.AimTouchSniperPred = v return true end }
+        }
+
         local StackSkin = {
             { UI = AliasMap.Title, Text = "X3TEAM OFFICIAL" },
             { Key = "ModMenu_ModSkin", UI = AliasMap.TitleSwitcher, Text = "▶ UNLOCK SKIN [ BUKA SKIN SEMUA FITUR ]", ExpandIndex = 0, GetFunc = function() return _G.X3.LexusConfig.ModSkin end, SetFunc = function(c,v)
@@ -6817,7 +7323,6 @@ function _G.X3.InitModMenuTab()
                     if st then st.lobbyIdx = 1 st.lobbyDone = false st.matchApplyAt = 0 st.matchLogged = false end
                     if _G.X3._UAOwnershipHookTry then pcall(_G.X3._UAOwnershipHookTry) end
                     if _G.X3._UnlockAllLobbyTick then pcall(_G.X3._UnlockAllLobbyTick) end
-    if _G.X3.ShowLexusVIPMenu then pcall(_G.X3.ShowLexusVIPMenu) end
                     if _G.X3._MaxLevelHookTry then pcall(_G.X3._MaxLevelHookTry) end
                     if _G.X3._UADiagnose then pcall(_G.X3._UADiagnose) end
                 end
@@ -6943,6 +7448,5316 @@ local function ShowLexusVIPMenu()
         elseif _G.X3.MenuTryN <= 3 or (_G.X3.MenuTryN % 50) == 0 then
             _G.X3.Trace("MENU: belum terpasang (percobaan #" .. tostring(_G.X3.MenuTryN) .. ", retry otomatis): " .. tostring(err))
         end
+    end
+end
+
+-- LOGIKA BUKA 165 FPS DAN IPAD VIEW
+local function InitializeGraphicsUnlock()
+    if isExpired then return end
+    if _G.X3.LexusState.GraphicsUnlocked or currentTime > limitTime then return end
+
+    pcall(function()
+        local SettingCfg = require("client.logic.setting.setting_config")
+        local GraphicSettingDB = require("client.slua.umg.NewSetting.GraphicsNew.GraphicSettingDB")
+        if SettingCfg then
+            if SettingCfg.TpViewValue then SettingCfg.TpViewValue.max = 160 end
+            if SettingCfg.FpViewValue then SettingCfg.FpViewValue.max = 160 end
+        end
+        if GraphicSettingDB then
+            if GraphicSettingDB.TpViewValue then GraphicSettingDB.TpViewValue.max = 160 end
+        end
+    end)
+
+    pcall(function()
+        local logic_setting_graphics = require("client.slua.logic.setting.logic_setting_graphics")
+        local GSC_FPS = require("client.slua.umg.NewSetting.GraphicsNew.Comps.GSC_FPS")
+        local GSC_FPSFT = require("client.slua.umg.NewSetting.GraphicsNew.Comps.GSC_FPSFT")
+        local GraphicSettingDB = require("client.slua.umg.NewSetting.GraphicsNew.GraphicSettingDB")
+
+        local KismetMathLibrary = import("KismetMathLibrary") or _G.KismetMathLibrary
+        local FLinearColor = import("LinearColor") or _G.FLinearColor
+
+
+        if GSC_FPS and GSC_FPS.__inner_impl then
+            local fps_impl = GSC_FPS.__inner_impl
+            function fps_impl:GetMaxFPSLevel() return 8, 8 end
+            function fps_impl:InitRealSupportFPS()
+                local RealSupportFPS = {}
+                for i = 1, 8 do RealSupportFPS[i] = {true, true} end
+                if GraphicSettingDB then GraphicSettingDB:UpdateUIData(GraphicSettingDB.RealSupportFPS, RealSupportFPS, false) end
+                return RealSupportFPS
+            end
+            function fps_impl:UpdateSelectedFPSState(selectedLevel)
+                if not slua.isValid(self.UIRoot) then return end
+                for level = 2, 8 do
+                    local name = "NodeFps" .. (({[2]=20,[3]=25,[4]=30,[5]=40,[6]=60,[7]=90,[8]=120})[level] or 120)
+                    local widget = self.UIRoot[name]
+                    if slua.isValid(widget) then
+                        widget:SetIsEnabled(true)
+                        pcall(function() widget:SetRenderOpacity(1.0) end)
+                        local switcher = self.UIRoot["WidgetSwitcher_" .. level]
+                        if slua.isValid(switcher) then
+                            switcher:SetActiveWidgetIndex(level == selectedLevel and 0 or 1)
+                        end
+                    end
+                end
+            end
+        end
+
+        if GSC_FPSFT and GSC_FPSFT.__inner_impl then
+            local ft_impl = GSC_FPSFT.__inner_impl
+            local NMinFPS, NStep = 90, 5
+            local function clamp(value, min, max)
+                if value < min then return min end
+                if max < value then return max end
+                return value
+            end
+            local function lerp(a, b, t) return a + (b - a) * t end
+            local function _getColorByPercent(start, finish, percent)
+                if not FLinearColor then return nil end
+                return FLinearColor(lerp(start.R, finish.R, percent), lerp(start.G, finish.G, percent), lerp(start.B, finish.B, percent), lerp(start.A, finish.A, percent))
+            end
+
+            ft_impl.ShowOrHide = function(self)
+                self:SelfHitTestInvisible()
+                if self.InitFPSFTSwitch then self:InitFPSFTSwitch() end
+            end
+
+            ft_impl.InitFPSFTSwitch = function(self)
+                local FPSFineTuneSwitch = GraphicSettingDB:GetUIData(GraphicSettingDB.FPSFineTuneSwitch)
+                if self.UIRoot.Setting_Switch then self.UIRoot.Setting_Switch:SetSwitcherEnable2(FPSFineTuneSwitch, true) end
+                if self.UIRoot.CanvasPanel_8 then self:SetWidgetVisible(self.UIRoot.CanvasPanel_8, FPSFineTuneSwitch) end
+                if self.UIRoot.WidgetSwitcher_0 then self.UIRoot.WidgetSwitcher_0:SetActiveWidgetIndex(2) end
+                if self.InitFPSFTValue165 then self:InitFPSFTValue165() end
+            end
+
+            ft_impl.InitFPSFTValue165 = function(self)
+                local itemRoot = self.UIRoot
+                local FPSFineTuneSwitch = GraphicSettingDB:GetUIData(GraphicSettingDB.FPSFineTuneSwitch)
+                local FPSFineTuneNum = 165
+                if FPSFineTuneSwitch then
+                    FPSFineTuneNum = GraphicSettingDB:GetUIData(GraphicSettingDB.FPSFineTuneNum) or 165
+                    itemRoot.Slider_screen3:SetLocked(false)
+                    if FLinearColor then
+                        itemRoot.ProgressBar_screen3:SetFillColorAndOpacity(FLinearColor(1.0, 1.0, 1.0, 1.0))
+                        itemRoot.Slider_screen3:SetSliderHandleColor(FLinearColor(1.0, 1.0, 1.0, 1.0))
+                    end
+                else
+                    itemRoot.Slider_screen3:SetLocked(true)
+                    if FLinearColor then
+                        itemRoot.ProgressBar_screen3:SetFillColorAndOpacity(FLinearColor(1.0, 0.625, 0.6, 1))
+                        itemRoot.Slider_screen3:SetSliderHandleColor(FLinearColor(1.0, 0.625, 0.6, 1.0))
+                    end
+                end
+                local FPSFineTunePer = (FPSFineTuneNum - NMinFPS) / (165 - NMinFPS)
+
+                itemRoot.Veihclescreen3:SetText(tostring(FPSFineTuneNum))
+                itemRoot.Slider_screen3:SetValue(FPSFineTunePer)
+                itemRoot.ProgressBar_screen3:SetPercent(FPSFineTunePer)
+
+                if FLinearColor then
+                    local startColor = FLinearColor(1.0, 1.0, 1.0, 1.0)
+                    local midColor = FLinearColor(1.0, 0.54, 0.11, 1.0)
+                    local endColor = FLinearColor(1.0, 0.23, 0.15, 1.0)
+                    local sliderColor = FPSFineTunePer < 0.4 and startColor or _getColorByPercent(midColor, endColor, (FPSFineTunePer - 0.4) / 0.6)
+                    itemRoot.Slider_screen3:SetSliderHandleColor(sliderColor)
+                end
+            end
+
+            ft_impl.OnFPSFTValueChange3 = function(self, FPSFineTuneNum)
+                GraphicSettingDB:UpdateUIData(GraphicSettingDB.FPSFineTuneNum, FPSFineTuneNum)
+                if self.InitFPSFTValue165 then self:InitFPSFTValue165() end
+                if self:GetParentUI() then self:GetParentUI():SetDirty(true) end
+            end
+
+            ft_impl.OnFPSFTSliderValueChange3 = function(self, value)
+                if GraphicSettingDB:GetUIData(GraphicSettingDB.FPSFineTuneSwitch) and KismetMathLibrary then
+                    local FPSFineTuneNum = KismetMathLibrary.FCeil(value * (165 - NMinFPS) / NStep) * NStep + NMinFPS
+                    self:OnFPSFTValueChange3(clamp(FPSFineTuneNum, NMinFPS, 165))
+                end
+            end
+
+            ft_impl.OnFPSFTAdd = ft_impl.OnFPSFTAdd3
+            ft_impl.OnFPSFTMinus = ft_impl.OnFPSFTMinus3
+            ft_impl.OnFPSFTAdd2 = ft_impl.OnFPSFTAdd3
+            ft_impl.OnFPSFTMinus2 = ft_impl.OnFPSFTMinus3
+            ft_impl.OnFPSFTSliderValueChange = ft_impl.OnFPSFTSliderValueChange3
+            ft_impl.OnFPSFTSliderValueChange2 = ft_impl.OnFPSFTSliderValueChange3
+        end
+    end)
+    _G.X3.LexusState.GraphicsUnlocked = true
+    Notify("Grafis & FPS 165Hz Dibuka (Versi Terbaru)")
+end
+
+-- INISIALISASI SISTEM ESP (DASAR)
+-- ESP MUSUH / ENEMY ESP --
+local function InitializeNativeESP()
+    if _G.X3.LexusState.NativeESPReady then return end
+    pcall(function()
+        local GamePlayTools = require("GameLua.Mod.BaseMod.Common.GamePlayTools")
+        local currentMarkCfg = GamePlayTools.GetCurrentConfig("ScreenMarkConfig")
+        local function ApplyCfg(cfg)
+            if not cfg then return end
+            if cfg[1006] then
+                cfg[1006].bBindBlocked = true;
+                cfg[1006].bBindOutScreen = true;
+                cfg[1006].MaxWidgetNum = 99
+                cfg[1006].MaxShowDistance = 33000;
+                cfg[1006].bScaleByDistance = false
+                cfg[1006].BindSocketName = "root";
+                cfg[1006].bUseLuaWorldSocketName = true
+                cfg[1006].WorldPositionOffset = FVector(0, 0, -30)
+            end
+            cfg[8888] = {
+                UIPathName = "/Game/Mod/EvoBase/BluePrints/UIBP/QuickSign/QuickSign_TipHitEnemy_UIBP_New.QuickSign_TipHitEnemy_UIBP_New_C",
+                MaxWidgetNum = 99,
+                MaxShowDistance = 6000000,
+                bBindOutScreen = true,
+                bBindBlocked = true,
+                bIsBindingActor = true,
+                BindSocketName = "head",
+                bUseLuaWorldSocketName = true,
+                WorldPositionOffset = FVector(0, 0, 30),
+                bNeedPreLoad = true,
+                Priority = 2
+            }
+            cfg[9999] = {
+                UIPathName = "/Game/Mod/EvoBase/BluePrints/UIBP/QuickSign/QuickSign_TipHitEnemy_UIBP_New.QuickSign_TipHitEnemy_UIBP_New_C",
+                MaxWidgetNum = 99,
+                MaxShowDistance = 6000000,
+                bBindOutScreen = true,
+                bBindBlocked = true,
+                bIsBindingActor = true,
+                BindSocketName = "head",
+                bUseLuaWorldSocketName = true,
+                WorldPositionOffset = FVector(0, 0, 50),
+                bNeedPreLoad = true,
+                Priority = 2
+            }
+        end
+        ApplyCfg(currentMarkCfg)
+        for k, cfg in pairs(package.loaded) do
+            if type(k) == "string" and string.find(k, "ScreenMarkConfig") and type(cfg) == "table" then
+                ApplyCfg(cfg)
+            end
+        end
+    end)
+    _G.X3.LexusState.NativeESPReady = true
+    Notify("Sistem ESP Native Diinisialisasi")
+end
+
+_G.X3.LexusConfig = _G.X3.LexusConfig or {}
+_G.X3.LexusConfig.WallhackVis = _G.X3.LexusConfig.WallhackVis or false
+_G.X3.LexusConfig.WallhackGlow = _G.X3.LexusConfig.WallhackGlow or false
+
+_G.X3.LexusConfig.AutoHead = _G.X3.LexusConfig.AutoHead or false
+_G.X3.LexusConfig.SmartAutoHead = _G.X3.LexusConfig.SmartAutoHead or false
+
+local M_SmartHead = {}
+local GameplayStatics_SH = import("GameplayStatics")
+local GameplayData_SH = require("GameLua.GameCore.Data.GameplayData")
+
+-- APPLY AUTO AIM HEAD --
+function M_SmartHead:ApplyAutoAimHead()
+  local PC = GameplayData_SH.GetPlayerController()
+  local autoComp = PC and PC.BP_AutoAimingComponent
+  if not autoComp then return end
+  autoComp.Bones = {"Head", "Head", "Head"}
+end
+
+local EAvatarDamagePosition_SH = import("EAvatarDamagePosition")
+
+-- GET HIT BODY TYPE --
+function M_SmartHead.GetHitBodyType(ImpactResult, InImpactVec)
+    if _G.X3.LexusConfig.SmartAutoHead then return EAvatarDamagePosition_SH.BigHead end
+    return nil
+end
+
+-- GET HIT BODY TYPE BY HIT POS --
+function M_SmartHead.GetHitBodyTypeByHitPos(InImpactVec)
+    if _G.X3.LexusConfig.SmartAutoHead then return EAvatarDamagePosition_SH.BigHead end
+    return nil
+end
+
+-- [X3Team] WALLHACK VISCHECK v11
+_G.X3.LexusState = _G.X3.LexusState or {}
+_G.X3.LexusState.CustomTextData = _G.X3.LexusState.CustomTextData or {}
+_G.X3.LexusState.CustomTextData.WallVisColor = _G.X3.LexusState.CustomTextData.WallVisColor or 1
+_G.X3.LexusState.CustomTextData.WallVisAIColor = _G.X3.LexusState.CustomTextData.WallVisAIColor or 29
+_G.X3.LexusState.CustomTextData.WallOccColor = _G.X3.LexusState.CustomTextData.WallOccColor or 9
+_G.X3.LexusState.CustomTextData.WallOccAIColor = _G.X3.LexusState.CustomTextData.WallOccAIColor or 39
+_G.X3.LexusState.CustomTextData.WallFilterMode = _G.X3.LexusState.CustomTextData.WallFilterMode or 1
+_G.X3.WallhackColorVersion = _G.X3.WallhackColorVersion or 1
+
+local GlobalSkelClassWH = nil
+pcall(function() GlobalSkelClassWH = import("SkeletalMeshComponent") end)
+
+local SkeletalMeshClass = nil
+local StaticMeshClass = nil
+local ChildActorClass = nil
+local AIControllerClass = nil
+
+pcall(function()
+    SkeletalMeshClass = import("/Script/Engine.SkeletalMeshComponent")
+    StaticMeshClass = import("/Script/Engine.StaticMeshComponent")
+    ChildActorClass = import("/Script/Engine.ChildActorComponent")
+    AIControllerClass = import("/Script/AIModule.AIController")
+end)
+
+if not SkeletalMeshClass then pcall(function() SkeletalMeshClass = import("SkeletalMeshComponent") end) end
+if not StaticMeshClass then pcall(function() StaticMeshClass = import("StaticMeshComponent") end) end
+if not ChildActorClass then pcall(function() ChildActorClass = import("ChildActorComponent") end) end
+if not AIControllerClass then pcall(function() AIControllerClass = import("AIController") end) end
+
+-- 2. COLOR SYSTEM (55 Peaked & Saturated)
+local function AuraColorWH(r, g, b, a) return {R = r, G = g, B = b, A = a} end
+
+local ColorPaletteWH = {
+    -- [PUTIH & ABU-ABU] 1-5
+    [1] = AuraColorWH(1.0, 1.0, 1.0, 1.0),   [2] = AuraColorWH(3.0, 3.0, 3.0, 1.0),
+    [3] = AuraColorWH(5.0, 5.0, 5.0, 1.0),     [4] = AuraColorWH(7.0, 7.0, 7.0, 1.0),
+    [5] = AuraColorWH(10.0, 10.0, 10.0, 1.0),
+    -- [MERAH PEKAT] 6-10
+    [6] = AuraColorWH(10.0, 0.0, 0.0, 1.0),     [7] = AuraColorWH(10.0, 1.0, 0.0, 1.0),
+    [8] = AuraColorWH(10.0, 2.0, 0.0, 1.0),     [9] = AuraColorWH(10.0, 3.0, 0.0, 1.0),
+    [10] = AuraColorWH(10.0, 4.0, 0.0, 1.0),
+    -- [HOT PINK] 11-15
+    [11] = AuraColorWH(10.0, 0.0, 2.0, 1.0),     [12] = AuraColorWH(10.0, 0.0, 4.0, 1.0),
+    [13] = AuraColorWH(10.0, 0.0, 6.0, 1.0),     [14] = AuraColorWH(10.0, 0.0, 8.0, 1.0),
+    [15] = AuraColorWH(10.0, 0.0, 10.0, 1.0),
+    -- [ORANGE PEKAT] 16-20
+    [16] = AuraColorWH(10.0, 3.0, 0.0, 1.0),     [17] = AuraColorWH(10.0, 5.0, 0.0, 1.0),
+    [18] = AuraColorWH(10.0, 6.0, 0.0, 1.0),     [19] = AuraColorWH(10.0, 7.0, 0.0, 1.0),
+    [20] = AuraColorWH(10.0, 8.0, 0.0, 1.0),
+    -- [GOLD / KUNING] 21-25
+    [21] = AuraColorWH(10.0, 10.0, 0.0, 1.0),    [22] = AuraColorWH(10.0, 10.0, 1.0, 1.0),
+    [23] = AuraColorWH(10.0, 10.0, 2.0, 1.0),    [24] = AuraColorWH(10.0, 10.0, 3.0, 1.0),
+    [25] = AuraColorWH(10.0, 10.0, 4.0, 1.0),
+    -- [LIME / HIJAU NEON] 26-30
+    [26] = AuraColorWH(0.0, 10.0, 0.0, 1.0),     [27] = AuraColorWH(1.0, 10.0, 0.0, 1.0),
+    [28] = AuraColorWH(2.0, 10.0, 0.0, 1.0),     [29] = AuraColorWH(3.0, 10.0, 0.0, 1.0),
+    [30] = AuraColorWH(4.0, 10.0, 0.0, 1.0),
+    -- [CYAN / TOSKA ELECTRIC] 31-35
+    [31] = AuraColorWH(0.0, 10.0, 10.0, 1.0),     [32] = AuraColorWH(0.0, 8.0, 10.0, 1.0),
+    [33] = AuraColorWH(0.0, 6.0, 10.0, 1.0),     [34] = AuraColorWH(0.0, 4.0, 10.0, 1.0),
+    [35] = AuraColorWH(0.0, 2.0, 10.0, 1.0),
+    -- [BIRU PEKAT] 36-40
+    [36] = AuraColorWH(0.0, 0.0, 10.0, 1.0),     [37] = AuraColorWH(0.0, 1.0, 10.0, 1.0),
+    [38] = AuraColorWH(0.0, 2.0, 10.0, 1.0),     [39] = AuraColorWH(0.0, 3.0, 10.0, 1.0),
+    [40] = AuraColorWH(0.0, 4.0, 10.0, 1.0),
+    -- [UNGU / VIOLET] 41-45
+    [41] = AuraColorWH(4.0, 0.0, 10.0, 1.0),     [42] = AuraColorWH(6.0, 0.0, 10.0, 1.0),
+    [43] = AuraColorWH(8.0, 0.0, 10.0, 1.0),     [44] = AuraColorWH(10.0, 0.0, 10.0, 1.0),
+    [45] = AuraColorWH(10.0, 2.0, 8.0, 1.0),
+    -- [PREMIUM CAMPURAN] 46-50
+    [46] = AuraColorWH(10.0, 10.0, 0.0, 1.0),    [47] = AuraColorWH(10.0, 0.0, 5.0, 1.0),
+    [48] = AuraColorWH(0.0, 10.0, 5.0, 1.0),     [49] = AuraColorWH(5.0, 10.0, 0.0, 1.0),
+    [50] = AuraColorWH(10.0, 5.0, 0.0, 1.0),
+    -- [SPESIAL ANIMASI SMOOTH] 51-55
+    [51] = "RAINBOW_SMOOTH", [52] = "NEON_PULSE", [53] = "CYBERPUNK",
+    [54] = "LAVA_FLOW",      [55] = "VAPORWAVE"
+}
+
+-- Smooth Animation (Low freq, no stutter)
+local function GetRainbowSmoothColorWH()
+    local t = os.clock() * 1.2
+    return AuraColorWH(math.sin(t)*5.0+5.0, math.sin(t+2.094)*5.0+5.0, math.sin(t+4.188)*5.0+5.0, 1.0)
+end
+-- GET NEON PULSE COLOR WH --
+local function GetNeonPulseColorWH()
+    local p = (math.sin(os.clock()*2.0)+1.0)*5.0
+    return AuraColorWH(p, 0.0, p, 1.0)
+end
+-- GET CYBERPUNK COLOR WH --
+local function GetCyberpunkColorWH()
+    local t = os.clock() * 1.5
+    local blend = (math.sin(t)+1.0)*0.5
+    return AuraColorWH(10.0*blend, 10.0*(1.0-blend), 10.0, 1.0)
+end
+-- GET LAVA FLOW COLOR WH --
+local function GetLavaFlowColorWH()
+    local t = os.clock() * 1.0
+    return AuraColorWH(10.0, (math.sin(t)*0.5+0.5)*8.0, (math.sin(t*2.0)*0.5+0.5)*2.0, 1.0)
+end
+-- GET VAPORWAVE COLOR WH --
+local function GetVaporwaveColorWH()
+    local t = os.clock() * 1.2
+    return AuraColorWH((math.sin(t)*0.5+0.5)*10.0, (math.sin(t+2.094)*0.5+0.5)*5.0, (math.sin(t+4.188)*0.5+0.5)*10.0, 1.0)
+end
+
+-- GET COLOR BY IDWH --
+local function GetColorByIDWH(cID)
+    local c = ColorPaletteWH[cID] or ColorPaletteWH[5]
+    if c == "RAINBOW_SMOOTH" then return GetRainbowSmoothColorWH()
+    elseif c == "NEON_PULSE" then return GetNeonPulseColorWH()
+    elseif c == "CYBERPUNK" then return GetCyberpunkColorWH()
+    elseif c == "LAVA_FLOW" then return GetLavaFlowColorWH()
+    elseif c == "VAPORWAVE" then return GetVaporwaveColorWH()
+    else return c end
+end
+
+-- GET CURRENT WALL VISIBLE COLOR WH --
+local function GetCurrentWallVisibleColorWH(isAI)
+    if isAI then return GetColorByIDWH(_G.X3.LexusState.CustomTextData.WallVisAIColor or 29)
+    else return GetColorByIDWH(_G.X3.LexusState.CustomTextData.WallVisColor or 5) end
+end
+-- GET CURRENT WALL OCCLUDED COLOR WH --
+local function GetCurrentWallOccludedColorWH(isAI)
+    if isAI then return GetColorByIDWH(_G.X3.LexusState.CustomTextData.WallOccAIColor or 39)
+    else return GetColorByIDWH(_G.X3.LexusState.CustomTextData.WallOccColor or 9) end
+end
+
+-- GET TRANSPARENT WH --
+_G.X3.GetTransparentWH = function()
+    if not _G.X3.TransparentColorWH then _G.X3.TransparentColorWH = AuraColorWH(0, 0, 0, 0) end
+    return _G.X3.TransparentColorWH
+end
+
+-- SCALE COLOR ALPHA WH --
+_G.X3.ScaleColorAlphaWH = function(c, f)
+    if type(c) ~= "table" then return c end
+    return AuraColorWH(c.R or 1, c.G or 1, c.B or 1, (c.A or 1) * f)
+end
+
+-- 3. SDK VALIDATED MESH AURA
+local ValidWH = function(obj) return obj and slua.isValid and slua.isValid(obj) end
+local math_randomWH = math.random
+
+-- RESET MESH AURA COMPONENT WH --
+-- RESET MESH AURA COMPONENT WH — METODE DX PENUH (dyeing + highlight + custom depth)
+local function IsMeshRenderSafe(mesh)
+    if not ValidWH(mesh) then return false end
+    -- Cek apakah mesh sudah terdaftar di world (anti crash saat streaming kendaraan)
+    if mesh.IsRegistered and not mesh:IsRegistered() then return false end
+    return true
+end
+
+-- RESET MESH AURA COMPONENT WH
+local function ResetMeshAuraComponentWH(mesh)
+    if not IsMeshRenderSafe(mesh) then return end
+    pcall(function()
+        mesh:SetDrawDyeing(false)
+        mesh:SetDrawHighlight(false)
+        mesh:SetRenderCustomDepth(false)
+        mesh:SetCustomDepthStencilValue(0)
+    end)
+end
+
+_G.X3._WHDyeCvars = function(on)
+    local v = on and "1" or "0"
+    local cmds = {
+        "r.EnableDrawDyeingColor " .. v,
+        "r.SupportDyeingColorDistanceFade " .. v,
+        "r.SupportDyeingColorMeshProxy " .. v,
+        "r.EnablePrimitiveHighlight " .. v,
+        "r.CustomDepth " .. (on and "3" or "1"),
+        "r.DeviceLevelUseHighLightMode " .. v,
+        "r.Highlight.Enable " .. v,
+    }
+    pcall(function()
+        local KSLib = import("KismetSystemLibrary")
+        if not (KSLib and KSLib.ExecuteConsoleCommand) then return end
+        local pc = GameplayData and GameplayData.GetPlayerController and GameplayData.GetPlayerController()
+        if not (pc and slua.isValid(pc)) then return end
+        for _, c in ipairs(cmds) do
+            pcall(KSLib.ExecuteConsoleCommand, pc, c)
+        end
+    end)
+end
+
+
+local function ApplyAuraToMeshComponentWH(mesh, vis, occ)
+    if not mesh or (slua.isValid and not slua.isValid(mesh)) then return end
+    pcall(function()
+        mesh:SetDrawDyeing(true)
+        mesh:SetDrawDyeingMode(1)
+        mesh:SetVisibleDyeingColor(vis)
+        mesh:SetOccludedDyeingColor(occ)
+        local fadeDistWH = tonumber(_G.X3.LexusState.CustomTextData.WallFadeDist) or 0
+        if fadeDistWH > 0 then
+            mesh:SetDyeingColorMinMaxDistance(0.0, fadeDistWH * 100.0)
+            mesh:SetDyeingColorFadeDistance(fadeDistWH * 50.0)
+        else
+            mesh:SetDyeingColorMinMaxDistance(0.0, 99999.0)
+            mesh:SetDyeingColorFadeDistance(99999.0)
+        end
+        mesh:SetDrawHighlight(true)
+        mesh:SetRenderCustomDepth(true)
+        mesh:SetCustomDepthStencilValue(255)
+    end)
+end
+
+
+local WH_NoPSEnvUntil = 0
+
+-- [PERF-WH] cache flag medan-latihan 1 dtk (dulu: 1 pcall+GetGameState PER MUSUH per 2 dtk)
+local _WH_trainCache = { v = false, t = -1 }
+local function _WH_GetTrainingCached()
+    local n = os.clock()
+    if (n - _WH_trainCache.t) > 1.0 then
+        _WH_trainCache.t = n
+        local tr = false
+        pcall(function()
+            local gs = GameplayData and GameplayData.GetGameState and GameplayData.GetGameState()
+            if gs and slua.isValid(gs) and gs.bIsTrainingMode == true then tr = true end
+        end)
+        _WH_trainCache.v = tr
+    end
+    return _WH_trainCache.v
+end
+
+-- IS MODEL TARGET NAME WH --
+local function IsModelTargetNameWH(enemy)
+    if enemy.TD_IsModelTargetWH == true then return true end
+    local nowC = os.clock()
+    if enemy.TD_MTCheckTimeWH and (nowC - enemy.TD_MTCheckTimeWH) < 2.0 then
+        return false
+    end
+    enemy.TD_MTCheckTimeWH = nowC
+    local training = _WH_GetTrainingCached()  -- [PERF-WH] cache 1 dtk (hilangkan pcall+GetGameState per musuh)
+    local hit = false
+    pcall(function()
+        local cand = {}
+        local n1 = enemy.PlayerName
+        if type(n1) == "string" and n1 ~= "" then table.insert(cand, n1) end
+        if type(enemy.GetPlayerName) == "function" then
+            local okN, n2 = pcall(function() return enemy:GetPlayerName() end)
+            if okN and type(n2) == "string" and n2 ~= "" then table.insert(cand, n2) end
+        end
+        if type(enemy.GetName) == "function" then
+            local okN3, n3 = pcall(function() return enemy:GetName() end)
+            if okN3 and type(n3) == "string" and n3 ~= "" then table.insert(cand, n3) end
+        end
+        -- nama class blueprint (NPC seperti BP_Nukenin_C ketahuan dari sini)
+        if type(enemy.GetClass) == "function" then
+            local okC, cls = pcall(function() return enemy:GetClass() end)
+            if okC and cls then
+                local okCN, cn = pcall(function() return cls:GetName() end)
+                if okCN and type(cn) == "string" and cn ~= "" then table.insert(cand, cn) end
+            end
+        end
+        pcall(function()
+            local cx = enemy.CharacterName or enemy.NickName
+            if type(cx) == "string" and cx ~= "" then table.insert(cand, cx) end
+        end)
+        local ps = enemy.PlayerState
+        if not ValidWH(ps) and type(enemy.GetPlayerState) == "function" then
+            pcall(function() ps = enemy:GetPlayerState() end)
+        end
+        if ValidWH(ps) then
+            pcall(function()
+                local pn = ps.PlayerName
+                if (type(pn) ~= "string" or pn == "") and type(ps.GetPlayerName) == "function" then
+                    pn = ps:GetPlayerName()
+                end
+                if type(pn) == "string" and pn ~= "" then table.insert(cand, pn) end
+            end)
+        end
+        for _, s in ipairs(cand) do
+            local ls = string.lower(s)
+            local npcHit = ls:find("nukenin", 1, true) or ls:find("kyuubi", 1, true)
+                or ls:find("kurama", 1, true) or ls:find("gamakichi", 1, true)
+                or ls:find("gamabunta", 1, true) or ls:find("shukaku", 1, true)
+                or ls:find("_npc", 1, true) or ls:find("npc_", 1, true)
+                or ls:find("monster", 1, true) or ls:find("zombie", 1, true)
+                or ls:find("puppet", 1, true) or ls:find("_boss", 1, true)
+            local trainHit = (not training) and (
+                ls:find("modeltarget", 1, true) or ls:find("targetdummy", 1, true)
+                or ls:find("trainingtarget", 1, true)
+                or ls:find("bot latihan", 1, true) or ls:find("training bot", 1, true)
+                or ls:find("practice bot", 1, true)
+                or s:find("训练机器人", 1, true) or s:find("靶场机器人", 1, true)
+                or s:find("训练场", 1, true))
+            if npcHit or trainHit then
+                hit = true
+                return
+            end
+        end
+    end)
+    if hit then
+        enemy.TD_IsModelTargetWH = true
+        pcall(function()
+            if bWriteLog then print("[X3Team] patung training terdeteksi (ModelTarget) -> BOT") end
+        end)
+        if _G.X3 and _G.X3._CrashLog and not enemy.TD_NPCLoggedWH then
+            enemy.TD_NPCLoggedWH = true
+            local nm1, cls1 = "", ""
+            pcall(function() nm1 = tostring(enemy.PlayerName or "") end)
+            pcall(function() cls1 = tostring(enemy:GetClass():GetName()) end)
+            _G.X3._CrashLog("NPC HARD-BLOCKED > " .. nm1 .. " | class " .. cls1)
+        end
+    end
+    return hit
+end
+
+_G.X3._UIDOf = function(pawn)
+    local uid = nil
+    pcall(function()
+        local ps = pawn.PlayerState
+        if not (ps and slua.isValid(ps)) and type(pawn.GetPlayerState) == "function" then
+            pcall(function() ps = pawn:GetPlayerState() end)
+        end
+        if ps and slua.isValid(ps) then
+            uid = ps.UID or ps.PlayerUID or ps.UIDString or ps.Id or ps.PlayerId
+        end
+    end)
+    if uid == nil or uid == "" or uid == 0 or uid == "0" then
+        uid = tostring(pawn) -- fallback (masih lebih baik daripada tidak ada)
+    end
+    return tostring(uid)
+end
+_G.X3._AICache = _G.X3._AICache or {}
+_G.X3._AIVerdict = _G.X3._AIVerdict or {}
+_G.X3.CheckIsAI = function(pawn)
+    if not (pawn and slua.isValid(pawn)) then return false end
+    local uid = _G.X3._UIDOf(pawn)
+    local cached = _G.X3._AICache[uid]
+    if cached ~= nil then return cached end
+    local isAI, hasChecked = false, false
+    pcall(function()
+        if pawn.bIsAI == true or pawn.IsAI == true then
+            isAI, hasChecked = true, true
+        elseif type(pawn.IsBot) == "function" and pawn:IsBot() then
+            isAI, hasChecked = true, true
+        elseif pawn.IsBot == true then
+            isAI, hasChecked = true, true
+        end
+        if not isAI then
+            local G = rawget(_G, "Game")
+            if G and type(G.IsAI) == "function" and G:IsAI(pawn) then
+                isAI, hasChecked = true, true
+            end
+        end
+        local pState = pawn.PlayerState
+        if not (pState and slua.isValid(pState)) and type(pawn.GetPlayerState) == "function" then
+            pcall(function() pState = pawn:GetPlayerState() end)
+        end
+        if pState and slua.isValid(pState) then
+            hasChecked = true
+            if pState.bIsABot == true or pState.bIsBot == true then
+                isAI = true
+            elseif type(pState.IsBot) == "function" and pState:IsBot() then
+                isAI = true
+            end
+        end
+        if not isAI then
+            local name = pawn.PlayerName
+            if (type(name) ~= "string" or name == "") and type(pawn.GetPlayerName) == "function" then
+                pcall(function() name = pawn:GetPlayerName() end)
+            end
+            if type(name) == "string" and name ~= "" then
+                hasChecked = true
+                if name:find("Cobra") or name:find("Target") or name:find("bot_")
+                    or name:find("训练机器人") or name:find("PlayerBot") then
+                    isAI = true
+                end
+            end
+        end
+    end)
+    if hasChecked then
+        _G.X3._AICache[uid] = isAI
+        -- verdict log 1x per UID (bukan per wrapper = tidak ada spam ulang)
+        if not _G.X3._AIVerdict[uid] then
+            _G.X3._AIVerdict[uid] = true
+            local nm = ""
+            pcall(function() nm = tostring(pawn.PlayerName or "?") end)
+            if _G.X3 and _G.X3._CrashLog then
+                _G.X3._CrashLog((isAI and "BOT/AI TERDETEKSI (DX) > " or "PLAYER TERDETEKSI (DX) > ") .. nm)
+            end
+        end
+    end
+    return isAI
+end
+
+-- ALIAS KOMPATIBEL: semua call site (wallhack/ESP/count/mapmark/scan) kini DX
+local function IsBotWH(enemy)
+    if enemy and enemy.TD_IsModelTargetWH == true then return true end
+    return _G.X3.CheckIsAI(enemy)
+end
+_G.X3.IsBotPawn = function(p) return _G.X3.CheckIsAI(p) end
+
+_G.X3.PawnReadyT = _G.X3.PawnReadyT or {}
+-- PAWN READY KEY --
+_G.X3.PawnReadyKey = function(p)
+    local k = nil
+    pcall(function()
+        if type(p.GetUniqueID) == "function" then k = p:GetUniqueID() end
+        if k == nil then k = p.PlayerKey end
+        if k == nil and type(p.GetName) == "function" then k = p:GetName() end
+    end)
+    if k == nil then k = tostring(p) end
+    return k
+end
+-- IS PAWN RENDER READY --
+_G.X3.IsPawnRenderReady = function(p, minAge)
+    if not (p and slua.isValid(p)) then return false end
+    local now = os.clock()
+    local key = _G.X3.PawnReadyKey(p)
+    local st = _G.X3.PawnReadyT[key]
+    if st == nil then
+        local n = 0
+        for _ in pairs(_G.X3.PawnReadyT) do n = n + 1 end
+        if n > 400 then _G.X3.PawnReadyT = {} end -- cap anti menumpuk
+        st = { t0 = now, ready = false }
+        _G.X3.PawnReadyT[key] = st
+        return false
+    end
+    if type(st) == "number" then -- migrasi format lama (timestamp polos)
+        st = { t0 = st, ready = false }
+        _G.X3.PawnReadyT[key] = st
+    end
+    if st.ready then return true end
+    if (now - st.t0) < (minAge or 0.6) then return false end
+    local ok = false
+    pcall(function()
+        local m = p.Mesh
+        if not (m and slua.isValid(m)) and type(p.getAvatarComponent2) == "function" then
+            m = p:getAvatarComponent2()
+        end
+        if m and slua.isValid(m) then ok = true end
+    end)
+    if ok then st.ready = true end
+    return ok
+end
+
+-- SAFE BONE POS --
+_G.X3.SafeBonePos = function(t, boneName)
+    if not (_G.X3.IsPawnRenderReady and _G.X3.IsPawnRenderReady(t, 0.6)) then return nil end
+    local alt = nil
+    if boneName == "head" then alt = "Head" elseif boneName == "Head" then alt = "head" end
+    local pos = nil
+    pcall(function() if t.GetBonePos then pos = t:GetBonePos(boneName, {X = 0, Y = 0, Z = 0}) end end)
+    if pos and (pos.X ~= 0 or pos.Y ~= 0 or pos.Z ~= 0) then return pos end
+    if alt then
+        pos = nil
+        pcall(function() if t.GetBonePos then pos = t:GetBonePos(alt, {X = 0, Y = 0, Z = 0}) end end)
+        if pos and (pos.X ~= 0 or pos.Y ~= 0 or pos.Z ~= 0) then return pos end
+    end
+    pos = nil
+    pcall(function() if type(t.GetSocketLocation) == "function" then pos = t:GetSocketLocation(boneName) end end)
+    if pos and (pos.X ~= 0 or pos.Y ~= 0 or pos.Z ~= 0) then return pos end
+    if alt then
+        pos = nil
+        pcall(function() if type(t.GetSocketLocation) == "function" then pos = t:GetSocketLocation(alt) end end)
+        if pos and (pos.X ~= 0 or pos.Y ~= 0 or pos.Z ~= 0) then return pos end
+    end
+    return nil
+end
+
+
+-- 5. UNIVERSAL CHARACTER RETRIEVER
+local _EC_seen = setmetatable({}, { __mode = "k" })  -- [PERF-F10] buffer dedup pakai-ulang (hilangkan 1 alloc tabel/miss; chars sengaja TIDAK di-reuse demi keamanan cache)
+local function X3Team_GetAllCharactersUniversal()
+    local nowEC = os.clock()
+    local ec = _G.X3._EnumCache
+    if ec and ec.list and (nowEC - ec.t) < 0.2 then
+        return ec.list
+    end
+    local chars = {}
+local seen = _EC_seen
+for k in pairs(seen) do seen[k] = nil end  -- [PERF-F10] clear buffer (aman: seen tidak bocor ke cache/konsumen)
+    pcall(function()
+        if GameplayData.GetAllPlayerCharacters then
+            local brChars = GameplayData.GetAllPlayerCharacters()
+            if brChars then
+                for _, c in pairs(brChars) do
+                    if slua.isValid(c) and not seen[c] then seen[c] = true; table.insert(chars, c) end
+                end
+            end
+        end
+        if GameplayData.GameCharacters then
+            local gameChars = GameplayData.GameCharacters
+            if type(gameChars) == "table" then
+                for _, c in pairs(gameChars) do
+                    if slua.isValid(c) and not seen[c] then seen[c] = true; table.insert(chars, c) end
+                end
+            end
+        end
+        local CreativeMgr = package.loaded["client.slua.logic.creative.CreativeManager"] or package.loaded["GameLua.Mod.PlanPH.Client.SubSystem.CreativeSubSystem"]
+        if CreativeMgr and type(CreativeMgr.GetAllCreativeCharacters) == "function" then
+            local wowChars = CreativeMgr:GetAllCreativeCharacters()
+            if wowChars then
+                for _, c in pairs(wowChars) do
+                    if slua.isValid(c) and not seen[c] then seen[c] = true; table.insert(chars, c) end
+                end
+            end
+        end
+        -- FALLBACK MEDAN LATIHAN: di training ground daftar PlayerCharacters bisa kosong
+        -- (bukan battle biasa) -> enumerasi langsung by-class agar ESP/WH tetap jalan.
+        if #chars == 0 then
+            pcall(function()
+                local G = rawget(_G, "Game")
+                local cls = import("STExtraPlayerCharacter")
+                if G and G.GetActorsByClass and cls then
+                    local actors = G:GetActorsByClass(cls)
+                    if actors then
+                        local n = actors:Num() or 0
+                        for i = 0, n - 1 do
+                            local c = actors:Get(i)
+                            if c and slua.isValid(c) and not seen[c] then seen[c] = true; table.insert(chars, c) end
+                        end
+                        if n > 0 and not _G.X3._EnumFallbackLogged then
+                            _G.X3._EnumFallbackLogged = true
+                            if _G.X3._CrashLogUrgent then pcall(_G.X3._CrashLogUrgent, "ENUM FALLBACK > GetActorsByClass dipakai (" .. tostring(n) .. " karakter, medan latihan?)") end
+                        end
+                    end
+                end
+            end)
+        end
+    end)
+    _G.X3._EnumCache = { t = nowEC, list = chars }
+    return chars
+end
+
+-- TEMBUS PANDANG / WALLHACK VISCHECK --
+function _G.X3.ProcessWallhack()
+    local isOn = (_G.X3.LexusConfig.WallhackVis == true)
+    local GameplayData = require("GameLua.GameCore.Data.GameplayData")
+    local PC = GameplayData and GameplayData.GetPlayerController and GameplayData.GetPlayerController()
+    local currentTickOS = os.clock()
+
+    if _G.X3._WHNextPass and currentTickOS < _G.X3._WHNextPass then
+        _G.X3.LexusState.LastWallhackVisState = isOn
+        return
+    end
+    _G.X3._WHNextPass = currentTickOS + 0.15 * (_G.X3.TickScale and _G.X3.TickScale() or 1)
+
+    local panicEnabled = (_G.X3.LexusConfig.WallPanicGuard ~= false)
+    local tickStartOS = currentTickOS
+
+    -- Match State Detection
+    local currentGameMode = ""
+    pcall(function()
+        local gs = GameplayData.GetGameState()
+        if slua.isValid(gs) then currentGameMode = gs:GetGameModeState() or "" end
+    end)
+
+    if currentGameMode == "FightingState" and _G.X3.LexusState.LastGameModeState ~= "FightingState" then
+        _G.X3.LexusState.LastGameModeState = "FightingState"
+        _G.X3.LexusState.WallhackMatchResetDone = false
+    end
+
+    if currentGameMode == "FightingState" and not _G.X3.LexusState.WallhackMatchResetDone and isOn then
+        _G.X3.LexusState.WallhackMatchResetDone = true
+        _G.X3.LexusState.LastWallhackVisState = false
+        _G.X3.WallhackColorVersion = (_G.X3.WallhackColorVersion or 0) + 1
+    end
+
+    if currentGameMode ~= "FightingState" and _G.X3.LexusState.LastGameModeState == "FightingState" then
+        _G.X3.LexusState.LastGameModeState = currentGameMode
+        _G.X3.LexusState.WallhackMatchResetDone = false
+        _G.X3.LexusState.LastWallhackVisState = false
+        _G.X3.WallhackColorVersion = (_G.X3.WallhackColorVersion or 0) + 1
+    end
+
+    -- [WH-FIX-1] state vischeck (isOn) tetap dicatat, TAPI TIDAK lagi menyentuh cvar di sini.
+    if _G.X3.LexusState.LastWallhackVisState ~= isOn then
+        _G.X3.LexusState.LastWallhackVisState = isOn
+    end
+    -- [WH-FIX-1] DYE ENGINE mengikuti (WallhackVis OR X3WeaponWH), BUKAN WallhackVis saja.
+    -- => WH WEAPON bisa ON & berwarna walau WallhackVis OFF. Dicek TIAP pass, jadi
+    --    toggle X3WeaponWH di tengah match langsung aktif (<=0.4 dtk), tanpa nunggu 30 dtk.
+    local _dyeOn = isOn or (_G.X3.LexusConfig.X3WeaponWH == true)
+    if _G.X3.LexusState._WHLastDyeState ~= _dyeOn then
+        _G.X3.LexusState._WHLastDyeState = _dyeOn
+        if _G.X3._WHDyeCvars then pcall(_G.X3._WHDyeCvars, _dyeOn) end
+    end
+
+    -- re-assert 30 dtk: hanya grup dye/highlight yang aman (metode DXWHLN);
+    -- juga menutup kondisi WH weapon-only tanpa vischeck.
+    local whAny = isOn or _G.X3.LexusConfig.X3WeaponWH == true
+    if whAny then
+        _G.X3._WHDyeAssertT = _G.X3._WHDyeAssertT or 0
+        if currentTickOS - _G.X3._WHDyeAssertT >= 30 then
+            _G.X3._WHDyeAssertT = currentTickOS
+            if _G.X3._WHDyeCvars then pcall(_G.X3._WHDyeCvars, true) end
+        end
+    end
+    if not isOn and not (_G.X3.LexusConfig.X3WeaponWH == true) then
+        -- [WH-FIX-1] bila KEDUANYA OFF, tidak ada yang perlu diproses (cvar sudah OFF via _dyeOn).
+        return
+    end
+    if not isOn then
+        -- [WH-FIX-1] WallhackVis OFF tapi X3WeaponWH ON: cvar tetap ON (via _dyeOn),
+        -- tapi JANGAN proses vischeck (loop musuh di bawah khusus vischeck). Cukup return
+        -- SETELAH cvar dipastikan ON di atas. (WH Weapon di-handle _XFWScan/_XFWPulse terpisah.)
+        -- Namun kita tetap lanjut ke loop HANYA bila isOn; jadi di sini return untuk vischeck.
+        -- CATATAN: baris ini sengaja TIDAK mengeksekusi loop vischeck saat WallhackVis OFF.
+    end
+
+    if panicEnabled and _G.X3.LexusState.WallPanicUntil and currentTickOS < _G.X3.LexusState.WallPanicUntil then
+        return
+    end
+
+    local filterMode = _G.X3.LexusState.CustomTextData.WallFilterMode or 1
+    if _G.X3.LexusState.LastFilterModeWH ~= filterMode then
+        _G.X3.LexusState.LastFilterModeWH = filterMode
+        _G.X3.WallhackColorVersion = (_G.X3.WallhackColorVersion or 0) + 1
+        print("[X3Team] Filter changed to " .. filterMode .. ". Forcing dyeing reset...")
+    end
+    local localPlayer = GameplayData.GetPlayerCharacter and GameplayData.GetPlayerCharacter()
+    if _G.X3._Spectating == true then
+        local anch = _G.X3._SpecAnchorPawn
+        if anch then
+            local okA, validA = pcall(slua.isValid, anch)
+            if okA and validA then localPlayer = anch end
+        end
+    end
+    local localTeamID = nil
+    if ValidWH(localPlayer) then pcall(function() localTeamID = localPlayer.TeamID end) end
+
+    local myLocWH = nil
+    if ValidWH(localPlayer) then pcall(function() myLocWH = localPlayer:K2_GetActorLocation() end) end
+
+    local allPlayers = X3Team_GetAllCharactersUniversal()
+    _G.X3.LexusState.WallPawnCount = (allPlayers and #allPlayers) or 0
+    local hasSpecial = (_G.X3.LexusState.CustomTextData.WallVisColor or 5) >= 51
+                    or (_G.X3.LexusState.CustomTextData.WallVisAIColor or 29) >= 51
+                    or (_G.X3.LexusState.CustomTextData.WallOccColor or 9) >= 51
+                    or (_G.X3.LexusState.CustomTextData.WallOccAIColor or 39) >= 51
+
+    -- CONFIG HASH dihitung SEKALI per pass (bukan per musuh) -- penghemat CPU besar
+    local cfgHashWH = tostring(_G.X3.LexusState.CustomTextData.WallVisColor) .. "|"
+              .. tostring(_G.X3.LexusState.CustomTextData.WallVisAIColor) .. "|"
+              .. tostring(_G.X3.LexusState.CustomTextData.WallOccColor) .. "|"
+              .. tostring(_G.X3.LexusState.CustomTextData.WallOccAIColor) .. "|V" .. _G.X3.WallhackColorVersion
+              .. "|F" .. tostring(_G.X3.LexusState.CustomTextData.WallFadeDist or 0)
+              .. "|O" .. tostring(_G.X3.LexusState.CustomTextData.WallOccOpacity or 100)
+              .. "|C" .. tostring(_G.X3.LexusConfig.WallShowVis) .. tostring(_G.X3.LexusConfig.WallShowOcc)
+
+    -- [WH-FIX-2] set UID musuh yang MASIH ADA di world. Musuh hidup/ada TIDAK akan
+    -- di-sweep walau seenT sesaat tidak fresh => NO BLANK walau rame / round-robin / jitter.
+    local _activeUID = {}
+    for _, _au in ipairs(allPlayers) do
+        if ValidWH(_au) then
+            local _uu = _G.X3._UIDOf and _G.X3._UIDOf(_au) or tostring(_au)
+            _activeUID[_uu] = true
+        end
+    end
+
+    _G.X3._WHC = _G.X3._WHC or {}
+    local WHC = _G.X3._WHC
+
+    -- [WH-FIX-1] loop vischeck HANYA bermakna bila WallhackVis ON.
+    -- (Bila WallhackVis OFF tapi X3WeaponWH ON, cvar sudah ON di atas; pewarnaan weapon
+    --  dikerjakan _XFWScan/_XFWPulse yang independen -- jadi loop di bawah dilewati.)
+-- [PERF-F03 sub1] round-robin ber-budget: proses sebagian musuh per pass, lanjut
+-- pass berikutnya. Zero-flicker: dye persisten + sweep pakai _activeUID.
+-- Matikan slicing: set _whBudget = 999 (proses semua per pass, seperti asli).
+
+local _whN      = #allPlayers
+local _whStart  = os.clock()
+local _whBudget = 0.006 -- 6 ms/pass (tune 0.004..0.010; 999 = off)
+local _whCursor = _G.X3._WHCursor or 1
+local _whProc   = 0
+local _whBroken = false
+
+if _whN >= 1 and (_whCursor < 1 or _whCursor > _whN) then
+    _whCursor = 1
+end
+
+if isOn then
+    for _whK = 0, _whN - 1 do
+        local _whI = ((_whCursor - 1 + _whK) % _whN) + 1
+        local enemy = allPlayers[_whI]
+
+        _whProc = _whProc + 1
+
+        if (_whProc % 4) == 0
+            and (os.clock() - _whStart) > _whBudget
+        then
+            _G.X3._WHCursor = _whI + 1
+
+            if _G.X3._WHCursor > _whN then
+                _G.X3._WHCursor = 1
+            end
+
+            _whBroken = true
+            _G.X3._WHSliced = (_G.X3._WHSliced or 0) + 1
+
+            break
+        end
+        if ValidWH(enemy) and not IsModelTargetNameWH(enemy) then
+            local isLocal = (enemy == localPlayer)
+            local uidWH = _G.X3._UIDOf and _G.X3._UIDOf(enemy) or tostring(enemy)
+            local rec = WHC[uidWH]
+            if not rec then rec = {}; WHC[uidWH] = rec end
+            local isTeammate = false
+
+            if not isLocal then
+                local nowTeamOS = os.clock()
+                if rec.teamT and (nowTeamOS - rec.teamT) < 1.0 then
+                    isTeammate = rec.isTeammate or false
+                else
+                    rec.teamT = nowTeamOS
+                    pcall(function()
+                        local eTeam = enemy.TeamID
+                        if localTeamID and localTeamID > 0 and eTeam and eTeam > 0 and localTeamID == eTeam then
+                            isTeammate = true
+                        end
+                        if not isTeammate and enemy.PlayerState then
+                            local myParty = localPlayer.PlayerState and localPlayer.PlayerState.PartyID
+                            local eParty = enemy.PlayerState.PartyID
+                            if myParty and eParty and myParty ~= "" and myParty == eParty then
+                                isTeammate = true
+                            end
+                        end
+                    end)
+                    rec.isTeammate = isTeammate
+                end
+            end
+
+            if not isLocal and not isTeammate then
+                local isAI = IsBotWH(enemy)
+
+                local shouldShow = false
+                if filterMode == 1 then shouldShow = true        -- All
+                elseif filterMode == 2 then shouldShow = not isAI  -- Player Only
+                elseif filterMode == 3 then shouldShow = isAI      -- Bot Only
+                end
+
+                if shouldShow and _G.X3.LexusConfig.WallHideDead ~= false then
+                    local isDeadWH = false
+                    pcall(function()
+                        if enemy.Health and enemy.Health <= 0 then isDeadWH = true end
+                        if not isDeadWH and enemy.bDead == true then isDeadWH = true end
+                        if not isDeadWH and enemy.bIsDying == true then isDeadWH = true end
+                    end)
+                    if isDeadWH then shouldShow = false end
+                end
+
+                -- [WH-FIX-4] pisahkan "naik kendaraan" (TETAP diwarnai via mesh kendaraan)
+                -- dari "hidden/tearoff tanpa kendaraan" (hold: dye dibiarkan, anti-blank).
+                local vehHold = false
+                local inVehicle = false
+                local vehActor = nil
+                pcall(function()
+                    local cv = enemy.CurrentVehicle
+                    if cv ~= nil then
+                        local okV, valid = pcall(slua.isValid, cv)
+                        if okV and valid then inVehicle = true; vehActor = cv end
+                    end
+                    if not inVehicle and (enemy.bHidden == true or enemy.bTearOff == true) then
+                        vehHold = true
+                    end
+                end)
+                if vehHold then
+                    shouldShow = false
+                    if not rec.vehHold then
+                        rec.vehHold = true
+                        if _G.X3._CrashLog then pcall(_G.X3._CrashLog, "WH HOLD > musuh hidden/tearoff tanpa kendaraan (mesh dibiarkan)") end
+                    end
+                else
+                    rec.vehHold = false
+                end
+                -- transisi masuk/keluar kendaraan -> paksa enumerasi mesh ulang segera
+                if inVehicle ~= rec.inVehicle then
+                    rec.inVehicle = inVehicle
+                    rec.meshT = 0
+                    rec.vehActor = vehActor
+                elseif inVehicle then
+                    rec.vehActor = vehActor
+                end
+
+                if shouldShow and myLocWH then
+                    local maxDistWH = tonumber(_G.X3.LexusState.CustomTextData.WallMaxDist) or 0
+                    -- [WH-FIX-3] spectator dibatasi 320m (permintaan; kurangi jitter jauh = anti-blank)
+                    local capWH = (_G.X3._Spectating == true) and 320 or 340
+                    if maxDistWH <= 0 or maxDistWH > capWH then maxDistWH = capWH end
+                    if maxDistWH > 0 then
+                        local eLocWH = nil
+                        pcall(function() eLocWH = enemy:K2_GetActorLocation() end)
+                        if eLocWH then
+                            local dxWH = (eLocWH.X or 0) - (myLocWH.X or 0)
+                            local dyWH = (eLocWH.Y or 0) - (myLocWH.Y or 0)
+                            local dzWH = (eLocWH.Z or 0) - (myLocWH.Z or 0)
+                            local distMWH = math.sqrt(dxWH * dxWH + dyWH * dyWH + dzWH * dzWH) / 100.0
+                            -- [WH-FIX-3b] hysteresis 12m (spectator) anti-blank tepi jarak:
+                            -- musuh BARU harus < (cap-12); musuh SUDAH tampil tetap sampai > cap (strict max 320).
+                            local limitWH = maxDistWH
+                            if _G.X3._Spectating == true then
+                                limitWH = (rec.applied and maxDistWH) or (maxDistWH - 12)
+                            end
+                            if distMWH > limitWH then shouldShow = false end
+                        end
+                    end
+                end
+
+                if shouldShow and _G.X3._Spectating ~= true and _G.X3.IsPawnRenderReady and not _G.X3.IsPawnRenderReady(enemy, 0.6) then shouldShow = false end
+
+                if shouldShow then
+                    if not rec.meshT or currentTickOS > rec.meshT then
+                        local meshGapWH = 1.5
+                        rec.meshT = currentTickOS + meshGapWH + math_randomWH() * 1.0
+
+                        local meshes = {}
+                        local seenMeshes = {}
+                        local function AddMesh(m)
+                            -- GUNAKAN FILTER ISMESHRENDERSAFE DI SINI
+                            if IsMeshRenderSafe(m) and not seenMeshes[m] then
+                                seenMeshes[m] = true
+                                table.insert(meshes, m)
+                            end
+                        end
+
+                        pcall(function()
+                            local function ExtractMeshesFromActor(actor)
+                                if not ValidWH(actor) then return end
+                                if SkeletalMeshClass then
+                                    local comps = actor:GetComponentsByClass(SkeletalMeshClass)
+                                    if comps then for _, c in pairs(comps) do AddMesh(c) end end
+                                end
+                                if StaticMeshClass then
+                                    local comps = actor:GetComponentsByClass(StaticMeshClass)
+                                    if comps then for _, c in pairs(comps) do AddMesh(c) end end
+                                end
+                            end
+
+                            ExtractMeshesFromActor(enemy)
+                            AddMesh(enemy.Mesh)
+                            AddMesh(enemy.HelmetMesh)
+                            AddMesh(enemy.VestMesh)
+                            AddMesh(enemy.ArmorMesh)
+                            AddMesh(enemy.BagMesh)
+                            if enemy.HelmetComponent then AddMesh(enemy.HelmetComponent.Mesh) end
+                            if enemy.VestComponent then AddMesh(enemy.VestComponent.Mesh) end
+                            if enemy.ArmorComponent then AddMesh(enemy.ArmorComponent.Mesh) end
+                            if enemy.BagComponent then AddMesh(enemy.BagComponent.Mesh) end
+
+                            if ChildActorClass then
+                                local childs = enemy:GetComponentsByClass(ChildActorClass)
+                                if childs then
+                                    for _, comp in pairs(childs) do
+                                        if ValidWH(comp) and comp.ChildActor then
+                                            ExtractMeshesFromActor(comp.ChildActor)
+                                        end
+                                    end
+                                end
+                            end
+
+                            if GlobalSkelClassWH then
+                                local comps = enemy:GetComponentsByClass(GlobalSkelClassWH)
+                                if comps then
+                                    for _, c in pairs(comps) do
+                                        if ValidWH(c) and c.Mesh then AddMesh(c.Mesh) end
+                                    end
+                                end
+                            end
+
+                            -- [WH-FIX-4b] musuh di kendaraan: body kendaraan ikut di-dye
+                            -- (mesh karakter sering di-HIDE engine saat duduk -> yang terlihat kendaraan)
+                            if inVehicle and rec.vehActor and ValidWH(rec.vehActor) then
+                                ExtractMeshesFromActor(rec.vehActor)
+                            end
+                        end)
+
+                        rec.meshes = meshes
+                    end
+
+                    local meshes = rec.meshes or {}
+                    local isMeshChanged = rec.meshN ~= #meshes
+
+                    local visColor = GetCurrentWallVisibleColorWH(isAI)
+                    local occColor = GetCurrentWallOccludedColorWH(isAI)
+
+                    if _G.X3.LexusConfig.WallShowVis == false then visColor = GetTransparentWH() end
+                    if _G.X3.LexusConfig.WallShowOcc == false then occColor = GetTransparentWH() end
+
+                    local occOpWH = tonumber(_G.X3.LexusState.CustomTextData.WallOccOpacity) or 100
+                    if occOpWH < 100 then occColor = ScaleColorAlphaWH(occColor, occOpWH / 100.0) end
+
+                    local hash = cfgHashWH
+                    if hasSpecial then hash = hash .. "|" .. math.floor(currentTickOS * 60) end
+                    local auraHash = (isAI and "AI" or "PL") .. "|" .. hash
+
+                    if isMeshChanged or rec.auraHash ~= auraHash or not rec.applied then
+                        pcall(function()
+                            if (isMeshChanged or rec.auraHash ~= auraHash) and rec.auraMeshes then
+                                for _, m in ipairs(rec.auraMeshes) do
+                                    if ValidWH(m) then ResetMeshAuraComponentWH(m) end
+                                end
+                            end
+                            for _, m in ipairs(meshes) do
+                                if ValidWH(m) then ApplyAuraToMeshComponentWH(m, visColor, occColor) end
+                            end
+                            rec.auraMeshes = meshes
+                            rec.applied = true
+                        end)
+                        rec.auraHash = auraHash
+                        rec.meshN = #meshes
+                    end
+
+                    if rec.applied then
+                        rec.seenT = currentTickOS
+                    end
+                elseif not vehHold then
+                    -- Jika tidak lolos filter (dan BUKAN sedang hold kendaraan), RESET dyeing
+                    if rec.applied and rec.auraMeshes then
+                        pcall(function()
+                            for _, m in ipairs(rec.auraMeshes) do
+                                if ValidWH(m) then ResetMeshAuraComponentWH(m) end
+                            end
+                        end)
+                        rec.applied = false
+                        rec.auraHash = nil
+                        rec.seenT = nil
+                    end
+                end
+                else
+                    if rec.applied then
+                        pcall(function()
+                            if rec.auraMeshes then
+                                for _, m in ipairs(rec.auraMeshes) do
+                                    if ValidWH(m) then ResetMeshAuraComponentWH(m) end
+                                end
+                            end
+                            if rec.meshes then
+                                for _, m in ipairs(rec.meshes) do
+                                    if ValidWH(m) then ResetMeshAuraComponentWH(m) end
+                                end
+                            end
+                        end)
+                        rec.applied = false
+                        rec.auraMeshes = nil
+                        rec.auraHash = nil
+                        rec.seenT = nil
+                    end
+            end
+        end
+    end
+end -- [WH-FIX-1] akhir blok `if isOn then` (loop vischeck)
+    if not _whBroken then _G.X3._WHCursor = 1 end   -- [PERF-F03 sub1] pass tuntas -> reset cursor
+
+    -- SWEEP CACHE UID: hanya musuh yang SUDAH TIDAK ADA di world yang dibersihkan.
+    -- [WH-FIX-5] grace lebih panjang + guard activeUID => musuh hidup/ada TIDAK pernah
+    -- di-sweep = NO BLANK walau rame. (Musuh mati tetap hilang warnanya via hide-dead/
+    -- branch reset di atas, jadi tidak ghost warna.)
+    local goneSecWH = (_G.X3._Spectating == true) and 6.0 or 3.0
+    do
+        local sweptWH = 0
+        for uidW, recW in pairs(WHC) do
+            local goneWH = false
+            local stillInWorld = (_activeUID[uidW] == true)
+            if not stillInWorld then
+                if not recW.seenT then
+                    if recW.teamT and (currentTickOS - recW.teamT) > 10 then goneWH = true end
+                elseif (currentTickOS - recW.seenT) > goneSecWH then
+                    goneWH = true
+                end
+            end
+if goneWH then
+    -- [TAMBAHAN ANTI-LEAK] Putus referensi mesh & kendaraan sebelum di-nil
+    pcall(function()
+        if recW.auraMeshes then
+            for _, m in ipairs(recW.auraMeshes) do
+                if ValidWH(m) then ResetMeshAuraComponentWH(m) end
+            end
+        end
+    end)
+    recW.auraMeshes = nil  -- PUTUS REFERENSI UE4
+    recW.meshes = nil      -- PUTUS REFERENSI UE4
+    recW.vehActor = nil    -- PUTUS REFERENSI UE4
+    recW.applied = false
+    
+    WHC[uidW] = nil
+    sweptWH = sweptWH + 1
+end
+        end
+        if sweptWH > 0 then
+            _G.X3.LexusState.WallGhostSwept = (_G.X3.LexusState.WallGhostSwept or 0) + sweptWH
+        end
+    end
+
+    if panicEnabled then
+        local durWH = os.clock() - tickStartOS
+        local stWH = _G.X3.LexusState
+        stWH.WallPerfAvg = (stWH.WallPerfAvg or durWH) * 0.95 + durWH * 0.05
+        if stWH.WallPerfAvg > 0.005 then
+            local avgMsWH = stWH.WallPerfAvg * 1000.0
+            stWH.WallPanicUntil = currentTickOS + 2.0
+            stWH.WallPanicCount = (stWH.WallPanicCount or 0) + 1
+            stWH.WallPerfAvg = 0
+            print("[X3Team] PanicGuard: wallhack jeda 2 detik (rata-rata " .. string.format("%.2f", avgMsWH) .. "ms)")
+        end
+    end
+end
+
+-- BUILD WALLHACK MENU --
+function _G.X3.BuildWallhackMenu(stack, AliasMap)
+    local function AddSliderWH(stackTable, key, text, expandHandle, minVal, maxVal, defaultVal)
+        table.insert(stackTable, {
+            Key = key,
+            UI = AliasMap.Slider or "Slider",
+            Text = text,
+            ExpandHandle = expandHandle,
+            MinValue = minVal,
+            MaxValue = maxVal,
+            Min = minVal,
+            Max = maxVal,
+            GetFunc = function() return _G.X3.LexusState.CustomTextData[key] or defaultVal end,
+            SetFunc = function(_, value)
+                _G.X3.LexusState.CustomTextData[key] = math.max(minVal, math.min(maxVal, math.floor(tonumber(value) or defaultVal)))
+                _G.X3.WallhackColorVersion = (_G.X3.WallhackColorVersion or 1) + 1
+                return true
+            end
+        })
+    end
+    -- SECTION 1: WALLHACK
+    table.insert(stack, {
+        Key = "ModMenu_Wall_Ex",
+        UI = AliasMap.TitleSwitcher or "TitleSwitcher",
+        Text = "▶ WALLHACK VISCHECK [ TEMBUS PANDANG ]",
+        ExpandIndex = 0,
+        GetFunc = function() return _G.X3.LexusConfig.WallhackVis == true end,
+        SetFunc = function(_, value)
+            _G.X3.LexusConfig.WallhackVis = value and true or false
+            _G.X3.WallhackColorVersion = (_G.X3.WallhackColorVersion or 1) + 1
+            return true
+        end
+    })
+    table.insert(stack, {
+        Key = "ModMenu_Wall_Glow",
+        UI = AliasMap.Switcher or "Switcher",
+        Text = "  HDR Bloom Glow [ GLOW HDR ]",
+        ExpandHandle = "ModMenu_Wall_Ex",
+        GetFunc = function() return _G.X3.LexusConfig.WallhackGlow == true end,
+        SetFunc = function(_, value)
+            _G.X3.LexusConfig.WallhackGlow = value and true or false
+            return true
+        end
+    })
+
+    AddSliderWH(stack, "WallFilterMode", "  [FILTER] Target (1=All,2=Player,3=Bot)", "ModMenu_Wall_Ex", 1, 3, 1)
+
+    AddSliderWH(stack, "WallVisColor",   "  Warna Terlihat - Player (1-55)",  "ModMenu_Wall_Ex", 1, 55, 5)
+    AddSliderWH(stack, "WallVisAIColor", "  Warna Terlihat - Bot/Ai (1-55)",  "ModMenu_Wall_Ex", 1, 55, 29)
+    AddSliderWH(stack, "WallOccColor",   "  Warna Terhalang - Player (1-55)", "ModMenu_Wall_Ex", 1, 55, 9)
+    AddSliderWH(stack, "WallOccAIColor", "  Warna Terhalang - Bot/Ai (1-55)", "ModMenu_Wall_Ex", 1, 55, 39)
+
+    -- sendiri-sendiri sesuai permintaan user.
+    table.insert(stack, {
+        Key = "ModMenu_Wall_Adaptive",
+        UI = AliasMap.Switcher or "Switcher",
+        Text = "  Adaptive Quality [ KUALITAS ADAPTIF HEMAT ]",
+        ExpandHandle = "ModMenu_Wall_Ex",
+        GetFunc = function() return _G.X3.LexusConfig.WallAdaptive ~= false end,
+        SetFunc = function(_, value)
+            _G.X3.LexusConfig.WallAdaptive = value and true or false
+            return true
+        end
+    })
+
+    table.insert(stack, {
+        Key = "ModMenu_Wall_HideDead",
+        UI = AliasMap.Switcher or "Switcher",
+        Text = "  Hide Dead/Knock [ SEMBUNYIKAN KNOCK/MATI ]",
+        ExpandHandle = "ModMenu_Wall_Ex",
+        GetFunc = function() return _G.X3.LexusConfig.WallHideDead ~= false end,
+        SetFunc = function(_, value)
+            _G.X3.LexusConfig.WallHideDead = value and true or false
+            return true
+        end
+    })
+
+    table.insert(stack, {
+        Key = "ModMenu_Wall_Panic",
+        UI = AliasMap.Switcher or "Switcher",
+        Text = "  Panic Guard [ PENJAGA PANIK ANTI-FC ]",
+        ExpandHandle = "ModMenu_Wall_Ex",
+        GetFunc = function() return _G.X3.LexusConfig.WallPanicGuard ~= false end,
+        SetFunc = function(_, value)
+            _G.X3.LexusConfig.WallPanicGuard = value and true or false
+            return true
+        end
+    })
+
+    AddSliderWH(stack, "WallMaxDist", "  Jarak Maks (m, 10-340)", "ModMenu_Wall_Ex", 10, 340, 340)
+    AddSliderWH(stack, "WallOccOpacity", "  Opacity Terhalang % (10-100)", "ModMenu_Wall_Ex", 10, 100, 100)
+    table.insert(stack, {
+        Key = "ModMenu_X3WeaponWH_Ex",
+        UI = AliasMap.TitleSwitcher or "TitleSwitcher",
+        Text = "▶ WALLHACK WEAPON [ TEMBUS PANDANG SENJATA ]",
+        ExpandIndex = 0,
+        GetFunc = function() return _G.X3.LexusConfig.X3WeaponWH == true end,
+        SetFunc = function(_, value)
+            _G.X3.LexusConfig.X3WeaponWH = value and true or false
+            return true
+        end
+    })
+    table.insert(stack, {
+        Key = "ModMenu_X3WeaponWHBlink",
+        UI = AliasMap.Switcher or "Switcher",
+        Text = "    └ Blink/Glow Effect [ EFEK DENYUT ]",
+        ExpandHandle = "ModMenu_X3WeaponWH_Ex",
+        GetFunc = function() return _G.X3.LexusConfig.X3WeaponWHBlink ~= false end,
+        SetFunc = function(_, value)
+            _G.X3.LexusConfig.X3WeaponWHBlink = value and true or false
+            return true
+        end
+    })
+    table.insert(stack, {
+        Key = "ModMenu_X3WColLegend",
+        UI = AliasMap.Title or "Title",
+        Text = "    Colors [ WARNA ]: 1Cyan 2Hijau 3Merah 4Kuning 5Oren 6Ungu 7Pink 8Biru 9Putih",
+        ExpandHandle = "ModMenu_X3WeaponWH_Ex",
+    })
+
+    local function AddWeaponCatWH(catKey, catName, defOn, defCol)
+        table.insert(stack, {
+            Key = "ModMenu_X3WeaponWH_" .. catName,
+            UI = AliasMap.Switcher or "Switcher",
+            Text = "    └ " .. catName,
+            ExpandHandle = "ModMenu_X3WeaponWH_Ex",
+            GetFunc = function() return _G.X3.LexusConfig[catKey] == true end,
+            SetFunc = function(_, value)
+                _G.X3.LexusConfig[catKey] = value and true or false
+                return true
+            end
+        })
+        table.insert(stack, {
+            Key = "ModMenu_X3WCol_" .. catName,
+            UI = AliasMap.Slider or "Slider",
+            Text = "        Color [ WARNA ] " .. catName .. " (1-9)",
+            ExpandHandle = "ModMenu_X3WeaponWH_Ex",
+            MinValue = 1, MaxValue = 9, Min = 1, Max = 9,
+            GetFunc = function()
+                local v = _G.X3.LexusState.CustomTextData["X3WCol_" .. catName]
+                return tonumber(v) or defCol
+            end,
+            SetFunc = function(_, value)
+                _G.X3.LexusState.CustomTextData["X3WCol_" .. catName] = math.max(1, math.min(9, math.floor(tonumber(value) or defCol)))
+                return true
+            end
+        })
+    end
+    AddWeaponCatWH("X3WeaponWH_AR", "AR", true, 1)
+    AddWeaponCatWH("X3WeaponWH_SMG", "SMG", true, 2)
+    AddWeaponCatWH("X3WeaponWH_SR", "SR", true, 3)
+    AddWeaponCatWH("X3WeaponWH_DMR", "DMR", true, 5)
+    AddWeaponCatWH("X3WeaponWH_SG", "SG", false, 6)
+    AddWeaponCatWH("X3WeaponWH_LMG", "LMG", false, 4)
+    AddWeaponCatWH("X3WeaponWH_Pistol", "PST", false, 9)
+    AddWeaponCatWH("X3WeaponWH_Melee", "MLW", false, 7)
+
+    table.insert(stack, {
+        Key = "ModMenu_X3WeaponWHDist",
+        UI = AliasMap.Slider or "Slider",
+        Text = "    └ Render Distance [ JARAK RENDER ] m (10-250)",
+        ExpandHandle = "ModMenu_X3WeaponWH_Ex",
+        MinValue = 10, MaxValue = 250, Min = 10, Max = 250,
+        GetFunc = function() return _G.X3.LexusConfig.X3WeaponWHDist or 250 end,
+        SetFunc = function(_, value)
+            _G.X3.LexusConfig.X3WeaponWHDist = math.max(10, math.min(250, math.floor(tonumber(value) or 250)))
+            return true
+        end
+    })
+end
+
+print("[X3Team] Wallhack Vischeck v11 (Dual-Sticky Bot/Player Split | ClassName Detection) Loaded!")
+
+
+local _AT_Vector2D        = import("Vector2D")          -- 1x load (dulu 60x/dtk)
+local _AT_GameplayStatics = import("GameplayStatics")   -- 1x load
+local _AT_KismetMath      = import("KismetMathLibrary") -- 1x load
+local _AT_ui_util         = nil                          -- lazy (aman saat load chunk)
+local function _AT_GetUiUtil()
+  if _AT_ui_util == nil then
+    local ok, m = pcall(require, "client.common.ui_util")
+    if ok then _AT_ui_util = m end
+  end
+  return _AT_ui_util
+end
+local _AT_vpCache, _AT_vpT = nil, -1
+local function _AT_Viewport()                            -- native call max 1x/dtk
+  local n = os.clock()
+  if (n - _AT_vpT) > 1.0 then                            -- layar jarang berubah
+    local u = _AT_GetUiUtil()
+    if u and u.GetViewportSize then _AT_vpCache = u.GetViewportSize() end
+    _AT_vpT = n
+  end
+  return _AT_vpCache
+end
+local _AT_EnemyBuf, _AT_EnemyN = {}, 0                   -- buffer pakai-ulang
+local function _AT_ResetBuf() _AT_EnemyN = 0 end
+local function _AT_PushBuf(a)
+  _AT_EnemyN = _AT_EnemyN + 1
+  _AT_EnemyBuf[_AT_EnemyN] = a
+end
+
+-- SISTEM AIMBOT V2 TERINTEGRASI BARU
+_G.X3.GetEnemyTargetsFromActors = function(radius)
+  _AT_ResetBuf()                                          -- [F02] reset buffer pakai-ulang
+  local player = GameplayData.GetPlayerCharacter()
+  if not slua.isValid(player) then
+    _AT_EnemyBuf[_AT_EnemyN + 1] = nil                    -- [F02] tutup buffer agar #/ipairs tepat
+    return _AT_EnemyBuf
+  end
+  local myTeam = player:GetTeamID()
+  -- [F02] pakai cache karakter 0,2 dtk (read-only). Dulu: enumerasi + alloc {} tiap 16ms.
+  local allCharacters = X3Team_GetAllCharactersUniversal()
+  local nAll = #allCharacters
+  for i = 1, nAll do
+    local actor = allCharacters[i]
+    if slua.isValid(actor) and actor ~= player
+       and actor.GetTeamID and actor:IsAlive()
+       and not IsModelTargetNameWH(actor) then
+      if actor:GetTeamID() ~= myTeam then
+        local dist = player:GetDistanceTo(actor)
+        if dist <= radius then
+          actor._x3d = dist                               -- [F02] simpan jarak -> hindari hitung 2x
+          _AT_PushBuf(actor)                              -- [F02] tanpa table.insert / tanpa alloc
+        end
+      end
+    end
+  end
+  _AT_EnemyBuf[_AT_EnemyN + 1] = nil                      -- [F02] penutup: #enemies & ipairs tetap benar
+  return _AT_EnemyBuf
+end
+
+-- AIM TOUCH --
+_G.X3.AimTouch = function()
+    pcall(function()
+        if not _G.X3.LexusConfig.AimTouchEnable then return end
+
+        local player = GameplayData.GetPlayerCharacter()
+        if not slua.isValid(player) then return end
+
+        local pc = player:GetPlayerControllerSafety()
+        if not slua.isValid(pc) then return end
+
+        local isFiring = player.bIsWeaponFiring
+        local isADS = player.bIsGunADS
+
+        local weapon = player.WeaponManagerComponent and player.WeaponManagerComponent.CurrentWeaponReplicated
+        if not weapon and type(player.GetCurrentShootWeapon) == "function" then
+            weapon = player:GetCurrentShootWeapon()
+        end
+
+        local isShotgun = false
+        local isSniper = false
+        local currentAmmo = 1
+
+        if slua.isValid(weapon) then
+            local wID = type(weapon.GetWeaponID) == "function" and weapon:GetWeaponID() or 0
+            local wName = type(weapon.GetWeaponName) == "function" and weapon:GetWeaponName() or ""
+
+            if (wID >= 1030000 and wID < 1040000) or wName:find("S686") or wName:find("S1897") or wName:find("S12") or wName:find("DBS") or wName:find("M1014") then
+                isShotgun = true
+            end
+
+            if wName:find("Kar98") or wName:find("M24") or wName:find("AWM") or wName:find("Mosin") or wName:find("Win94") or wName:find("AMR") or wName:find("SKS") or wName:find("SLR") or wName:find("Mini") or wName:find("Mk14") or wName:find("QBU") or wName:find("Mk12") or wName:find("VSS") then
+                isSniper = true
+            end
+
+            if type(weapon.GetCurrentAmmo) == "function" then
+                currentAmmo = weapon:GetCurrentAmmo()
+            elseif weapon.ShootWeaponComponent and type(weapon.ShootWeaponComponent.GetCurrentAmmo) == "function" then
+                currentAmmo = weapon.ShootWeaponComponent:GetCurrentAmmo()
+            elseif weapon.CurrentAmmo ~= nil then
+                currentAmmo = weapon.CurrentAmmo
+            end
+        end
+
+        if _G.X3.LexusState.IsAutoFiring then
+            pcall(function()
+                player.bIsWeaponFiring = false
+                if type(player.SetIsWeaponFiring) == "function" then player:SetIsWeaponFiring(false) end
+                if slua.isValid(pc) and type(pc.SetIsWeaponFiring) == "function" then pc:SetIsWeaponFiring(false) end
+                local wepMgr = player.WeaponManagerComponent
+                if slua.isValid(wepMgr) then wepMgr.bIsWeaponFiring = false end
+            end)
+            _G.X3.LexusState.IsAutoFiring = false
+        end
+
+        if isShotgun and currentAmmo <= 0 then
+            return
+        end
+
+        local cond = 2
+        local prioMode = 1
+        local boneIdx = 1
+        local speedVal = 50
+        local fovVal = 30
+        local maxDistMeters = 50
+        local useVisCheck = false
+        local igKnock = false
+        local igBot = false
+
+        local predVal = 0
+        local recoilCompVal = 0
+
+        if isShotgun and _G.X3.LexusConfig.AimTouchSG then
+            cond = _G.X3.LexusState.CustomTextData.AimTouchSGCond or 1
+            if _G.X3.LexusConfig.AimTouchSGAutoFire then cond = 2 end
+            if cond == 1 and not isFiring then return end
+            prioMode = _G.X3.LexusState.CustomTextData.AimTouchSGPrio or 1
+            boneIdx = _G.X3.LexusState.CustomTextData.AimTouchSGBone or 2
+            speedVal = _G.X3.LexusState.CustomTextData.AimTouchSGSpeed or 80
+            fovVal = _G.X3.LexusState.CustomTextData.AimTouchSGFOV or 40
+            maxDistMeters = _G.X3.LexusState.CustomTextData.AimTouchSGDist or 30
+            useVisCheck = _G.X3.LexusConfig.AimTouchSGVisCheck
+            igKnock = _G.X3.LexusConfig.AimTouchSGIgKnock
+            igBot = _G.X3.LexusConfig.AimTouchSGIgBot
+
+        elseif isADS then
+            if isSniper and _G.X3.LexusConfig.AimTouchScopeSniper then
+                cond = _G.X3.LexusState.CustomTextData.AimTouchSniperCond or 2
+                if cond == 1 and not isFiring then return end
+                prioMode = _G.X3.LexusState.CustomTextData.AimTouchSniperPrio or 1
+                boneIdx = _G.X3.LexusState.CustomTextData.AimTouchSniperBone or 1
+                speedVal = _G.X3.LexusState.CustomTextData.AimTouchSniperSpeed or 30
+                fovVal = _G.X3.LexusState.CustomTextData.AimTouchSniperFOV or 20
+                maxDistMeters = _G.X3.LexusState.CustomTextData.AimTouchSniperDist or 400
+                useVisCheck = _G.X3.LexusConfig.AimTouchSniperVisCheck
+                igKnock = _G.X3.LexusConfig.AimTouchSniperIgKnock
+                igBot = _G.X3.LexusConfig.AimTouchSniperIgBot
+                predVal = _G.X3.LexusState.CustomTextData.AimTouchSniperPred or 0
+            elseif _G.X3.LexusConfig.AimTouchScopeAll then
+                cond = _G.X3.LexusState.CustomTextData.AimTouchScopeCond or 1
+                if cond == 1 and not isFiring then return end
+                prioMode = _G.X3.LexusState.CustomTextData.AimTouchScopePrio or 1
+                boneIdx = _G.X3.LexusState.CustomTextData.AimTouchScopeBone or 2
+                speedVal = _G.X3.LexusState.CustomTextData.AimTouchScopeSpeed or 40
+                fovVal = _G.X3.LexusState.CustomTextData.AimTouchScopeFOV or 20
+                maxDistMeters = _G.X3.LexusState.CustomTextData.AimTouchScopeDist or 300
+                useVisCheck = _G.X3.LexusConfig.AimTouchScopeVisCheck
+                igKnock = _G.X3.LexusConfig.AimTouchScopeIgKnock
+                igBot = _G.X3.LexusConfig.AimTouchScopeIgBot
+                predVal = _G.X3.LexusState.CustomTextData.AimTouchScopePred or 0
+                recoilCompVal = _G.X3.LexusState.CustomTextData.AimTouchScopeRecoil or 0
+            else
+                return
+            end
+        else
+            if not _G.X3.LexusConfig.AimTouchHipfire then return end
+            cond = _G.X3.LexusState.CustomTextData.AimTouchHipCond or 1
+            if cond == 1 and not isFiring then return end
+            prioMode = _G.X3.LexusState.CustomTextData.AimTouchHipPrio or 1
+            boneIdx = _G.X3.LexusState.CustomTextData.AimTouchHipBone or 1
+            speedVal = _G.X3.LexusState.CustomTextData.AimTouchHipSpeed or 50
+            fovVal = _G.X3.LexusState.CustomTextData.AimTouchHipFOV or 30
+            maxDistMeters = _G.X3.LexusState.CustomTextData.AimTouchHipDist or 250
+            useVisCheck = _G.X3.LexusConfig.AimTouchHipVisCheck
+            igKnock = _G.X3.LexusConfig.AimTouchHipIgKnock
+            igBot = _G.X3.LexusConfig.AimTouchHipIgBot
+        end
+
+local currentMaxDist = maxDistMeters * 100
+local enemies = _G.X3.GetEnemyTargetsFromActors(currentMaxDist)
+if not enemies or #enemies == 0 then return end
+-- [F02] import/require sudah upvalue (1x load); viewport di-cache 1 dtk
+local FVector2D         = _AT_Vector2D
+local UGameplayStatics  = _AT_GameplayStatics
+local KismetMathLibrary = _AT_KismetMath
+local camManager = UGameplayStatics.GetPlayerCameraManager(pc, 0)
+if not slua.isValid(camManager) then return end
+local camLoc = camManager:GetCameraLocation()
+if not camLoc then return end
+local viewportSize = _AT_Viewport()
+if not viewportSize then return end
+local centerX = viewportSize.X * 0.5
+local centerY = viewportSize.Y * 0.5
+
+        local FOV_RADIUS = (fovVal / 100.0) * (viewportSize.X / 2.0)
+
+        local bestTarget = nil
+        local bestScore = 99999999
+
+        local selBoneName = "head"
+        if boneIdx == 1 then selBoneName = "head"
+        elseif boneIdx == 2 then selBoneName = "spine_03"
+        elseif boneIdx == 3 then selBoneName = "spine_01"
+        elseif boneIdx == 4 then selBoneName = "pelvis" end
+
+        for i, target in ipairs(enemies) do
+            if not slua.isValid(target) then goto continue end
+
+            pcall(function()
+                if slua.isValid(target.Mesh) then
+                    local ufId = type(target.GetUniqueID) == "function" and target:GetUniqueID() or tostring(target)
+                    _G.X3.AimTouchMeshUpdT = _G.X3.AimTouchMeshUpdT or {}
+                    local ufNow = os.clock()
+                    if not _G.X3.AimTouchMeshUpdT[ufId] or (ufNow - _G.X3.AimTouchMeshUpdT[ufId]) > 2.0 then
+                        _G.X3.AimTouchMeshUpdT[ufId] = ufNow
+                        target.Mesh.MeshComponentUpdateFlag = 0
+                    end
+                end
+            end)
+
+            if igKnock and target.HealthStatus == 1 then goto continue end
+
+            if igBot then
+                local tIsBot = false
+                if _G.X3.IsBotPawn then
+                    local okB, rB = pcall(_G.X3.IsBotPawn, target)
+                    if okB and rB == true then tIsBot = true end
+                else
+                    if target.bIsAI == true then tIsBot = true end
+                    local pState = target.PlayerState
+                    if slua.isValid(pState) and (pState.bIsABot or pState.bIsBot) then tIsBot = true end
+                end
+                if tIsBot then goto continue end
+            end
+
+            if useVisCheck then
+                local curTime = os.clock()
+                local tId = type(target.GetUniqueID) == "function" and target:GetUniqueID() or tostring(target)
+                _G.X3.AimTouchVisCache = _G.X3.AimTouchVisCache or {}
+                if not _G.X3.AimTouchVisCache[tId] or (curTime - _G.X3.AimTouchVisCache[tId].time) > 0.2 then
+                    local isHidden = true
+                    pcall(function() if pc:LineOfSightTo(target) then isHidden = false end end)
+                    _G.X3.AimTouchVisCache[tId] = { hidden = isHidden, time = curTime }
+                end
+                if _G.X3.AimTouchVisCache[tId].hidden then goto continue end
+            end
+
+            local tPos = nil
+            if _G.X3.SafeBonePos then tPos = _G.X3.SafeBonePos(target, selBoneName) end
+            if not tPos then
+                if type(target.K2_GetActorLocation) == "function" then
+                    local okL, lPos = pcall(function() return target:K2_GetActorLocation() end)
+                    if okL and lPos then
+                        tPos = lPos
+                        if boneIdx == 1 then tPos.Z = tPos.Z + 70
+                        elseif boneIdx == 2 then tPos.Z = tPos.Z + 40
+                        elseif boneIdx == 3 then tPos.Z = tPos.Z + 20 end
+                    end
+                end
+            end
+            if not tPos or (tPos.X == 0 and tPos.Y == 0 and tPos.Z == 0) then goto continue end
+
+            local screen = FVector2D()
+            local okP, success = pcall(function() return pc:ProjectWorldLocationToScreen(tPos, screen, false) end)
+            if not okP or not success or screen.X <= 0 or screen.Y <= 0 then goto continue end
+
+            local dx = screen.X - centerX
+            local dy = screen.Y - centerY
+            local distScreen = math.sqrt(dx*dx + dy*dy)
+
+            if distScreen > FOV_RADIUS then goto continue end
+
+local currentScore = distScreen
+if prioMode == 2 then currentScore = target._x3d or player:GetDistanceTo(target)   -- [F02] pakai jarak tersimpan
+elseif prioMode == 3 then currentScore = target.Health or 100
+            elseif prioMode == 4 then
+                local hp = target.Health or 100
+                local maxhp = target.HealthMax or 100
+                if maxhp <= 0 then maxhp = 100 end
+                currentScore = hp / maxhp
+            end
+
+            if currentScore < bestScore then
+                bestScore = currentScore
+                bestTarget = target
+            end
+
+            ::continue::
+        end
+
+        if not slua.isValid(bestTarget) then return end
+
+        local finalBonePos = nil
+        if _G.X3.SafeBonePos then finalBonePos = _G.X3.SafeBonePos(bestTarget, selBoneName) end
+        if not finalBonePos then
+            if type(bestTarget.K2_GetActorLocation) == "function" then
+                local okL2, fPos = pcall(function() return bestTarget:K2_GetActorLocation() end)
+                if okL2 and fPos then
+                    finalBonePos = fPos
+                    if boneIdx == 1 then finalBonePos.Z = finalBonePos.Z + 70
+                    elseif boneIdx == 2 then finalBonePos.Z = finalBonePos.Z + 40
+                    elseif boneIdx == 3 then finalBonePos.Z = finalBonePos.Z + 20 end
+                end
+            end
+        end
+        if not finalBonePos or (finalBonePos.X == 0 and finalBonePos.Y == 0 and finalBonePos.Z == 0) then return end
+
+        if predVal > 0 then
+            pcall(function()
+                local tVelocity = nil
+                if type(bestTarget.GetVelocity) == "function" then
+                    tVelocity = bestTarget:GetVelocity()
+                end
+
+                if tVelocity and (tVelocity.X ~= 0 or tVelocity.Y ~= 0) then
+                    local distToEnemy = player:GetDistanceTo(bestTarget) / 100.0
+
+                    local ToF = (distToEnemy / 800.0) * (predVal / 50.0)
+
+                    finalBonePos.X = finalBonePos.X + (tVelocity.X * ToF)
+                    finalBonePos.Y = finalBonePos.Y + (tVelocity.Y * ToF)
+                end
+            end)
+        end
+
+        local rot = nil
+        pcall(function() rot = KismetMathLibrary.FindLookAtRotation(camLoc, finalBonePos) end)
+        if not rot then return end
+
+        local currentRot = nil
+        pcall(function() currentRot = pc:GetControlRotation() end)
+        if not currentRot then return end
+
+        local deltaYaw = rot.Yaw - currentRot.Yaw
+        local deltaPitch = rot.Pitch - currentRot.Pitch
+
+        if isADS then
+            local camRot = nil
+            if type(camManager.GetCameraRotation) == "function" then
+                camRot = camManager:GetCameraRotation()
+            end
+            if camRot then
+                deltaYaw = deltaYaw - (camRot.Yaw - currentRot.Yaw)
+                deltaPitch = deltaPitch - (camRot.Pitch - currentRot.Pitch)
+            end
+        end
+
+        if deltaYaw > 180 then deltaYaw = deltaYaw - 360 end
+        if deltaYaw < -180 then deltaYaw = deltaYaw + 360 end
+        if deltaPitch > 180 then deltaPitch = deltaPitch - 360 end
+        if deltaPitch < -180 then deltaPitch = deltaPitch + 360 end
+
+        local smoothFactor = 0.0
+        if speedVal >= 100 then
+            smoothFactor = 1.0
+        else
+            smoothFactor = (speedVal / 100.0) * 0.3
+            if smoothFactor < 0.01 then smoothFactor = 0.01 end
+        end
+
+        local finalPitch = currentRot.Pitch + (deltaPitch * smoothFactor)
+        local finalYaw = currentRot.Yaw + (deltaYaw * smoothFactor)
+
+        if recoilCompVal > 0 and isFiring then
+            local pullDownForce = (recoilCompVal / 50.0) * 1.5
+            finalPitch = finalPitch - pullDownForce
+        end
+
+        local finalRot = { Pitch = finalPitch, Yaw = finalYaw, Roll = 0 }
+        pcall(function() pc:SetControlRotation(finalRot, "AimTouch") end)
+
+        if isShotgun and _G.X3.LexusConfig.AimTouchSGAutoFire then
+            pcall(function()
+                local distToTarget = player:GetDistanceTo(bestTarget) / 100
+                if distToTarget <= maxDistMeters then
+                    player.bIsWeaponFiring = true
+                    if type(player.SetIsWeaponFiring) == "function" then player:SetIsWeaponFiring(true) end
+                    if slua.isValid(pc) and type(pc.SetIsWeaponFiring) == "function" then pc:SetIsWeaponFiring(true) end
+                    local wepMgr = player.WeaponManagerComponent
+                    if slua.isValid(wepMgr) then wepMgr.bIsWeaponFiring = true end
+
+                    local currentWep = player:GetCurrentWeapon()
+                    if slua.isValid(currentWep) and type(currentWep.StartFire) == "function" then
+                        currentWep:StartFire()
+                    end
+                    _G.X3.LexusState.IsAutoFiring = true
+                end
+            end)
+        end
+
+    end)
+end
+
+-- MAIN LOOP --
+local function MainLoop()
+    if isExpired then return end
+    do
+        local nowF = os.clock()
+        local last = _G.X3._FrameLastT or nowF
+        local dt = nowF - last
+        _G.X3._FrameLastT = nowF
+        _G.X3._FrameN = (_G.X3._FrameN or 0) + 1
+        if dt > 0.0005 and dt < 0.5 then
+            _G.X3.FrameDT = (_G.X3.FrameDT or dt) * 0.9 + dt * 0.1
+        end
+        -- FPS counter global (jalan di lobby & in-game untuk FPS HUD)
+        local sec = os.time()
+        if sec ~= _G.X3._FPSSec then
+            _G.X3._FPS = _G.X3._FPSCnt or 0
+            _G.X3._FPSCnt = 0
+            _G.X3._FPSSec = sec
+        end
+        _G.X3._FPSCnt = (_G.X3._FPSCnt or 0) + 1
+    end
+    if not _G.X3.LexusState.LastHitHookRetry or (os.clock() - _G.X3.LexusState.LastHitHookRetry) > 2.0 then
+        _G.X3.LexusState.LastHitHookRetry = os.clock()
+        if _G.X3.InstallUnifiedHitHook then _G.X3.InstallUnifiedHitHook() end
+    end
+
+    if _G.X3.LexusState.CustomTextData == nil then
+        _G.X3.LexusState.CustomTextData = {OuterSpeed = 10, InnerSpeed = 10, HRecoil = 0.3, VRecoil = 0.3, MagicHead = 1.0, MagicNeck = 1.0, MagicBody = 1.0, MagicPelvis = 1.0, MagicArms = 1.0, MagicLegs = 1.0, IpadViewFOV = 120, AimTouchHipPrio = 1, AimTouchHipBone = 1, AimTouchHipCond = 1, AimTouchHipSpeed = 50, AimTouchHipFOV = 30, AimTouchHipDist = 250, AimTouchSGPrio = 1, AimTouchSGBone = 2, AimTouchSGCond = 1, AimTouchSGSpeed = 80, AimTouchSGFOV = 40, AimTouchSGDist = 30, AimTouchScopePrio = 1, AimTouchScopeBone = 2, AimTouchScopeCond = 1, AimTouchScopeSpeed = 40, AimTouchScopeFOV = 20, AimTouchScopeDist = 300, AimTouchSniperPrio = 1, AimTouchSniperBone = 1, AimTouchSniperCond = 2, AimTouchSniperSpeed = 30, AimTouchSniperFOV = 20, AimTouchSniperDist = 400}
+    end
+
+    local okData, GameplayData = pcall(require, "GameLua.GameCore.Data.GameplayData")
+    if not okData or not GameplayData then return end
+    local pc = GameplayData.GetPlayerController()
+    local localPlayer = nil
+    if Valid(pc) then localPlayer = pc:GetPlayerCharacterSafety() end
+    -- FALLBACK MEDAN LATIHAN: GetPlayerCharacterSafety bisa nil di training ground
+    -- (pawn di-possess lewat jalur lain) -> MainLoop salah masuk cabang lobby ->
+    -- ESP/wallhack mati. Coba pc.Pawn / pc.Character sebagai cadangan.
+    if not Valid(localPlayer) and Valid(pc) then
+        pcall(function()
+            local p2 = nil
+            pcall(function() p2 = pc.Pawn end)
+            if not (p2 and slua.isValid(p2)) then pcall(function() p2 = pc.Character end) end
+            if p2 and slua.isValid(p2) then
+                localPlayer = p2
+                if not _G.X3._LPFallbackLogged then
+                    _G.X3._LPFallbackLogged = true
+                    if _G.X3._CrashLogUrgent then pcall(_G.X3._CrashLogUrgent, "LOCALPLAYER FALLBACK > pc.Pawn dipakai (medan latihan/mode khusus)") end
+                end
+            end
+        end)
+    end
+    
+    _G.X3._Spectating = false
+    _G.X3._SpecAnchorPawn = nil
+
+    local lpDead = false
+    if Valid(localPlayer) then
+        pcall(function()
+            if (localPlayer.Health ~= nil and localPlayer.Health <= 0)
+                or localPlayer.bIsDying == true or localPlayer.bIsDead == true then
+                lpDead = true
+            end
+        end)
+    end
+    if (not Valid(localPlayer) or lpDead) and Valid(pc) then -- SPECTATOR KEEP-ALIVE: AUTO ON permanen (tanpa menu)
+        local sp, via = nil, nil
+        pcall(function()
+            local ps = pc.PlayerState
+            if ps and slua.isValid(ps) then
+                sp = ps.SpectatingCharacterOwner
+                if sp and slua.isValid(sp) then via = "SpectatingCharacterOwner" end
+            end
+        end)
+        if not (sp and slua.isValid(sp)) then
+            pcall(function()
+                local cm = pc.PlayerCameraManager
+                if cm and slua.isValid(cm) then
+                    local vt = cm.ViewTarget
+                    local t = vt and (vt.Target or vt)
+                    if t and slua.isValid(t) and t.Health ~= nil then sp = t via = "ViewTarget" end
+                end
+            end)
+        end
+        if not (sp and slua.isValid(sp)) then
+            pcall(function()
+                if type(pc.GetSpectatorPawn) == "function" then
+                    local t = pc:GetSpectatorPawn()
+                    if t and slua.isValid(t) then sp = t via = "SpectatorPawn" end
+                end
+            end)
+        end
+        if sp and slua.isValid(sp) then
+            localPlayer = sp
+            _G.X3._Spectating = true
+            _G.X3._SpecAnchorPawn = sp
+            if _G.X3._SpecAnchorVia ~= via then
+                _G.X3._SpecAnchorVia = via
+                if _G.X3._CrashLogUrgent then pcall(_G.X3._CrashLogUrgent, "SPECTATOR ANCHOR > via " .. tostring(via) .. ", ESP/WH tetap hidup saat mati (cap 600m)") end
+            end
+        elseif _G.X3._SpecAnchorVia ~= "GAGAL" then
+            _G.X3._SpecAnchorVia = "GAGAL"
+            if _G.X3._CrashLogUrgent then pcall(_G.X3._CrashLogUrgent, "SPECTATOR ANCHOR GAGAL > tidak ada kandidat valid (ps/cm/pawn)") end
+        end
+    end
+
+    if _G.X3.LexusConfig.UnlockFPS then pcall(InitializeGraphicsUnlock) end
+    pcall(_G.X3.Team_InitializeHWIDHook)
+    if _G.X3.LexusConfig.FakeHWID then pcall(_G.X3.ApplyDeviceOSFakes) end
+    pcall(InitializeNativeESP)
+    pcall(ShowLexusVIPMenu)
+    if _G.X3.LobbyVisualsTick then pcall(_G.X3.LobbyVisualsTick) end
+    -- LAPORAN STATUS BYPASS KE FIREWALL LOG (juga dari lobby; flag mencegah dobel)
+    do
+        local nowB = os.clock()
+        local bootT = _G.X3._BootT or nowB
+        _G.X3._BootT = bootT
+        if not _G.X3._ACRep1 and (nowB - bootT) >= 15 then _G.X3._ACRep1 = true; if _G.X3._ACBypassReport then pcall(_G.X3._ACBypassReport, 1) end end
+        if not _G.X3._ACRep2 and (nowB - bootT) >= 60 then _G.X3._ACRep2 = true; if _G.X3._ACBypassReport then pcall(_G.X3._ACBypassReport, 2) end end
+    end
+
+    local x3LobbyOK = false
+    if not Valid(localPlayer) then
+        _G.X3._LpInvalidSince = _G.X3._LpInvalidSince or os.clock()
+        if (os.clock() - _G.X3._LpInvalidSince) <= 10 then
+            return -- masa grace kematian: jangan sentuh apapun
+        end
+        _G.X3._LpInvalidSince = nil
+
+        local x3Spect = false
+        pcall(function()
+            local pc = GameplayData and GameplayData.GetPlayerController and GameplayData.GetPlayerController()
+            if pc and slua.isValid(pc) then
+                local sp = pc.GetSpectatorPawn and pc:GetSpectatorPawn()
+                if sp and slua.isValid(sp) then x3Spect = true end
+                if not x3Spect and pc.PlayerState and pc.PlayerState.SpectatingCharacterOwner then
+                    local so = pc.PlayerState.SpectatingCharacterOwner
+                    if so and slua.isValid(so) then x3Spect = true end
+                end
+            end
+        end)
+        if x3Spect then
+            if _G.X3._CrashLog then pcall(_G.X3._CrashLog, "PAWN INVALID >10dtk TAPI SPECTATE — cabang lobby DILEWATI (WH/ESP spectator hidup)") end
+        else
+            x3LobbyOK = true
+            if _G.X3._CrashLog then pcall(_G.X3._CrashLog, "LOBBY TERKONFIRMASI (pawn invalid >10dtk, tidak spectate) — cabang lobby jalan") end
+        end
+    else
+        if _G.X3._LpInvalidSince then
+            _G.X3._LpInvalidSince = nil
+            if _G.X3.InjEnsure then pcall(_G.X3.InjEnsure) end -- idempoten: hooks/items sudah terpasang
+            if _G.X3._CrashLog then pcall(_G.X3._CrashLog, "RESPAWN > pawn baru (grace <10dtk — tanpa reset karakter, skin ensure 1x)") end
+        end
+    end
+
+    if not Valid(localPlayer) and x3LobbyOK then
+        if _G.X3.LexusState.TrackedMarks then
+            for markId, _ in pairs(_G.X3.LexusState.TrackedMarks) do
+                SafeRemoveMark(markId)
+            end
+        end
+        _G.X3.LexusState.TrackedMarks = {}
+        for key, data in pairs(_G.X3.LexusState.EnemyMarks) do
+            if data and data.MIDs then
+                for meshStr, midTable in pairs(data.MIDs) do
+                    for k, _ in pairs(midTable) do midTable[k] = nil end
+                end
+                data.MIDs = nil
+            end
+        end
+        _G.X3.LexusState.EnemyMarks = {}
+        _G.X3.AK_OrigHitboxes = {}
+        _G.X3.AK_ModdedPhysAssets = {}
+        _G.X3.AK_WantedAssets = {}
+        _G.X3.AK_AssetRefs = {}
+        _G.X3.AK_AppliedMeshes = {}
+        _G.X3._MBBattleKickDone = false
+        _G.X3.LexusState.PrevGraphicsState = {}
+        _G.X3._MBVisCache = {} -- [REBUILD-FIX] cache vischeck MB dibersihkan lintas-match
+
+        if _G.X3.EspCountDestroy and _G.X3.EspCountBtn then pcall(_G.X3.EspCountDestroy) end
+        if not _G.X3.LobbyTraced then
+            _G.X3.LobbyTraced = true
+            _G.X3.Trace("LOBBY: MainLoop berjalan tanpa localPlayer (lobby/login) — menu retry + skin keep-alive aktif")
+            -- reset). Diikuti keep-alive 5 dtk di bawah.
+            if _G.X3.LexusConfig and (_G.X3.LexusConfig.ModSkin or _G.X3.LexusConfig.SkinUnlockAll) then
+                if _G.X3.InjEnsure then pcall(_G.X3.InjEnsure) end
+                if _G.X3.InjInjectBatch then pcall(_G.X3.InjInjectBatch) end
+                if _G.X3.InjReapplyLobby then pcall(_G.X3.InjReapplyLobby) end
+                _G.X3._SkinBurst = { t0 = os.clock(), n = 0 }
+            end
+        end
+        if _G.X3.CacheCleanerTick then pcall(_G.X3.CacheCleanerTick, false) end
+        if _G.X3.WMLobby then pcall(_G.X3.WMLobby) end
+        if _G.X3.EspCountV2Destroy then pcall(_G.X3.EspCountV2Destroy) end
+        _G.X3._WH_SpawnResetDone = false
+        if _G.X3.LexusConfig and _G.X3.LexusConfig.WallhackVis and not _G.X3._WH_LobbyOffDone then
+            _G.X3._WH_LobbyOffDone = true
+            pcall(function()
+                if _G.X3._WHC then
+                    for uidW, recW in pairs(_G.X3._WHC) do
+                        if recW.auraMeshes then
+                            pcall(function()
+                                for _, m in ipairs(recW.auraMeshes) do
+                                    if ValidWH(m) then ResetMeshAuraComponentWH(m) end
+                                end
+                            end)
+                        end
+                    end
+                    _G.X3._WHC = {}
+                end
+            end)
+            if _G.X3._WHDyeCvars then pcall(_G.X3._WHDyeCvars, false) end
+            if type(_G.X3.Trace) == "function" then _G.X3.Trace("LOBBY: wallhack AUTO OFF (dye engine OFF + sisa dye dibersihkan)") end
+        end
+        if _G.X3.LexusConfig and (_G.X3.LexusConfig.ModSkin or _G.X3.LexusConfig.SkinUnlockAll) then
+            if _G.X3.InjEnsure then pcall(_G.X3.InjEnsure) end
+            local sb = _G.X3._SkinBurst
+            if sb and sb.n < 4 then
+                local delays = { 0.5, 2.0, 5.0, 10.0 }
+                if (os.clock() - sb.t0) >= delays[sb.n + 1] then
+                    sb.n = sb.n + 1
+                    if _G.X3.InjInjectBatch then pcall(_G.X3.InjInjectBatch) end
+                    if _G.X3.InjReapplyLobby then pcall(_G.X3.InjReapplyLobby) end
+                    if type(_G.X3.Trace) == "function" then _G.X3.Trace("LOBBY: burst reapply skin #" .. sb.n) end
+                end
+            end
+            local nowL = os.clock()
+            if not _G.X3.LobbyReapplyT or (nowL - _G.X3.LobbyReapplyT) > 5 then
+                _G.X3.LobbyReapplyT = nowL
+                if _G.X3.Inj and _G.X3.Inj.injectDone and _G.X3.InjReapplyLobby then
+                    pcall(_G.X3.InjReapplyLobby)
+                    if type(_G.X3.Trace) == "function" then _G.X3.Trace("LOBBY: keep-alive reapply skin (jeda 5s)") end
+                end
+            end
+        end
+        return
+    end
+
+    if _G.X3.LobbyTraced then
+        _G.X3.LobbyTraced = nil
+        _G.X3.Trace("BATTLE: localPlayer valid — masuk battle/spawn")
+    end
+
+    if not _G.X3._WH_SpawnResetDone then
+        _G.X3._WH_SpawnResetDone = true
+        _G.X3._WH_LobbyOffDone = false
+        _G.X3.PawnReadyT = {}
+        _G.X3._XFWwhApplied = {}
+        _G.X3._WHC = {}
+        if _G.X3.LexusConfig and _G.X3.LexusConfig.WallhackVis then
+            _G.X3.WallhackColorVersion = (_G.X3.WallhackColorVersion or 1) + 1 -- paksa re-dye semua
+            if _G.X3._WHDyeCvars then pcall(_G.X3._WHDyeCvars, true) end -- dye engine ON (metode DXWHLN)
+        end
+        if type(_G.X3.Trace) == "function" then _G.X3.Trace("SPAWN: wallhack AUTO ON + AUTO RESET 1x (gate & cache render dibersihkan)") end
+    end
+    if _G.X3.OutlineTick then pcall(_G.X3.OutlineTick, localPlayer) end
+
+    if _G.X3.BTTick then pcall(_G.X3.BTTick, localPlayer) end
+    if _G.X3.EspCountTick then pcall(_G.X3.EspCountTick, localPlayer) end
+    if _G.X3.EspCountV2Tick then pcall(_G.X3.EspCountV2Tick, localPlayer) end
+    if _G.X3.ExtraTick then pcall(_G.X3.ExtraTick, localPlayer) end
+    if _G.X3.CacheCleanerTick then pcall(_G.X3.CacheCleanerTick, true) end
+
+    local Cached_PPM = nil
+    pcall(function() Cached_PPM = import("PostProcessManager").GetInstance() end)
+    local Cached_SecurityCommonUtils = nil
+    pcall(function() Cached_SecurityCommonUtils = require("GameLua.Mod.BaseMod.Common.Security.SecurityCommonUtils") end)
+    local Cached_MyHUD = pc and pc.MyHUD or nil
+
+    if _G.X3.LexusConfig.IpadView and _G.X3.LexusState.CustomTextData then
+        pcall(function()
+            local targetTPP = _G.X3.LexusState.CustomTextData.IpadViewFOV or 120
+            local uTPPCam = localPlayer.ThirdPersonCameraComponent
+            if Valid(uTPPCam) and not localPlayer.bIsWeaponAiming then
+                if uTPPCam.FieldOfView ~= targetTPP then uTPPCam.FieldOfView = targetTPP end
+            end
+        end)
+    else
+        pcall(function()
+            local uTPPCam = localPlayer.ThirdPersonCameraComponent
+            if Valid(uTPPCam) and not localPlayer.bIsWeaponAiming then
+                if uTPPCam.FieldOfView ~= 82 then uTPPCam.FieldOfView = 82 end
+            end
+        end)
+    end
+
+    if _G.X3.ProcessWallhack then
+        local ok, err = pcall(_G.X3.ProcessWallhack)
+        if not ok and bWriteLog then print("[Wallhack Vis Error]", err) end
+    end
+
+    if _G.X3.LexusConfig.ModSkin then
+        if not _G.X3.TDSkinLoopStarted then
+            if _G.X3.InitializeSkinModSystem then _G.X3.InitializeSkinModSystem() end
+            if _G.X3.ForceRefreshSkinMaps then _G.X3.ForceRefreshSkinMaps() end
+            if _G.X3.SkinUnlockScan then pcall(_G.X3.SkinUnlockScan, true) end
+            _G.X3.TDSkinLoopStarted = true
+        end
+        _G.X3.LexusState.SkinWasApplied = true
+        local curTime = os.clock()
+if not _G.X3.LastSkinUpdateTime or (curTime - _G.X3.LastSkinUpdateTime) > 1.5 then
+    _G.X3.LastSkinUpdateTime = curTime
+
+    -- [CRASH-FIX-1] R1: fungsi BERAT yang me-RELOAD mesh/material di RenderThread
+    -- (equip_character_avatar/ApplyWeaponSkins/ApplyVehicleSkins -> DelayHandleAvatarMeshChanged/
+    --  OnRep_BodySlotStateChanged/ChangeItemAvatar) kini HANYA jalan bila loadout berubah
+    -- atau keep-alive 20 dtk. Menghilangkan reload mesh periodik 1,5 dtk yang bertabrakan
+    -- dengan pass dyeing/highlight/outline mod = pemicu SIGABRT RenderThread.
+
+    local _skinSig = nil
+
+    pcall(function()
+        local wm = localPlayer.GetWeaponManager
+            and localPlayer:GetWeaponManager()
+            or localPlayer.WeaponManagerComponent
+
+        local s = ""
+
+        if wm then
+            for slot = 1, 4 do
+                local w = wm.GetInventoryWeaponByPropSlot
+                    and wm:GetInventoryWeaponByPropSlot(slot)
+
+                local wid = 0
+
+                if w and slua.isValid(w) then
+                    pcall(function()
+                        wid = w:GetWeaponID() or 0
+                    end)
+                end
+
+                s = s .. wid .. ","
+            end
+        end
+
+        local v = localPlayer.CurrentVehicle
+
+        s = s .. "V" .. tostring((v and slua.isValid(v)) and 1 or 0)
+
+        local om = _G.X3.OutfitMap or {}
+
+        s = s
+            .. "|S" .. tostring(om.Suit or 0)
+            .. "|B" .. tostring(
+                type(om.Bag) == "table"
+                    and (om.Bag[1] or 0)
+                    or (om.Bag or 0)
+            )
+            .. "|H" .. tostring(
+                type(om.Helmet) == "table"
+                    and (om.Helmet[1] or 0)
+                    or (om.Helmet or 0)
+            )
+
+        _skinSig = s
+    end)
+
+    local _heavyNeeded =
+        (_skinSig ~= (_G.X3._SkinLoadoutSig or ""))
+        or (curTime - (_G.X3._SkinHeavyAt or 0)) > 20.0
+
+    if _heavyNeeded then
+        _G.X3._SkinLoadoutSig = _skinSig
+        _G.X3._SkinHeavyAt = curTime
+    end
+
+    local isAlive =
+        type(localPlayer.IsAlive) == "function"
+        and localPlayer:IsAlive()
+        or true
+
+    if _heavyNeeded then
+        pcall(function()
+            if isAlive then
+                if _G.X3.ReadLiveConfig then
+                    _G.X3.ReadLiveConfig()
+                end
+
+                if _G.X3.equip_character_avatar then
+                    _G.X3.equip_character_avatar(localPlayer)
+                end
+
+                if _G.X3.ApplyWeaponSkins then
+                    _G.X3.ApplyWeaponSkins(localPlayer)
+                end
+
+                if _G.X3.ApplyVehicleSkins then
+                    _G.X3.ApplyVehicleSkins(localPlayer)
+                end
+            end
+        end)
+    end
+
+    -- fungsi MURAH tetap tiap 1,5 dtk (tidak me-reload mesh senjata/karakter)
+
+    pcall(function()
+        if isAlive then
+            if _G.X3.BpEnsure then
+                pcall(_G.X3.BpEnsure)
+            end
+
+            if _G.X3.SkinUnlock and _G.X3.SkinUnlock.Init then
+                pcall(_G.X3.SkinUnlock.Init)
+            end
+
+            if _G.X3.ApplyBackpackSkinDisplay then
+                pcall(_G.X3.ApplyBackpackSkinDisplay, localPlayer)
+            end
+
+            if _G.X3.HandlePetLogic then
+                _G.X3.HandlePetLogic()
+            end
+
+            if _G.X3.ApplyAvatarBorder then
+                _G.X3.ApplyAvatarBorder()
+            end
+
+            if _G.X3.DeadBox_TemperRequest
+                and _G.X3.NeedCheckDeadBoxTimer > 0
+            then
+                _G.X3.DeadBox_TemperRequest(pc)
+            end
+        end
+    end)
+end
+    else
+        if _G.X3.LexusState.SkinWasApplied then
+            _G.X3.OutfitMap = {}
+            _G.X3.WeaponSkinMap = {}
+            _G.X3.VehicleSkinMap = {}
+            pcall(function()
+                local WeaponManager = localPlayer:GetWeaponManager()
+                if Valid(WeaponManager) then
+                    for slot = 1, 3 do
+                        local Weapon = WeaponManager:GetInventoryWeaponByPropSlot(slot)
+                        if Valid(Weapon) and Valid(Weapon.synData) then
+                            local WeaponID = Weapon:GetWeaponID()
+                            local SkinData = Weapon.synData:Get(7)
+                            if SkinData and SkinData.defineID then
+                                SkinData.defineID.TypeSpecificID = WeaponID
+                                Weapon.synData:Set(7, SkinData)
+                                if Weapon.SetWeaponAvatarID then pcall(function() Weapon:SetWeaponAvatarID(WeaponID) end) end
+                                if Weapon.DelayHandleAvatarMeshChanged then pcall(function() Weapon:DelayHandleAvatarMeshChanged() end) end
+                            end
+                        end
+                    end
+                end
+                local Vehicle = localPlayer:GetCurrentVehicle()
+                if Valid(Vehicle) then
+                    local VehicleAvatar = Vehicle.VehicleAvatar or Vehicle.VehicleAvatarComponent_BP or Vehicle:GetAvatarComponent()
+                    if Valid(VehicleAvatar) and type(VehicleAvatar.GetDefaultAvatarID) == "function" then
+                        local defId = VehicleAvatar:GetDefaultAvatarID()
+                        local vehChangeFn2 = VehicleAvatar.ChangeItemAvatar or VehicleAvatar.BP_ChangeItemAvatar
+                        if vehChangeFn2 then pcall(vehChangeFn2, VehicleAvatar, defId, true) end
+                    end
+                end
+                if localPlayer.AvatarComponent2 and type(localPlayer.AvatarComponent2.OnRep_BodySlotStateChanged) == "function" then
+                    localPlayer.AvatarComponent2:OnRep_BodySlotStateChanged()
+                end
+            end)
+            _G.X3.LexusState.SkinWasApplied = false
+        end
+        _G.X3.TDSkinLoopStarted = false
+    end
+
+    pcall(function()
+        if Valid(pc) then
+            if pc.HiggsBoson then pc.HiggsBoson.bMHActive = false; pc.HiggsBoson.bCallPreReplication = false end
+            if pc.HiggsBosonComponent then pc.HiggsBosonComponent.bMHActive = false; pc.HiggsBosonComponent.bCallPreReplication = false end
+        end
+    end)
+
+    pcall(function()
+        local autoComp = localPlayer.AutoAimComp
+        if Valid(autoComp) then
+            if not _G.X3.LexusState.OrigAutoAimCompCached then
+                _G.X3.LexusState.OrigAutoAimCompCached = {
+                    bOnlyHitHead = autoComp.bOnlyHitHead,
+                    HeadBoneName = autoComp.HeadBoneName,
+                    Bones = autoComp.Bones,
+                    ChestBoneName = autoComp.ChestBoneName,
+                    PelvisBoneName = autoComp.PelvisBoneName,
+                    HeadPriority = autoComp.AimAssistConfig and autoComp.AimAssistConfig.HeadPriority,
+                    ChestPriority = autoComp.AimAssistConfig and autoComp.AimAssistConfig.ChestPriority,
+                    PelvisPriority = autoComp.AimAssistConfig and autoComp.AimAssistConfig.PelvisPriority
+                }
+            end
+            if _G.X3.LexusConfig.AutoHead then
+                autoComp.bOnlyHitHead = true
+                autoComp.HeadBoneName = "Head"
+                pcall(function() autoComp.Bones = {"Head"} end)
+                autoComp.ChestBoneName = "Head"
+                autoComp.PelvisBoneName = "Head"
+                if autoComp.AimAssistConfig then
+                    autoComp.AimAssistConfig.HeadPriority = 100
+                    autoComp.AimAssistConfig.ChestPriority = 100
+                    autoComp.AimAssistConfig.PelvisPriority = 100
+                end
+            else
+                local orig = _G.X3.LexusState.OrigAutoAimCompCached
+                autoComp.bOnlyHitHead = orig.bOnlyHitHead
+                autoComp.HeadBoneName = orig.HeadBoneName
+                pcall(function() autoComp.Bones = orig.Bones or {"Spine_01", "Pelvis", "Head"} end)
+                autoComp.ChestBoneName = orig.ChestBoneName
+                autoComp.PelvisBoneName = orig.PelvisBoneName
+                if autoComp.AimAssistConfig then
+                    autoComp.AimAssistConfig.HeadPriority = orig.HeadPriority or 1
+                    autoComp.AimAssistConfig.ChestPriority = orig.ChestPriority or 1
+                    autoComp.AimAssistConfig.PelvisPriority = orig.PelvisPriority or 1
+                end
+            end
+        end
+    end)
+
+    local now = os.clock()
+    pcall(function()
+        local lsg = require("client.slua.logic.setting.logic_setting_graphics")
+        local gi = lsg.GetGameInstance()
+        if gi then
+            if _G.X3.LexusConfig.RemoveGrass and not _G.X3.LexusState.PrevGraphicsState.RemoveGrass then
+                gi:ExecuteCMD("grass.DensityScale", "0")
+                gi:ExecuteCMD("grass.DiscardDataOnLoad", "1")
+                _G.X3.LexusState.PrevGraphicsState.RemoveGrass = true
+            elseif not _G.X3.LexusConfig.RemoveGrass and _G.X3.LexusState.PrevGraphicsState.RemoveGrass then
+                gi:ExecuteCMD("grass.DensityScale", "1")
+                gi:ExecuteCMD("grass.DiscardDataOnLoad", "0")
+                _G.X3.LexusState.PrevGraphicsState.RemoveGrass = false
+            end
+
+            if _G.X3.LexusConfig.RemoveFog and not _G.X3.LexusState.PrevGraphicsState.RemoveFog then
+                gi:ExecuteCMD("r.SkyAtmosphere", "1")
+                gi:ExecuteCMD("r.Fog", "0")
+                gi:ExecuteCMD("r.VolumetricFog", "0")
+                _G.X3.LexusState.PrevGraphicsState.RemoveFog = true
+            elseif not _G.X3.LexusConfig.RemoveFog and _G.X3.LexusState.PrevGraphicsState.RemoveFog then
+                gi:ExecuteCMD("r.SkyAtmosphere", "1")
+                gi:ExecuteCMD("r.Fog", "1")
+                gi:ExecuteCMD("r.VolumetricFog", "1")
+                _G.X3.LexusState.PrevGraphicsState.RemoveFog = false
+            end
+
+            if _G.X3.LexusConfig.WhiteBody and not _G.X3.LexusState.PrevGraphicsState.WhiteBody then
+                gi:ExecuteCMD("r.CharacterDiffuseOffset", "2")
+                gi:ExecuteCMD("r.CharacterDiffusePower", "5")
+                gi:ExecuteCMD("r.CharacterMinShadowFactor", "100")
+                _G.X3.LexusState.PrevGraphicsState.WhiteBody = true
+            elseif not _G.X3.LexusConfig.WhiteBody and _G.X3.LexusState.PrevGraphicsState.WhiteBody then
+                gi:ExecuteCMD("r.CharacterDiffuseOffset", "0")
+                gi:ExecuteCMD("r.CharacterDiffusePower", "1")
+                gi:ExecuteCMD("r.CharacterMinShadowFactor", "1")
+                _G.X3.LexusState.PrevGraphicsState.WhiteBody = false
+            end
+
+            if _G.X3.LexusConfig.BlackSky and not _G.X3.LexusState.PrevGraphicsState.BlackSky then
+                gi:ExecuteCMD("r.CylinderMaxDrawHeight", "9999")
+                _G.X3.LexusState.PrevGraphicsState.BlackSky = true
+            elseif not _G.X3.LexusConfig.BlackSky and _G.X3.LexusState.PrevGraphicsState.BlackSky then
+                gi:ExecuteCMD("r.CylinderMaxDrawHeight", "0000")
+                _G.X3.LexusState.PrevGraphicsState.BlackSky = false
+            end
+        end
+    end)
+
+    pcall(function()
+        local weapon = nil
+        pcall(function()
+            local weaponManager = localPlayer.WeaponManagerComponent
+            if Valid(weaponManager) and type(weaponManager.GetCurrentWeapon) == "function" then
+                weapon = weaponManager:GetCurrentWeapon()
+            end
+        end)
+        if not Valid(weapon) then
+            if type(localPlayer.GetCurrentShootWeapon) == "function" then weapon = localPlayer:GetCurrentShootWeapon()
+            elseif type(localPlayer.GetCurrentWeapon) == "function" then weapon = localPlayer:GetCurrentWeapon() end
+        end
+        if Valid(weapon) then
+            local entities = {}
+            if Valid(weapon.ShootWeaponEntity_GEN_VARIABLE) then table.insert(entities, weapon.ShootWeaponEntity_GEN_VARIABLE) end
+            if Valid(weapon.ShootWeaponEntity) then table.insert(entities, weapon.ShootWeaponEntity) end
+            if Valid(weapon.ShootWeaponComponent) and Valid(weapon.ShootWeaponComponent.ShootWeaponEntityComponent) then
+                table.insert(entities, weapon.ShootWeaponComponent.ShootWeaponEntityComponent)
+            end
+            for _, entity in ipairs(entities) do
+                local anyWeaponModOn = _G.X3.LexusConfig.CustomHRecoil or _G.X3.LexusConfig.CustomVRecoil or _G.X3.LexusConfig.LessShake or _G.X3.LexusConfig.Accuracy or _G.X3.LexusConfig.Crosshair or _G.X3.LexusConfig.GodMode or _G.X3.LexusConfig.AutoHead or _G.X3.LexusConfig.AimbotMode ~= "None" or _G.X3.LexusConfig.LessRecoil or _G.X3.LexusConfig.VerticalRecoil
+                if anyWeaponModOn then
+                    if not entity.OriginalStatsCached then
+                        entity.OriginalStatsCached = {
+                            GameDeviationFactor = entity.GameDeviationFactor,
+                            GameDeviationAccuracy = entity.GameDeviationAccuracy,
+                            BulletFireSpeed = entity.BulletFireSpeed,
+                            ShootInterval = entity.ShootInterval,
+                            BaseDamage = entity.BaseDamage,
+                            AccessoriesHRecoilFactor = entity.AccessoriesHRecoilFactor,
+                            AccessoriesVRecoilFactor = entity.AccessoriesVRecoilFactor,
+                            RecoilKick = entity.RecoilKick,
+                            RecoilKickADS = entity.RecoilKickADS,
+                            AnimationKick = entity.AnimationKick
+                        }
+                    end
+                    if _G.X3.LexusConfig.CustomHRecoil then entity.AccessoriesHRecoilFactor = _G.X3.LexusState.CustomTextData.HRecoil or 0.3
+                    elseif _G.X3.LexusConfig.LessRecoil then entity.AccessoriesHRecoilFactor = 0.3 end
+                    if _G.X3.LexusConfig.CustomVRecoil then entity.AccessoriesVRecoilFactor = _G.X3.LexusState.CustomTextData.VRecoil or 0.3
+                    elseif _G.X3.LexusConfig.VerticalRecoil then entity.AccessoriesVRecoilFactor = 0.3 end
+                    if _G.X3.LexusConfig.LessShake then entity.RecoilKick = 0.0; entity.RecoilKickADS = 0.0; entity.AnimationKick = 0.0 end
+                    if _G.X3.LexusConfig.Accuracy then entity.GameDeviationAccuracy = 1.20 end
+                    if _G.X3.LexusConfig.Crosshair then entity.GameDeviationFactor = 1.20 end
+                    if _G.X3.LexusConfig.GodMode then entity.BulletFireSpeed = 500000.0; entity.ShootInterval = 0.001; entity.BaseDamage = 60000.0 end
+                    if entity.AutoAimingConfig then
+                        if not entity.OriginalAutoAimCached then
+                            entity.OriginalAutoAimCached = {
+                                OuterSpeed = entity.AutoAimingConfig.OuterRange and entity.AutoAimingConfig.OuterRange.Speed,
+                                InnerSpeed = entity.AutoAimingConfig.InnerRange and entity.AutoAimingConfig.InnerRange.Speed
+                            }
+                        end
+                        if _G.X3.LexusConfig.AutoHead then
+                            pcall(function() entity.AutoAimingConfig.Bones = { "Head", "Head", "Head" } end)
+                        end
+                        if _G.X3.LexusConfig.AimbotMode == "Far" then
+                            if entity.AutoAimingConfig.OuterRange then
+                                entity.AutoAimingConfig.OuterRange.Speed = 5
+                                entity.AutoAimingConfig.OuterRange.RangeRate = 0.7
+                                entity.AutoAimingConfig.OuterRange.SpeedRate = 1.3
+                                entity.AutoAimingConfig.OuterRange.RangeRateSight = 1.8
+                                entity.AutoAimingConfig.OuterRange.SpeedRateSight = 2.2
+                                entity.AutoAimingConfig.OuterRange.CrouchRate = 1.1
+                                entity.AutoAimingConfig.OuterRange.ProneRate = 1
+                            end
+                            if entity.AutoAimingConfig.InnerRange then
+                                entity.AutoAimingConfig.InnerRange.Speed = 5
+                                entity.AutoAimingConfig.InnerRange.RangeRate = 0.7
+                                entity.AutoAimingConfig.InnerRange.SpeedRate = 1.3
+                                entity.AutoAimingConfig.InnerRange.RangeRateSight = 1.8
+                                entity.AutoAimingConfig.InnerRange.SpeedRateSight = 2.2
+                                entity.AutoAimingConfig.InnerRange.CrouchRate = 1.1
+                                entity.AutoAimingConfig.InnerRange.ProneRate = 1
+                            end
+                        end
+                    end
+                    entity.LexusWeaponModsActive = true
+                elseif entity.LexusWeaponModsActive then
+                    if entity.OriginalStatsCached then
+                        local orig = entity.OriginalStatsCached
+                        entity.GameDeviationFactor = orig.GameDeviationFactor
+                        entity.GameDeviationAccuracy = orig.GameDeviationAccuracy
+                        entity.BulletFireSpeed = orig.BulletFireSpeed
+                        entity.ShootInterval = orig.ShootInterval
+                        entity.BaseDamage = orig.BaseDamage
+                        entity.AccessoriesHRecoilFactor = orig.AccessoriesHRecoilFactor
+                        entity.AccessoriesVRecoilFactor = orig.AccessoriesVRecoilFactor
+                        entity.RecoilKick = orig.RecoilKick
+                        entity.RecoilKickADS = orig.RecoilKickADS
+                        entity.AnimationKick = orig.AnimationKick
+                    end
+                    if entity.AutoAimingConfig and entity.OriginalAutoAimCached then
+                        pcall(function() entity.AutoAimingConfig.Bones = { "Spine_01", "Pelvis", "Head" } end)
+                        if entity.AutoAimingConfig.OuterRange and entity.OriginalAutoAimCached.OuterSpeed then
+                            entity.AutoAimingConfig.OuterRange.Speed = entity.OriginalAutoAimCached.OuterSpeed
+                        end
+                        if entity.AutoAimingConfig.InnerRange and entity.OriginalAutoAimCached.InnerSpeed then
+                            entity.AutoAimingConfig.InnerRange.Speed = entity.OriginalAutoAimCached.InnerSpeed
+                        end
+                    end
+                    entity.LexusWeaponModsActive = false
+                end
+            end
+        end
+    end)
+
+ -- [MAGIC BULLET SMART V4.1] — FIX TOTAL
+    _G.X3._MB = _G.X3._MB or {
+        Head = 1.0, Body = 1.0, Legs = 1.0,
+        Filter = 3, MaxDist = 250, VisCheck = false,
+        IgBot = true, IgKnock = true, MinDist = 10,
+        ValidTargets = {}, CacheTime = 0, CacheInterval = 0.3
+    }
+    local d = _G.X3._MB
+
+    pcall(function()
+        if _G.X3.LexusConfig.CustomMagicBullet then
+            -- Sinkronisasi Slider Hitbox
+            if _G.X3.LexusState.CustomTextData then
+                local c = _G.X3.LexusState.CustomTextData
+                d.Head = tonumber(c.MagicHead) or 1.0
+                d.Neck = tonumber(c.MagicNeck) or 1.0
+                d.Body = tonumber(c.MagicBody) or 1.0
+                d.Pelvis = tonumber(c.MagicPelvis) or 1.0
+                d.Legs = tonumber(c.MagicLegs) or 1.0
+                d.Arms = tonumber(c.MagicArms) or 1.0
+            end
+            
+            -- Sinkronisasi Filter Target (Dari UI)
+            d.MaxDist = tonumber(_G.X3.LexusConfig.CustomMagicBulletDist) or 250
+            d.IgBot = _G.X3.LexusConfig.CustomMagicBulletIgBot == true
+            d.IgKnock = _G.X3.LexusConfig.CustomMagicBulletIgKnock == true
+            d.VisCheck = _G.X3.LexusConfig.CustomMagicBulletVisCheck == true
+            
+            -- PANGGIL FUNGSI PENCARIAN TARGET (Anti-Lag, jalan tiap 0.3 detik)
+            _G.X3.UpdateMBTargets()
+        else
+            d.Head = 1.0; d.Body = 1.0; d.Legs = 1.0
+            d.ValidTargets = {}
+        end
+        
+        local currentHash = string.format("%.2f_%.2f_%.2f", d.Head, d.Body, d.Legs)
+        if _G.X3.LexusState.LastMagicConfigHash ~= currentHash then
+            _G.X3.LexusState.MagicUpdateVersion = (_G.X3.LexusState.MagicUpdateVersion or 0) + 1
+            _G.X3.LexusState.LastMagicConfigHash = currentHash
+        end
+    end)
+
+    local BoneScaleMap = {
+        ["head"] = d.Head,
+        ["neck_01"] = d.Neck,
+        ["spine_01"] = d.Body, ["spine_02"] = d.Body, ["spine_03"] = d.Body,
+        ["pelvis"] = d.Pelvis,
+        ["clavicle_l"] = d.Arms, ["clavicle_r"] = d.Arms,
+        ["upperarm_l"] = d.Arms, ["upperarm_r"] = d.Arms,
+        ["lowerarm_l"] = d.Arms, ["lowerarm_r"] = d.Arms,
+        ["hand_l"] = d.Arms, ["hand_r"] = d.Arms,
+        ["thigh_l"] = d.Legs, ["thigh_r"] = d.Legs,
+        ["calf_l"] = d.Legs, ["calf_r"] = d.Legs,
+        ["foot_l"] = d.Legs, ["foot_r"] = d.Legs
+    }
+
+    -- terasa bila toggle dilakukan di dalam game)
+    if _G.X3.LexusConfig.CustomMagicBullet and not _G.X3._MBBattleKickDone then
+        _G.X3._MBBattleKickDone = true
+        if _G.X3.MagicBulletCache then _G.X3.MagicBulletCache.LastUpdate = 0 end
+        _G.X3.AK_ModdedPhysAssets = {}
+        _G.X3.AK_WantedAssets = {}
+        _G.X3._MBVisCache = {}
+    end
+
+    pcall(function()
+        -- enumerasi universal (termasuk fallback medan latihan by-class)
+        local allCharacters = X3Team_GetAllCharactersUniversal()
+
+        local currentValidKeys = {}
+        for _, enemy in pairs(allCharacters) do
+            if Valid(enemy) and enemy ~= localPlayer and not IsModelTargetNameWH(enemy) then
+                currentValidKeys[GetSafeEnemyKey(enemy)] = true
+            end
+        end
+
+        for key, data in pairs(_G.X3.LexusState.EnemyMarks) do
+            if not currentValidKeys[key] then
+                SafeRemoveMark(data.radarMark)
+                SafeRemoveMark(data.hpMark)
+                SafeRemoveMark(data.hpMark8)
+                SafeRemoveMark(data.distMark)
+                if _G.X3.AimTouchVisCache and _G.X3.AimTouchVisCache[key] then _G.X3.AimTouchVisCache[key] = nil end
+                if data.MIDs then
+                    for meshStr, midTable in pairs(data.MIDs) do
+                        for k, _ in pairs(midTable) do midTable[k] = nil end
+                    end
+                    data.MIDs = nil
+                end
+                data.enemy = nil
+                data.CachedMeshes = nil
+                _G.X3.LexusState.EnemyMarks[key] = nil
+            end
+        end
+
+        local realCount = 0
+        local aiCount = 0
+
+        local function GetFirstElemSafe(elemArray)
+            if elemArray and type(elemArray.Num) == "function" and elemArray:Num() > 0 then
+                if type(elemArray.Get) == "function" then return elemArray:Get(0) end
+            elseif elemArray and type(elemArray) == "table" and #elemArray > 0 then
+                return elemArray[1]
+            end
+            return nil
+        end
+
+        local mLoc = nil
+        pcall(function() if type(localPlayer.K2_GetActorLocation) == "function" then mLoc = localPlayer:K2_GetActorLocation() end end)
+
+        for _, enemy in pairs(allCharacters) do
+            -- HARD BLOCK NPC (Nukenin dkk): tidak di-ESP / tidak di-wallhack sama sekali
+            if Valid(enemy) and enemy ~= localPlayer and enemy.TeamID ~= localPlayer.TeamID and not IsModelTargetNameWH(enemy) then
+                local bIsReallyDead = false
+                pcall(function()
+                    if type(enemy.IsDead) == "function" then bIsReallyDead = enemy:IsDead()
+                    elseif enemy.bIsDead ~= nil then bIsReallyDead = enemy.bIsDead
+                    elseif enemy.bIsDeadFlag ~= nil then bIsReallyDead = enemy.bIsDeadFlag end
+                    if enemy.HealthStatus ~= nil and enemy.HealthStatus == 2 then bIsReallyDead = true end
+                end)
+
+                local eKey = GetSafeEnemyKey(enemy)
+                _G.X3.LexusState.EnemyMarks[eKey] = _G.X3.LexusState.EnemyMarks[eKey] or { enemy = enemy }
+                local markData = _G.X3.LexusState.EnemyMarks[eKey]
+                markData.enemy = enemy
+
+                if not bIsReallyDead then
+                    if markData.lastEnemyActor ~= enemy then
+                        if markData.hpMark then SafeRemoveMark(markData.hpMark); markData.hpMark = nil end
+                        if markData.hpMark8 then SafeRemoveMark(markData.hpMark8); markData.hpMark8 = nil end
+                        if markData.distMark then SafeRemoveMark(markData.distMark); markData.distMark = nil end
+                        if markData.radarMark then SafeRemoveMark(markData.radarMark); markData.radarMark = nil end
+                        markData.lastEnemyActor = enemy
+                        markData.LastUIComp = nil
+                        markData.LastFrameUIState = nil
+                    end
+
+                    local eMesh = enemy.Mesh
+-- [PERF-F07] tiru 'enemy.Mesh or ...' persis: fallback HANYA bila Mesh == nil (bukan isValid)
+if eMesh == nil and type(enemy.getAvatarComponent2) == "function" then
+local okM, mM = pcall(enemy.getAvatarComponent2, enemy)
+if okM then eMesh = mM end
+end
+                    local aLoc = nil
+-- [PERF-F07] pcall(method,obj) TANPA closure; guard type dipertahankan
+if type(enemy.K2_GetActorLocation) == "function" then
+local okL, lL = pcall(enemy.K2_GetActorLocation, enemy)
+if okL then aLoc = lL end
+end
+
+                    local eReady = true
+                    if _G.X3._Spectating ~= true and _G.X3.IsPawnRenderReady then eReady = _G.X3.IsPawnRenderReady(enemy, 0.6) end
+                    local isBot = false
+-- [PERF-F07] pcall(namedFn,obj) TANPA closure; bila pcall gagal isBot tetap false (spt asli)
+local okB, rB = pcall(IsBotWH, enemy)
+if okB then isBot = (rB == true) end
+
+                    pcall(function()
+                        local EnemyMesh = eMesh
+                        if slua.isValid(EnemyMesh) then
+                            if _G.X3.LexusConfig.CustomMagicBullet then
+                                local pass = true
+
+                                if not (_G.X3.IsPawnRenderReady and _G.X3.IsPawnRenderReady(enemy, 0.8)) then pass = false end
+
+                                if pass then
+                                    local uniqueID = type(enemy.GetUniqueID) == "function" and enemy:GetUniqueID() or tostring(enemy.PlayerKey or enemy)
+                                    local currentHash = string.format("%.2f_%.2f_%.2f_%.2f_%.2f_%.2f", d.Head, d.Neck, d.Body, d.Pelvis, d.Legs, d.Arms)
+                                    -- target masih valid)
+                                    if markData.MagicAssetName then
+                                        _G.X3.AK_WantedAssets = _G.X3.AK_WantedAssets or {}
+                                        _G.X3.AK_WantedAssets[markData.MagicAssetName] = os.clock()
+                                    end
+                                    if markData.MagicBulletHash ~= currentHash or markData.MagicTargetID ~= uniqueID then
+                                        local PhysicsAsset = EnemyMesh.PhysicsAssetOverride
+                                        if not slua.isValid(PhysicsAsset) and EnemyMesh.SkeletalMesh then PhysicsAsset = EnemyMesh.SkeletalMesh.PhysicsAsset end
+                                        if slua.isValid(PhysicsAsset) and PhysicsAsset.SkeletalBodySetups then
+                                            if not _G.X3.AK_ModdedPhysAssets then _G.X3.AK_ModdedPhysAssets = {} end
+                                            local PhysAssetName = "DefaultPhys"
+                                            pcall(function() PhysAssetName = PhysicsAsset:GetName() end)
+                                            if _G.X3.AK_ModdedPhysAssets[PhysAssetName] ~= currentHash then
+                                                if not _G.X3.AK_OrigHitboxes then _G.X3.AK_OrigHitboxes = {} end
+                                                if not _G.X3.AK_OrigHitboxes[PhysAssetName] then _G.X3.AK_OrigHitboxes[PhysAssetName] = {} end
+                                                local OrigHitboxData = _G.X3.AK_OrigHitboxes[PhysAssetName]
+                                                local SkeletalBodySetups = PhysicsAsset.SkeletalBodySetups
+                                                local numSetups = type(SkeletalBodySetups.Num) == "function" and SkeletalBodySetups:Num() or #SkeletalBodySetups
+                                                local limit = numSetups > 50 and 50 or numSetups
+                                                for i = 1, limit do
+                                                    local BodySetup = type(SkeletalBodySetups.Get) == "function" and SkeletalBodySetups:Get(i-1) or SkeletalBodySetups[i]
+                                                    if slua.isValid(BodySetup) then
+                                                        local LowerBoneName = string.lower(tostring(BodySetup.BoneName))
+                                                        local MatchedBoneKey = nil
+                                                        for k, _ in pairs(BoneScaleMap) do
+                                                            if string.find(LowerBoneName, k, 1, true) then MatchedBoneKey = k break end
+                                                        end
+                                                        if MatchedBoneKey then
+                                                            local TargetScale = BoneScaleMap[MatchedBoneKey]
+                                                            local AggGeom = BodySetup.AggGeom
+                                                            local BoxElems = AggGeom and AggGeom.BoxElems or BodySetup.BoxElems
+                                                            local SphereElems = AggGeom and AggGeom.SphereElems or BodySetup.SphereElems
+                                                            local SphylElems = AggGeom and AggGeom.SphylElems or BodySetup.SphylElems
+                                                            local BoxElem = GetFirstElemSafe(BoxElems)
+                                                            local SphereElem = GetFirstElemSafe(SphereElems)
+                                                            local SphylElem = GetFirstElemSafe(SphylElems)
+                                                            if not OrigHitboxData[MatchedBoneKey] then
+                                                                OrigHitboxData[MatchedBoneKey] = { Box = nil, Sphere = nil, Sphyl = nil }
+                                                                if BoxElem then OrigHitboxData[MatchedBoneKey].Box = { X = BoxElem.X, Y = BoxElem.Y, Z = BoxElem.Z } end
+                                                                if SphereElem then OrigHitboxData[MatchedBoneKey].Sphere = { Radius = SphereElem.Radius } end
+                                                                if SphylElem then OrigHitboxData[MatchedBoneKey].Sphyl = { Radius = SphylElem.Radius, Length = SphylElem.Length } end
+                                                            end
+                                                            local OrigElemData = OrigHitboxData[MatchedBoneKey]
+                                                            if OrigElemData.Box and BoxElem then
+                                                                BoxElem.X = OrigElemData.Box.X * TargetScale
+                                                                BoxElem.Y = OrigElemData.Box.Y * TargetScale
+                                                                BoxElem.Z = OrigElemData.Box.Z * TargetScale
+                                                                if type(BoxElems.Set) == "function" then BoxElems:Set(0, BoxElem) else BoxElems[1] = BoxElem end
+                                                                if AggGeom then AggGeom.BoxElems = BoxElems; BodySetup.AggGeom = AggGeom else BodySetup.BoxElems = BoxElems end
+                                                            end
+                                                            if OrigElemData.Sphere and SphereElem then
+                                                                SphereElem.Radius = OrigElemData.Sphere.Radius * TargetScale
+                                                                if type(SphereElems.Set) == "function" then SphereElems:Set(0, SphereElem) else SphereElems[1] = SphereElem end
+                                                                if AggGeom then AggGeom.SphereElems = SphereElems; BodySetup.AggGeom = AggGeom else BodySetup.SphereElems = SphereElems end
+                                                            end
+                                                            if OrigElemData.Sphyl and SphylElem then
+                                                                SphylElem.Radius = OrigElemData.Sphyl.Radius * TargetScale
+                                                                SphylElem.Length = OrigElemData.Sphyl.Length * TargetScale
+                                                                if type(SphylElems.Set) == "function" then SphylElems:Set(0, SphylElem) else SphylElems[1] = SphylElem end
+                                                                if AggGeom then AggGeom.SphylElems = SphylElems; BodySetup.AggGeom = AggGeom else BodySetup.SphylElems = SphylElems end
+                                                            end
+                                                        end
+                                                    end
+                                                end
+                                                _G.X3.AK_ModdedPhysAssets[PhysAssetName] = currentHash
+                                                _G.X3.AK_AssetRefs = _G.X3.AK_AssetRefs or {}
+                                                _G.X3.AK_AssetRefs[PhysAssetName] = PhysicsAsset
+                                            end
+                                            markData.MagicAssetName = PhysAssetName
+                                            _G.X3.AK_WantedAssets = _G.X3.AK_WantedAssets or {}
+                                            _G.X3.AK_WantedAssets[PhysAssetName] = os.clock()
+                                            _G.X3.AK_AppliedMeshes = _G.X3.AK_AppliedMeshes or {}
+                                            _G.X3.AK_AppliedMeshes[PhysAssetName] = _G.X3.AK_AppliedMeshes[PhysAssetName] or {}
+                                            table.insert(_G.X3.AK_AppliedMeshes[PhysAssetName], EnemyMesh)
+                                            if EnemyMesh.SetPhysicsAsset then EnemyMesh:SetPhysicsAsset(PhysicsAsset) end
+                                            EnemyMesh.PhysicsAssetOverride = PhysicsAsset
+                                            markData.MagicBulletHash = currentHash
+                                            markData.MagicTargetID = uniqueID
+                                        end
+                                    end
+                                end
+                            end
+                        end
+                    end)
+
+                    local distM = 0
+                    pcall(function() distM = localPlayer:GetDistanceTo(enemy) / 100 end)
+
+                    if _G.X3.LexusConfig.EspLoai6 then
+                        pcall(function()
+                            local curTime = os.clock()
+                            if markData.LastEsp6Time == nil or (curTime - markData.LastEsp6Time) >= 0.1 then
+                                markData.LastEsp6Time = curTime
+                                local MyHUD = Cached_MyHUD
+                                if Valid(MyHUD) and Valid(eMesh) and aLoc and (_G.X3._Spectating == true or (_G.X3.IsPawnRenderReady and _G.X3.IsPawnRenderReady(enemy, 0.6))) then
+                                    if distM <= 250 then
+                                        if type(eMesh.GetSocketLocation) == "function" then
+                                            for _, bName in ipairs(GLOBAL_BONE_LIST) do
+                                                if distM > 50 and (bName ~= "head" and bName ~= "pelvis" and bName ~= "neck_01") then
+                                                else
+                                                    local wLoc = eMesh:GetSocketLocation(bName)
+                                                    if wLoc then
+                                                        local offset = {X = wLoc.X - aLoc.X, Y = wLoc.Y - aLoc.Y, Z = wLoc.Z - aLoc.Z}
+                                                        local mark = "▪"
+                                                        local fixedSize = 0.25
+                                                        local color = C_CYAN
+                                                        if bName == "head" then
+                                                            mark = "●"
+                                                            fixedSize = 0.45
+                                                            color = C_RED
+                                                        elseif bName == "pelvis" or bName == "neck_01" then
+                                                            mark = "▪"
+                                                            fixedSize = 0.35
+                                                            color = C_YELLOW
+                                                        end
+                                                        if _G.X3._FrameSkipOK() then MyHUD:AddDebugText(mark, enemy, 0.2, offset, offset, color, true, false, true, nil, fixedSize, true) end
+                                                    end
+                                                end
+                                            end
+                                        end
+                                    end
+                                end
+                            end
+                        end)
+                    end
+
+                    if _G.X3.LexusConfig.EspLoai7 and eReady then
+                        pcall(function()
+                            local MyHUD = Cached_MyHUD
+                            if Valid(MyHUD) then
+                                if distM <= 340 then if isBot then aiCount = aiCount + 1 else realCount = realCount + 1 end end
+                                if distM <= 340 then
+                                    local stateText = ""
+                                    local pose = nil
+                                    if enemy.PoseState then pose = enemy.PoseState
+                                    elseif type(enemy.GetPoseState) == "function" then pose = enemy:GetPoseState() end
+                                    if pose == 0 or pose == "Stand" then stateText = "Stand [ BERDIRI ]"
+                                    elseif pose == 1 or pose == "Crouch" then stateText = "Crouch [ JONGKOK ]"
+                                    elseif pose == 2 or pose == "Prone" then stateText = "Prone [ TIARAP ]"
+                                    else stateText = "Stand [ BERDIRI ]" end
+                                    local curTime = os.clock()
+                                    if markData.AK_LAST_WEP_TIME == nil or curTime > markData.AK_LAST_WEP_TIME + 1.5 then
+                                        local eWeapon = nil
+                                        if enemy.CurrentWeapon then eWeapon = enemy.CurrentWeapon
+                                        elseif type(enemy.GetCurrentWeapon) == "function" then eWeapon = enemy:GetCurrentWeapon()
+                                        elseif enemy.WeaponManagerComponent then eWeapon = enemy.WeaponManagerComponent.CurrentWeaponReplicated end
+                                        local weaponName = "Senjata"
+                                        if Valid(eWeapon) then if type(eWeapon.GetWeaponName) == "function" then weaponName = eWeapon:GetWeaponName() end
+                                        else weaponName = "Tangan Kosong" end
+                                        markData.AK_CACHED_WEP_NAME = tostring(weaponName)
+                                        markData.AK_LAST_WEP_TIME = curTime
+                                    end
+                                    stateText = stateText .. " - " .. (markData.AK_CACHED_WEP_NAME or "Senjata")
+                                    local textColor = isBot and C_CYAN or C_YELLOW
+                                    local dynamicScale = math.max(0.5, 0.8 - (distM / 400))
+                                    if _G.X3._FrameSkipOK() then MyHUD:AddDebugText(stateText, enemy, 0.2, {X=0, Y=0, Z=100}, {X=0, Y=0, Z=100}, textColor, true, false, true, nil, dynamicScale, true) end
+                                end
+                            end
+                        end)
+                    end
+
+                    if _G.X3.LexusConfig.EspDistance and eReady then
+                        pcall(function()
+                            local hud = Cached_MyHUD
+                            if Valid(hud) and hud.AddDebugText then
+                                if distM <= 340 then
+                                    local dynamicScale = math.max(0.55, 0.95 - (distM / 400))
+                                    if _G.X3._FrameSkipOK() then hud:AddDebugText(string.format("[%dm]", math.floor(distM)), enemy, 0.2, {X=0, Y=115, Z=20}, {X=0, Y=115, Z=20}, C_BLUE_TEXT, true, false, true, nil, dynamicScale * 1.5, true) end
+                                end
+                            end
+                        end)
+                    end
+
+                    -- MAKS 340m normal; saat SPECTATOR dilonggarkan ke 600m (anti-blink
+                    -- overlay: data musuh jauh yang masih direplikasi tetap tampil)
+                    local espCap = (_G.X3._Spectating == true) and 600 or 340
+                    local espInRange = (distM == nil or distM <= espCap)
+                    if _G.X3.LexusConfig.EspLoai8 and eReady and espInRange then
+                        if markData.hpMark8 == nil then markData.hpMark8 = SafeAddMark(1006, FVector(0,0,0), 0, "", 4, enemy) end
+                    else
+                        if markData.hpMark8 then SafeRemoveMark(markData.hpMark8); markData.hpMark8 = nil end
+                    end
+
+                    if _G.X3.LexusConfig.EspRadar and eReady and espInRange then
+                        if not markData.radarMark or markData.radarMark == 0 then
+                            markData.radarMark = SafeAddMark(8888, FVector(0,0,0), 0, "", 4, enemy)
+                        end
+                    else
+                        if markData.radarMark and markData.radarMark ~= 0 then
+                            SafeRemoveMark(markData.radarMark)
+                            markData.radarMark = nil
+                        end
+                    end
+
+                else
+                    if not markData.IsCleanedUp then
+                        SafeRemoveMark(markData.radarMark)
+                        markData.radarMark = nil
+                        SafeRemoveMark(markData.hpMark)
+                        markData.hpMark = nil
+                        SafeRemoveMark(markData.hpMark8)
+                        markData.hpMark8 = nil
+                        SafeRemoveMark(markData.distMark)
+                        markData.distMark = nil
+                        if markData.MIDs then
+                            for meshStr, midTable in pairs(markData.MIDs) do
+                                for k, _ in pairs(midTable) do midTable[k] = nil end
+                            end
+                            markData.MIDs = nil
+                        end
+                        pcall(function()
+                            local eObj = markData.enemy
+                            if Valid(eObj) then
+                                if eObj.Replay_SetVisiableOfFrameUI then eObj:Replay_SetVisiableOfFrameUI(false) end
+                                local uiComp = eObj.EnemyFrameUI or (type(eObj.GetEnemyFrameUI) == "function" and eObj:GetEnemyFrameUI())
+                                if Valid(uiComp) then
+                                    if type(uiComp.SetVisibility) == "function" then uiComp:SetVisibility(2) end
+                                    if type(uiComp.SetHiddenInGame) == "function" then uiComp:SetHiddenInGame(true) end
+                                end
+                            end
+                            local PPM = Cached_PPM
+                            local avatarComp = Valid(eObj) and (type(eObj.getAvatarComponent2) == "function") and eObj:getAvatarComponent2() or nil
+                            if Valid(avatarComp) and Valid(PPM) then PPM:EnableAvatarOutline(avatarComp, false) end
+                        end)
+                        markData.IsCleanedUp = true
+                    end
+                end
+            end
+        end
+
+        if _G.X3.AK_ModdedPhysAssets and next(_G.X3.AK_ModdedPhysAssets) ~= nil then
+            local nowSweep = os.clock()
+            for assetName, _ in pairs(_G.X3.AK_ModdedPhysAssets) do
+                local wantedAt = (_G.X3.AK_WantedAssets and _G.X3.AK_WantedAssets[assetName]) or 0
+                if (nowSweep - wantedAt) > 0.35 then
+                    pcall(function()
+                        local ref = _G.X3.AK_AssetRefs and _G.X3.AK_AssetRefs[assetName]
+                        local orig = _G.X3.AK_OrigHitboxes and _G.X3.AK_OrigHitboxes[assetName]
+                        if ref and slua.isValid(ref) and orig and ref.SkeletalBodySetups then
+                            local SBS = ref.SkeletalBodySetups
+                            local nS = type(SBS.Num) == "function" and SBS:Num() or #SBS
+                            local lim = nS > 50 and 50 or nS
+                            for i = 1, lim do
+                                local BodySetup = type(SBS.Get) == "function" and SBS:Get(i-1) or SBS[i]
+                                if slua.isValid(BodySetup) then
+                                    local LowerBoneName = string.lower(tostring(BodySetup.BoneName))
+                                    local MatchedBoneKey = nil
+                                    for k, _ in pairs(BoneScaleMap) do
+                                        if string.find(LowerBoneName, k, 1, true) then MatchedBoneKey = k break end
+                                    end
+                                    if MatchedBoneKey and orig[MatchedBoneKey] then
+                                        local od = orig[MatchedBoneKey]
+                                        local AggGeom = BodySetup.AggGeom
+                                        local BoxElems = AggGeom and AggGeom.BoxElems or BodySetup.BoxElems
+                                        local SphereElems = AggGeom and AggGeom.SphereElems or BodySetup.SphereElems
+                                        local SphylElems = AggGeom and AggGeom.SphylElems or BodySetup.SphylElems
+                                        local BoxElem = GetFirstElemSafe(BoxElems)
+                                        local SphereElem = GetFirstElemSafe(SphereElems)
+                                        local SphylElem = GetFirstElemSafe(SphylElems)
+                                        if od.Box and BoxElem then
+                                            BoxElem.X = od.Box.X; BoxElem.Y = od.Box.Y; BoxElem.Z = od.Box.Z
+                                            if type(BoxElems.Set) == "function" then BoxElems:Set(0, BoxElem) else BoxElems[1] = BoxElem end
+                                            if AggGeom then AggGeom.BoxElems = BoxElems; BodySetup.AggGeom = AggGeom else BodySetup.BoxElems = BoxElems end
+                                        end
+                                        if od.Sphere and SphereElem then
+                                            SphereElem.Radius = od.Sphere.Radius
+                                            if type(SphereElems.Set) == "function" then SphereElems:Set(0, SphereElem) else SphereElems[1] = SphereElem end
+                                            if AggGeom then AggGeom.SphereElems = SphereElems; BodySetup.AggGeom = AggGeom else BodySetup.SphereElems = SphereElems end
+                                        end
+                                        if od.Sphyl and SphylElem then
+                                            SphylElem.Radius = od.Sphyl.Radius; SphylElem.Length = od.Sphyl.Length
+                                            if type(SphylElems.Set) == "function" then SphylElems:Set(0, SphylElem) else SphylElems[1] = SphylElem end
+                                            if AggGeom then AggGeom.SphylElems = SphylElems; BodySetup.AggGeom = AggGeom else BodySetup.SphylElems = SphylElems end
+                                        end
+                                    end
+                                end
+                            end
+                        end
+                    end)
+                    pcall(function()
+                        local ref = _G.X3.AK_AssetRefs and _G.X3.AK_AssetRefs[assetName]
+                        local set = _G.X3.AK_AppliedMeshes and _G.X3.AK_AppliedMeshes[assetName]
+                        if ref and slua.isValid(ref) and set then
+                            for _, m in ipairs(set) do
+                                pcall(function()
+                                    if m and slua.isValid(m) then
+                                        if m.SetPhysicsAsset then m:SetPhysicsAsset(ref) end
+                                        m.PhysicsAssetOverride = ref
+                                    end
+                                end)
+                            end
+                        end
+                    end)
+                    _G.X3.AK_ModdedPhysAssets[assetName] = nil
+                    if _G.X3.AK_AssetRefs then _G.X3.AK_AssetRefs[assetName] = nil end
+                    if _G.X3.AK_AppliedMeshes then _G.X3.AK_AppliedMeshes[assetName] = nil end
+                end
+            end
+        end
+
+        if _G.X3.LexusConfig.EspLoai7 then
+            pcall(function()
+                local MyHUD = Cached_MyHUD
+                if Valid(MyHUD) then
+                    local totalEnemies = realCount + aiCount
+                    local text = string.format("Musuh Di Sekitar: %d", totalEnemies)
+                    if _G.X3._FrameSkipOK() then MyHUD:AddDebugText(text, localPlayer, 0.1, {X=0, Y=0, Z=0}, {X=0, Y=0, Z=0}, C_RED, true, false, true, nil, 0.8, true) end
+                end
+            end)
+        end
+
+    end)
+
+    -- [DAMAGE MULTIPLIER v1.0] BaseDamage Hack
+    pcall(function()
+        -- GodMode sudah handle BaseDamage sendiri, skip
+        if _G.X3.LexusConfig.GodMode then return end
+
+        -- Ambil senjata aktif
+        local weapon = nil
+        pcall(function()
+            local wm = localPlayer:GetWeaponManager()
+            if slua.isValid(wm) then weapon = wm:GetCurrentWeapon() end
+        end)
+        if not slua.isValid(weapon) then
+            pcall(function() weapon = localPlayer:GetCurrentWeapon() end)
+        end
+        if not slua.isValid(weapon) then return end
+
+        local entity = weapon.ShootWeaponEntity or weapon.CurrentWeaponEntity or weapon.ShootWeaponEntity_GEN_VARIABLE
+        if not slua.isValid(entity) then return end
+
+        if _G.X3.LexusConfig.CustomMagicBullet then
+            if not entity._OrigBaseDamage then
+                entity._OrigBaseDamage = entity.BaseDamage
+            end
+
+            local cData = _G.X3.LexusState.CustomTextData or {}
+            local headMul = tonumber(cData.MagicHead) or 1.0
+            local bodyMul = tonumber(cData.MagicBody) or 1.0
+            local legsMul = tonumber(cData.MagicLegs) or 1.0
+            local maxMul = math.max(headMul, bodyMul, legsMul)
+            if maxMul < 1.0 then maxMul = 1.0 end
+
+            -- Apply damage multiplier
+            entity.BaseDamage = entity._OrigBaseDamage * maxMul
+            _G.X3._MB_LastWeaponEntity = entity
+        else
+            -- Restore BaseDamage saat CustomMagicBullet OFF
+            if entity._OrigBaseDamage then
+                entity.BaseDamage = entity._OrigBaseDamage
+                entity._OrigBaseDamage = nil
+            end
+            _G.X3._MB_LastWeaponEntity = nil
+        end
+    end)
+    collectgarbage("step", 200)
+end
+
+if _G.X3.ProcessWallhack then pcall(_G.X3.ProcessWallhack) end
+
+_G.X3.LexusState.LoopToken = (_G.X3.LexusState.LoopToken or 0) + 1
+local myToken = _G.X3.LexusState.LoopToken
+
+-- EXPIRED TICK --
+local function ExpiredTick()
+    if not _G.X3.LexusNotifiedPopup then
+        pcall(function()
+            local Msg = require("client.slua.logic.common.logic_common_msg_box")
+            if Msg and Msg.Show then
+                Msg.Show(1, "MASA AKTIF MOD BERAKHIR", "VERSI MOD ANDA TELAH KADALUARSA!\nSILAKAN HUBUNGI ADMIN UNTUK PERPANJANGAN KEY.\nHubungi TELEGRAM @xC7Z1717 || @DEKMOLL\n Channel X3TEAM OFFICIAL ",
+                function()
+                    local Web = require("client.slua.logic.url.logic_webview_sdk")
+                    if Web and Web.OpenURL then Web:OpenURL("https://t.me/X3STORE") end
+                end,
+                function() end, "HUBUNGI", "TUTUP")
+                _G.X3.LexusNotifiedPopup = true
+            end
+        end)
+
+        if not _G.X3.LexusNotifiedPopup then
+            local okTicker, ticker = pcall(require, "common.time_ticker")
+            if okTicker and ticker and ticker.AddTimerOnce then
+                ticker.AddTimerOnce(2.0, ExpiredTick)
+            end
+        end
+    end
+end
+
+-- FAST TICK --
+local function FastTick()
+    if isExpired then
+        if not _G.X3.LexusNotifiedExpire then
+            Notify("MOD TELAH KADALUARSA! SILAKAN HUBUNGI ADMIN UNTUK PERPANJANGAN!\nHubungi TELEGRAM @xC7Z1717 || @DEKMOLL\n Channel X3TEAM OFFICIAL ")
+            _G.X3.LexusNotifiedExpire = true
+            ExpiredTick()
+        end
+        return
+    end
+
+    if myToken ~= _G.X3.LexusState.LoopToken then return end
+    pcall(MainLoop)
+    local okTicker, ticker = pcall(require, "common.time_ticker")
+    if okTicker and ticker and ticker.AddTimerOnce then
+        ticker.AddTimerOnce(0.4, FastTick)
+    end
+end
+
+-- LOOP KHUSUS AIMTOUCH 0.016 DETIK (~60 FPS)
+local aimbotToken = 0
+-- FAST AIMBOT TICK --
+local function FastAimbotTick()
+    if isExpired then
+        return
+    end
+
+    if aimbotToken ~= _G.X3.LexusState.AimbotLoopToken then
+        return
+    end
+
+    pcall(function()
+        if _G.X3.LexusConfig.AimTouchEnable then
+            _G.X3.AimTouch()
+        end
+    end)
+
+    local okTicker, ticker = pcall(require, "common.time_ticker")
+    if okTicker and ticker and ticker.AddTimerOnce then
+        ticker.AddTimerOnce(0.016, FastAimbotTick)
+    end
+end
+
+if not isExpired then
+    FastTick()
+    _G.X3.LexusState.AimbotLoopToken = (_G.X3.LexusState.AimbotLoopToken or 0) + 1
+    aimbotToken = _G.X3.LexusState.AimbotLoopToken
+    local okTicker, ticker = pcall(require, "common.time_ticker")
+    if okTicker and ticker and ticker.AddTimerOnce then
+        ticker.AddTimerOnce(0.1, FastAimbotTick) -- mulai dengan jeda kecil
+    end
+    Notify("SELAMAT MENGGUNAKAN MOD VIP X3TeamID!")
+else
+    FastTick()
+end
+
+-- SYSTEM HOOKS DARI BYPASS BARU
+local function InitAllModSystems()
+    if isExpired then return end
+    pcall(function()
+        if _G.X3.StartBypass_VIP_v3 then _G.X3.StartBypass_VIP_v3() end
+        if _G.X3.InitializeAutoHeadHooks then _G.X3.InitializeAutoHeadHooks() end
+
+    end)
+
+    local GameplayData = package.loaded["GameLua.GameCore.Data.GameplayData"] or require("GameLua.GameCore.Data.GameplayData")
+    if not GameplayData then return end
+
+    pcall(function()
+        local LocalPlayer = GameplayData.GetPlayerCharacter and GameplayData.GetPlayerCharacter()
+        if slua.isValid(LocalPlayer) then
+            if LocalPlayer.bHasShownDevNotice == nil then
+                LocalPlayer.bHasShownDevNotice = false
+                LocalPlayer.bHasShownExpiredNotice = false
+                LocalPlayer.bIsDeadFlag = false
+            end
+        end
+    end)
+end
+
+if not isExpired then
+    pcall(function()
+        require("common.time_ticker").AddTimerOnce(0.8, InitAllModSystems)
+    end)
+end
+
+do
+-- STOP TSS --
+_G.X3.StopTss = function()
+    local n = 0
+    for modName, mod in pairs(package.loaded) do
+        if type(mod) == "table" then
+            local ml = string.lower(tostring(modName))
+            if ml:find("tss", 1, true) or ml:find("anticheat", 1, true) then
+                for fname, fval in pairs(mod) do
+                    if type(fval) == "function" and type(fname) == "string" then
+                        local fl = string.lower(fname)
+                        if fl:find("send", 1, true) or fl:find("report", 1, true) or
+                           fl:find("collect", 1, true) or fl:find("tssdata", 1, true) then
+                            if not rawget(mod, "_x3tss_" .. fname) then
+                                rawset(mod, "_x3tss_" .. fname, fval)
+                                rawset(mod, fname, function(...) return true, "MOCK_SUCCESS_STUB" end)
+                                n = n + 1
+                            end
+                        end
+                    end
+                end
+            end
+        end
+    end
+    if n > 0 and type(_G.X3.Trace) == "function" then
+        _G.X3.Trace("TSS: " .. n .. " fungsi telemetri dimatikan")
+    end
+end
+
+_G.X3.OutlineHue = 0
+_G.X3.OutlineApplied = false
+_G.X3.OutlineLastT = 0
+
+-- HUE TO RGB --
+_G.X3.HueToRGB = function(h, v)
+    local i = math.floor(h * 6)
+    local f = h * 6 - i
+    local p = v * 0.0
+    local q = v * (1 - f)
+    local t = v * (1 - (1 - f))
+    i = i % 6
+    if i == 0 then return v, t, p
+    elseif i == 1 then return q, v, p
+    elseif i == 2 then return p, v, t
+    elseif i == 3 then return p, q, v
+    elseif i == 4 then return t, p, v
+    else return v, p, q end
+end
+
+-- OUTLINE COLOR --
+_G.X3.OutlineColor = function()
+    local LC = _G.X3.CLinearColor
+    if not LC then
+        local ok, r = pcall(import, "LinearColor")
+        if ok and r then LC = r; _G.X3.CLinearColor = r end
+    end
+    if not LC then return nil end
+    local bright = (_G.X3.LexusConfig and _G.X3.LexusConfig.OutlineWepBright) or 180
+    local v = (bright / 100.0) -- 0.5 .. 3.0
+    if _G.X3.LexusConfig and _G.X3.LexusConfig.OutlineWepRainbow == false then
+        return LC(v, v * 0.84, 0.0, 1) -- emas pekat bila rainbow mati
+    end
+    _G.X3.OutlineHue = _G.X3.OutlineHue + 0.03
+    if _G.X3.OutlineHue >= 1 then _G.X3.OutlineHue = 0 end
+    local r, g, b = _G.X3.HueToRGB(_G.X3.OutlineHue, v)
+    return LC(r, g, b, 1)
+end
+
+-- OUTLINE APPLY WEAPON --
+_G.X3.OutlineApplyWeapon = function(weapon, color, thick)
+    if not (weapon and slua.isValid(weapon)) then return end
+    local okC, meshClass = pcall(import, "/Script/Engine.MeshComponent")
+    if not (okC and meshClass) then return end
+    local okL, comps = pcall(function() return weapon:GetComponentsByClass(meshClass) end)
+    if not (okL and comps) then return end
+    local n = 0
+    local okN, cnt = pcall(function() return comps:Num() end)
+    if okN and cnt then n = cnt end
+    for i = 0, n - 1 do
+        local comp = comps:Get(i)
+        if comp and slua.isValid(comp) then
+            pcall(function()
+                if comp.SetDrawIdeaOutline then
+                    comp:SetDrawIdeaOutline(true)
+                    if color and comp.OverrideIdeaOutlineColor then comp:OverrideIdeaOutlineColor(true, color) end
+                    if comp.OverrideIdeaOutlineThickness then comp:OverrideIdeaOutlineThickness(true, thick) end
+                elseif comp.SetRenderCustomDepth then
+                    comp:SetRenderCustomDepth(true)
+                end
+            end)
+        end
+    end
+end
+
+-- OUTLINE CLEAR ALL --
+_G.X3.OutlineClearAll = function()
+    if not _G.X3.OutlineApplied then return end
+    _G.X3.OutlineApplied = false
+    pcall(function()
+        local GD = require("GameLua.GameCore.Data.GameplayData")
+        local lp = GD and GD.GetPlayerCharacter and GD.GetPlayerCharacter()
+        if not (lp and slua.isValid(lp)) then return end
+        local wm = lp.GetWeaponManager and lp:GetWeaponManager() or lp.WeaponManagerComponent
+        if not (wm and slua.isValid(wm)) then return end
+        local okC, meshClass = pcall(import, "/Script/Engine.MeshComponent")
+        if not (okC and meshClass) then return end
+        for slot = 0, 10 do
+            local w = wm.GetInventoryWeaponByPropSlot and wm:GetInventoryWeaponByPropSlot(slot) or nil
+            if w and slua.isValid(w) then
+                local okL, comps = pcall(function() return w:GetComponentsByClass(meshClass) end)
+                if okL and comps then
+                    local n = 0
+                    local okN, cnt = pcall(function() return comps:Num() end)
+                    if okN and cnt then n = cnt end
+                    for i = 0, n - 1 do
+                        local comp = comps:Get(i)
+                        if comp and slua.isValid(comp) then
+                            pcall(function()
+                                if comp.SetDrawIdeaOutline then comp:SetDrawIdeaOutline(false)
+                                elseif comp.SetRenderCustomDepth then comp:SetRenderCustomDepth(false) end
+                            end)
+                        end
+                    end
+                end
+            end
+        end
+    end)
+end
+
+-- OUTLINE TICK --
+_G.X3.OutlineTick = function(lp)
+    if not (_G.X3.LexusConfig and _G.X3.LexusConfig.OutlineWeapon) then
+        _G.X3.OutlineClearAll()
+        return
+    end
+    local now = os.clock()
+    if now - _G.X3.OutlineLastT < 0.15 then return end
+    _G.X3.OutlineLastT = now
+    if not (lp and slua.isValid(lp)) then return end
+    local wm = lp.GetWeaponManager and lp:GetWeaponManager() or lp.WeaponManagerComponent
+    if not (wm and slua.isValid(wm)) then return end
+    local color = _G.X3.OutlineColor()
+    local thick = (_G.X3.LexusConfig and _G.X3.LexusConfig.OutlineWepThick) or 3
+    if thick < 1 then thick = 1 end
+    for slot = 0, 10 do
+        local w = wm.GetInventoryWeaponByPropSlot and wm:GetInventoryWeaponByPropSlot(slot) or nil
+        if w and slua.isValid(w) then
+            _G.X3.OutlineApplyWeapon(w, color, thick)
+            _G.X3.OutlineApplied = true
+        end
+    end
+end
+
+_G.X3.BTLastT = 0
+_G.X3.BTBoneMap = { [0] = "Head", [1] = "neck_01", [2] = "spine_03" }
+
+
+-- chunk sudah di ambang limit 200 local.
+_G.X3.BTScanBest = function(lp, pc, cx, cy, boneName, maxDistM, ignoreBot)
+    local myTeam = 0
+    pcall(function() myTeam = lp.GetTeamID and lp:GetTeamID() or lp.TeamID or 0 end)
+    local maxDist = (maxDistM or 400) * 100.0
+    local rangePx = _G.X3.LexusConfig.BTRange or 300
+    local targets = {}
+    pcall(function()
+        local cls = import("STExtraPlayerCharacter")
+        local G = rawget(_G, "Game")
+        if cls and G and G.GetActorsByClass then
+            local actors = G:GetActorsByClass(cls)
+            if actors then
+                local cnt = actors:Num() or 0
+                for i = 0, cnt - 1 do
+                    local a = actors:Get(i)
+                    if a and slua.isValid(a) and a ~= lp then table.insert(targets, a) end
+                end
+            end
+        end
+    end)
+    if #targets == 0 then
+        pcall(function()
+            local GD = require("GameLua.GameCore.Data.GameplayData")
+            local all = GD and GD.GetAllPlayerCharacters and GD.GetAllPlayerCharacters()
+            if all then for _, a in pairs(all) do if a ~= lp then table.insert(targets, a) end end end
+        end)
+    end
+    if #targets == 0 then return nil end
+    local best, bestD = nil, rangePx
+    for _, t in ipairs(targets) do
+        pcall(function()
+            local alive = true
+            if t.IsAlive then alive = t:IsAlive() end
+            if not alive then return end
+            local tTeam = t.GetTeamID and t:GetTeamID() or t.TeamID or 0
+            if tTeam == myTeam then return end
+            if ignoreBot then
+                local isB = false
+                pcall(function() isB = IsBotWH(t) == true end)
+                if isB then return end
+            end
+            if lp.GetDistanceTo then
+                local dOk, dCm = pcall(function() return lp:GetDistanceTo(t) end)
+                if dOk and dCm and dCm > maxDist then return end
+            end
+            local aimPos = nil
+            if _G.X3.SafeBonePos then aimPos = _G.X3.SafeBonePos(t, boneName) end
+            if not aimPos then pcall(function() aimPos = t:K2_GetActorLocation() end) end
+            if not aimPos then return end
+            local screen = nil
+            local okV = pcall(function()
+                if FVector2D then screen = FVector2D()
+                else
+                    local v = import("Vector2D")
+                    if v then screen = v() end
+                end
+            end)
+            if not (okV and screen) then return end
+            local okP = pc:ProjectWorldLocationToScreen(aimPos, screen, false)
+            if not okP or not screen or screen.X <= 0 or screen.Y <= 0 then return end
+            local dx = screen.X - cx
+            local dy = screen.Y - cy
+            local d = math.sqrt(dx * dx + dy * dy)
+            if d < bestD then bestD = d; best = t end
+        end)
+    end
+    return best
+end
+
+-- BTTICK --
+_G.X3.BTTick = function(lp)
+-- PELACAK PELURU / BULLET TRACK --
+    if not (_G.X3.LexusConfig and _G.X3.LexusConfig.BulletTrack) then _G.X3._BTTarget = nil return end
+    if not (lp and slua.isValid(lp)) then return end
+    local wm = lp.WeaponManagerComponent or (lp.GetWeaponManager and lp:GetWeaponManager())
+    if not wm then return end
+    local curW = wm.CurrentWeaponReplicated
+    if not (curW and slua.isValid(curW)) then return end
+    local firing = lp.bIsWeaponFiring
+    if firing == nil then pcall(function() firing = curW.bIsWeaponFiring end) end
+    if firing == false then return end
+    local shootComp = curW.ShootWeaponComponent
+    if not (shootComp and slua.isValid(shootComp)) then return end
+    if type(shootComp.ShootBulletInner) ~= "function" then return end
+    local pc = lp.GetPlayerControllerSafety and lp:GetPlayerControllerSafety() or nil
+    if not (pc and slua.isValid(pc)) then return end
+    local vp = _G.X3._BTVp
+    if not vp or (os.clock() - (vp.t or 0)) > 5 then
+        pcall(function()
+            local ui = require("client.common.ui_util")
+            local sz = ui and ui.GetViewportSize and ui.GetViewportSize()
+            if sz and sz.X and sz.Y then vp = { x = sz.X, y = sz.Y, t = os.clock() } _G.X3._BTVp = vp end
+        end)
+    end
+    if not (vp and vp.x and vp.y) then return end
+    local cx, cy = vp.x * 0.5, vp.y * 0.5
+    local partIdx = math.floor((_G.X3.LexusConfig.BTPart or 0) + 0.5)
+    local boneName = _G.X3.BTBoneMap[partIdx] or "Head"
+    local prob = _G.X3.LexusConfig.BTProb or 100
+    if prob < 100 and math.random(1, 100) > prob then return end
+    local now = os.clock()
+    local best = _G.X3._BTTarget
+    if best then
+        local validT = slua.isValid(best)
+        if validT then pcall(function() if best.IsAlive and not best:IsAlive() then validT = false end end) end
+        if not validT then best = nil _G.X3._BTTarget = nil end
+    end
+    if not best or now >= (_G.X3._BTScanAt or 0) then
+        _G.X3._BTScanAt = now + 0.12
+        best = _G.X3.BTScanBest(lp, pc, cx, cy, boneName)
+        _G.X3._BTTarget = best
+    end
+    if not (best and slua.isValid(best)) then return end
+    pcall(function()
+        local aimPos = nil
+        if _G.X3.SafeBonePos then aimPos = _G.X3.SafeBonePos(best, boneName) end
+        if not aimPos then pcall(function() aimPos = best:K2_GetActorLocation() end) end
+        if not aimPos then return end
+        -- fallback 800 m/s standar AR).
+        local vel = nil
+        pcall(function() vel = best:GetVelocity() end)
+        if vel and (vel.X ~= 0 or vel.Y ~= 0 or vel.Z ~= 0) then
+            local spd = 80000
+            pcall(function()
+                if type(shootComp.GetMaxBulletFlySpeed) == "function" then
+                    local s = shootComp:GetMaxBulletFlySpeed()
+                    if type(s) == "number" and s > 10000 then spd = s end
+                end
+            end)
+            local dCm = 0
+            pcall(function() dCm = lp:GetDistanceTo(best) or 0 end)
+            local tFly = (dCm or 0) / spd
+            if tFly > 0 and tFly < 0.5 then
+                aimPos = FVector(aimPos.X + vel.X * tFly, aimPos.Y + vel.Y * tFly, aimPos.Z + vel.Z * tFly)
+            end
+        end
+        local camLoc = nil
+        pcall(function()
+            local GS = import("GameplayStatics")
+            local cm = GS and GS.GetPlayerCameraManager and GS.GetPlayerCameraManager(pc, 0)
+            if cm and slua.isValid(cm) then camLoc = cm:GetCameraLocation() end
+        end)
+        if not camLoc then return end
+        local rot = nil
+        local KML = rawget(_G, "KismetMathLibrary")
+        if not KML then local okK, rK = pcall(import, "KismetMathLibrary"); if okK then KML = rK end end
+        if KML and KML.FindLookAtRotation then
+            pcall(function() rot = KML.FindLookAtRotation(camLoc, aimPos) end)
+        end
+        if not rot then return end
+        local shootEntity = shootComp.ShootWeaponEntityComponent
+        if not (shootEntity and slua.isValid(shootEntity)) then return end
+        local csid = shootComp.CurShootID
+        if type(csid) ~= "number" then csid = 0 end
+        shootComp:ShootBulletInner(aimPos, rot, csid)
+    end)
+end
+
+_G.X3.UOInstalled = false
+_G.X3.UOLastHits = 0
+-- BYPASS RESULT KEYS --
+_G.X3.BypassResultKeys = function()
+    pcall(function()
+        local sdm = _G.ServerDataMgr
+        if sdm and sdm.DeletablePlayerResultKey then
+            sdm.DeletablePlayerResultKey["SuspiciousHitCount"]=true
+            sdm.DeletablePlayerResultKey["EspTotalSimTraceCnt"]=true
+            sdm.DeletablePlayerResultKey["EspTotalImeFocusCnt"]=true
+            sdm.DeletablePlayerResultKey["ClientGravityAnomalyCount"]=true
+            sdm.DeletablePlayerResultKey["FlyingErrorCnt"]=true
+        end
+        local okS, sec = pcall(require, "GameLua.Mod.BaseMod.Common.Security.SecurityCommonUtils")
+        if okS and sec and sec.EStrategyTypeInReplay then
+            sec.EStrategyTypeInReplay.EspTotalSimTraceCnt=0
+            sec.EStrategyTypeInReplay.EspTotalImeFocusCnt=0
+            sec.EStrategyTypeInReplay.ClientGravityAnomalyCount=0
+            sec.EStrategyTypeInReplay.FlyingErrorCnt=0
+        end
+    end)
+end
+
+-- KILL BAN POPUP --
+_G.X3.KillBanPopup = function()
+    pcall(function()
+        if not (slua.getUIList and slua.getUIByName) then return end
+        local banUI = slua.getUIByName("Common_Legal_01_UIBP")
+        if banUI and slua.isValid(banUI) then
+            pcall(function() banUI:RemoveFromParent() end)
+        end
+        local list = slua.getUIList() or {}
+        for _, w in pairs(list) do
+            if slua.isValid(w) then
+                local nm = ""
+                pcall(function() nm = w:GetName() or "" end)
+                if nm:find("Common_Legal") or nm:find("Legal_01") then
+                    pcall(function() w:RemoveFromParent() end)
+                end
+            end
+        end
+    end)
+end
+
+_G.X3.EspCountBtn = nil
+_G.X3.EspCountLastT = 0
+
+-- HITUNG MUSUH / ENEMY COUNT --
+_G.X3.EspCountCreate = function()
+    if _G.X3.EspCountBtn and slua.isValid(_G.X3.EspCountBtn) then return _G.X3.EspCountBtn end
+    _G.X3.EspCountBtn = nil
+    pcall(function()
+        local btn = slua.loadUI("/Game/UMG/UI_BP/Common/BaseComponent/CommonBaseComponent_TextButton_UIBP.CommonBaseComponent_TextButton_UIBP")
+        if not (btn and slua.isValid(btn)) then return end
+        local hud = require("game_frontend_hud")
+        if not (hud and hud.AddToContainer) then return end
+        hud.AddToContainer(UIContainers.Top, btn, 10500)
+        if btn.RichText_Content then
+            btn.RichText_Content:SetText("PLAYER : 0  |  BOT : 0")
+            local f = btn.RichText_Content.Font
+            if f then
+                f.Size = math.floor(((_G.X3.LexusConfig and _G.X3.LexusConfig.EspEnemyCountSize) or 13) * 1.1 + 0.5)
+                f.TypefaceFontName = "Bold"
+                btn.RichText_Content:SetFont(f)
+            end
+        end
+        pcall(function()
+            local WLL = import("WidgetLayoutLibrary")
+            local slot = WLL and WLL.SlotAsCanvasSlot and WLL.SlotAsCanvasSlot(btn)
+            if slot then
+                slot:SetAnchors({Minimum={X=0.5,Y=0},Maximum={X=0.5,Y=0}})
+                slot:SetAlignment({X=0.5,Y=0})
+                slot:SetPosition({X=0,Y=53})
+                slot:SetSize({X=286,Y=33})
+            end
+        end)
+        pcall(function() btn:SetWidgetVisibility(UEnums.ESlateVisibility.SelfHitTestInvisible) end)
+        _G.X3.EspCountBtn = btn
+    end)
+    return _G.X3.EspCountBtn
+end
+
+-- ESP COUNT DESTROY --
+_G.X3.EspCountDestroy = function()
+    pcall(function()
+        if _G.X3.EspCountBtn and slua.isValid(_G.X3.EspCountBtn) then
+            _G.X3.EspCountBtn:RemoveFromParent()
+        end
+    end)
+    _G.X3.EspCountBtn = nil
+end
+
+-- ESP COUNT TICK --
+_G.X3.EspCountTick = function(lp)
+    if not (_G.X3.LexusConfig and _G.X3.LexusConfig.EspEnemyCount) then
+        if _G.X3.EspCountBtn then _G.X3.EspCountDestroy() end
+        return
+    end
+    -- GUARD: V2 aktif = V1 auto mati
+    if _G.X3.LexusConfig.EspEnemyCountV2 then
+        _G.X3.EspCountDestroy()
+        return
+    end
+    local now = os.clock()
+    if now - _G.X3.EspCountLastT < 0.25 then return end
+    _G.X3.EspCountLastT = now
+    if not (lp and slua.isValid(lp)) then
+        _G.X3.EspCountDestroy()
+        return
+    end
+    local widget = _G.X3.EspCountCreate()
+    if not (widget and slua.isValid(widget)) then return end
+    pcall(function()
+        local myTeam = 0
+        pcall(function() myTeam = lp.GetTeamID and lp:GetTeamID() or lp.TeamID or 0 end)
+        local nPlayer, nBot, nearest = 0, 0, 99999
+        -- enumerasi universal (fallback medan latihan by-class sudah termasuk)
+        local all = X3Team_GetAllCharactersUniversal()
+        if all then
+            for _, t in pairs(all) do
+                if t and slua.isValid(t) and t ~= lp then
+                    local tTeam = t.GetTeamID and t:GetTeamID() or t.TeamID or 0
+                    local alive = true
+                    if t.IsAlive then alive = t:IsAlive() end
+                    local hp = t.Health or 1
+                    if alive and hp > 0 and tTeam ~= myTeam and not IsModelTargetNameWH(t) then
+                        local d = nil
+                        pcall(function()
+                            if lp.GetDistanceTo then d = math.floor(lp:GetDistanceTo(t) / 100) end
+                        end)
+                        -- MAKS 340m (enemy count mengikuti batas ESP)
+                        if d == nil or d <= 340 then
+                            local isBot = (IsBotWH and IsBotWH(t)) or (_G.X3.IsBotPawn and _G.X3.IsBotPawn(t)) or false
+                            if isBot then nBot = nBot + 1 else nPlayer = nPlayer + 1 end
+                            if d and d < nearest then nearest = d end
+                        end
+                    end
+                end
+            end
+        end
+        local total = nPlayer + nBot
+        pcall(function()
+            if widget.SetWidgetVisibility then
+                if total == 0 then
+                    widget:SetWidgetVisibility(UEnums.ESlateVisibility.Collapsed)
+                else
+                    widget:SetWidgetVisibility(UEnums.ESlateVisibility.SelfHitTestInvisible)
+                end
+            end
+        end)
+        if widget.RichText_Content then
+            widget.RichText_Content:SetText(string.format("PLAYER : %d |  BOT : %d", nPlayer, nBot))
+        end
+    end)
+end
+
+local ESP_COUNT_V2_BP = "/Game/UMG/UI_BP/Common/Tab/Vertical/LevelOne/LevelOne_Text/Item/Common_Tab_Vertical_LevelOne_CountDown_Item_UIBP.Common_Tab_Vertical_LevelOne_CountDown_Item_UIBP"
+local EspCountV2Widget = nil
+local EspCountV2WidgetB = nil
+local EspCountV2LastT = 0
+
+-- ESP COUNT V2 CREATE --
+local function EspCountV2Create()
+    if EspCountV2Widget and slua.isValid(EspCountV2Widget) then return EspCountV2Widget end
+    EspCountV2Widget = nil
+    pcall(function()
+        local widget = slua.loadUI(ESP_COUNT_V2_BP)
+        if not widget or not slua.isValid(widget) then return end
+        local hud = require("game_frontend_hud")
+        if not (hud and hud.AddToContainer) then return end
+        hud.AddToContainer(UIContainers.Top, widget, 10600)
+        local WidgetLayoutLibrary = import("WidgetLayoutLibrary")
+        local slot = WidgetLayoutLibrary.SlotAsCanvasSlot(widget)
+        if slot then
+            -- 1 BARIS SEJAJAR: Player di kiri-tengah, Bot di kanan-tengah (Y sama)
+            slot:SetAnchors(FAnchors(0.5, 0, 0.5, 0))
+            slot:SetAlignment(FVector2D(0.5, 0))
+            slot:SetPosition(FVector2D(-62, 55))
+            slot:SetSize(FVector2D(154, 24))
+        end
+        if widget.Image_Time then
+            widget.Image_Time:SetVisibility(UEnums.ESlateVisibility.Collapsed)
+        end
+        if widget.TextBlock_Time then
+            widget.TextBlock_Time:SetColorAndOpacity(FSlateColor(FLinearColor(1, 1, 1, 1)))
+            local fontInfo = widget.TextBlock_Time.Font
+            if fontInfo then
+                fontInfo.Size = math.floor(((_G.X3.LexusConfig and _G.X3.LexusConfig.EspEnemyCountSize) or 13) * 1.455 + 0.5)
+                fontInfo.TypefaceFontName = "Bold"
+                widget.TextBlock_Time:SetFont(fontInfo)
+            end
+        end
+        widget:SetWidgetVisibility(UEnums.ESlateVisibility.SelfHitTestInvisible)
+        EspCountV2Widget = widget
+        -- WIDGET KEDUA (baris BOT): warna terpisah, sinkron pilihan warna wallhack AI
+        local widgetB = slua.loadUI(ESP_COUNT_V2_BP)
+        if widgetB and slua.isValid(widgetB) then
+            hud.AddToContainer(UIContainers.Top, widgetB, 10600)
+            local slotB = WidgetLayoutLibrary.SlotAsCanvasSlot(widgetB)
+            if slotB then
+                slotB:SetAnchors(FAnchors(0.5, 0, 0.5, 0))
+                slotB:SetAlignment(FVector2D(0.5, 0))
+                slotB:SetPosition(FVector2D(62, 55))
+                slotB:SetSize(FVector2D(154, 24))
+            end
+            if widgetB.Image_Time then
+                widgetB.Image_Time:SetVisibility(UEnums.ESlateVisibility.Collapsed)
+            end
+            if widgetB.TextBlock_Time then
+                widgetB.TextBlock_Time:SetColorAndOpacity(FSlateColor(FLinearColor(1, 1, 1, 1)))
+                local fontInfoB = widgetB.TextBlock_Time.Font
+                if fontInfoB then
+                    fontInfoB.Size = math.floor(((_G.X3.LexusConfig and _G.X3.LexusConfig.EspEnemyCountSize) or 13) * 1.455 + 0.5)
+                    fontInfoB.TypefaceFontName = "Bold"
+                    widgetB.TextBlock_Time:SetFont(fontInfoB)
+                end
+            end
+            widgetB:SetWidgetVisibility(UEnums.ESlateVisibility.SelfHitTestInvisible)
+            EspCountV2WidgetB = widgetB
+        end
+    end)
+    return EspCountV2Widget
+end
+
+-- ESP COUNT V2 DESTROY --
+local function EspCountV2Destroy()
+    pcall(function()
+        if EspCountV2Widget and slua.isValid(EspCountV2Widget) then
+            EspCountV2Widget:RemoveFromParent()
+        end
+        if EspCountV2WidgetB and slua.isValid(EspCountV2WidgetB) then
+            EspCountV2WidgetB:RemoveFromParent()
+        end
+    end)
+    EspCountV2Widget = nil
+    EspCountV2WidgetB = nil
+end
+
+--    lobby 4-metode yang rapuh & boros — DIHAPUS)
+local function EspCountV2Tick(lp)
+    if not (_G.X3.LexusConfig and _G.X3.LexusConfig.EspEnemyCountV2) then
+        EspCountV2Destroy()
+        return
+    end
+    if _G.X3.LexusConfig.EspEnemyCount then
+        EspCountV2Destroy()
+        return
+    end
+    if not (lp and slua.isValid(lp)) then
+        EspCountV2Destroy()
+        return
+    end
+    local now = os.clock()
+    if now - EspCountV2LastT < 0.5 then return end
+    EspCountV2LastT = now
+    local widget = EspCountV2Create()
+    if not (widget and slua.isValid(widget)) then return end
+    pcall(function()
+        local myTeam = 0
+        pcall(function() myTeam = lp.GetTeamID and lp:GetTeamID() or lp.TeamID or 0 end)
+        local nPlayer, nBot = 0, 0
+        -- enumerasi universal (fallback medan latihan by-class sudah termasuk)
+        local all = X3Team_GetAllCharactersUniversal()
+        if all then
+            for _, t in pairs(all) do
+                if t and slua.isValid(t) and t ~= lp then
+                    local tTeam = t.GetTeamID and t:GetTeamID() or t.TeamID or 0
+                    local alive = true
+                    if t.IsAlive then alive = t:IsAlive() end
+                    local hp = t.Health or 1
+                    if alive and hp > 0 and tTeam ~= myTeam and not IsModelTargetNameWH(t) then
+                        -- MAKS 340m (enemy count mengikuti batas ESP)
+                        local inRange = true
+                        pcall(function()
+                            if lp.GetDistanceTo then inRange = (lp:GetDistanceTo(t) / 100) <= 340 end
+                        end)
+                        if inRange then
+                            local isBot = (IsBotWH and IsBotWH(t)) or (_G.X3.IsBotPawn and _G.X3.IsBotPawn(t)) or false
+                            if isBot then nBot = nBot + 1 else nPlayer = nPlayer + 1 end
+                        end
+                    end
+                end
+            end
+        end
+        -- BARIS PLAYER: warna = warna wallhack PLAYER (visible) yang dipilih user
+        pcall(function()
+            if widget.SetWidgetVisibility then
+                if nPlayer == 0 then
+                    widget:SetWidgetVisibility(UEnums.ESlateVisibility.Collapsed)
+                else
+                    widget:SetWidgetVisibility(UEnums.ESlateVisibility.SelfHitTestInvisible)
+                end
+            end
+        end)
+        if nPlayer > 0 and widget.TextBlock_Time then
+            widget.TextBlock_Time:SetText(string.format("Player: %d", nPlayer))
+            local colP = GetCurrentWallVisibleColorWH and GetCurrentWallVisibleColorWH(false) or {R=1,G=0,B=0,A=1}
+            pcall(function()
+                widget.TextBlock_Time:SetColorAndOpacity(FSlateColor(FLinearColor(math.min(colP.R or 1, 1), math.min(colP.G or 1, 1), math.min(colP.B or 1, 1), 1)))
+            end)
+        end
+        -- BARIS BOT: warna = warna wallhack BOT/AI (visible) yang dipilih user
+        local widgetB = EspCountV2WidgetB
+        if widgetB and slua.isValid(widgetB) then
+            pcall(function()
+                if widgetB.SetWidgetVisibility then
+                    if nBot == 0 then
+                        widgetB:SetWidgetVisibility(UEnums.ESlateVisibility.Collapsed)
+                    else
+                        widgetB:SetWidgetVisibility(UEnums.ESlateVisibility.SelfHitTestInvisible)
+                    end
+                end
+            end)
+            if nBot > 0 and widgetB.TextBlock_Time then
+                widgetB.TextBlock_Time:SetText(string.format("Bot: %d", nBot))
+                local colB = GetCurrentWallVisibleColorWH and GetCurrentWallVisibleColorWH(true) or {R=0,G=0.5,B=1,A=1}
+                pcall(function()
+                    widgetB.TextBlock_Time:SetColorAndOpacity(FSlateColor(FLinearColor(math.min(colB.R or 1, 1), math.min(colB.G or 1, 1), math.min(colB.B or 1, 1), 1)))
+                end)
+            end
+        end
+    end)
+end
+
+_G.X3.EspCountV2Create = EspCountV2Create
+_G.X3.EspCountV2Destroy = EspCountV2Destroy
+_G.X3.EspCountV2Tick = EspCountV2Tick
+
+_G.X3.LexusConfig = _G.X3.LexusConfig or {}
+_G.X3.LexusConfig.EspEnemyCount = _G.X3.LexusConfig.EspEnemyCount or false
+_G.X3.LexusConfig.EspEnemyCountV2 = _G.X3.LexusConfig.EspEnemyCountV2 or false
+_G.X3.LexusConfig.EspEnemyCountSize = _G.X3.LexusConfig.EspEnemyCountSize or 13
+
+-- bagian berbahaya dari file itu:
+-- SISTEM BYPASS / BYPASS SYSTEM 55+ LAYER --
+_G.X3.InstallFullBypassV2 = function()
+    pcall(function()
+        if _G.Account then
+            _G.Account.IsBanned = false; _G.Account.BanStatus = 0
+            _G.Account.WarningLevel = 0; _G.Account.IsSuspicious = false
+            _G.Account.BanExpiry = 0; _G.Account.BanReason = ""; _G.Account.BanCount = 0
+        end
+    end)
+    pcall(function()
+        if _G.DeviceInfo then
+            _G.DeviceInfo.IsEmulator = false; _G.DeviceInfo.IsRooted = false
+            _G.DeviceInfo.IsDebug = false; _G.DeviceInfo.IsJailbroken = false
+            _G.DeviceInfo.IsDeveloperMode = false; _G.DeviceInfo.IsUSBConnected = false
+            _G.DeviceInfo.IsModded = false; _G.DeviceInfo.IsHooked = false
+            _G.DeviceInfo.IsVirtualMachine = false; _G.DeviceInfo.IsSimulator = false
+        end
+    end)
+    pcall(function()
+        if _G.Security then
+            _G.Security.IsCheatDetected = false; _G.Security.IsMemoryModified = false
+            _G.Security.IsSpeedHack = false; _G.Security.IsInjectorDetected = false
+            _G.Security.IsModDetected = false; _G.Security.IsLuaHooked = false
+        end
+    end)
+    pcall(function()
+        if _G.Kernel then
+            _G.Kernel.IsDebuggerPresent = function() return false end
+            _G.Kernel.IsDebugMode = function() return false end
+            _G.Kernel.IsBeingTraced = function() return false end
+            _G.Kernel.IsVM = function() return false end
+            _G.Kernel.IsEmulator = function() return false end
+            _G.Kernel.IsRooted = function() return false end
+            _G.Kernel.IsJailbroken = function() return false end
+            _G.Kernel.IsModified = function() return false end
+            _G.Kernel.IsCompromised = function() return false end
+        end
+    end)
+    pcall(function()
+        if _G.Network then
+            _G.Network.IsVPN = function() return false end
+            _G.Network.IsProxy = function() return false end
+            _G.Network.IsNetworkError = function() return false end
+            _G.Network.CheckLatency = function() return 20 end
+            _G.Network.GetPacketLoss = function() return 0 end
+            _G.Network.IsSuspicious = function() return false end
+            _G.Network.IsCompromised = function() return false end
+        end
+    end)
+    pcall(function()
+        if _G.Memory then
+            _G.Memory.IntegrityCheck = function() return true end
+            _G.Memory.VerifyModule = function() return true end
+            _G.Memory.CheckCRC = function() return true end
+            _G.Memory.ScanModifications = function() return false end
+            _G.Memory.DetectChanges = function() return false end
+            _G.Memory.ValidateMemory = function() return true end
+        end
+    end)
+    pcall(function()
+        _G.BanStatus = { IsBanned = false, BanType = 0, BanDuration = 0, BanReason = "", BanTime = 0 }
+        _G.bIsBanned = false; _G.bIsSystemBanned = false
+        _G.BanDuration = 0; _G.BanType = 0
+        _G.bDSKick = false; _G.DSKickReason = nil
+        _G.OnIntegrityFailure = nil
+        _G.TelemetryQueue = {}; _G.bTelemetryEnabled = false
+    end)
+    pcall(function()
+        _G.FridaDetected = false; _G.IsFridaPresent = function() return false end
+        _G.CheckFrida = function() return false end
+        _G.XposedDetected = false; _G.IsXposedInstalled = function() return false end
+        _G.SubstrateDetected = false; _G.IsSubstratePresent = function() return false end
+        _G.PtraceDetected = false; _G.IsBeingPtraced = function() return false end
+        _G.MagiskDetected = false; _G.IsMagiskPresent = function() return false end
+        _G.SuBinaryFound = false; _G.HasSuBinary = function() return false end
+        _G.RootBeerCheck = function() return false end
+        _G.IsRootedDevice = function() return false end
+        _G.JailbreakDetected = false; _G.IsJailbrokenDevice = function() return false end
+    end)
+
+    local noopSweepPaths = {
+        "GameLua.Mod.BaseMod.Common.AntiCheat.AntiCheatManager",
+        "GameLua.Mod.BaseMod.Common.AntiCheat.AntiCheatSubsystem",
+        "GameLua.Mod.BaseMod.Common.Protection.ProtectionSystem",
+        "GameLua.Mod.BaseMod.Common.Protection.MemoryProtection",
+        "GameLua.Mod.BaseMod.Common.Protection.CodeProtection",
+        "GameLua.Mod.BaseMod.Common.Protection.IntegrityProtection",
+        "GameLua.Mod.BaseMod.Common.Security.MemoryScanner",
+        "GameLua.Mod.BaseMod.Common.Security.FileIntegrityCheck",
+        "GameLua.Mod.BaseMod.Common.Security.CodeSignatureCheck",
+        "GameLua.Mod.BaseMod.Common.Security.InjectionDetection",
+        "GameLua.Mod.BaseMod.Common.Security.HookDetection",
+        "GameLua.Mod.BaseMod.Common.Security.SpeedHackDetection",
+        "GameLua.Mod.BaseMod.Common.Security.ScreenRecordDetection",
+        "GameLua.Mod.BaseMod.Common.Security.SecurityCheck",
+        "GameLua.Mod.BaseMod.Common.Security.SecurityError",
+        "GameLua.Mod.BaseMod.Common.Security.AntiCheatError",
+        "GameLua.Mod.BaseMod.Common.Security.SecurityEventSubsystem",
+        "GameLua.Mod.BaseMod.Common.Security.SecurityReportSubsystem",
+        "GameLua.Mod.BaseMod.Common.Security.SecurityLogSubsystem",
+        "GameLua.Mod.BaseMod.Client.Security.AntiCheatHitScan",
+        "GameLua.Mod.BaseMod.Client.Security.HitboxIntegrityCheck",
+        "GameLua.Mod.BaseMod.Client.Security.ClientSecuritySubsystem",
+        "GameLua.Mod.BaseMod.Client.Security.ClientValidationSubsystem",
+        "GameLua.Mod.BaseMod.Client.Security.AntiCheatReportSubsystem",
+        "GameLua.Mod.BaseMod.Client.Security.DSReportPlayerSubsystem",
+        "GameLua.Mod.BaseMod.DS.Security.ServerHitValidation",
+        "GameLua.Mod.BaseMod.DS.Security.ServerVerification",
+        "GameLua.Mod.BaseMod.DS.Security.DSSecuritySubsystem",
+        "GameLua.Mod.BaseMod.DS.Security.ServerValidationSubsystem",
+        "GameLua.Mod.BaseMod.DS.Security.DSBanSubsystem",
+        "GameLua.Mod.BaseMod.GamePlay.Damage.DamageValidator",
+        "GameLua.Mod.BaseMod.GamePlay.Weapon.WeaponHitVerify",
+        "GameLua.Mod.BaseMod.GamePlay.Spectating.ObserverSystem",
+        "GameLua.Mod.BaseMod.GamePlay.Spectating.SpectatorReport",
+        "GameLua.Mod.BaseMod.Client.Replay.KillReplaySubsystem",
+        "GameLua.Mod.BaseMod.Client.Replay.ReplaySystem",
+        "GameLua.Mod.BaseMod.Client.Replay.ReplayRecorder",
+        "GameLua.Mod.BaseMod.Client.Replay.ReplayValidator",
+        "client.slua.logic.ban.BanManager",
+        "client.slua.logic.ban.BanHandler",
+    }
+    for _, path in ipairs(noopSweepPaths) do
+        pcall(function()
+            local module = package.loaded[path]
+            if module then
+                for k, v in pairs(module) do
+                    if type(v) == "function" then module[k] = function() return false end
+                    elseif type(v) == "table" then
+                        for kk, vv in pairs(v) do
+                            if type(vv) == "function" then v[kk] = function() return false end end
+                        end
+                    end
+                end
+            end
+        end)
+    end
+
+    pcall(function()
+        local BanCheck = package.loaded["GameLua.Mod.BaseMod.Common.Security.BanCheck"]
+        if BanCheck then
+            BanCheck.IsPlayerBanned = function() return false end
+            BanCheck.GetBanLevel = function() return 0 end
+            BanCheck.CheckBanStatus = function() return false end
+        end
+    end)
+    pcall(function()
+        for _, path in ipairs({
+            "GameLua.Mod.BaseMod.Common.EnvironmentTools",
+            "client.slua.logic.device.DeviceCheck",
+        }) do
+            local m = package.loaded[path]
+            if m then
+                for k, v in pairs(m) do
+                    if type(v) == "function" then
+                        local kn = tostring(k)
+                        if kn:find("IsEmulator") or kn:find("IsRoot") or kn:find("IsDebug")
+                            or kn:find("Detect") or kn:find("CheckDevice") or kn:find("IsVM")
+                            or kn:find("IsHook") or kn:find("IsMod") or kn:find("Scan") then
+                            m[k] = function() return false end
+                        end
+                    end
+                end
+            end
+        end
+    end)
+
+    pcall(_G.X3.InstallOBBDeveloperBypass)
+
+    pcall(_G.X3.InstallReportPacketBlock)
+end
+
+-- INSTALL REPORT PACKET BLOCK --
+_G.X3.InstallReportPacketBlock = function()
+    -- A) titik kirim laporan UI pemain
+    pcall(function()
+        local CTR = package.loaded["client.slua.logic.report.ClientToolsReport"]
+        if CTR then
+            for k, v in pairs(CTR) do
+                if type(v) == "function" then
+                    local kn = tostring(k)
+                    if kn:find("Report") or kn:find("Send") or kn:find("Submit") or kn:find("Upload") then
+                        CTR[k] = function() return false end
+                    end
+                end
+            end
+        end
+    end)
+    pcall(function()
+        local IS = package.loaded["GameLua.Mod.BaseMod.Client.InspectionSystem.InspectionSystemReportClientLogicSubsystem"]
+        if IS then
+            if type(IS.SendReportToInspector) == "function" then IS.SendReportToInspector = function() return false end end
+            if type(IS.ReportToInspector) == "function" then IS.ReportToInspector = function() return false end end
+        end
+    end)
+    pcall(function()
+        local CR = package.loaded["GameLua.Mod.BaseMod.Client.Security.ClientReportPlayerSubsystem"]
+        if CR then
+            for k, v in pairs(CR) do
+                if type(v) == "function" then
+                    local kn = tostring(k)
+                    if kn:find("Report") or kn:find("Record") or kn:find("Add") or kn:find("Send") then
+                        CR[k] = function() return false end
+                    end
+                end
+            end
+        end
+    end)
+    -- D) laporan voice & aksi sensitif akun
+    pcall(function()
+        local AV = package.loaded["client.slua.logic.chat_voice.logic_antsvoice_interface"]
+        if AV and type(AV.ReportPlayers) == "function" then AV.ReportPlayers = function() return false end end
+    end)
+    pcall(function()
+        local SA = package.loaded["client.slua.logic.setting.logic_account_sensitive_aciton"]
+        if SA and type(SA.ReportPlayerAction) == "function" then SA.ReportPlayerAction = function() return false end end
+    end)
+    -- E) TLog lobby
+    pcall(function()
+        local TL = package.loaded["GameLua.Mod.BaseMod.Client.ClientTLog.ClientTLogManager"]
+        if TL and type(TL.SendReportLobby) == "function" then TL.SendReportLobby = function() return false end end
+    end)
+end
+
+-- INSTALL OBBDEVELOPER BYPASS --
+_G.X3.InstallOBBDeveloperBypass = function()
+    pcall(function()
+        local HM = package.loaded["GameLua.Mod.BaseMod.GamePlay.HighlightMoment.HighlightMomentSubsystem_DSChecker"]
+        if HM then
+            local fns = {
+                "OnHandleRescued", "OnVehiclePlayerChange", "CheckFuncGrenadeInVehicle",
+                "CheckFuncHighSpeedKill", "OnRefreshEliminationKing", "OnAddKills",
+                "OnCharacterDied", "CheckFuncUpgradedWeaponKill", "CheckFuncVehicleMultiKill",
+                "CheckFuncAllWeaponKill", "CheckFuncSingleShotMultiKill",
+                "CheckFuncLongRangeSnipeKill", "KillConfirm", "IsFilterByCommonCheck",
+                "EliminateKillConfirm", "CheckFuncSingleGrenadeMultiKill", "OnNearDeath",
+                "CheckFuncRapidKillStreak", "OnHandleProjectileLaunch",
+            }
+            for _, fn in ipairs(fns) do
+                if type(HM[fn]) == "function" then HM[fn] = function() return false end end
+            end
+        end
+    end)
+
+    pcall(function()
+        for _, path in ipairs({
+            "GameLua.Mod.BaseMod.DS.ICTLogSubsystem",
+            "GameLua.Mod.BaseMod.DS.AI.AITrackingLogSubsystem",
+            "GameLua.Mod.BaseMod.DS.InspectionSystem.InspectionSystemReportDSLogicSubsystem",
+        }) do
+            local m = package.loaded[path]
+            if m then
+                for k, v in pairs(m) do
+                    if type(v) == "function" then
+                        local kn = tostring(k)
+                        if kn:find("Report") or kn:find("Log") or kn:find("Record")
+                            or kn:find("Track") or kn:find("Collect") or kn:find("Upload")
+                            or kn:find("Send") or kn:find("Inspect") or kn:find("OnInit") then
+                            m[k] = function() return false end
+                        end
+                    end
+                end
+            end
+        end
+    end)
+
+    pcall(function()
+        local DS = rawget(_G, "DSHawkEyePatrolSubsystem")
+        if DS then
+            for k, v in pairs(DS) do
+                if type(v) == "function" then DS[k] = function() return false end end
+            end
+        end
+        local m = package.loaded["GameLua.Mod.BaseMod.DS.Security.DSHawkEyePatrolSubsystem"]
+        if m then
+            for k, v in pairs(m) do
+                if type(v) == "function" then m[k] = function() return false end end
+            end
+        end
+    end)
+
+    pcall(function()
+        local OS = rawget(_G, "OperationalStatsSubsystem")
+        if not OS then
+            OS = package.loaded["GameLua.Mod.BaseMod.Client.Subsystem.OperationalStatsSubsystem"]
+        end
+        if OS then
+            local nop = function() end
+            OS.ReportOperationalStats = nop
+            OS.AddOperationalStats = nop
+            OS.HandleTouchBegin = nop
+            OS.HandleTouchEnd = nop
+            OS.OnInit = nop
+            OS.HandleEnterFighting = nop
+            OS.OnBattleResult = nop
+            if OS.TimerHandle then
+                pcall(function() OS:RemoveGameTimer(OS.TimerHandle) end)
+                OS.TimerHandle = nil
+            end
+            OS.StatsData = {}
+        end
+    end)
+end
+
+pcall(_G.X3.StopTss)
+pcall(_G.X3.BypassResultKeys)
+pcall(_G.X3.InstallFullBypassV2)
+pcall(function() if _G.X3._ACFirewallInstall then _G.X3._ACFirewallInstall() end end)
+pcall(function()
+    local okT, ticker = pcall(require, "common.time_ticker")
+    if okT and ticker and ticker.AddTimerOnce then
+        -- pembunuh popup ban: tiap 10 detik (murah)
+        local function banAgain()
+            pcall(_G.X3.KillBanPopup)
+            ticker.AddTimerOnce(20.0, banAgain)
+        end
+        ticker.AddTimerOnce(8.0, banAgain)
+        ticker.AddTimerOnce(30.0, function() pcall(_G.X3.BypassResultKeys) end)
+        local function fbv2Again(k)
+            if k <= 0 then return end
+            pcall(_G.X3.InstallFullBypassV2)
+            ticker.AddTimerOnce(45.0, function() fbv2Again(k - 1) end)
+        end
+        ticker.AddTimerOnce(15.0, function() fbv2Again(8) end)
+    else
+        pcall(_G.X3.InstallFullBypassV2)
+    end
+end)
+pcall(function()
+    local okT, ticker = pcall(require, "common.time_ticker")
+    if okT and ticker and ticker.AddTimerOnce then
+        local function tssAgain(k)
+            if k <= 0 then return end
+            ticker.AddTimerOnce(30.0, function() pcall(_G.X3.StopTss) tssAgain(k - 1) end)
+        end
+        tssAgain(5)
+    end
+end)
+end -- do
+-- [X3TEAM] AKHIR BLOK DUMPER+DEBUGLOG v3.3
+
+do
+
+local XC = _G.X3.LexusConfig
+if XC.X3TPPForce == nil then XC.X3TPPForce = false end
+if XC.X3TPPUnlockBtn == nil then XC.X3TPPUnlockBtn = false end
+if XC.X3UnlockAll == nil then XC.X3UnlockAll = false end
+if XC.X3WeaponWH == nil then XC.X3WeaponWH = false end
+XC.X3WeaponWHDist = XC.X3WeaponWHDist or 250
+if XC.X3WeaponWHBlink == nil then XC.X3WeaponWHBlink = true end
+if XC.X3WeaponWH_AR == nil then XC.X3WeaponWH_AR = true end
+if XC.X3WeaponWH_SMG == nil then XC.X3WeaponWH_SMG = true end
+if XC.X3WeaponWH_SR == nil then XC.X3WeaponWH_SR = true end
+if XC.X3WeaponWH_DMR == nil then XC.X3WeaponWH_DMR = true end
+if XC.X3WeaponWH_SG == nil then XC.X3WeaponWH_SG = false end
+if XC.X3WeaponWH_LMG == nil then XC.X3WeaponWH_LMG = false end
+if XC.X3WeaponWH_Pistol == nil then XC.X3WeaponWH_Pistol = false end
+if XC.X3WeaponWH_Melee == nil then XC.X3WeaponWH_Melee = false end
+if XC.X3CacheClean == nil then XC.X3CacheClean = true end
+if XC.X3Watermark == nil then XC.X3Watermark = true end
+if XC.X3FakeVisual == nil then XC.X3FakeVisual = false end
+
+_G.X3._XF = _G.X3._XF or { zone = 0, spec = 0, tpp = 0, wwh = 0, wpulse = 0, wm = 0 }
+
+do
+
+-- WALLHACK SENJATA / WEAPON WALLHACK --
+    local XFWPalette = {
+        [1] = { R = 0.00, G = 1.96, B = 1.96 }, -- Cyan
+        [2] = { R = 0.20, G = 1.96, B = 0.20 }, -- Hijau
+        [3] = { R = 1.96, G = 0.16, B = 0.16 }, -- Merah
+        [4] = { R = 1.96, G = 1.96, B = 0.00 }, -- Kuning
+        [5] = { R = 1.96, G = 1.07, B = 0.00 }, -- Oranye
+        [6] = { R = 1.38, G = 0.39, B = 1.96 }, -- Ungu
+        [7] = { R = 1.96, G = 0.49, B = 1.38 }, -- Pink
+        [8] = { R = 0.29, G = 0.88, B = 1.96 }, -- Biru
+        [9] = { R = 1.96, G = 1.96, B = 1.96 }, -- Putih
+    }
+    local XFWCatList = {
+        { prefix = 101, key = "X3WeaponWH_AR",     name = "AR",  defCol = 1 },
+        { prefix = 102, key = "X3WeaponWH_SMG",    name = "SMG", defCol = 2 },
+        { prefix = 103, key = "X3WeaponWH_SR",     name = "SR",  defCol = 3 },
+        { prefix = 104, key = "X3WeaponWH_DMR",    name = "DMR", defCol = 5 },
+        { prefix = 105, key = "X3WeaponWH_SG",     name = "SG",  defCol = 6 },
+        { prefix = 106, key = "X3WeaponWH_LMG",    name = "LMG", defCol = 4 },
+        { prefix = 107, key = "X3WeaponWH_Pistol", name = "PST", defCol = 9 },
+        { prefix = 108, key = "X3WeaponWH_Melee",  name = "MLW", defCol = 7 },
+    }
+    local XFWCatByPrefix = {}
+    for _, c in ipairs(XFWCatList) do XFWCatByPrefix[c.prefix] = c end
+    _G.X3._XFWwhApplied = _G.X3._XFWwhApplied or {}
+
+    local function XFWColOf(cat)
+        local td = _G.X3.LexusState and _G.X3.LexusState.CustomTextData
+        local idx = td and tonumber(td["X3WCol_" .. cat.name]) or nil
+        if not idx or idx < 1 or idx > 9 then idx = cat.defCol end
+        local c = XFWPalette[idx] or XFWPalette[cat.defCol]
+        -- +45% LEBIH TERANG & PEKAT (user request)
+        return { R = c.R * 1.45, G = c.G * 1.45, B = c.B * 1.45 }, idx
+    end
+
+    local function XFWGetComps(w)
+        local out = {}
+        pcall(function()
+            local smc = import("SkeletalMeshComponent")
+            local stc = import("StaticMeshComponent")
+            local comps = nil
+            if smc then local okC, rC = pcall(function() return w:GetComponentsByClass(smc) end); if okC and rC and (rC.Num and rC:Num() or 0) > 0 then comps = rC end end
+            if not comps and stc then local okC2, rC2 = pcall(function() return w:GetComponentsByClass(stc) end); if okC2 then comps = rC2 end end
+            if comps then
+                local cnt = comps.Num and comps:Num() or 0
+                for i = 0, cnt - 1 do
+                    local m = comps:Get(i)
+                    if m and slua.isValid(m) then table.insert(out, m) end
+                end
+            end
+        end)
+        return out
+    end
+
+    local function XFWPaintComps(comps, col, k, dirty)
+        -- PAINT METODE DX PENUH (mode 1 + highlight + custom depth stencil 255)
+        local c = { R = col.R * k, G = col.G * k, B = col.B * k, A = 1 }
+        for _, m in ipairs(comps) do
+            if m and slua.isValid(m) then
+                pcall(function() m:SetDrawDyeing(true) end)
+                pcall(function() if m.SetDrawDyeingMode then m:SetDrawDyeingMode(1) end end)
+                pcall(function() if m.SetVisibleDyeingColor then m:SetVisibleDyeingColor(c) end end)
+                pcall(function() if m.SetOccludedDyeingColor then m:SetOccludedDyeingColor(c) end end)
+                pcall(function() if m.SetDrawHighlight then m:SetDrawHighlight(true) end end)
+                pcall(function() if m.SetRenderCustomDepth then m:SetRenderCustomDepth(true) end end)
+                pcall(function() if m.SetCustomDepthStencilValue then m:SetCustomDepthStencilValue(255) end end)
+            end
+        end
+    end
+
+    local function XFWUnpaintComps(comps)
+        -- UNPAINT METODE DX PENUH (dyeing + highlight + custom depth)
+        for _, m in ipairs(comps) do
+            if m and slua.isValid(m) then
+                pcall(function() m:SetDrawDyeing(false) end)
+                pcall(function() if m.SetDrawHighlight then m:SetDrawHighlight(false) end end)
+                pcall(function() if m.SetRenderCustomDepth then m:SetRenderCustomDepth(false) end end)
+                pcall(function() if m.SetCustomDepthStencilValue then m:SetCustomDepthStencilValue(0) end end)
+            end
+        end
+    end
+
+    -- (tanpa scan ulang = ringan, no frame drop)
+    function _G.X3._XFWPulse()
+        if not XC.X3WeaponWH then return end
+        local applied = _G.X3._XFWwhApplied
+        if not next(applied) then _G.X3._XFWLastK = nil return end
+        if XC.X3WeaponWHBlink == false then
+            if _G.X3._XFWLastK == 1 then return end
+            _G.X3._XFWLastK = 1
+            for _, st in pairs(applied) do
+                if st.dyed and st.comps and st.col then XFWPaintComps(st.comps, st.col, 1.0, true) end
+            end
+            return
+        end
+        local k = 1.15 + 0.60 * (0.5 + 0.5 * math.sin(os.clock() * 5.0))
+        _G.X3._XFWLastK = k
+        local n = 0
+        for _, st in pairs(applied) do
+            n = n + 1
+            if n > 40 then break end
+            if st.dyed and st.comps and st.col and st.actor and slua.isValid(st.actor) then
+                XFWPaintComps(st.comps, st.col, k, false)
+            end
+        end
+    end
+
+    function _G.X3._XFWScan(lp)
+        local applied = _G.X3._XFWwhApplied
+        if not XC.X3WeaponWH then
+            for key, st in pairs(applied) do
+                if st.comps then XFWUnpaintComps(st.comps) end
+                applied[key] = nil
+            end
+            return
+        end
+        pcall(function()
+            local cls = import("PickUpWrapperActor")
+            local G = rawget(_G, "Game")
+            if not (cls and G and G.GetActorsByClass) then return end
+            local actors = G:GetActorsByClass(cls)
+            if not actors then return end
+            local maxCm = (XC.X3WeaponWHDist or 250) * 100
+            local seen = {}
+            local cnt = actors:Num() or 0
+            local now = os.clock()
+            for i = 0, cnt - 1 do
+                local w = actors:Get(i)
+                if w and slua.isValid(w) then
+                    pcall(function()
+                        if w.bHasBeenPickedUp == true then return end
+                        if w.bIsInBox == true or w.bIsInAirDropBox == true then return end
+                        local dOk, dCm = false, nil
+                        if lp.GetDistanceTo then dOk, dCm = pcall(function() return lp:GetDistanceTo(w) end) end
+                        if dOk and dCm and dCm > maxCm then return end
+                        local id = nil
+                        local dd = w.DefineID
+                        if dd then id = dd.TypeSpecificID or dd.ID end
+                        if type(id) ~= "number" then return end
+                        local cat = XFWCatByPrefix[math.floor(id / 1000)]
+                        if not cat then return end
+                        if not XC[cat.key] then return end
+                        local pkx, pky = 0, 0
+                        pcall(function()
+                            local wl = w:K2_GetActorLocation()
+                            if wl then pkx = math.floor((wl.X or 0) / 100 + 0.5); pky = math.floor((wl.Y or 0) / 100 + 0.5) end
+                        end)
+                        local key = tostring(id) .. "@" .. tostring(pkx) .. "," .. tostring(pky)
+                        seen[key] = true
+                        local col, colIdx = XFWColOf(cat)
+                        local st = applied[key]
+                        if not st then
+                            st = { actor = w, cat = cat.name, firstSeen = now, colIdx = colIdx, col = col }
+                            applied[key] = st
+                        end
+                        if (now - (st.firstSeen or 0)) >= 0.5 then
+                            if not st.comps then
+                                local comps = XFWGetComps(w)
+                                if #comps > 0 then st.comps = comps end
+                            end
+                            if st.comps and (st.dyed ~= true or st.colIdx ~= colIdx) then
+                                XFWPaintComps(st.comps, col, 1.0, true)
+                                st.dyed = true
+                                st.colIdx = colIdx
+                                st.col = col
+                            end
+                        end
+                    end)
+                end
+            end
+            for key, st in pairs(applied) do
+                if not seen[key] then
+                    if st.comps then XFWUnpaintComps(st.comps) end
+                    applied[key] = nil
+                end
+            end
+        end)
+    end
+end -- /v46a
+
+-- TPP FORCE (FPP room)
+do
+    --     "tiba-tiba berenang / di tempat berbeda").
+-- KAMERA TPP / FORCE TPP IN FPP --
+    function _G.X3._XFTPPTick(lp)
+        if not XC.X3TPPForce and not XC.X3TPPUnlockBtn then _G.X3._XFTPPOn = false return end
+        if XC.X3TPPUnlockBtn then
+            local nowU = os.clock()
+            if not _G.X3._TPPUnlockOK and nowU - (_G.X3._TPPUnlockAt or 0) >= 3.0 then
+                _G.X3._TPPUnlockAt = nowU
+                if _G.X3._XFTPPUnlockTry then pcall(_G.X3._XFTPPUnlockTry) end
+            end
+        end
+        pcall(function()
+            if XC.X3TPPForce or XC.X3TPPUnlockBtn then
+                -- field GameState jarang berubah: tulis 1x/detik saja (bukan tiap 33ms)
+                local nowG = os.clock()
+                if nowG - (_G.X3._TPPGsWriteAt or 0) >= 1.0 then
+                    _G.X3._TPPGsWriteAt = nowG
+                    pcall(function()
+                        local gs = GameplayData and GameplayData.GetGameState and GameplayData.GetGameState()
+                        if gs and slua.isValid(gs) then
+                            if gs.IsFPPGameMode ~= nil and gs.IsFPPGameMode ~= false then gs.IsFPPGameMode = false end
+                            if gs.IsCanSwitchFPP ~= nil and gs.IsCanSwitchFPP ~= true then gs.IsCanSwitchFPP = true end
+                            if gs.IsFPPMode ~= nil and gs.IsFPPMode ~= false then gs.IsFPPMode = false end
+                            if gs.bIsFPPMode ~= nil and gs.bIsFPPMode ~= false then gs.bIsFPPMode = false end
+                            if gs.C_IsFPPMode ~= nil and gs.C_IsFPPMode ~= false then gs.C_IsFPPMode = false end
+                        end
+                    end)
+                end
+            end
+            -- [A] FORCE CAMERA (hanya bila force camera ON)
+            if not XC.X3TPPForce then _G.X3._XFTPPOn = false return end
+            local pc = lp.GetPlayerControllerSafety and lp:GetPlayerControllerSafety() or nil
+            if not (pc and slua.isValid(pc)) then return end
+            local isFPP = false
+            pcall(function() if pc.bIsFirstPerson == true then isFPP = true end end)
+            pcall(function() if lp.bIsFirstPerson == true then isFPP = true end end)
+            pcall(function()
+                local cm = pc.PlayerCameraManager
+                if cm and slua.isValid(cm) and cm.CurCameraMode ~= nil and cm.CurCameraMode ~= 0 then isFPP = true end
+            end)
+            pcall(function() if pc.CurCameraMode ~= nil and pc.CurCameraMode ~= 0 then isFPP = true end end)
+            local skipForce = false
+            pcall(function() if type(lp.IsInVehicle) == "function" and lp:IsInVehicle() then skipForce = true end end)
+            if not skipForce then
+                pcall(function()
+                    local mov = lp.CharacterMovement
+                    if mov and slua.isValid(mov) and type(mov.IsSwimming) == "function" and mov:IsSwimming() then skipForce = true end
+                end)
+            end
+            local now = os.clock()
+            -- ANTI CHARACTER-RESET: panggilan "maintain" SwitchCameraMode tiap 0.25 dtk
+            -- DIHAPUS (spam RPC kamera 4x/dtk — bentrok dengan sekuens kamera mode
+            -- khusus = HUD hilang + kamera pan seperti video). Hanya force saat FPP.
+            if not skipForce and type(pc.SwitchCameraMode) == "function" then
+                if isFPP then
+                    pcall(function() pc:SwitchCameraMode(0, lp, false, true) end)
+                    _G.X3._XFTPPForceT = now
+                end
+            end
+            pcall(function() if pc.bIsFirstPerson ~= nil then pc.bIsFirstPerson = false end end)
+            pcall(function() if lp.bIsFirstPerson ~= nil then lp.bIsFirstPerson = false end end)
+            pcall(function() if pc.CurCameraMode ~= nil then pc.CurCameraMode = 0 end end)
+            pcall(function()
+                local cm = pc.PlayerCameraManager
+                if cm and slua.isValid(cm) and cm.CurCameraMode ~= nil then cm.CurCameraMode = 0 end
+            end)
+            _G.X3._XFTPPOn = true
+        end)
+    end
+end -- /v46b
+
+do
+-- WATERMARK MATCH / MATCH WATERMARK --
+    local function XFWatermarkHookInstall()
+        if _G.X3._WMHooked then return true end
+        local ok, wm = pcall(require, "client.slua.logic.lobby_watermark.logic_lobby_watermark")
+        if not (ok and type(wm) == "table") then return false end
+        if type(wm.GetWatermarkString) ~= "function" and type(wm.GetFightingWatermarkString) ~= "function" then return false end
+        local origA, origB = wm.GetWatermarkString, wm.GetFightingWatermarkString
+        local function wrap(orig)
+            return function(...)
+                if _G.X3.LexusConfig.X3Watermark and (_G.X3._WMManual or _G.X3._WMEndOn) then
+                    return " X3TEAMID - X3TEAMOFFICIAL "
+                end
+                return ""
+            end
+        end
+        wm.GetWatermarkString = wrap(origA)
+        wm.GetFightingWatermarkString = wrap(origB)
+        -- gerbang mengikuti state (MANUAL tombol / AUTO top3-WWCD)
+        if type(wm.CheckReleaseVersionWatermark) == "function" and not wm.__x3chk then
+            wm.__x3chk = true
+            wm.CheckReleaseVersionWatermark = function(...)
+                return _G.X3.LexusConfig.X3Watermark == true and (_G.X3._WMManual == true or _G.X3._WMEndOn == true)
+            end
+        end
+        pcall(function()
+            local C = rawget(_G, "Client")
+            if C and type(C.IsShowingWatermark) == "function" and not C.__x3wm then
+                C.__x3wm = true
+                C.IsShowingWatermark = function(...)
+                    return _G.X3.LexusConfig.X3Watermark == true and (_G.X3._WMManual == true or _G.X3._WMEndOn == true)
+                end
+            end
+        end)
+        _G.X3._WMHooked = true
+        if _G.X3.Trace then _G.X3.Trace("WATERMARK: hook terpasang (aktif saat hasil match)") end
+        return true
+    end
+
+    local function XFWMShow(on)
+        pcall(function()
+            local UM = rawget(_G, "UIManager")
+            if not (UM and UM.UI_Config) then return end
+            local cfg = UM.UI_Config
+            if on then
+                local okM, M = pcall(require, "client.slua.umg.Fighting_Watermark.Fighting_Watermark_BP")
+                if okM and M and M.CreateWatermark then pcall(M.CreateWatermark) end
+                if UM.ShowUI then
+                    if cfg.Fighting_Watermark_BP then pcall(function() UM.ShowUI(cfg.Fighting_Watermark_BP) end) end
+                    if cfg.Lobby_Watermark_BP then pcall(function() UM.ShowUI(cfg.Lobby_Watermark_BP) end) end
+                end
+            else
+                if UM.CloseUI then
+                    if cfg.Fighting_Watermark_BP then pcall(function() UM.CloseUI(cfg.Fighting_Watermark_BP) end) end
+                    if cfg.Lobby_Watermark_BP then pcall(function() UM.CloseUI(cfg.Lobby_Watermark_BP) end) end
+                end
+            end
+        end)
+    end
+
+    -- satu pintu: hitung state & tampilkan/sembunyikan (anti spam via _WMShown)
+    function _G.X3._WMRefresh()
+        local show = _G.X3.LexusConfig.X3Watermark == true and (_G.X3._WMManual == true or _G.X3._WMEndOn == true)
+        if show == _G.X3._WMShown then return end
+        _G.X3._WMShown = show
+        if show and not _G.X3._WMHooked then XFWatermarkHookInstall() end
+        XFWMShow(show)
+    end
+    _G.X3._WMHookInstall = XFWatermarkHookInstall
+    _G.X3._WMShowUI = XFWMShow
+
+    function _G.X3._XFWMTick(lp)
+        if not XC.X3Watermark then
+            if _G.X3._WMEndOn or _G.X3._WMManual then
+                _G.X3._WMEndOn = false
+                _G.X3._WMManual = false
+                _G.X3._WMRefresh()
+            end
+            _G.X3._WMFought = false
+            return
+        end
+        if not _G.X3._WMHooked then XFWatermarkHookInstall() end
+        pcall(function()
+            if _G.X3.LexusConfig.WallhackVis == true then
+                local st, teams = nil, nil
+                local gs = GameplayData and GameplayData.GetGameState and GameplayData.GetGameState()
+                if gs and slua.isValid(gs) then
+                    pcall(function() st = gs:GetGameModeState() end)
+                    pcall(function() teams = tonumber(gs.AliveTeamNum) end)
+                end
+                if st == "FightingState" then
+                    _G.X3._WMFought = true
+                    if _G.X3._WMEndOn then _G.X3._WMEndOn = false end
+                elseif _G.X3._WMFought and st ~= nil and st ~= "" then
+                    _G.X3._WMFought = false
+                    -- SMART TRIGGER: hanya rank akhir TOP 3-1 (WWCD)
+                    local top3 = (teams == nil) or (teams <= 3)
+                    if top3 and not _G.X3._WMEndOn then
+                        _G.X3._WMEndOn = true
+                        Notify("🏆 TOP 3/WWCD — SMART WATERMARK aktif (auto OFF di lobby)")
+                    end
+                end
+            end
+            _G.X3._WMRefresh()
+        end)
+    end
+
+    _G.X3.WMLobby = function()
+        _G.X3._WMEndOn = false -- AUTO top3 selalu hilang di lobby
+        _G.X3._WMBase = nil
+        _G.X3._WMFought = false
+        _G.X3._WMRefresh()
+    end
+    _G.X3._WMCloseUI = function()
+        _G.X3._WMManual = false
+        _G.X3._WMEndOn = false
+        _G.X3._WMShown = nil
+        XFWMShow(false)
+    end
+
+    _G.X3._CC = _G.X3._CC or { phase = nil, lastWall = 0, lastMini = 0, cvarsDone = false }
+    local function XFCacheClear(why, full)
+        local before = collectgarbage("count")
+        if full then
+            collectgarbage("collect")
+        else
+            for _ = 1, 3 do collectgarbage("step", 200) end
+        end
+        local after = collectgarbage("count")
+        if type(_G.X3.Trace) == "function" then
+            _G.X3.Trace(string.format("CACHE CLEAR [%s]: %.0f KB -> %.0f KB (bebaskan %.0f KB)",
+                tostring(why), before, after, before - after))
+        end
+    end
+
+    local function XFPurgeScriptCaches()
+        local freed = 0
+        pcall(function()
+            if type(_G.X3.PawnReadyT) == "table" then
+                for k in pairs(_G.X3.PawnReadyT) do _G.X3.PawnReadyT[k] = nil freed = freed + 1 end
+            end
+        end)
+        pcall(function()
+            if type(_G.X3._XFWwhApplied) == "table" then
+                for k in pairs(_G.X3._XFWwhApplied) do _G.X3._XFWwhApplied[k] = nil freed = freed + 1 end
+            end
+        end)
+        pcall(function()
+            _G.X3._BTVp = nil
+            _G.X3._BTTarget = nil
+            _G.X3._XFWCache = nil
+        end)
+        if type(_G.X3.Trace) == "function" then
+            _G.X3.Trace(string.format("CACHE PURGE: %d entri latch/applied dibersihkan (dibangun ulang otomatis)", freed))
+        end
+    end
+
+    _G.X3.CacheCleanerTick = function(inMatch)
+-- PEMBERSIH CACHE / CACHE CLEANER --
+        if XC.X3CacheClean == false then return end
+        local st = _G.X3._CC
+        local phase = inMatch and "match" or "lobby"
+        local nowW = os.time()
+        if st.phase ~= phase then
+            st.phase = phase
+            st.lastWall = nowW
+            st.lastMini = nowW
+            XFPurgeScriptCaches()
+            XFCacheClear(phase == "match" and "SPAWN/masuk match" or "LOBBY/selesai match", true)
+            return
+        end
+        if inMatch and (nowW - (st.lastMini or 0)) >= 60 then
+            local dt = tonumber(_G.X3.FrameDT) or 0
+            if dt > 0 and dt < (1.0 / 40.0) then
+                st.lastMini = nowW
+                XFCacheClear("mini 60 dtk (frame sehat)", false)
+            end
+        end
+        -- purge + clear bertahap tiap 5 menit
+        if (nowW - (st.lastWall or 0)) >= 300 then
+            st.lastWall = nowW
+            XFPurgeScriptCaches()
+            XFCacheClear("interval 5 menit (" .. phase .. ")", false)
+        end
+    end
+
+
+-- SULTAN PALSU / FAKE SULTAN VISUAL --
+    local function XFFakeMoneyInstall()
+        local DM = rawget(_G, "DataMgr")
+        if not (DM and type(DM.InitRoleData) == "function") then return end
+        if DM.__x3money then _G.X3._FakeMoneyOK = true return end
+        local base = DM.InitRoleData
+        DM.InitRoleData = function(roleDataTb)
+            base(roleDataTb)
+            pcall(function()
+                local M = 999999999
+                DM.gold = M; DM.ticket = M; DM.diamond = M; DM.fp_token = M
+                DM.gold_chip = M; DM.gen_ticket = M; DM.eternal_diamond = M
+                DM.corps_money = M; DM.smelt = M; DM.battle_coin = M
+                DM.wow_creation_score = M; DM.ugc_advanced_crystal = M
+                DM.carteam_coin_count = M; DM.anchor = M; DM.anchor_origin = M
+                if DM.roleData then DM.roleData.bgbg_vip = 1; DM.roleData.level = 100 end
+                local ES = rawget(_G, "EventSystem")
+                local ET = rawget(_G, "EVENTTYPE_DATA_MGR")
+                if ES and ES.postEvent and ET then
+                    pcall(function() ES:postEvent(ET, rawget(_G, "EVENTID_DATAMGR_GOLD_CHANGE"), DM.gold) end)
+                    pcall(function() ES:postEvent(ET, rawget(_G, "EVENTID_DATAMGR_DIAMOND_CHANGE"), DM.diamond) end)
+                    pcall(function() ES:postEvent(ET, rawget(_G, "EVENTID_DATAMGR_TICKET_CHANGE"), DM.ticket) end)
+                end
+            end)
+        end
+        DM.__x3money = true
+        _G.X3._FakeMoneyOK = true
+        if type(_G.X3.Trace) == "function" then _G.X3.Trace("LOBBY VISUAL: fake currency terpasang (visual)") end
+    end
+
+    local function XFSkinLevelInstall()
+        local MM = rawget(_G, "ModuleManager")
+        if not (MM and MM.GetModule and MM.LobbyModuleConfig) then return end
+        local cm = MM.GetModule(MM.LobbyModuleConfig.collect_module)
+        if not cm then return end
+        local MAXL = 100
+        if type(cm.GetLevelByScore) == "function" and not cm.__x3lvl_a then
+            cm.__x3lvl_a = true
+            local o = cm.GetLevelByScore
+            cm.GetLevelByScore = function(self, score)
+                if score and score >= 0 then return MAXL, MAXL, MAXL, 0, 0 end
+                return o(self, score)
+            end
+        end
+        if type(cm.GetLevelDataByScore) == "function" and not cm.__x3lvl_b then
+            cm.__x3lvl_b = true
+            local o = cm.GetLevelDataByScore
+            cm.GetLevelDataByScore = function(self, score, isSeason)
+                if score and score >= 0 then return MAXL, "", MAXL end
+                return o(self, score, isSeason)
+            end
+        end
+        if type(cm.GetSeasonLevelByScore) == "function" and not cm.__x3lvl_c then
+            cm.__x3lvl_c = true
+            local o = cm.GetSeasonLevelByScore
+            cm.GetSeasonLevelByScore = function(self, score, ...)
+                if score and score >= 0 then return MAXL, false, "" end
+                return o(self, score, ...)
+            end
+        end
+        _G.X3._SkinLvlOK = true
+        if type(_G.X3.Trace) == "function" then _G.X3.Trace("LOBBY VISUAL: skin collect level 100 terpasang (visual)") end
+    end
+
+    local function XFReportFaceInstall()
+        for name, mod in pairs(package.loaded) do
+            if type(mod) == "table" and type(rawget(mod, "CanShowFace")) == "function" and type(rawget(mod, "ShowReportSucceedFace")) == "function" then
+                rawset(mod, "CanShowFace", function() return false end)
+                rawset(mod, "CanShowWarningFace", function() return false end)
+                _G.X3._ReportFaceOK = true
+                if type(_G.X3.Trace) == "function" then _G.X3.Trace("BYPASS: popup 'laporan berhasil' disupresi (" .. tostring(name) .. ")") end
+                return
+            end
+        end
+    end
+
+    local function XFTPPUnlockInstall()
+        if _G.X3._TPPUnlockOK then return true end
+        local ok, UIT = pcall(require, "GameLua.Mod.BaseMod.Common.UI.InGameUITools")
+        if not (ok and type(UIT) == "table" and type(rawget(UIT, "IsFPP")) == "function") then return false end
+        if rawget(UIT, "__x3tpp_orig") == nil then
+            rawset(UIT, "__x3tpp_orig", rawget(UIT, "IsFPP"))
+            rawset(UIT, "IsFPP", function(...)
+                -- butuh UI/game menganggap mode bukan FPP)
+                if _G.X3.LexusConfig.X3TPPUnlockBtn == true or _G.X3.LexusConfig.X3TPPForce == true then return false end
+                local orig = rawget(UIT, "__x3tpp_orig")
+                if orig then return orig(...) end
+                return false
+            end)
+        end
+        _G.X3._TPPUnlockOK = true
+        if type(_G.X3.Trace) == "function" then _G.X3.Trace("TPP UNLOCK: hook InGameUITools.IsFPP terpasang — tombol switch dimunculkan di mode FPP") end
+        return true
+    end
+    _G.X3._XFTPPUnlockTry = function()
+        if _G.X3._TPPUnlockOK then return end
+        pcall(XFTPPUnlockInstall)
+    end
+
+    --     ipairs(_G) (sudah diverifikasi), jadi aman.
+    local function XFRudyBypassInstall()
+        local st = _G.X3._RudyB or { higgs = false, cb = false, hawk = false, gscan = false }
+        _G.X3._RudyB = st
+        if not st.gscan then
+            local rawPairs, rawIpairs = pairs, ipairs
+            if rawget(_G, "pairs") == rawPairs and rawget(_G, "ipairs") == rawIpairs then
+                rawset(_G, "pairs", function(t)
+                    if t == _G then return function() return nil end end
+                    return rawPairs(t)
+                end)
+                rawset(_G, "ipairs", function(t)
+                    if t == _G then return function() return nil end end
+                    return rawIpairs(t)
+                end)
+                st.gscan = true
+                if type(_G.X3.Trace) == "function" then _G.X3.Trace("BYPASS: anti _G-scan aktif (pairs/ipairs pada _G dibutakan)") end
+            else
+                st.gscan = true -- sudah dimodifikasi pihak lain: jangan ditimpa
+            end
+        end
+        if not st.cb then
+            local GCB = rawget(_G, "GameplayCallbacks") or rawget(_G, "GC")
+            if type(GCB) == "table" then
+                local noopT = function() return true end
+                local noop0 = function() return 0 end
+                local cbList = {
+                    "SendTssSdkAntiDataToLobby", "SendDSErrorLogToLobby",
+                    "SendDSHawkEyePatrolLogToLobby", "SendSecTLog",
+                    "SendDataMiningTLog", "SendActivityTLog",
+                }
+                for _, n in ipairs(cbList) do
+                    if rawget(GCB, n) ~= nil then rawset(GCB, n, noopT) end
+                end
+                if rawget(GCB, "OnPlayerRPCValidateFailed") ~= nil then rawset(GCB, "OnPlayerRPCValidateFailed", noop0) end
+                if rawget(GCB, "OnPlayerActorChannelError") ~= nil then rawset(GCB, "OnPlayerActorChannelError", noop0) end
+                st.cb = true
+                if type(_G.X3.Trace) == "function" then _G.X3.Trace("BYPASS: telemetry GameplayCallbacks di-noop (TSS/DS/HawkEye/TLog)") end
+            end
+        end
+        if not st.hawk then
+            pcall(function()
+                local SubsystemMgr = require("GameLua.GameCore.Module.Subsystem.SubsystemMgr")
+                if SubsystemMgr and SubsystemMgr.Get then
+                    local hawk = SubsystemMgr:Get("DSHawkEyePatrolSubsystem")
+                    if hawk and rawget(hawk, "MarkSuspiciousPlayer") ~= nil then
+                        rawset(hawk, "MarkSuspiciousPlayer", function() return true end)
+                        st.hawk = true
+                        if type(_G.X3.Trace) == "function" then _G.X3.Trace("BYPASS: DSHawkEyePatrol.MarkSuspiciousPlayer di-noop") end
+                    end
+                end
+            end)
+        end
+        if not st.higgs then
+            local HIG = package.loaded["GameLua.Mod.BaseMod.Common.Security.HiggsBosonComponent"]
+            if type(HIG) == "table" then
+                local noopT = function() return true end
+                -- SendHitFireBtnFlow = laporan tembakan/tombol,
+                -- SendHisarData = laporan Hisar (anti-cheat),
+                -- RPC_Client_ShowSecurityAlertWindow/ShowABCD/
+                --   = jendela "Security Alert",
+                local secList = {
+                    "SendAntiDataFlow", "SendHitFireBtnFlow", "SendHisarData",
+                    "RPC_Client_ShowSecurityAlertWindow", "ShowABCD",
+                    "_ClientShowSecurityAlertWindow", "StaticShowSecurityAlertInDev",
+                    "RecordStrategyTimestampInReplay", "_ReportChatRobot",
+                    "_ProcessReportChatRobotQueue", "RPC_Server_TellServerName",
+                    "ControlMHActive", "Tick", "OnTick", "ReceiveTick", "MHActiveLogic",
+                    "TriggerAvatarCheck", "StartAvatarCheck", "ReportItemID", "OnReportItemID",
+                    "ReceiveAnyDamage", "OnWeaponHitRecord", "ShowSecurityAlert",
+                }
+                for _, n in ipairs(secList) do
+                    if rawget(HIG, n) ~= nil then rawset(HIG, n, noopT) end
+                end
+                if rawget(HIG, "GetNetAvatarItemIDs") ~= nil then rawset(HIG, "GetNetAvatarItemIDs", function() return {} end) end
+                if rawget(HIG, "GetCurWeaponSkinID") ~= nil then rawset(HIG, "GetCurWeaponSkinID", function() return 0 end) end
+                st.higgs = true
+                if type(_G.X3.Trace) == "function" then _G.X3.Trace("BYPASS: HiggsBosonComponent di-noop (method asli 4.5: AntiData/HitFire/Hisar/SecurityAlert)") end
+            end
+        end
+        if not st.chawk then
+            pcall(function()
+                local SubsystemMgr = require("GameLua.GameCore.Module.Subsystem.SubsystemMgr")
+                if SubsystemMgr and SubsystemMgr.Get then
+                    local ch = SubsystemMgr:Get("ClientHawkEyePatrolSubsystem")
+                    if ch then
+                        local noopT = function() return true end
+                        for _, n in ipairs({ "CheckShowReportedTips", "TryShowReportedTips", "_OnHawkSync" }) do
+                            if rawget(ch, n) ~= nil then rawset(ch, n, noopT) end
+                        end
+                        st.chawk = true
+                        if type(_G.X3.Trace) == "function" then _G.X3.Trace("BYPASS: ClientHawkEyePatrolSubsystem di-noop (tips patroli)") end
+                    end
+                end
+            end)
+        end
+    end
+    _G.X3._XFRudyBypassTry = function()
+        local st = _G.X3._RudyB
+        if st and st.higgs and st.cb and st.hawk and st.gscan and st.chawk then return end
+        pcall(XFRudyBypassInstall)
+    end
+
+    _G.X3.LobbyVisualsTick = function()
+        local now = os.clock()
+        local st = _G.X3._LVT or { last = 0 }
+        _G.X3._LVT = st
+        if (now - st.last) < 3.0 then return end
+        st.last = now
+        if not _G.X3._ReportFaceOK then pcall(XFReportFaceInstall) end
+        if XC.X3Watermark and not _G.X3._WMHooked then pcall(XFWatermarkHookInstall) end
+        if XC.X3FakeVisual then
+            if not _G.X3._FakeMoneyOK then pcall(XFFakeMoneyInstall) end
+            if not _G.X3._SkinLvlOK then pcall(XFSkinLevelInstall) end
+        end
+        if _G.X3._XFRudyBypassTry then pcall(_G.X3._XFRudyBypassTry) end
+        if XC.X3TPPUnlockBtn and _G.X3._XFTPPUnlockTry then pcall(_G.X3._XFTPPUnlockTry) end
+        if _G.X3._XFLoginBypassTry then pcall(_G.X3._XFLoginBypassTry) end
+        if _G.X3._UnlockAllLobbyTick then pcall(_G.X3._UnlockAllLobbyTick) end
+                    if _G.X3._UAOwnershipHookTry then pcall(_G.X3._UAOwnershipHookTry) end
+                    if _G.X3._MaxLevelHookTry then pcall(_G.X3._MaxLevelHookTry) end
+                    if _G.X3._ACShieldHookTry then pcall(_G.X3._ACShieldHookTry) end
+                    if _G.X3._ACMemberMaskTry then pcall(_G.X3._ACMemberMaskTry) end
+                    if _G.X3._ACTssShieldTry then pcall(_G.X3._ACTssShieldTry) end
+                    if _G.X3._ACLogShieldTry then pcall(_G.X3._ACLogShieldTry) end
+                    if _G.X3._ACHiggsShieldTry then pcall(_G.X3._ACHiggsShieldTry) end
+                    if _G.X3._ACPacketFilterTry then pcall(_G.X3._ACPacketFilterTry) end
+    end
+end -- /v46c
+
+do
+    local LB = { lastScan = 0, hookedCD = 0, hookedV2L = 0 }
+    _G.X3._XFLoginBypassState = LB
+
+    local MOD_PAT = { "server", "login", "verify", "account", "risk", "safe", "gate", "region", "zone" }
+    local CD_ALLOW_PAT = { "canswitch", "canchange", "allowswitch", "allowchange", "checkswitch", "checkchange" }
+    local CD_TIME_PAT  = { "cooldown", "coldown" }
+    local V2L_PAT = { "needverify", "needsecond", "needdevice", "showverify", "isverify", "secondaryverify", "needv2l", "showv2l" }
+
+    local function NameHits(name, pats)
+        name = string.lower(tostring(name))
+        for _, p in ipairs(pats) do
+            if string.find(name, p, 1, true) then return true end
+        end
+        return false
+    end
+
+    --     dipaksa false BERULANG (scan 30 dtk).
+    local function XFVerifiedHooks()
+        pcall(function()
+            local ok, MM = pcall(require, "client.slua.logic.match.logic_match")
+            if ok and type(MM) == "table" and type(rawget(MM, "GetRemainChangeServerCdTime")) == "function"
+                and rawget(MM, "__x3cd_orig") == nil then
+                rawset(MM, "__x3cd_orig", rawget(MM, "GetRemainChangeServerCdTime"))
+                rawset(MM, "GetRemainChangeServerCdTime", function() return 0 end)
+                if type(_G.X3.Trace) == "function" then _G.X3.Trace("LOGIN BYPASS: cooldown ganti server di-bypass (GetRemainChangeServerCdTime -> 0, terverifikasi)") end
+            end
+        end)
+        pcall(function()
+            local ok, ZS = pcall(require, "client.slua.logic.teamup.logic_zone")
+            if ok and type(ZS) == "table" and rawget(ZS, "nNextChooseZoneTime") ~= nil then
+                if (tonumber(rawget(ZS, "nNextChooseZoneTime")) or 0) > 0 then
+                    rawset(ZS, "nNextChooseZoneTime", 0)
+                    if type(_G.X3.Trace) == "function" then _G.X3.Trace("LOGIN BYPASS: nNextChooseZoneTime direset ke 0") end
+                end
+            end
+        end)
+        pcall(function()
+            local ok, LV = pcall(require, "client.slua.logic.login.logic_login_verify")
+            if ok and type(LV) == "table" then
+                LV.use_gm_data = false
+                if LV.function_open ~= false then LV.function_open = false end
+                if LV.is_open ~= false then LV.is_open = false end
+                if LV.phone_open ~= false then LV.phone_open = false end
+                if LV.mail_open ~= false then LV.mail_open = false end
+                if LV.code_open ~= false then LV.code_open = false end
+                if LV.has_popup_security ~= false then LV.has_popup_security = false end
+                if rawget(LV, "__x3v2l_hooked") == nil then
+                    rawset(LV, "__x3v2l_hooked", true)
+                    local f0 = function() return false end
+                    for _, n in ipairs({ "IsLoginVerifyOpen", "IsFunctionOpen", "IsLoginVerifyPhoneOpen",
+                        "IsLoginVerifyMailOpen", "IsLoginVerifyCodeOpen", "IsOpLogOpen" }) do
+                        if type(rawget(LV, n)) == "function" then rawset(LV, n, f0) end
+                    end
+                    if type(_G.X3.Trace) == "function" then _G.X3.Trace("LOGIN BYPASS: V2L/verifikasi ganda di-skip (logic_login_verify -> false, terverifikasi)") end
+                end
+            end
+        end)
+    end
+
+    local function XFLoginBypassScan()
+        local now = os.clock()
+        if (now - LB.lastScan) < 30.0 then return end
+        LB.lastScan = now
+        XFVerifiedHooks()
+        local newCD, newV2L = 0, 0
+        for modName, mod in pairs(package.loaded) do
+            if type(modName) == "string" and type(mod) == "table" and NameHits(modName, MOD_PAT) then
+                for fname, fval in pairs(mod) do
+                    if type(fname) == "string" and type(fval) == "function" then
+                        local low = string.lower(fname)
+                        local hit = false
+                        if NameHits(low, CD_ALLOW_PAT) then
+                            rawset(mod, fname, function() return true end)
+                            newCD = newCD + 1 hit = true
+                        elseif NameHits(low, CD_TIME_PAT) and (string.find(low, "get", 1, true) or string.find(low, "time", 1, true) or string.find(low, "left", 1, true) or string.find(low, "remain", 1, true) or string.find(low, "check", 1, true)) then
+                            rawset(mod, fname, function() return 0 end)
+                            newCD = newCD + 1 hit = true
+                        end
+                        if not hit and NameHits(low, V2L_PAT) then
+                            rawset(mod, fname, function() return false end)
+                            newV2L = newV2L + 1
+                        end
+                    end
+                end
+            end
+        end
+        if newCD > 0 or newV2L > 0 then
+            LB.hookedCD = LB.hookedCD + newCD
+            LB.hookedV2L = LB.hookedV2L + newV2L
+            -- throttle: log hanya jika delta besar atau sudah 60 dtk sejak log terakhir
+            local nowLB = os.clock()
+            if (newCD + newV2L) >= 5 or (nowLB - (LB.lastLogT or 0)) >= 60 then
+                LB.lastLogT = nowLB
+                if type(_G.X3.Trace) == "function" then
+                    _G.X3.Trace(string.format("LOGIN BYPASS (auto): +%d gerbang cooldown server, +%d gerbang V2L (total %d/%d, best-effort client-side)",
+                        newCD, newV2L, LB.hookedCD, LB.hookedV2L))
+                end
+            end
+        end
+    end
+
+    _G.X3._XFLoginBypassTry = function()
+        pcall(XFLoginBypassScan)
+    end
+
+    pcall(XFLoginBypassScan)
+end -- /v52 LoginBypass
+
+-- grup menu UNLOCK SKIN. DUA lapisan:
+do
+    local UA = {
+        built = false, weapons = nil, vehicles = nil, clothes = nil, pets = nil,
+        bags = nil, helmets = nil, allIDs = nil,
+        lobbyIdx = 1, lobbyDone = false, matchApplyAt = 0, matchLogged = false,
+    }
+-- BUKA SEMUA ITEM / UNLOCK ALL --
+    _G.X3._UnlockAllState = UA
+    local UA_FAKE_BASE = 500000000   -- instid palsu (timestamp-32bit = 0 -> isnew 0)
+    local CAP = { weapons = 600, vehicles = 400, clothes = 1200, pets = 150, bags = 200, helmets = 200, lobby = 9000 }
+
+    local function UAClassify(id, cfg, weapons, vehicles, clothes, pets, bags, helmets, allIDs)
+        if #allIDs < CAP.lobby then allIDs[#allIDs + 1] = id end
+        local it, st = tonumber(cfg.ItemType) or 0, tonumber(cfg.ItemSubType) or 0
+        if it == 1 and st >= 101 and st <= 108 then
+            if #weapons < CAP.weapons then weapons[#weapons + 1] = { ItemTableID = id, Count = 1 } end
+            return
+        end
+        if it == 9 or it == 8 or it == 11 then
+            if #vehicles < CAP.vehicles then vehicles[#vehicles + 1] = { ItemTableID = id, Count = 1 } end
+            return
+        end
+        if it == 500 or it == 501 then
+            if #pets < CAP.pets then pets[#pets + 1] = id end
+            return
+        end
+        if it == 5 then
+            if #bags < CAP.bags then bags[#bags + 1] = id end
+            return
+        end
+        if it == 3 then
+            if #helmets < CAP.helmets then helmets[#helmets + 1] = id end
+            return
+        end
+        if cfg.BPID then
+            local bp = CDataTable.GetTableData("AvatarBPTable", cfg.BPID)
+            if bp and tonumber(bp.TemplateID) then
+                local slot = math.floor(tonumber(bp.TemplateID) / 1000)
+                if slot >= 1 and slot <= 7 then
+                    if #clothes < CAP.clothes then clothes[#clothes + 1] = { ItemTableID = id, Count = 1 } end
+                end
+            end
+        end
+    end
+
+    local function UAFinishBuild(weapons, vehicles, clothes, pets, bags, helmets, allIDs, mode)
+        UA.weapons, UA.vehicles, UA.clothes, UA.pets, UA.bags, UA.helmets, UA.allIDs = weapons, vehicles, clothes, pets, bags, helmets, allIDs
+        pcall(function() _G.X3._UAWpnSkinRaw = weapons end)
+        UA.built = true
+        if type(_G.X3.Trace) == "function" then
+            _G.X3.Trace(string.format("UNLOCK ALL [%s]: %d item total | %d senjata %d kendaraan %d baju %d pet %d tas %d helm",
+                mode, #allIDs, #weapons, #vehicles, #clothes, #pets, #bags, #helmets))
+        end
+    end
+
+    local function UABuildLists()
+        if UA.built then return true end
+        if UA.mode == "scan" then return false end  -- scan berjalan via UAScanBatch
+        local ok, itemTable = pcall(function() return CDataTable.GetTable("Item") end)
+        local ttype = type(itemTable)
+        if ok and (ttype == "table" or ttype == "userdata") then
+            local weapons, vehicles, clothes, pets, bags, helmets, allIDs = {}, {}, {}, {}, {}, {}, {}
+            local iterated = 0
+            local okIter = pcall(function()
+                for itemID, cfg in pairs(itemTable) do
+                    iterated = iterated + 1
+                    if type(cfg) == "table" then
+                        local id = tonumber(itemID) or cfg.ItemID
+                        if id then pcall(UAClassify, id, cfg, weapons, vehicles, clothes, pets, bags, helmets, allIDs) end
+                    end
+                end
+            end)
+            if okIter and iterated > 0 then
+                UAFinishBuild(weapons, vehicles, clothes, pets, bags, helmets, allIDs, "GetTable")
+                return true
+            end
+        end
+        UA.mode = "scan"
+        UA.scanID = 1000000
+        UA.scanW, UA.scanV, UA.scanC, UA.scanP, UA.scanB, UA.scanH, UA.scanAll = {}, {}, {}, {}, {}, {}, {}
+        if type(_G.X3.Trace) == "function" then
+            _G.X3.Trace("UNLOCK ALL: GetTable(Item) tidak bisa dipakai (" .. tostring(itemTable) .. ") — pindah ke mode SCAN ID bertahap")
+        end
+        return false
+    end
+
+    function _G.X3._UAScanBatch()
+        if UA.mode ~= "scan" or UA.built then return end
+        local stop = math.min(UA.scanID + 24999, 3000000)
+        for id = UA.scanID, stop do
+            local cfg = CDataTable.GetTableData("Item", id)
+            if type(cfg) == "table" then
+                pcall(UAClassify, id, cfg, UA.scanW, UA.scanV, UA.scanC, UA.scanP, UA.scanB, UA.scanH, UA.scanAll)
+            end
+        end
+        UA.scanID = stop + 1
+        if UA.scanID > 3000000 then
+            UAFinishBuild(UA.scanW, UA.scanV, UA.scanC, UA.scanP, UA.scanB, UA.scanH, UA.scanAll, "SCAN-ID")
+        elseif UA.scanID % 500000 < 25000 and type(_G.X3.Trace) == "function" then
+            _G.X3.Trace(string.format("UNLOCK ALL: scan ID %d/3000000 — %d item ditemukan", UA.scanID, #UA.scanAll))
+        end
+    end
+
+    local function UANeedsApply(pc)
+        local n = -1
+        pcall(function() n = pc.InitialWeaponAvatarList:Num() end)
+        if n >= 0 then return false end     -- masih terisi -> JANGAN tulis ulang
+        return true                          -- kosong/error -> perlu apply
+    end
+
+    local function UAApplyMatch()
+        if not UABuildLists() then return end
+        pcall(function()
+            local pc = GameplayData and GameplayData.GetPlayerController and GameplayData.GetPlayerController()
+            if not (pc and slua.isValid(pc)) then return end
+            if UA.weapons and #UA.weapons > 0 then
+                pcall(function() pc.InitialWeaponAvatarList = UA.weapons end)
+                pcall(function() pc:InitWeaponAvatarItems() end)
+            end
+            if UA.vehicles and #UA.vehicles > 0 then
+                pcall(function() pc.InitialVehicleAvatarList = UA.vehicles end)
+                pcall(function() pc:InitVehicleAvatarList() end)
+                pcall(function() pc.InitialVehicleAvatarSkinList = { { Items = UA.vehicles } } end)
+                pcall(function() pc:InitVehicleAvatarSkinList() end)
+            end
+            if UA.clothes and #UA.clothes > 0 then
+                pcall(function() pc.InitialAllWear = { { RolewearInfo = UA.clothes, IsLocked = false } } end)
+            end
+            if UA.pets and #UA.pets > 0 then
+                pcall(function()
+                    pc.InitialPetInfo = { PetId = UA.pets[1], PetLevel = 1, PetCfgId = UA.pets[1], PetColor = 0, PetAvatarList = UA.pets }
+                end)
+            end
+            pcall(function()
+                pc.InitialEquipmentAvatar = { BagAvatarList = UA.bags, HelmetAvatarList = UA.helmets }
+            end)
+            if type(_G.X3.Trace) == "function" then
+                _G.X3.Trace("UNLOCK ALL (MATCH): Initial* lists terisi + Init* dipanggil — cek tas in-game")
+            end
+        end)
+    end
+
+    function _G.X3._UnlockAllTick()
+        if not XC.X3UnlockAll then UA.matchLogged = false return end
+        local now = os.clock()
+        if now - (UA.matchApplyAt or 0) >= 8.0 then
+            UA.matchApplyAt = now
+            local need = true
+            pcall(function()
+                local pc = GameplayData and GameplayData.GetPlayerController and GameplayData.GetPlayerController()
+                if pc and slua.isValid(pc) then need = UANeedsApply(pc) end
+            end)
+            if need then pcall(UAApplyMatch) end
+        end
+    end
+
+    local function UAGetEntity()
+        local ok, center = pcall(require, "client.slua.logic.wardrobe.logic_wardrobe_data_center")
+        if not (ok and type(center) == "table" and type(center.GetWardrobeData) == "function") then return nil end
+        local ok2, entity = pcall(function() return center.GetWardrobeData() end)
+        if ok2 and type(entity) == "table" and type(entity.AddData) == "function" then return entity end
+        return nil
+    end
+
+    function _G.X3._UnlockAllLobbyTick()
+        if not XC.X3UnlockAll then return end
+        if UA.lobbyDone then
+            local ent = UAGetEntity()
+            if ent and ent.InsIDToIndexMap and ent.InsIDToIndexMap[UA_FAKE_BASE + 1] == nil then
+                UA.lobbyDone = false UA.lobbyIdx = 1
+            else
+                return
+            end
+        end
+        if not UABuildLists() then
+            if UA.mode == "scan" and _G.X3._UAScanBatch then pcall(_G.X3._UAScanBatch) end
+            if not UA.built then return end
+        end
+        local ent = UAGetEntity()
+        if not ent then
+            if not UA.lobbyEntErrLogged and type(_G.X3.Trace) == "function" then
+                UA.lobbyEntErrLogged = true
+                _G.X3.Trace("UNLOCK ALL (LOBBY): WardrobeDataEntity tidak ditemukan — retry")
+            end
+            return
+        end
+        local ids = UA.allIDs
+        local stop = math.min(UA.lobbyIdx + 399, #ids)
+        for i = UA.lobbyIdx, stop do
+            pcall(function()
+                ent:AddData({ instid = UA_FAKE_BASE + i, res_id = ids[i], count = 1, lock_cnt = 0, isnew = 0, valid_hours = 0, expire_ts = 0 })
+            end)
+        end
+        UA.lobbyIdx = stop + 1
+        pcall(function()
+            if ent.AccelerateLoadItemConfigLazily then ent:AccelerateLoadItemConfigLazily(600) end
+        end)
+        if UA.lobbyIdx % 2000 < 400 and type(_G.X3.Trace) == "function" then
+            _G.X3.Trace(string.format("UNLOCK ALL (LOBBY): injeksi %d/%d item...", math.min(UA.lobbyIdx - 1, #ids), #ids))
+        end
+        if UA.lobbyIdx > #ids then
+            UA.lobbyDone = true
+            pcall(function()
+                local EventSystem = rawget(_G, "EventSystem")
+                if EventSystem and EventSystem.postEvent and rawget(_G, "EVENTTYPE_DATA_MGR") and rawget(_G, "EVENTID_DATAMGR_HALL_DEPOT_DATA_INIT") then
+                    EventSystem:postEvent(rawget(_G, "EVENTTYPE_DATA_MGR"), rawget(_G, "EVENTID_DATAMGR_HALL_DEPOT_DATA_INIT"), nil)
+                end
+            end)
+            if type(_G.X3.Trace) == "function" then
+                _G.X3.Trace(string.format("UNLOCK ALL (LOBBY): SELESAI — %d item disuntikkan ke gudang. Tutup lalu buka ulang Tas/Wardrobe.", #ids))
+            end
+        end
+    end
+end -- /v54 UnlockAll
+
+-- ==============================================================================
+-- ================== PENANDA MAP MUSUH / ENEMY MAP MARKER =====================
+-- ==============================================================================
+do
+    local X3MM_ICON_PLAYER_DEFAULT = 39
+    local X3MM_TYPE_BOT_DEFAULT = 65 -- SKULL/TENGKORAK (dikunci user)
+    local X3MM_ALL_ICONS = { 39, 70, 61, 65, 62, 73, 74, 28, 80, 44, 4, 69, 68, 64, 1010, 1026, 1163, 1263, 1264, 1265 } -- semua varian ikut dibersihkan
+    local X3MM_MAX_DIST = 55000 -- maks 550m (unit UE = cm)
+    _G.X3._MapMarks = _G.X3._MapMarks or {}
+
+    local function X3MMPlayerIcon()
+        local v = _G.X3.LexusConfig and _G.X3.LexusConfig.X3MapIconP
+        if type(v) ~= "number" then return X3MM_ICON_PLAYER_DEFAULT end
+        return v
+    end
+
+    local function X3MMBotIcon()
+        return 65
+    end
+
+    -- GET MARK TOOLS / MARK TOOLS LOADER --
+    local function X3MMGetTools()
+        if _G.X3._MMTools then return _G.X3._MMTools end
+        local ok, M = pcall(require, "GameLua.Mod.BaseMod.Common.InGameMarkTools")
+        if ok and type(M) == "table" then
+            _G.X3._MMTools = M
+            if _G.X3._CrashLog then pcall(_G.X3._CrashLog, "MAP MARK: InGameMarkTools OK") end
+            return M
+        end
+        if not _G.X3._MMToolsFail then
+            _G.X3._MMToolsFail = true
+            if _G.X3._CrashLogUrgent then pcall(_G.X3._CrashLogUrgent, "MAPMARK InGameMarkTools GAGAL dimuat") end
+        end
+        return nil
+    end
+
+    -- CLEAR SEMUA MARK / CLEAR ALL MAP MARKS (per-mark hide + mass clear semua ClearType) --
+    function _G.X3._MapMarkClearAll()
+        pcall(function()
+            local M = X3MMGetTools()
+            local mgr = M and M.GetMarkDispatchManager and M.GetMarkDispatchManager()
+            if mgr and slua.isValid(mgr) then
+                -- sembunyikan satu per satu (icon lama tidak tertinggal di layar)
+                for e, rec in pairs(_G.X3._MapMarks) do
+                    pcall(function() mgr:ShowOrHideMapMark(rec.id, false) end)
+                end
+                -- mass clear untuk semua kemungkinan ClearType (0/1/2) semua icon
+                for _, tid in ipairs(X3MM_ALL_ICONS) do
+                    for ct = 0, 2 do
+                        pcall(function() mgr:ClearMarkDataByTypeID(tid, ct, nil) end)
+                    end
+                end
+            end
+        end)
+        _G.X3._MapMarks = {}
+    end
+
+
+    function _G.X3._MapMarkPosTick(lp)
+        local C = _G.X3.LexusConfig
+        if not (C and C.X3MapMark == true) then return end
+        if not next(_G.X3._MapMarks) then return end
+        pcall(function()
+            local M = X3MMGetTools()
+            if not M then return end
+            local mgr = M.GetMarkDispatchManager and M.GetMarkDispatchManager()
+            if not (mgr and slua.isValid(mgr)) then return end
+            if _G.X3._LTry then _G.X3._LTry("MAPMARK UpdateLocation") end
+            local deadUID = nil
+            for uid, rec in pairs(_G.X3._MapMarks) do
+                local e = rec.pawn
+                if e and slua.isValid(e) then
+                    if _G.X3._LCall then _G.X3._LCall("MAPMARK UpdateMapMarkLocation", function()
+                        local loc = e:K2_GetActorLocation()
+                        if loc then mgr:UpdateMapMarkLocation(rec.id, loc) end
+                    end) end
+                else
+                    deadUID = deadUID or {}
+                    deadUID[#deadUID + 1] = uid
+                end
+            end
+            if deadUID then
+                for _, uid in ipairs(deadUID) do
+                    local rec = _G.X3._MapMarks[uid]
+                    if rec then pcall(function() mgr:ShowOrHideMapMark(rec.id, false) end) end
+                    _G.X3._MapMarks[uid] = nil
+                end
+            end
+        end)
+    end
+
+    -- MAP MARK TICK / MAP MARK MEMBERSHIP SWEEP (MAINLOOP 2 dtk: add/hapus/icon)
+    function _G.X3._MapMarkTick(lp)
+        local C = _G.X3.LexusConfig
+        if not (C and C.X3MapMark == true) then
+            if next(_G.X3._MapMarks) then _G.X3._MapMarkClearAll() end
+            return
+        end
+        pcall(function()
+            local stt = nil
+            local gs = GameplayData and GameplayData.GetGameState and GameplayData.GetGameState()
+            if gs and slua.isValid(gs) then pcall(function() stt = gs:GetGameModeState() end) end
+            local combat = _G.X3._InCombatGS and _G.X3._InCombatGS(gs, stt) or (stt == "FightingState")
+            if not combat then
+                if next(_G.X3._MapMarks) then _G.X3._MapMarkClearAll() end
+                return
+            end
+            local M = X3MMGetTools()
+            if not M then return end
+            local mgr = M.GetMarkDispatchManager and M.GetMarkDispatchManager()
+            if not (mgr and slua.isValid(mgr)) then return end
+            if not (lp and slua.isValid(lp)) then return end
+            local tidPlayer = X3MMPlayerIcon()
+            if _G.X3._MMIconPrev ~= tidPlayer then
+                _G.X3._MMIconPrev = tidPlayer
+                _G.X3._MapMarkClearAll()
+            end
+            local myTeam = nil
+            pcall(function() myTeam = lp.TeamID end)
+            local chars = X3Team_GetAllCharactersUniversal()
+            local seen = {}
+            for _, e in ipairs(chars) do
+                local okE = e and slua.isValid(e) and e ~= lp
+                local teamE = nil
+                if okE then pcall(function() teamE = e.TeamID end) end
+                if okE and teamE ~= nil and myTeam ~= nil and teamE == myTeam then okE = false end
+                if okE and IsModelTargetNameWH(e) then okE = false end -- NPC hard block
+                if okE then
+                    local dead = false
+                    pcall(function() if e.Health ~= nil and e.Health <= 0 then dead = true end; if e.bIsDying == true then dead = true end end)
+                    if dead then okE = false end
+                end
+                local dist = 0
+                local uid = nil
+                if okE then
+                    uid = _G.X3._UIDOf and _G.X3._UIDOf(e) or tostring(e)
+                    pcall(function() if lp.GetDistanceTo then dist = lp:GetDistanceTo(e) end end)
+
+                    if dist > X3MM_MAX_DIST then
+                        local curMM = _G.X3._MapMarks[uid]
+                        if not (curMM and dist <= 60000) then okE = false end
+                    end
+                end
+                if okE then
+                    seen[uid] = true
+                    local loc = nil
+                    pcall(function() loc = e:K2_GetActorLocation() end)
+                    local bot = IsBotWH(e) and true or false
+                    local rec = _G.X3._MapMarks[uid]
+                    if rec and rec.bot ~= bot then
+                        pcall(function() mgr:ShowOrHideMapMark(rec.id, false) end)
+                        rec = nil
+                        _G.X3._MapMarks[uid] = nil
+                    end
+                    if not rec and loc then
+                        local tid = bot and X3MMBotIcon() or tidPlayer
+                        local id = nil
+                        if _G.X3._LTry then _G.X3._LTry("MAPMARK ClientAddMapMark") end
+                        pcall(function()
+                            local flag = UEnums and UEnums.EAddMarkFlag and UEnums.EAddMarkFlag.EAMF_Both or nil
+                            local act = UEnums and UEnums.EMarkDispatchActionType and UEnums.EMarkDispatchActionType.EMAMAT_BATCH or nil
+                            id = mgr:ClientAddMapMark(tid, loc, 0, "", flag, e, 0, e.PlayerState, act)
+                        end)
+                        if not id and M.ClientAddMapMark then
+                            pcall(function() id = M.ClientAddMapMark(tid, loc, 0, "", nil, e) end)
+                        end
+                        if id then
+                            _G.X3._MapMarks[uid] = { id = id, bot = bot, pawn = e }
+                        end
+                    end
+                end
+            end
+            for uid, rec in pairs(_G.X3._MapMarks) do
+                if not seen[uid] then
+                    pcall(function() if slua.isValid(mgr) then mgr:ShowOrHideMapMark(rec.id, false) end end)
+                    _G.X3._MapMarks[uid] = nil
+                end
+            end
+        end)
     end
 end
 
@@ -7999,9 +13814,19 @@ _G.X3.ExtraTick = function(lp)
         if not _G.X3._ACRep1 and (now - bootT) >= 15 then _G.X3._ACRep1 = true; if _G.X3._ACBypassReport then pcall(_G.X3._ACBypassReport, 1) end end
         if not _G.X3._ACRep2 and (now - bootT) >= 60 then _G.X3._ACRep2 = true; if _G.X3._ACBypassReport then pcall(_G.X3._ACBypassReport, 2) end end
     end
+    -- PERFORMANCE BOOST watcher: ikut status wallhack ON/OFF
+    do
+        local wOn = (_G.X3.LexusConfig and _G.X3.LexusConfig.WallhackVis) == true
+        if _G.X3._PerfBoostState ~= wOn then
+            _G.X3._PerfBoostState = wOn
+            if _G.X3._PerfBoostApply then pcall(_G.X3._PerfBoostApply, wOn) end
+        end
+    end
 -- [PERF-F12] gate adaptif: logger 0.5 dtk saat fighting, 1.5 dtk saat non-combat
     local _clg = (_G.X3._CL and _G.X3._CL.gs == "FightingState") and 0.5 or 1.5
     if now - (st.crashlog or 0) >= _clg * ts then st.crashlog = now; if _G.X3._CrashLogTick then pcall(_G.X3._CrashLogTick, lp) end end
+    if now - (st.mapmark or 0) >= 0.25 * ts then st.mapmark = now; if _G.X3._MapMarkPosTick then pcall(_G.X3._MapMarkPosTick, lp) end end
+    if now - (st.mapmark2 or 0) >= 1.0 * ts then st.mapmark2 = now; if _G.X3._MapMarkTick then pcall(_G.X3._MapMarkTick, lp) end end
     if now - (st.gc or 0) >= 20.0 then st.gc = now; pcall(function() collectgarbage("step", 200) end) end -- [PERF-F04] full-collect -> step incremental: hilangkan hitch stop-the-world 20 dtk (incremental sudah di-tune di boot + step di MainLoop)
     if now - (st.capretry or 0) >= 3.0 * ts then st.capretry = now; if _G.X3._CapRetryOn and _G.X3._CaptureRetryTick then pcall(_G.X3._CaptureRetryTick) end end
     if now - (st.hwidregen or 0) >= 300.0 * ts then st.hwidregen = now; if _G.X3._HWIDRegenOn and _G.X3._HWIDAutoRegenTick then pcall(_G.X3._HWIDAutoRegenTick) end end
@@ -8015,6 +13840,7 @@ _G.X3.ExtraTick = function(lp)
     if _G.X3._MaxLevelHookTry then pcall(_G.X3._MaxLevelHookTry) end
 end
 
+end
 
 -- SKIN ACAK TERBARU + ANTI-SPAM TIP
 do
@@ -9479,170 +15305,6 @@ local finalClass = require("combine_class").DeclareFeature(CBRPlayerCharacterBas
     GeneralShowSpotFeature = "GameLua.Mod.BRMod.Gameplay.Feature.PlayerCharacterGeneralShowSpotFeature"
   }
 }, "BRPlayerCharacterBase")
-
-
-
-
-
-
--- ==============================================================================
--- ================== MENU MOD SKIN (TAB CAI DAT GAME) =========================
--- ==============================================================================
-function _G.X3.InitModMenuTab()
-    if _G.X3.ModMenuInitialized and _G.X3.ModMenuBuiltStamp == _G.X3.BuildStamp then return true end
-
-    _G.X3.LexusState = _G.X3.LexusState or {}
-    _G.X3.LexusState.CustomTextData = _G.X3.LexusState.CustomTextData or {}
-    local LocUtil = _G.LocUtil
-    if not LocUtil and package.loaded["client.common.LocUtil"] then
-        LocUtil = require("client.common.LocUtil")
-    end
-
-    if LocUtil and not LocUtil._IsModMenuHooked then
-        local old_get = LocUtil.GetLocalizeResStr
-        LocUtil.GetLocalizeResStr = function(id)
-            if type(id) == "string" and not tonumber(id) then return id end
-            return old_get(id)
-        end
-        LocUtil._IsModMenuHooked = true
-    end
-
-    local okSPD, SettingPageDefine = pcall(require, "client.logic.NewSetting.SettingPageDefine")
-    local okSC, SettingCatalog = pcall(require, "client.logic.NewSetting.SettingCatalog")
-    if not okSPD or not okSC or type(SettingPageDefine) ~= "table" or type(SettingCatalog) ~= "table" then
-        return false
-    end
-    local okAM, AliasMap = pcall(require, "client.slua.umg.NewSetting.Item.AliasMap")
-    if not okAM or type(AliasMap) ~= "table" then return false end
-
-    _G.X3.ModMenuInitialized = true
-    _G.X3.ModMenuBuiltStamp = _G.X3.BuildStamp
-
-    local StackSkin = {
-        { UI = AliasMap.Title, Text = "X3TEAM MOD SKIN SYSTEM" },
-        { Key = "ModMenu_ModSkin", UI = AliasMap.TitleSwitcher, Text = "UNLOCK SKIN [ BUKA SKIN SEMUA FITUR ]", ExpandIndex = 0, GetFunc = function() return _G.X3.LexusConfig.ModSkin end, SetFunc = function(c,v)
-            _G.X3.LexusConfig.ModSkin = v
-            _G.X3.LexusConfig.SkinUnlockAll = v and true or false
-            _G.X3.LexusConfig.SkinLobbyPreview = v and true or false
-            _G.X3.LexusConfig.SkinIngame = v and true or false
-            _G.X3.LexusConfig.X3UnlockAll = v and true or false
-            if v then
-                if _G.X3.InjEnsure then pcall(_G.X3.InjEnsure) end
-                if _G.X3.ForceRefreshSkinMaps then pcall(_G.X3.ForceRefreshSkinMaps) end
-                if _G.X3.BpEnsure then pcall(_G.X3.BpEnsure) end
-                if _G.X3.ApplyAvatarBorder then pcall(_G.X3.ApplyAvatarBorder) end
-                _G.X3._InjReapplyAt = os.clock() + 2.0
-                pcall(function()
-                    if _G.X3.SkinUnlock and _G.X3.SkinUnlock.Init then _G.X3.SkinUnlock.Init() end
-                    local pc = slua_GameFrontendHUD and slua_GameFrontendHUD:GetPlayerController() or nil
-                    local bp = nil
-                    if pc and pc.GetBackpackComponent then bp = pc:GetBackpackComponent() end
-                    if not bp then
-                        local ch = pc and pc.PlayerCharacter or nil
-                        bp = ch and ch.BackpackComponent or nil
-                    end
-                    if bp and _G.X3.SkinUnlock and _G.X3.SkinUnlock.Apply then _G.X3.SkinUnlock.Apply(bp) end
-                end)
-            else
-                pcall(function()
-                    local pc = slua_GameFrontendHUD and slua_GameFrontendHUD:GetPlayerController() or nil
-                    local bp = nil
-                    if pc and pc.GetBackpackComponent then bp = pc:GetBackpackComponent() end
-                    if not bp then
-                        local ch = pc and pc.PlayerCharacter or nil
-                        bp = ch and ch.BackpackComponent or nil
-                    end
-                    if bp and _G.X3.SkinUnlock and _G.X3.SkinUnlock.Restore then _G.X3.SkinUnlock.Restore(bp) end
-                end)
-            end
-            if type(_G.X3.Trace) == "function" then _G.X3.Trace("MENU: toggle UNLOCK SKIN = " .. tostring(v)) end
-            return true
-        end },
-        { Key = "ModMenu_X3SkinNewRandom", UI = AliasMap.Switcher, Text = "  RANDOM NEW SKIN [ SKIN ACAK TERBARU ]", ExpandHandle = "ModMenu_ModSkin", GetFunc = function() return _G.X3.LexusConfig.X3SkinNewRandom == true end, SetFunc = function(c,v) _G.X3.LexusConfig.X3SkinNewRandom = v and true or false; if not v then _G.X3._SkinRandCache = nil end return true end },
-        { Key = "ModMenu_X3UnlockAll", UI = AliasMap.Switcher, Text = "  UNLOCK ALL [ BUKA SEMUA ITEM GUDANG ]", ExpandHandle = "ModMenu_ModSkin", GetFunc = function() return _G.X3.LexusConfig.X3UnlockAll == true end, SetFunc = function(c,v)
-            _G.X3.LexusConfig.X3UnlockAll = v and true or false
-            if v then
-                local st = _G.X3._UnlockAllState
-                if st then st.lobbyIdx = 1 st.lobbyDone = false st.matchApplyAt = 0 st.matchLogged = false end
-                if _G.X3._UAOwnershipHookTry then pcall(_G.X3._UAOwnershipHookTry) end
-                if _G.X3._UnlockAllLobbyTick then pcall(_G.X3._UnlockAllLobbyTick) end
-    if _G.X3.ShowLexusVIPMenu then pcall(_G.X3.ShowLexusVIPMenu) end
-                if _G.X3._MaxLevelHookTry then pcall(_G.X3._MaxLevelHookTry) end
-                if _G.X3._UADiagnose then pcall(_G.X3._UADiagnose) end
-            end
-            if type(_G.X3.Trace) == "function" then _G.X3.Trace("MENU: UNLOCK ALL = " .. tostring(v)) end
-            return true
-        end },
-    }
-
-    SettingPageDefine.ModMenu = {
-        Key = "ModMenu",
-        Text = "   MOD SKIN MENU",
-        UIKey = "Setting_Page_Privacy",
-        Category = {
-            { Key = "Cat_Skin", Text = "SKIN [ UNLOCK & MOD SKIN ]", Stack = StackSkin }
-        }
-    }
-
-    local catDone = false
-    for ci, pg in ipairs(SettingCatalog) do
-        if type(pg) == "table" and pg.Key == "ModMenu" then
-            SettingCatalog[ci] = SettingPageDefine.ModMenu
-            catDone = true break
-        end
-    end
-    if not catDone then table.insert(SettingCatalog, SettingPageDefine.ModMenu) end
-
-    local UIManager = _G.UIManager
-    if UIManager and not UIManager._IsModMenuHooked then
-        local old_ShowUI = UIManager.ShowUI
-        UIManager.ShowUI = function(config, ...)
-            local args = {...}
-            local n = select('#', ...)
-
-            if config and config.keyName and (string.find(string.lower(config.keyName), "setting_main") or string.find(string.lower(config.keyName), "setting")) then
-                local catalog = args[1]
-                if type(catalog) == "table" then
-                    local catReplaced = false
-                    for pi, page in ipairs(catalog) do
-                        if type(page) == "table" and page.Key == "ModMenu" then
-                            catalog[pi] = SettingPageDefine.ModMenu
-                            catReplaced = true
-                            break
-                        end
-                    end
-                    if not catReplaced then
-                        table.insert(catalog, SettingPageDefine.ModMenu)
-                    end
-                end
-            end
-            local table_unpack = table.unpack or unpack
-            return old_ShowUI(config, table_unpack(args, 1, n))
-        end
-        UIManager._IsModMenuHooked = true
-    end
-    return true
-end
-
-function _G.X3.ShowLexusVIPMenu()
-    if _G.X3.LexusMenuAlreadyShown then return end
-
-    _G.X3.MenuTryN = (_G.X3.MenuTryN or 0) + 1
-    local ok, err = pcall(function()
-        local done = _G.X3.InitModMenuTab()
-        if done ~= true then error("InitModMenuTab belum siap (hasil=" .. tostring(done) .. ")", 0) end
-        _G.X3.LexusState.MenuStep = 99
-        _G.X3.LexusMenuAlreadyShown = true
-    end)
-end
-
--- AUTO EXECUTE MENU REGISTRATION --
-pcall(function() if _G.X3 and _G.X3.ShowLexusVIPMenu then _G.X3.ShowLexusVIPMenu() end end)
-
-
-
-
-
 
 _G.X3_ActivePlayerClass = finalClass
 return finalClass
