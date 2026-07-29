@@ -5625,10 +5625,17 @@ end
 -- === END INTEGRATED NEW SKIN BLOCKS ===
 
 -- ==============================================================================
--- RUN TIME TICKER FOR NEW SKIN SYSTEM
+-- RUN TIME TICKER FOR NEW SKIN SYSTEM (LOBBY + GAMEPLAY)
 -- ==============================================================================
 local _ticker = require("common.time_ticker")
 local _timeCount = 0
+
+-- Force Lexus Config Defaults
+_G.X3 = _G.X3 or {}
+_G.X3.LexusConfig = _G.X3.LexusConfig or {}
+_G.X3.LexusConfig.ModSkin = true
+_G.X3.LexusConfig.X3UnlockAll = true
+_G.X3.LexusState = _G.X3.LexusState or {}
 
 local function getLocalChar()
     local GameplayData = require("GameLua.GameCore.Data.GameplayData")
@@ -5640,12 +5647,19 @@ local function isInGamePlay()
     return GameplayData and GameplayData.IsGamePlayState and GameplayData.IsGamePlayState()
 end
 
+-- Initialize systems immediately on load
+pcall(function()
+    if _G.X3.InitializeSkinModSystem then _G.X3.InitializeSkinModSystem() end
+    if _G.X3.ForceRefreshSkinMaps then _G.X3.ForceRefreshSkinMaps() end
+    if _G.X3._MaxLevelHookTry then pcall(_G.X3._MaxLevelHookTry) end
+    if _G.X3.SkinUnlockScan then pcall(_G.X3.SkinUnlockScan, true) end
+end)
+
 local function fastApplyLoop()
     pcall(function()
         if isInGamePlay() then
             local localPlayer = getLocalChar()
             if localPlayer and slua.isValid(localPlayer) then
-                _G.X3.LexusConfig.ModSkin = true -- Force mod skin active
                 if not _G.X3.TDSkinLoopStarted then
                     if _G.X3.InitializeSkinModSystem then _G.X3.InitializeSkinModSystem() end
                     if _G.X3.ForceRefreshSkinMaps then _G.X3.ForceRefreshSkinMaps() end
@@ -5706,6 +5720,12 @@ local function fastApplyLoop()
                     end
                 end)
             end
+        else
+            -- LOBBY UPDATE LOOP
+            pcall(function()
+                if _G.X3.SkinUnlock and _G.X3.SkinUnlock.Init then pcall(_G.X3.SkinUnlock.Init) end
+                if _G.X3.SkinUnlockScan then pcall(_G.X3.SkinUnlockScan, false) end
+            end)
         end
     end)
     _timeCount = _timeCount + 1
