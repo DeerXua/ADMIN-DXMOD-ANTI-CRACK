@@ -10,6 +10,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const PORT = process.env.PORT || 5002;
+const PORT_RESELLER = process.env.PORT_RESELLER || 5003;
 const DB_PATH = path.join(__dirname, "data.json");
 const SESSIONS_PATH = path.join(__dirname, "sessions.json");
 const PAYLOAD_PATH = path.join(__dirname, "payload_vip_v2.lua");
@@ -1221,6 +1222,26 @@ setInterval(() => {
 // ── HEALTH ───────────────────────────────────────────────────────────────────
 app.get("/health", (req, res) => {
   res.json({ status: "ok", port: PORT });
+});
+
+
+// ── SECONDARY RESELLER PANEL (PORT 5003 & /reseller ROUTE) ────────────────
+app.get("/reseller", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "reseller.html"));
+});
+
+const resellerApp = express();
+resellerApp.use(compression());
+resellerApp.use(cors({ origin: CORS_ORIGIN }));
+
+resellerApp.get("/", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "reseller.html"));
+});
+resellerApp.use(app);
+
+const PORT_RESELLER_FINAL = process.env.PORT_RESELLER || 5003;
+resellerApp.listen(PORT_RESELLER_FINAL, "0.0.0.0", () => {
+  console.log(`[RESELLER-PANEL] Running on port ${PORT_RESELLER_FINAL} (http://localhost:${PORT_RESELLER_FINAL})`);
 });
 
 app.listen(PORT, "0.0.0.0", () => {
