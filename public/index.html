@@ -593,6 +593,19 @@
 
       const [statsData, setStatsData] = useState({ totalDevices: 0, onlineCount: 0, counts: { vip: 0, free: 0, test: 0, pending: 0, expired: 0 }, percentages: { vip: 0, free: 0, test: 0 } });
       const [tgModalOpen, setTgModalOpen] = useState(false);
+  const [logsModalOpen, setLogsModalOpen] = useState(false);
+  const [activityLogs, setActivityLogs] = useState([]);
+  const [logsFilter, setLogsFilter] = useState('');
+  
+  const fetchActivityLogs = async () => {
+    try {
+      const res = await fetch('/api/admin/logs');
+      if (res.ok) {
+        const data = await res.json();
+        setActivityLogs(data || []);
+      }
+    } catch(err) { console.error('Failed to fetch logs', err); }
+  };
       const [tgToken, setTgToken] = useState('');
       const [tgChatId, setTgChatId] = useState('');
       const [tgTesting, setTgTesting] = useState(false);
