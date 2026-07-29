@@ -2251,6 +2251,7 @@ local defaultSettings = {
     WALL_VISIBLE_COLOR = 3,       -- Mặc định Vàng (vị trí số 3)
     WALL_OCCLUDED_COLOR = 2,      -- Mặc định Đỏ (vị trí số 2)
     WALL_OCCLUDED_AI_COLOR = 7,   -- Mặc định Tím (vị trí số 7)
+    WALLHACK_DIST = 350,          -- Mặc định 350m
 
     -- Bomb & Vehicle ESP Config
     EspBomMaster = 0,
@@ -2577,6 +2578,25 @@ table.insert(StackESP, {
     SetFunc = function(_, value)
         local v = math.floor(tonumber(value) or 7)
         _G.DX_Settings.WALL_OCCLUDED_AI_COLOR = math.max(1, math.min(9, v))
+        ResetWallColorCache()
+        return true
+    end
+})
+
+-- Phạm vi nhuộm màu aura (Slider 350-500)
+table.insert(StackESP, {
+    Key = "ModMenu_Wall_Dist",
+    UI = AliasMap.Slider or "Slider",
+    Text = "   Phạm vi nhuộm màu (M)",
+    ExpandHandle = "ModMenu_Wall_Ex",
+    MinValue = 350,
+    MaxValue = 500,
+    Min = 350,
+    Max = 500,
+    GetFunc = function() return _G.DX_Settings.WALLHACK_DIST or 350 end,
+    SetFunc = function(_, value)
+        local v = math.floor(tonumber(value) or 350)
+        _G.DX_Settings.WALLHACK_DIST = math.max(350, math.min(500, v))
         ResetWallColorCache()
         return true
     end
@@ -4590,7 +4610,8 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                             end
                        
                             -- TỐI ƯU HÓA: Bộ lọc khoảng cách (Distance Filtering)
-                            if distM > 350 then
+                            local wallhackDist = (_G.DX_Settings and _G.DX_Settings.WALLHACK_DIST) or 350
+                            if distM > wallhackDist then
                                 if enemy.WallhackApplied or enemy.bHasTDNativeHPBar or enemy.bHasTDNativeHitmark or enemy.NativeHPBarMark or enemy.NativeDistMark or enemy.bHasTDSpectatorHPBar or enemy.SpectatorHPBarMark then
                                     pcall(function()
                                         if enemy.WallhackApplied then
