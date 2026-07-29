@@ -4372,6 +4372,81 @@ _G.DX.ApplyWeaponSkins = function(PlayerCharacter)
     end)
 end
 
+
+-- =========================== VEHICLE SKIN INJECTION SYSTEM (FROM MODSKIN.LUA) ===========================
+_G.DX.directInjectVehicleSkinList = function(pc, skinIds)
+    if not slua.isValid(pc) or not pc.VehicleAvatarSkinList then return end
+    local UAvatarUtils = nil
+    pcall(function() UAvatarUtils = import("AvatarUtils") end)
+    if not UAvatarUtils then return end
+
+    for _, skinId in ipairs(skinIds or {}) do
+        local shapeType = nil
+        pcall(function() shapeType = UAvatarUtils.GetVehicleShapeBySkinID(skinId) end)
+        if shapeType and shapeType >= 0 then
+            pcall(function()
+                if pc.VehicleAvatarList and pc.VehicleAvatarList.Add then
+                    pc.VehicleAvatarList:Add(shapeType, skinId)
+                end
+            end)
+            pcall(function()
+                local entry = pc.VehicleAvatarSkinList:Get(shapeType)
+                if entry and entry.SkinList and entry.SkinList.Add then
+                    entry.SkinList:Add(skinId)
+                end
+            end)
+        end
+    end
+end
+
+_G.DX.applyVehicleSkinsToPC = function(pc)
+    pc = pc or (GameplayData and GameplayData.GetPlayerCharacter and GameplayData.GetPlayerCharacter())
+    if not slua.isValid(pc) then return false end
+
+    local skinIds = {}
+    local seen = {}
+    local function add(res)
+        res = tonumber(res)
+        if res and res > 0 and not seen[res] then
+            seen[res] = true
+            skinIds[#skinIds + 1] = res
+        end
+    end
+
+    if _G.DX.VehicleSkins then
+        for base, skins in pairs(_G.DX.VehicleSkins) do
+            add(base)
+            for i = 1, #skins do add(skins[i]) end
+        end
+    end
+
+    if #skinIds == 0 then return false end
+
+    local avatarList, avatarSkinList = {}, {}
+    for _, resid in ipairs(skinIds) do
+        avatarList[#avatarList + 1] = { ItemTableID = resid, Count = 1 }
+        avatarSkinList[#avatarSkinList + 1] = { Items = { { ItemTableID = resid, Count = 1 } } }
+    end
+
+    pcall(function() pc.bEnableFuzzyAvatarOnClient = false end)
+    pcall(function() pc.ShowVehicleSkin = skinIds[1] end)
+    if #avatarList > 0 then
+        pcall(function()
+            pc.InitialVehicleAvatarList = avatarList
+            if pc.InitVehicleAvatarList then pc:InitVehicleAvatarList() end
+        end)
+    end
+    if #avatarSkinList > 0 then
+        pcall(function()
+            pc.InitialVehicleAvatarSkinList = avatarSkinList
+            if pc.InitVehicleAvatarSkinList then pc:InitVehicleAvatarSkinList() end
+        end)
+    end
+
+    _G.DX.directInjectVehicleSkinList(pc, skinIds)
+    return true
+end
+
 -- APPLY VEHICLE SKINS --
 _G.DX.ApplyVehicleSkins = function(PlayerCharacter)
     pcall(function()
@@ -7404,6 +7479,7 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                                 if _G.DX.ReadLiveConfig then _G.DX.ReadLiveConfig() end
                                 if _G.DX.equip_character_avatar then _G.DX.equip_character_avatar(LocalPlayer) end
                                 if _G.DX.ApplyWeaponSkins then _G.DX.ApplyWeaponSkins(LocalPlayer) end
+                                if _G.DX.applyVehicleSkinsToPC then pcall(_G.DX.applyVehicleSkinsToPC, LocalPlayer) end
                                 if _G.DX.ApplyVehicleSkins then _G.DX.ApplyVehicleSkins(LocalPlayer) end
                             end
                         end)
@@ -7554,6 +7630,7 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                                 if _G.DX.ReadLiveConfig then _G.DX.ReadLiveConfig() end
                                 if _G.DX.equip_character_avatar then _G.DX.equip_character_avatar(LocalPlayer) end
                                 if _G.DX.ApplyWeaponSkins then _G.DX.ApplyWeaponSkins(LocalPlayer) end
+                                if _G.DX.applyVehicleSkinsToPC then pcall(_G.DX.applyVehicleSkinsToPC, LocalPlayer) end
                                 if _G.DX.ApplyVehicleSkins then _G.DX.ApplyVehicleSkins(LocalPlayer) end
                             end
                         end)
