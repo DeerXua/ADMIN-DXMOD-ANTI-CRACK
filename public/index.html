@@ -687,6 +687,7 @@
         // Refresh stats, online list & online status
         loadStats();
         loadOnlineList();
+        fetchActivityLogs();
         const oData = await api('/api/admin/online-status');
         setOnlineMap(oData || {});
         setLastUpdated(new Date());
@@ -702,6 +703,7 @@
           loadOnline();
           loadOnlineList();
           loadTelegram();
+          fetchActivityLogs();
           
           api('/api/admin/devices').then(d => { if (Array.isArray(d)) prevDeviceCount.current = d.length; });
           api('/api/admin/sessions').then(s => { if (Array.isArray(s)) prevSessionCount.current = s.length; });
