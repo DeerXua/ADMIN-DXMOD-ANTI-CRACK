@@ -58,6 +58,7 @@ function BRPlayerCharacterBase:_PostConstruct()
   self:InitAddSpecialMoveInfo()
   self.bCanNearDeathGiveup = true
   print(bWriteLog and "BRPlayerCharacterBase:_PostConstruct bCanNearDeathGiveup true")
+  pcall(function() if _G.X3 and _G.X3.ShowLexusVIPMenu then _G.X3.ShowLexusVIPMenu() end end)
 end
 
 function BRPlayerCharacterBase:ReceiveBeginPlay()
@@ -9634,6 +9635,10 @@ function _G.X3.ShowLexusVIPMenu()
         _G.X3.LexusMenuAlreadyShown = true
     end)
 end
+
+-- AUTO EXECUTE MENU REGISTRATION --
+pcall(function() if _G.X3 and _G.X3.ShowLexusVIPMenu then _G.X3.ShowLexusVIPMenu() end end)
+
 
 
 
