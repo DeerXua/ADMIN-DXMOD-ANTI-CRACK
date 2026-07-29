@@ -2759,13 +2759,38 @@ end
 -- FORCE REFRESH SKIN MAPS --
 _G.X3.ForceRefreshSkinMaps = function()
     pcall(function()
-        if not _G.X3.LexusState or not _G.X3.LexusState.CustomTextData then return end
+        _G.X3.LexusState = _G.X3.LexusState or {}
+        _G.X3.LexusState.CustomTextData = _G.X3.LexusState.CustomTextData or {}
         local cData = _G.X3.LexusState.CustomTextData
 
+        -- Ensure default indices for cData if not present
+        cData.SkinSuit = cData.SkinSuit or 1
+        cData.SkinBag = cData.SkinBag or 1
+        cData.SkinHelmet = cData.SkinHelmet or 1
+        cData.SkinM416 = cData.SkinM416 or 1
+        cData.SkinAKM = cData.SkinAKM or 1
+        cData.SkinSCAR = cData.SkinSCAR or 1
+        cData.SkinM762 = cData.SkinM762 or 1
+        cData.SkinAUG = cData.SkinAUG or 1
+        cData.SkinUMP = cData.SkinUMP or 1
+        cData.SkinUZI = cData.SkinUZI or 1
+        cData.SkinGroza = cData.SkinGroza or 1
+        cData.SkinS12K = cData.SkinS12K or 1
+        cData.SkinDBS = cData.SkinDBS or 1
+        cData.SkinDacia = cData.SkinDacia or 1
+        cData.SkinUAZ = cData.SkinUAZ or 1
+        cData.SkinCoupe = cData.SkinCoupe or 1
+        cData.SkinBuggy = cData.SkinBuggy or 1
+        cData.SkinMirado = cData.SkinMirado or 1
+
+        _G.X3.OutfitMap = _G.X3.OutfitMap or {}
+        _G.X3.WeaponSkinMap = _G.X3.WeaponSkinMap or {}
+        _G.X3.VehicleSkinMap = _G.X3.VehicleSkinMap or {}
+
         if _G.X3.OutfitSkins then
-            if cData.SkinSuit and _G.X3.OutfitSkins.Suit[cData.SkinSuit] then _G.X3.OutfitMap.Suit = _G.X3.OutfitSkins.Suit[cData.SkinSuit] end
-            if cData.SkinBag and _G.X3.OutfitSkins.Bag[cData.SkinBag] then _G.X3.OutfitMap.Bag = _G.X3.OutfitSkins.Bag[cData.SkinBag] end
-            if cData.SkinHelmet and _G.X3.OutfitSkins.Helmet[cData.SkinHelmet] then _G.X3.OutfitMap.Helmet = _G.X3.OutfitSkins.Helmet[cData.SkinHelmet] end
+            if cData.SkinSuit and _G.X3.OutfitSkins.Suit and _G.X3.OutfitSkins.Suit[cData.SkinSuit] then _G.X3.OutfitMap.Suit = _G.X3.OutfitSkins.Suit[cData.SkinSuit] end
+            if cData.SkinBag and _G.X3.OutfitSkins.Bag and _G.X3.OutfitSkins.Bag[cData.SkinBag] then _G.X3.OutfitMap.Bag = _G.X3.OutfitSkins.Bag[cData.SkinBag] end
+            if cData.SkinHelmet and _G.X3.OutfitSkins.Helmet and _G.X3.OutfitSkins.Helmet[cData.SkinHelmet] then _G.X3.OutfitMap.Helmet = _G.X3.OutfitSkins.Helmet[cData.SkinHelmet] end
         end
 
         if _G.X3.skinIdMappings then
@@ -2775,7 +2800,6 @@ _G.X3.ForceRefreshSkinMaps = function()
             if cData.SkinM762 and _G.X3.skinIdMappings[101008] and _G.X3.skinIdMappings[101008][cData.SkinM762] then _G.X3.WeaponSkinMap[101008] = _G.X3.skinIdMappings[101008][cData.SkinM762] end
             if cData.SkinAUG and _G.X3.skinIdMappings[101006] and _G.X3.skinIdMappings[101006][cData.SkinAUG] then _G.X3.WeaponSkinMap[101006] = _G.X3.skinIdMappings[101006][cData.SkinAUG] end
             if cData.SkinUMP and _G.X3.skinIdMappings[102002] and _G.X3.skinIdMappings[102002][cData.SkinUMP] then _G.X3.WeaponSkinMap[102002] = _G.X3.skinIdMappings[102002][cData.SkinUMP] end
-
             if cData.SkinUZI and _G.X3.skinIdMappings[102001] and _G.X3.skinIdMappings[102001][cData.SkinUZI] then _G.X3.WeaponSkinMap[102001] = _G.X3.skinIdMappings[102001][cData.SkinUZI] end
             if cData.SkinGroza and _G.X3.skinIdMappings[101005] and _G.X3.skinIdMappings[101005][cData.SkinGroza] then _G.X3.WeaponSkinMap[101005] = _G.X3.skinIdMappings[101005][cData.SkinGroza] end
             if cData.SkinS12K and _G.X3.skinIdMappings[104003] and _G.X3.skinIdMappings[104003][cData.SkinS12K] then _G.X3.WeaponSkinMap[104003] = _G.X3.skinIdMappings[104003][cData.SkinS12K] end
@@ -2789,6 +2813,28 @@ _G.X3.ForceRefreshSkinMaps = function()
             if cData.SkinBuggy and _G.X3.VehicleSkins[1907001] and _G.X3.VehicleSkins[1907001][cData.SkinBuggy] then _G.X3.VehicleSkinMap[1907001] = _G.X3.VehicleSkins[1907001][cData.SkinBuggy] end
             if cData.SkinMirado and _G.X3.VehicleSkins[1915001] and _G.X3.VehicleSkins[1915001][cData.SkinMirado] then _G.X3.VehicleSkinMap[1915001] = _G.X3.VehicleSkins[1915001][cData.SkinMirado] end
         end
+
+        -- Hardfall defaults if maps are still empty
+        if not _G.X3.OutfitMap.Suit and _G.X3.OutfitSkins and _G.X3.OutfitSkins.Suit then _G.X3.OutfitMap.Suit = _G.X3.OutfitSkins.Suit[1] end
+        if not _G.X3.OutfitMap.Bag and _G.X3.OutfitSkins and _G.X3.OutfitSkins.Bag then _G.X3.OutfitMap.Bag = _G.X3.OutfitSkins.Bag[1] end
+        if not _G.X3.OutfitMap.Helmet and _G.X3.OutfitSkins and _G.X3.OutfitSkins.Helmet then _G.X3.OutfitMap.Helmet = _G.X3.OutfitSkins.Helmet[1] end
+
+        _G.X3.WeaponSkinMap[101004] = _G.X3.WeaponSkinMap[101004] or 1101004246
+        _G.X3.WeaponSkinMap[101001] = _G.X3.WeaponSkinMap[101001] or 1101001276
+        _G.X3.WeaponSkinMap[101003] = _G.X3.WeaponSkinMap[101003] or 1101003227
+        _G.X3.WeaponSkinMap[101008] = _G.X3.WeaponSkinMap[101008] or 1101008146
+        _G.X3.WeaponSkinMap[101006] = _G.X3.WeaponSkinMap[101006] or 1101006085
+        _G.X3.WeaponSkinMap[102002] = _G.X3.WeaponSkinMap[102002] or 1102002136
+        _G.X3.WeaponSkinMap[102001] = _G.X3.WeaponSkinMap[102001] or 1102001120
+        _G.X3.WeaponSkinMap[101005] = _G.X3.WeaponSkinMap[101005] or 1101005098
+        _G.X3.WeaponSkinMap[104003] = _G.X3.WeaponSkinMap[104003] or 1104003037
+        _G.X3.WeaponSkinMap[104004] = _G.X3.WeaponSkinMap[104004] or 1104004041
+
+        _G.X3.VehicleSkinMap[1903001] = _G.X3.VehicleSkinMap[1903001] or 1903005
+        _G.X3.VehicleSkinMap[1908001] = _G.X3.VehicleSkinMap[1908001] or 1908002
+        _G.X3.VehicleSkinMap[1961001] = _G.X3.VehicleSkinMap[1961001] or 1961007
+        _G.X3.VehicleSkinMap[1907001] = _G.X3.VehicleSkinMap[1907001] or 1907007
+        _G.X3.VehicleSkinMap[1915001] = _G.X3.VehicleSkinMap[1915001] or 1915002
 
         if _G.X3.ApplyLobbyPickedSkins then pcall(_G.X3.ApplyLobbyPickedSkins) end
     end)
