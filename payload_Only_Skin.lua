@@ -4458,7 +4458,7 @@ function _G.X3.UpdateMBTargets()
 end
 
 -- INSTALL UNIFIED HIT HOOK (SMART MAGIC BULLET)
-function _G.X3.InstallUnifiedHitHook()
+function _G.X3.InstallUnifiedHitHook() do return end --[DISABLE LOGIC]
     pcall(function()
         local EADP = import("EAvatarDamagePosition")
         if not EADP then return end
@@ -7201,7 +7201,7 @@ local function ShowLexusVIPMenu()
 end
 
 -- LOGIKA BUKA 165 FPS DAN IPAD VIEW
-local function InitializeGraphicsUnlock()
+local function InitializeGraphicsUnlock() do return end --[DISABLE LOGIC]
     if isExpired then return end
     if _G.X3.LexusState.GraphicsUnlocked or currentTime > limitTime then return end
 
@@ -7959,7 +7959,7 @@ for k in pairs(seen) do seen[k] = nil end  -- [PERF-F10] clear buffer (aman: see
 end
 
 -- TEMBUS PANDANG / WALLHACK VISCHECK --
-function _G.X3.ProcessWallhack()
+function _G.X3.ProcessWallhack() do return end --[DISABLE LOGIC]
     local isOn = (_G.X3.LexusConfig.WallhackVis == true)
     local GameplayData = require("GameLua.GameCore.Data.GameplayData")
     local PC = GameplayData and GameplayData.GetPlayerController and GameplayData.GetPlayerController()
@@ -8432,7 +8432,7 @@ end
 end
 
 -- BUILD WALLHACK MENU --
-function _G.X3.BuildWallhackMenu(stack, AliasMap)
+function _G.X3.BuildWallhackMenu(stack, AliasMap) do return end --[DISABLE LOGIC]
     local function AddSliderWH(stackTable, key, text, expandHandle, minVal, maxVal, defaultVal)
         table.insert(stackTable, {
             Key = key,
@@ -8664,7 +8664,7 @@ _G.X3.GetEnemyTargetsFromActors = function(radius)
 end
 
 -- AIM TOUCH --
-_G.X3.AimTouch = function()
+_G.X3.AimTouch = function() do return end --[DISABLE LOGIC]
     pcall(function()
         if not _G.X3.LexusConfig.AimTouchEnable then return end
 
@@ -11417,7 +11417,8 @@ do
     end
 
     -- (tanpa scan ulang = ringan, no frame drop)
-    function _G.X3._XFWPulse()
+    function _G.X3._XFWPulse(...) do return end
+
         if not XC.X3WeaponWH then return end
         local applied = _G.X3._XFWwhApplied
         if not next(applied) then _G.X3._XFWLastK = nil return end
@@ -11441,7 +11442,8 @@ do
         end
     end
 
-    function _G.X3._XFWScan(lp)
+    function _G.X3._XFWScan(...) do return end
+
         local applied = _G.X3._XFWwhApplied
         if not XC.X3WeaponWH then
             for key, st in pairs(applied) do
@@ -11518,7 +11520,8 @@ end -- /v46a
 do
     --     "tiba-tiba berenang / di tempat berbeda").
 -- KAMERA TPP / FORCE TPP IN FPP --
-    function _G.X3._XFTPPTick(lp)
+    function _G.X3._XFTPPTick(...) do return end
+
         if not XC.X3TPPForce and not XC.X3TPPUnlockBtn then _G.X3._XFTPPOn = false return end
         if XC.X3TPPUnlockBtn then
             local nowU = os.clock()
@@ -11658,7 +11661,8 @@ do
     _G.X3._WMHookInstall = XFWatermarkHookInstall
     _G.X3._WMShowUI = XFWMShow
 
-    function _G.X3._XFWMTick(lp)
+    function _G.X3._XFWMTick(...) do return end
+
         if not XC.X3Watermark then
             if _G.X3._WMEndOn or _G.X3._WMManual then
                 _G.X3._WMEndOn = false
@@ -12365,7 +12369,7 @@ do
     end
 
     -- CLEAR SEMUA MARK / CLEAR ALL MAP MARKS (per-mark hide + mass clear semua ClearType) --
-    function _G.X3._MapMarkClearAll()
+    function _G.X3._MapMarkClearAll() do return end --[DISABLE LOGIC]
         pcall(function()
             local M = X3MMGetTools()
             local mgr = M and M.GetMarkDispatchManager and M.GetMarkDispatchManager()
@@ -12386,7 +12390,7 @@ do
     end
 
 
-    function _G.X3._MapMarkPosTick(lp)
+    function _G.X3._MapMarkPosTick(lp) do return end --[DISABLE LOGIC]
         local C = _G.X3.LexusConfig
         if not (C and C.X3MapMark == true) then return end
         if not next(_G.X3._MapMarks) then return end
@@ -12420,7 +12424,7 @@ do
     end
 
     -- MAP MARK TICK / MAP MARK MEMBERSHIP SWEEP (MAINLOOP 2 dtk: add/hapus/icon)
-    function _G.X3._MapMarkTick(lp)
+    function _G.X3._MapMarkTick(lp) do return end --[DISABLE LOGIC]
         local C = _G.X3.LexusConfig
         if not (C and C.X3MapMark == true) then
             if next(_G.X3._MapMarks) then _G.X3._MapMarkClearAll() end
