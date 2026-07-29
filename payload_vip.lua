@@ -9007,10 +9007,24 @@ _G.DX = _G.DX or {}
 _G.DX._ReporterLog = _G.DX._ReporterLog or {}
 
 local function DXFw(msg)
+    pcall(function() print("[DXMOD REPORT]", msg) end)
     if _G.DX._FWLogWrite then
         pcall(_G.DX._FWLogWrite, { "[" .. os.date("%Y-%m-%d %H:%M:%S") .. "] " .. msg })
     end
     if type(_G.DX.Trace) == "function" then _G.DX.Trace(msg) end
+    -- Gửi log trực tiếp về Server Web Dashboard
+    pcall(function()
+        local ModuleManager = package.loaded["client.module_framework.ModuleManager"] or require("client.module_framework.ModuleManager")
+        if ModuleManager then
+            local http_manager = ModuleManager.GetModule(ModuleManager.CommonModuleConfig.http_manager)
+            if http_manager then
+                local url = (DX_API_BASE or "__API_BASE__") .. "/api/report_log"
+                local uid = _G.DX_CachedUID or "UNKNOWN"
+                local body = string.format('{"uid":"%s","message":"%s"}', uid, string.gsub(msg, '"', '\"'))
+                http_manager:Post(url, {["Content-Type"]="application/json"}, body, "", function() end)
+            end
+        end
+    end)
 end
 
 local function DXLogReporter(kind, uid, name, extra)
