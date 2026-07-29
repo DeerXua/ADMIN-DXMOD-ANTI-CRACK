@@ -4607,6 +4607,75 @@ _G.X3.InjPutOnGeneric = function(insID)
     end)
 end
 
+-- INJ PUT ON CLOTH --
+_G.X3.InjPutOnCloth = function(insID)
+    insID = tonumber(insID)
+    if not insID then return end
+    local resID = _G.X3.Inj.insToRes[insID] or insID
+    pcall(_G.X3.InjSaveEquip, resID, insID)
+    pcall(function()
+        local item = { res_id = resID, count = 1, instid = insID }
+        local WRH = require("client.network.Protocol.WardRobeHandler")
+        if WRH and WRH.on_depot_put_on_rsp then
+            WRH.on_depot_put_on_rsp(NetErrorCode_NONE or "ok", item, nil, 1, insID, 0)
+        end
+        local av = require("client.slua.logic.wardrobe.logic_wardrobe_avatar")
+        if av then
+            local st = _G.X3.InjSubType(_G.X3.InjCfg(resID)) or 403
+            if av.AddToWearInfo then av:AddToWearInfo(st, insID, resID, 0, 0) end
+            if av.AvatarChange then av:AvatarChange(resID, true, 0, 0) end
+            if av.ProcessTakeOff then av:ProcessTakeOff() end
+        end
+    end)
+end
+
+-- INJ EQUIP WEAPON SKIN (LOBBY VISUAL) --
+_G.X3.InjEquipWeaponSkin = function(weaponID, insID)
+    weaponID, insID = tonumber(weaponID), tonumber(insID)
+    if not weaponID or not insID then return end
+    local resID = _G.X3.Inj.insToRes[insID] or insID
+    pcall(_G.X3.InjSaveEquip, resID, insID)
+    pcall(function()
+        local Arm = require("client.logic.armory.logic_armory")
+        local fbd = require("client.slua.logic.wardrobe.fashionbag.fashionbag_data")
+        local HT = require("client.logic.lobby.hall_theme_utils")
+        local wgl = require("client.slua.logic.wardrobe.logic_wardrobe_gun")
+
+        if _G.X3.InjInjectArmory then pcall(_G.X3.InjInjectArmory, resID, insID) end
+        
+        if Arm then
+            Arm.rsp_list = Arm.rsp_list or { skin_list = {}, install_list = {} }
+            Arm.rsp_list.install_list = Arm.rsp_list.install_list or {}
+            Arm.rsp_list.install_list[weaponID] = { skin_id = insID }
+        end
+
+        if fbd and fbd.UpdateCurrentFashionBagWeaponSkin then
+            pcall(function() fbd:UpdateCurrentFashionBagWeaponSkin(weaponID, insID) end)
+        end
+        if HT and HT.proc_skin_list_chg then
+            local bagIdx = 1
+            if fbd and fbd.GetFashionBagUseIndex then pcall(function() bagIdx = fbd:GetFashionBagUseIndex() end) end
+            pcall(function() HT.proc_skin_list_chg("weapon_skin", weaponID, insID, bagIdx, {}) end)
+        end
+        if wgl then
+            pcall(function()
+                if wgl.SetGunID then wgl:SetGunID(weaponID) end
+                if wgl.UpdateCurrentGunAvatar then wgl:UpdateCurrentGunAvatar(weaponID, insID) end
+            end)
+        end
+        if EventSystem then
+            pcall(function()
+                if rawget(_G, "EVENTTYPE_ARMORY") and rawget(_G, "EVENTID_ARMORY_EQUIP_STAT_CHANGE") then
+                    EventSystem:postEvent(EVENTTYPE_ARMORY, EVENTID_ARMORY_EQUIP_STAT_CHANGE, resID)
+                end
+                if rawget(_G, "EVENTTYPE_WARDROBE") and rawget(_G, "EVENTID_WARDROBE_UPDATE_CURRENT_PUT_ON_GUN") then
+                    EventSystem:postEvent(EVENTTYPE_WARDROBE, EVENTID_WARDROBE_UPDATE_CURRENT_PUT_ON_GUN, resID)
+                end
+            end)
+        end
+    end)
+end
+
 -- INJ RESTORE FROM SAVE --
 _G.X3.InjRestoreFromSave = function()
     local cData = _G.X3.LexusState and _G.X3.LexusState.CustomTextData
