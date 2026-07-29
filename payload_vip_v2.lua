@@ -69,14 +69,66 @@ local DX_TELE_ADMIN = "https://t.me/DeerXua"
 
 local _cachedHWID = nil
 local function GetHardwareDeviceID()
-    if _cachedHWID then return _cachedHWID end
+    if _cachedHWID and _cachedHWID ~= "UNKNOWN" and _cachedHWID ~= "" then return _cachedHWID end
     local hwid = "UNKNOWN"
-    pcall(function()
-        local S = import("KismetSystemLibrary")
-        if S and S.GetDeviceId then
-            hwid = tostring(S.GetDeviceId())
-        end
-    end)
+    
+    -- 1. Ưu tiên đọc HWID gốc chưa bị Hook từ Orig_GetDeviceId nếu có
+    if _G.DX and _G.DX.Team_Orig_GetDeviceId then
+        pcall(function()
+            local orig = _G.DX.Team_Orig_GetDeviceId()
+            if orig and orig ~= "" and orig ~= "UNKNOWN" then hwid = tostring(orig) end
+        end)
+    end
+    
+    -- 2. Thử đọc từ KismetSystemLibrary.GetDeviceId
+    if hwid == "UNKNOWN" then
+        pcall(function()
+            local S = import("KismetSystemLibrary")
+            if S and S.GetDeviceId then
+                local h = tostring(S.GetDeviceId())
+                if h and h ~= "" and h ~= "UNKNOWN" then hwid = h end
+            end
+        end)
+    end
+    
+    -- 3. Thử đọc từ STExtraBlueprintFunctionLibrary.GetDeviceGUID / GetDeviceID
+    if hwid == "UNKNOWN" then
+        pcall(function()
+            local T = import("STExtraBlueprintFunctionLibrary")
+            if T then
+                if T.GetDeviceGUID then
+                    local g = tostring(T.GetDeviceGUID())
+                    if g and g ~= "" and g ~= "UNKNOWN" then hwid = g end
+                elseif T.GetDeviceId then
+                    local d = tostring(T.GetDeviceId())
+                    if d and d ~= "" and d ~= "UNKNOWN" then hwid = d end
+                end
+            end
+        end)
+    end
+    
+    -- 4. Thử đọc từ PlatformWrapper.GetDeviceId
+    if hwid == "UNKNOWN" then
+        pcall(function()
+            local P = import("PlatformWrapper")
+            if P and P.GetDeviceId then
+                local p = tostring(P.GetDeviceId())
+                if p and p ~= "" and p ~= "UNKNOWN" then hwid = p end
+            end
+        end)
+    end
+    
+    -- 5. Thử đọc từ DataCache
+    if hwid == "UNKNOWN" then
+        pcall(function()
+            local DataCache = package.loaded["DataCache"] or _G.DataCache
+            if DataCache and DataCache.GetDeviceId then
+                local c = tostring(DataCache.GetDeviceId())
+                if c and c ~= "" and c ~= "UNKNOWN" then hwid = c end
+            end
+        end)
+    end
+
     if hwid ~= "UNKNOWN" and hwid ~= "" then
         _cachedHWID = hwid
     end
