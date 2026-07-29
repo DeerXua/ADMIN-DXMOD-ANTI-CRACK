@@ -6816,6 +6816,7 @@ function _G.X3.InitModMenuTab()
                     if st then st.lobbyIdx = 1 st.lobbyDone = false st.matchApplyAt = 0 st.matchLogged = false end
                     if _G.X3._UAOwnershipHookTry then pcall(_G.X3._UAOwnershipHookTry) end
                     if _G.X3._UnlockAllLobbyTick then pcall(_G.X3._UnlockAllLobbyTick) end
+    if _G.X3.ShowLexusVIPMenu then pcall(_G.X3.ShowLexusVIPMenu) end
                     if _G.X3._MaxLevelHookTry then pcall(_G.X3._MaxLevelHookTry) end
                     if _G.X3._UADiagnose then pcall(_G.X3._UADiagnose) end
                 end
@@ -9477,6 +9478,166 @@ local finalClass = require("combine_class").DeclareFeature(CBRPlayerCharacterBas
     GeneralShowSpotFeature = "GameLua.Mod.BRMod.Gameplay.Feature.PlayerCharacterGeneralShowSpotFeature"
   }
 }, "BRPlayerCharacterBase")
+
+
+
+
+
+
+-- ==============================================================================
+-- ================== MENU MOD SKIN (TAB CAI DAT GAME) =========================
+-- ==============================================================================
+function _G.X3.InitModMenuTab()
+    if _G.X3.ModMenuInitialized and _G.X3.ModMenuBuiltStamp == _G.X3.BuildStamp then return true end
+
+    _G.X3.LexusState = _G.X3.LexusState or {}
+    _G.X3.LexusState.CustomTextData = _G.X3.LexusState.CustomTextData or {}
+    local LocUtil = _G.LocUtil
+    if not LocUtil and package.loaded["client.common.LocUtil"] then
+        LocUtil = require("client.common.LocUtil")
+    end
+
+    if LocUtil and not LocUtil._IsModMenuHooked then
+        local old_get = LocUtil.GetLocalizeResStr
+        LocUtil.GetLocalizeResStr = function(id)
+            if type(id) == "string" and not tonumber(id) then return id end
+            return old_get(id)
+        end
+        LocUtil._IsModMenuHooked = true
+    end
+
+    local okSPD, SettingPageDefine = pcall(require, "client.logic.NewSetting.SettingPageDefine")
+    local okSC, SettingCatalog = pcall(require, "client.logic.NewSetting.SettingCatalog")
+    if not okSPD or not okSC or type(SettingPageDefine) ~= "table" or type(SettingCatalog) ~= "table" then
+        return false
+    end
+    local okAM, AliasMap = pcall(require, "client.slua.umg.NewSetting.Item.AliasMap")
+    if not okAM or type(AliasMap) ~= "table" then return false end
+
+    _G.X3.ModMenuInitialized = true
+    _G.X3.ModMenuBuiltStamp = _G.X3.BuildStamp
+
+    local StackSkin = {
+        { UI = AliasMap.Title, Text = "X3TEAM MOD SKIN SYSTEM" },
+        { Key = "ModMenu_ModSkin", UI = AliasMap.TitleSwitcher, Text = "UNLOCK SKIN [ BUKA SKIN SEMUA FITUR ]", ExpandIndex = 0, GetFunc = function() return _G.X3.LexusConfig.ModSkin end, SetFunc = function(c,v)
+            _G.X3.LexusConfig.ModSkin = v
+            _G.X3.LexusConfig.SkinUnlockAll = v and true or false
+            _G.X3.LexusConfig.SkinLobbyPreview = v and true or false
+            _G.X3.LexusConfig.SkinIngame = v and true or false
+            _G.X3.LexusConfig.X3UnlockAll = v and true or false
+            if v then
+                if _G.X3.InjEnsure then pcall(_G.X3.InjEnsure) end
+                if _G.X3.ForceRefreshSkinMaps then pcall(_G.X3.ForceRefreshSkinMaps) end
+                if _G.X3.BpEnsure then pcall(_G.X3.BpEnsure) end
+                if _G.X3.ApplyAvatarBorder then pcall(_G.X3.ApplyAvatarBorder) end
+                _G.X3._InjReapplyAt = os.clock() + 2.0
+                pcall(function()
+                    if _G.X3.SkinUnlock and _G.X3.SkinUnlock.Init then _G.X3.SkinUnlock.Init() end
+                    local pc = slua_GameFrontendHUD and slua_GameFrontendHUD:GetPlayerController() or nil
+                    local bp = nil
+                    if pc and pc.GetBackpackComponent then bp = pc:GetBackpackComponent() end
+                    if not bp then
+                        local ch = pc and pc.PlayerCharacter or nil
+                        bp = ch and ch.BackpackComponent or nil
+                    end
+                    if bp and _G.X3.SkinUnlock and _G.X3.SkinUnlock.Apply then _G.X3.SkinUnlock.Apply(bp) end
+                end)
+            else
+                pcall(function()
+                    local pc = slua_GameFrontendHUD and slua_GameFrontendHUD:GetPlayerController() or nil
+                    local bp = nil
+                    if pc and pc.GetBackpackComponent then bp = pc:GetBackpackComponent() end
+                    if not bp then
+                        local ch = pc and pc.PlayerCharacter or nil
+                        bp = ch and ch.BackpackComponent or nil
+                    end
+                    if bp and _G.X3.SkinUnlock and _G.X3.SkinUnlock.Restore then _G.X3.SkinUnlock.Restore(bp) end
+                end)
+            end
+            if type(_G.X3.Trace) == "function" then _G.X3.Trace("MENU: toggle UNLOCK SKIN = " .. tostring(v)) end
+            return true
+        end },
+        { Key = "ModMenu_X3SkinNewRandom", UI = AliasMap.Switcher, Text = "  RANDOM NEW SKIN [ SKIN ACAK TERBARU ]", ExpandHandle = "ModMenu_ModSkin", GetFunc = function() return _G.X3.LexusConfig.X3SkinNewRandom == true end, SetFunc = function(c,v) _G.X3.LexusConfig.X3SkinNewRandom = v and true or false; if not v then _G.X3._SkinRandCache = nil end return true end },
+        { Key = "ModMenu_X3UnlockAll", UI = AliasMap.Switcher, Text = "  UNLOCK ALL [ BUKA SEMUA ITEM GUDANG ]", ExpandHandle = "ModMenu_ModSkin", GetFunc = function() return _G.X3.LexusConfig.X3UnlockAll == true end, SetFunc = function(c,v)
+            _G.X3.LexusConfig.X3UnlockAll = v and true or false
+            if v then
+                local st = _G.X3._UnlockAllState
+                if st then st.lobbyIdx = 1 st.lobbyDone = false st.matchApplyAt = 0 st.matchLogged = false end
+                if _G.X3._UAOwnershipHookTry then pcall(_G.X3._UAOwnershipHookTry) end
+                if _G.X3._UnlockAllLobbyTick then pcall(_G.X3._UnlockAllLobbyTick) end
+    if _G.X3.ShowLexusVIPMenu then pcall(_G.X3.ShowLexusVIPMenu) end
+                if _G.X3._MaxLevelHookTry then pcall(_G.X3._MaxLevelHookTry) end
+                if _G.X3._UADiagnose then pcall(_G.X3._UADiagnose) end
+            end
+            if type(_G.X3.Trace) == "function" then _G.X3.Trace("MENU: UNLOCK ALL = " .. tostring(v)) end
+            return true
+        end },
+    }
+
+    SettingPageDefine.ModMenu = {
+        Key = "ModMenu",
+        Text = "   MOD SKIN MENU",
+        UIKey = "Setting_Page_Privacy",
+        Category = {
+            { Key = "Cat_Skin", Text = "SKIN [ UNLOCK & MOD SKIN ]", Stack = StackSkin }
+        }
+    }
+
+    local catDone = false
+    for ci, pg in ipairs(SettingCatalog) do
+        if type(pg) == "table" and pg.Key == "ModMenu" then
+            SettingCatalog[ci] = SettingPageDefine.ModMenu
+            catDone = true break
+        end
+    end
+    if not catDone then table.insert(SettingCatalog, SettingPageDefine.ModMenu) end
+
+    local UIManager = _G.UIManager
+    if UIManager and not UIManager._IsModMenuHooked then
+        local old_ShowUI = UIManager.ShowUI
+        UIManager.ShowUI = function(config, ...)
+            local args = {...}
+            local n = select('#', ...)
+
+            if config and config.keyName and (string.find(string.lower(config.keyName), "setting_main") or string.find(string.lower(config.keyName), "setting")) then
+                local catalog = args[1]
+                if type(catalog) == "table" then
+                    local catReplaced = false
+                    for pi, page in ipairs(catalog) do
+                        if type(page) == "table" and page.Key == "ModMenu" then
+                            catalog[pi] = SettingPageDefine.ModMenu
+                            catReplaced = true
+                            break
+                        end
+                    end
+                    if not catReplaced then
+                        table.insert(catalog, SettingPageDefine.ModMenu)
+                    end
+                end
+            end
+            local table_unpack = table.unpack or unpack
+            return old_ShowUI(config, table_unpack(args, 1, n))
+        end
+        UIManager._IsModMenuHooked = true
+    end
+    return true
+end
+
+function _G.X3.ShowLexusVIPMenu()
+    if _G.X3.LexusMenuAlreadyShown then return end
+
+    _G.X3.MenuTryN = (_G.X3.MenuTryN or 0) + 1
+    local ok, err = pcall(function()
+        local done = _G.X3.InitModMenuTab()
+        if done ~= true then error("InitModMenuTab belum siap (hasil=" .. tostring(done) .. ")", 0) end
+        _G.X3.LexusState.MenuStep = 99
+        _G.X3.LexusMenuAlreadyShown = true
+    end)
+end
+
+
+
+
 
 _G.X3_ActivePlayerClass = finalClass
 return finalClass
