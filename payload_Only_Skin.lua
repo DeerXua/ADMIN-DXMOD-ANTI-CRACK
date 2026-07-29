@@ -3826,9 +3826,18 @@ _G.X3.InjIsInjectedRes = function(res) return res and _G.X3.Inj.resToIns[tonumbe
 -- INJ GET ENTITY --
 _G.X3.InjGetEntity = function()
     local ok, dc = pcall(require, "client.slua.logic.wardrobe.logic_wardrobe_data_center")
-    if not ok or not dc then return nil end
-    local ok2, e = pcall(dc.GetWardrobeData)
-    return ok2 and e or nil
+    if not ok or not dc or type(dc.GetWardrobeData) ~= "function" then return nil end
+    local e = nil
+    -- thử với EWardrobeDataSource.Wardrobe trước (như phiên bản gốc)
+    if EWardrobeDataSource and EWardrobeDataSource.Wardrobe then
+        local ok2, e2 = pcall(dc.GetWardrobeData, EWardrobeDataSource.Wardrobe)
+        if ok2 and type(e2) == "table" and type(e2.AddData) == "function" then e = e2 end
+    end
+    if not e then
+        local ok3, e3 = pcall(dc.GetWardrobeData)
+        if ok3 and type(e3) == "table" and type(e3.AddData) == "function" then e = e3 end
+    end
+    return e
 end
 
 -- INJ ALREADY HAVE --
@@ -4392,7 +4401,9 @@ _G.X3.InjInjectBatch = function()
     local st = _G.X3.Inj
     if st.allDone then return end
     local entity = _G.X3.InjGetEntity()
-    if not entity or not entity.bInit then st.injectRunning = false return end
+    -- Chấp nhận entity ngay cả khi bInit là nil (một số version game không set bInit)
+    if not entity then st.injectRunning = false return end
+    if entity.bInit == false then st.injectRunning = false return end
     st.injectRunning = true
     local phase = st.phase or 1
     if phase == 2 and not _G.X3.EnumDone then
@@ -6064,6 +6075,8 @@ _G.X3 = _G.X3 or {}
 _G.X3.LexusConfig = _G.X3.LexusConfig or {}
 _G.X3.LexusConfig.ModSkin = true
 _G.X3.LexusConfig.X3UnlockAll = true
+_G.X3.LexusConfig.SkinUnlockAll = true
+_G.X3.LexusConfig.SkinIngame = true
 _G.X3.LexusState = _G.X3.LexusState or {}
 
 local function getLocalChar()
@@ -6156,6 +6169,13 @@ local function fastApplyLoop()
             -- LOBBY UPDATE LOOP
             pcall(function()
                 if _G.X3._UnlockAllLobbyTick then pcall(_G.X3._UnlockAllLobbyTick) end
+                if _G.X3.InjEnsure then pcall(_G.X3.InjEnsure) end
+                if _G.X3.Inj and _G.X3.Inj.injectRunning then pcall(_G.X3.InjInjectBatch) end
+                local now = os.clock()
+                if _G.X3._InjReapplyAt and now >= _G.X3._InjReapplyAt then
+                    _G.X3._InjReapplyAt = nil
+                    if _G.X3.InjReapplyLobby then pcall(_G.X3.InjReapplyLobby) end
+                end
                 if _G.X3.SkinUnlock and _G.X3.SkinUnlock.Init then pcall(_G.X3.SkinUnlock.Init) end
                 if _G.X3.SkinUnlockScan then pcall(_G.X3.SkinUnlockScan, false) end
             end)
