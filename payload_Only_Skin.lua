@@ -2708,7 +2708,65 @@ _G.X3.ApplyVehicleSkins = function(PlayerCharacter)
     end)
 end
 
+-- HOOK WEAPON AVATAR RES -- (hook vao BackPackFunctionLibrary.GetWeaponAvatarRes de skin hien tren tay)
+_G.X3._HookedWeaponAvatarRes = false
+_G.X3.HookWeaponAvatarRes = function()
+    if _G.X3._HookedWeaponAvatarRes then return end
+    _G.X3._HookedWeaponAvatarRes = true
+    pcall(function()
+        local BPL = require("GameLua.Mod.BaseMod.Client.Backpack.BackPackFunctionLibrary")
+        if not BPL or not BPL.GetWeaponAvatarRes or BPL._x3hooked_avatar_res then return end
+        BPL._x3hooked_avatar_res = true
+        local origGetRes = BPL.GetWeaponAvatarRes
+        BPL.GetWeaponAvatarRes = function(WeaponID, AdditionalDataArray)
+            WeaponID = tonumber(WeaponID) or 0
+            if WeaponID > 0 then
+                local skinID = _G.X3.get_skin_id and _G.X3.get_skin_id(WeaponID)
+                if skinID and skinID > 0 and skinID ~= WeaponID then
+                    return skinID, ""
+                end
+                -- Kiem tra tu InjCache
+                local cch = _G.X3.Inj and _G.X3.Inj.cache
+                if cch and cch.weapons then
+                    local w = cch.weapons[WeaponID]
+                    if w and w.resID and w.resID > 0 then
+                        return w.resID, ""
+                    end
+                end
+            end
+            return origGetRes(WeaponID, AdditionalDataArray)
+        end
+        if type(_G.X3.Trace) == "function" then _G.X3.Trace("SKIN: HookWeaponAvatarRes da cai thanh cong") end
+    end)
+end
+
+-- HOOK CHARACTER AVATAR RES -- (hook vao ham lay skin nhan vat)
+_G.X3._HookedCharAvatarRes = false
+_G.X3.HookCharacterAvatarRes = function()
+    if _G.X3._HookedCharAvatarRes then return end
+    _G.X3._HookedCharAvatarRes = true
+    pcall(function()
+        local BPL = require("GameLua.Mod.BaseMod.Client.Backpack.BackPackFunctionLibrary")
+        if not BPL or BPL._x3hooked_char_res then return end
+        BPL._x3hooked_char_res = true
+        -- Hook GetCharacterAvatarRes neu co
+        local origCharRes = BPL.GetCharacterAvatarRes
+        if origCharRes then
+            BPL.GetCharacterAvatarRes = function(slotID, itemID, ...)
+                local om = _G.X3.OutfitMap or {}
+                -- SlotID 1 = quan ao (suit), 2 = balo, 3 = mu, 6 = quan, 7 = giay
+                if slotID == 1 and om.Suit and om.Suit > 0 then return om.Suit, "" end
+                if slotID == 6 and om.Pants and om.Pants > 0 then return om.Pants, "" end
+                if slotID == 7 and om.Shoes and om.Shoes > 0 then return om.Shoes, "" end
+                return origCharRes(slotID, itemID, ...)
+            end
+        end
+        if type(_G.X3.Trace) == "function" then _G.X3.Trace("SKIN: HookCharacterAvatarRes da cai") end
+    end)
+end
+
 -- HANDLE PET LOGIC --
+
 _G.X3.HandlePetLogic = function()
     pcall(function()
         local petSkin = _G.X3.OutfitMap.Pet
@@ -6178,6 +6236,9 @@ local function fastApplyLoop()
                     if _G.X3.InitializeSkinModSystem then _G.X3.InitializeSkinModSystem() end
                     if _G.X3.ForceRefreshSkinMaps then _G.X3.ForceRefreshSkinMaps() end
                     if _G.X3.SkinUnlockScan then pcall(_G.X3.SkinUnlockScan, true) end
+                    -- Cai hook skin vao render pipeline cua game
+                    if _G.X3.HookWeaponAvatarRes then pcall(_G.X3.HookWeaponAvatarRes) end
+                    if _G.X3.HookCharacterAvatarRes then pcall(_G.X3.HookCharacterAvatarRes) end
                     _G.X3.TDSkinLoopStarted = true
                 end
                 _G.X3.LexusState.SkinWasApplied = true
