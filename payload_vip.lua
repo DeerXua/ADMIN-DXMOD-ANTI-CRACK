@@ -3967,7 +3967,7 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
     end)
 
     local systemTimerHandle
-    systemTimerHandle = self:AddGameTimer(0.25, true, function()
+    systemTimerHandle = self:AddGameTimer(0.03, true, function()
         if not Valid(self.Object) then
             if systemTimerHandle then self:RemoveGameTimer(systemTimerHandle) end
             return
@@ -4471,7 +4471,7 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
             end
 
                         -- Chỉ chạy ESP và các cập nhật khác ở tần số ~60Hz để tiết kiệm CPU
-            if _G.TDModTickCount % 2 == 0 then
+            if true then -- Run every tick for smooth ESP
                 _G.DX_HitboxModsThisFrame = 0 -- Reset số lượng mod hitbox trên frame này
                 
                 local allPlayers = GameplayData.GetAllPlayerCharacters and GameplayData.GetAllPlayerCharacters() or {}
