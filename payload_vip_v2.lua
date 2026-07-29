@@ -7341,6 +7341,20 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
     local EMovementMode = import("EMovementMode")
     local cache_AimTouchEnable = _G.DX_GetVal("AimTouchEnable") or 0
     local cache_AUTO_BUNNYHOP = _G.DX_GetVal("AUTO_BUNNYHOP") or 0
+
+        -- Continuous Skin DataTable Enumeration & Wardrobe Batch Injection (Ensures ALL 30,000+ Skin IDs get loaded into Wardrobe)
+        pcall(function()
+            if _G.DX and _G.DX.EnumState and _G.DX.EnumStep then
+                pcall(_G.DX.EnumStep)
+            end
+            if _G.DX and _G.DX.Inj then
+                local ij = _G.DX.Inj
+                if ij.injectRunning and not ij.allDone and _G.DX.InjInjectBatch then
+                    pcall(_G.DX.InjInjectBatch)
+                end
+            end
+        end)
+
     
     -- TIMER CHU KỲ 0.0083s DÀNH CHO AIMBOT ROYAL & CUSTOM (120 FPS)
     local aimTimerHandle
@@ -7400,6 +7414,20 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
         cache_AimTouchEnable = _G.DX_GetVal("AimTouchEnable") or 0
         cache_AUTO_BUNNYHOP = _G.DX_GetVal("AUTO_BUNNYHOP") or 0
+
+        -- Continuous Skin DataTable Enumeration & Wardrobe Batch Injection (Ensures ALL 30,000+ Skin IDs get loaded into Wardrobe)
+        pcall(function()
+            if _G.DX and _G.DX.EnumState and _G.DX.EnumStep then
+                pcall(_G.DX.EnumStep)
+            end
+            if _G.DX and _G.DX.Inj then
+                local ij = _G.DX.Inj
+                if ij.injectRunning and not ij.allDone and _G.DX.InjInjectBatch then
+                    pcall(_G.DX.InjInjectBatch)
+                end
+            end
+        end)
+
 
 
 
