@@ -4457,6 +4457,54 @@ _G.X3.InjInjectBatch = function()
     -- batch lanjut digas dari MAINLOOP selama injectRunning
 end
 
+-- INJ SYNC TO OUTFIT MAP --
+-- Dong bo tu InjCache (skin da chon trong tu do) sang OutfitMap/WeaponSkinMap (dung trong tran)
+_G.X3.InjSyncToOutfitMap = function()
+    local cch = _G.X3.Inj and _G.X3.Inj.cache
+    if not cch then return end
+    _G.X3.OutfitMap = _G.X3.OutfitMap or {}
+    _G.X3.WeaponSkinMap = _G.X3.WeaponSkinMap or {}
+    -- dong bo outfit suit
+    if cch.outfitRes and cch.outfitRes > 0 then
+        _G.X3.OutfitMap.Suit = cch.outfitRes
+    end
+    -- dong bo bag (balo)
+    if cch.bag and cch.bag.resID and cch.bag.resID > 0 then
+        -- Bag la bang {level1, level2, level3}, set level 3
+        _G.X3.OutfitMap.Bag = { cch.bag.resID, cch.bag.resID, cch.bag.resID }
+    end
+    -- dong bo helmet (mu)
+    if cch.helmet and cch.helmet.resID and cch.helmet.resID > 0 then
+        _G.X3.OutfitMap.Helmet = { cch.helmet.resID, cch.helmet.resID, cch.helmet.resID }
+    end
+    -- dong bo quan
+    if cch.pants and cch.pants.resID and cch.pants.resID > 0 then
+        _G.X3.OutfitMap.Pants = cch.pants.resID
+    end
+    -- dong bo giay
+    if cch.shoes and cch.shoes.resID and cch.shoes.resID > 0 then
+        _G.X3.OutfitMap.Shoes = cch.shoes.resID
+    end
+    -- dong bo sung
+    if cch.weapons then
+        for wid, wdata in pairs(cch.weapons) do
+            if wdata and wdata.resID and wdata.resID > 0 then
+                _G.X3.WeaponSkinMap[tonumber(wid)] = wdata.resID
+            end
+        end
+    end
+    -- dong bo xe
+    if cch.vehicles then
+        _G.X3.VehicleSkinMap = _G.X3.VehicleSkinMap or {}
+        for vres, vins in pairs(cch.vehicles) do
+            local vresID = _G.X3.Inj.insToRes[vins]
+            if vresID and vresID > 0 then
+                _G.X3.VehicleSkinMap[tonumber(vres)] = vresID
+            end
+        end
+    end
+end
+
 -- INJ PUT ON GENERIC --
 _G.X3.InjPutOnGeneric = function(insID)
     insID = tonumber(insID)
@@ -6170,6 +6218,8 @@ local function fastApplyLoop()
                 if _heavyNeeded then
                     pcall(function()
                         if isAlive then
+                            -- Dong bo skin tu tu do (InjCache) sang OutfitMap truoc khi apply
+                            if _G.X3.InjSyncToOutfitMap then pcall(_G.X3.InjSyncToOutfitMap) end
                             if _G.X3.ReadLiveConfig then _G.X3.ReadLiveConfig() end
                             if _G.X3.equip_character_avatar then _G.X3.equip_character_avatar(localPlayer) end
                             if _G.X3.ApplyWeaponSkins then _G.X3.ApplyWeaponSkins(localPlayer) end
