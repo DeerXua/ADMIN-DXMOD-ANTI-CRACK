@@ -8998,6 +8998,239 @@ local function CompleteAntiBanSystem()
                 LogToCrashlog("[✓] COMPLETE ANTI-BAN SYSTEM INTEGRATED AND ACTIVATED (65+ Bypasses Active)")
             end
         end)
+
+
+-- ============================================================================
+-- 19. INTEGRATED REPORTER & INSPECTOR DETECTOR SYSTEM (_G.DX)
+-- ============================================================================
+_G.DX = _G.DX or {}
+_G.DX._ReporterLog = _G.DX._ReporterLog or {}
+
+local function DXFw(msg)
+    if _G.DX._FWLogWrite then
+        pcall(_G.DX._FWLogWrite, { "[" .. os.date("%Y-%m-%d %H:%M:%S") .. "] " .. msg })
+    end
+    if type(_G.DX.Trace) == "function" then _G.DX.Trace(msg) end
+end
+
+local function DXLogReporter(kind, uid, name, extra)
+    local key = tostring(kind) .. "|" .. tostring(uid or name or "?")
+    local now = os.clock()
+    local last = _G.DX._ReporterLog[key]
+    if last and (now - last) < 120 then return end -- dedupe 2 min per reporter
+    _G.DX._ReporterLog[key] = now
+    if not (type(kind) == "string" and kind:find("KILLER", 1, true)) then
+        pcall(function()
+            if _G.DX._CrashLogUrgent then
+                _G.DX._CrashLogUrgent("REPORT-ME > " .. tostring(kind) .. " UID=" .. tostring(uid or "?") .. " NAMA=" .. tostring(name or "?") .. (extra and (" | " .. tostring(extra)) or ""))
+            end
+        end)
+    end
+    DXFw("REPORTER " .. kind .. " > UID=" .. tostring(uid or "?") .. " NAMA=" .. tostring(name or "?") .. (extra and (" | " .. tostring(extra)) or "") .. " 🚨")
+end
+
+local function DXNameByUID(uid)
+    local name = nil
+    pcall(function()
+        local GameplayData = require("GameLua.GameCore.Data.GameplayData")
+        local gs = GameplayData and GameplayData.GetGameState and GameplayData.GetGameState()
+        if gs and slua.isValid(gs) and gs.GetPlayerStateByUID then
+            local ps = gs:GetPlayerStateByUID(tonumber(uid))
+            if ps and slua.isValid(ps) then name = ps.PlayerName end
+        end
+    end)
+    return name
+end
+
+local function DXNameByKey(key)
+    local name, uid = nil, nil
+    pcall(function()
+        local hud = rawget(_G, "slua_GameFrontendHUD")
+        local pc = hud and hud.GetPlayerController and hud:GetPlayerController()
+        if pc and slua.isValid(pc) and pc.PlayerState and pc.PlayerState.GetPlayerStaticInfo then
+            local info = pc.PlayerState:GetPlayerStaticInfo(tonumber(key))
+            if info then
+                name = info.PlayerName or info.TeamName
+                uid = info.UID or info.PlayerUID or info.Uid
+            end
+        end
+    end)
+    return name, uid
+end
+
+function _G.DX._ACManipTry()
+    local stage = _G.DX._ACManipStage or 0
+    if stage >= 2 then return end
+    -- TAHAP 0: penangkap pelapor/inspector + peredam window (item 1-9)
+    if stage == 0 then
+        local n = 0
+        pcall(function()
+            local RTB = require("GameLua.Mod.BaseMod.Common.RealTimeBan.RealTimeBan")
+            if type(RTB) == "table" then
+                if type(RTB.OnSyncPlayerInfo) == "function" and not rawget(RTB, "__dxsync") then
+                    rawset(RTB, "__dxsync", true)
+                    local old = RTB.OnSyncPlayerInfo
+                    RTB.OnSyncPlayerInfo = function(self, a, b, uid, infoToDS)
+                        pcall(function()
+                            if infoToDS and (infoToDS.InspectorsAliasId or infoToDS.is_onrank_inspector) then
+                                DXLogReporter("INSPECTOR/observer", uid, infoToDS.PlayerName or DXNameByUID(uid),
+                                    "rank=" .. tostring(infoToDS.inspector_rank) .. " alias=" .. tostring(infoToDS.InspectorsAliasId))
+                            end
+                        end)
+                        return old(self, a, b, uid, infoToDS)
+                    end
+                    n = n + 1
+                end
+                if type(RTB.OnPlayerWithRealTimeBan) == "function" and not rawget(RTB, "__dxrtb") then
+                    rawset(RTB, "__dxrtb", true)
+                    local old = RTB.OnPlayerWithRealTimeBan
+                    RTB.OnPlayerWithRealTimeBan = function(self, a, b, uid, reason, tExitInfo)
+                        pcall(function()
+                            DXLogReporter("REALTIME-BAN", uid, DXNameByUID(uid), "reason=" .. tostring(reason))
+                        end)
+                        return old(self, a, b, uid, reason, tExitInfo)
+                    end
+                    n = n + 1
+                end
+                if type(RTB.ShowAlias) == "function" and not rawget(RTB, "__dxalias") then
+                    rawset(RTB, "__dxalias", true)
+                    local old = RTB.ShowAlias
+                    RTB.ShowAlias = function(self, ...)
+                        pcall(function() self.CurrentAlias = nil; self.bHasOldAlias = false end)
+                        return old(self, ...)
+                    end
+                    n = n + 1
+                end
+                if type(RTB.SetInspectorRankUID) == "function" and not rawget(RTB, "__dxrank") then
+                    rawset(RTB, "__dxrank", true)
+                    local old = RTB.SetInspectorRankUID
+                    RTB.SetInspectorRankUID = function(uid, rank)
+                        pcall(function()
+                            DXLogReporter("INSPECTOR-rank", uid, DXNameByUID(uid), "rank=" .. tostring(rank))
+                        end)
+                        return old(uid, rank)
+                    end
+                    n = n + 1
+                end
+            end
+        end)
+        pcall(function()
+            local ok, INS = pcall(require, "GameLua.Mod.BaseMod.Client.InspectionSystem.InspectionSystemReportClientLogicSubsystem")
+            if ok and type(INS) == "table" then
+                if type(INS.RecvNotifyInspector) == "function" and not rawget(INS, "__dxrecv") then
+                    rawset(INS, "__dxrecv", true)
+                    INS.RecvNotifyInspector = function(Message)
+                        pcall(function()
+                            local name, uid = DXNameByKey(Message and Message.nPlayerKey)
+                            DXLogReporter("REPORT-KE-INSPECTOR", uid, name,
+                                "type=" .. tostring(Message and Message.nType) .. " num=" .. tostring(Message and Message.nNum))
+                        end)
+                        return
+                    end
+                    n = n + 1
+                end
+                if type(INS.ClientNotifyInspectorImplementation) == "function" and not rawget(INS, "__dxcni") then
+                    rawset(INS, "__dxcni", true)
+                    INS.ClientNotifyInspectorImplementation = function(self, nTargetPlayerKey, nType, nNum)
+                        pcall(function()
+                            local name, uid = DXNameByKey(nTargetPlayerKey)
+                            DXLogReporter("NOTIFY-INSPECTOR", uid, name, "type=" .. tostring(nType) .. " num=" .. tostring(nNum))
+                        end)
+                        return
+                    end
+                    n = n + 1
+                end
+            end
+        end)
+        pcall(function()
+            local QR = require("GameLua.Mod.BaseMod.Client.Security.ClientQuickReportMaliciousTeammate")
+            if type(QR) == "table" then
+                if type(QR.MaliciousTeammateReceiveWarningTips) == "function" and not rawget(QR, "__dxwarn") then
+                    rawset(QR, "__dxwarn", true)
+                    QR.MaliciousTeammateReceiveWarningTips = function()
+                        DXLogReporter("ANDA-DILAPORKAN (malicious teammate)", nil, "teammate", "RPC server masuk")
+                        return
+                    end
+                    n = n + 1
+                end
+                if type(QR.MaliciousTeammateVictimReceiveTips) == "function" and not rawget(QR, "__dxvictim") then
+                    rawset(QR, "__dxvictim", true)
+                    QR.MaliciousTeammateVictimReceiveTips = function(sTeammateUID, bIsForbidPickupRevokable, nVictimHealthStatus)
+                        pcall(function()
+                            DXLogReporter("VICTIM-TIPS", sTeammateUID, DXNameByUID(sTeammateUID),
+                                "forbid=" .. tostring(bIsForbidPickupRevokable) .. " hp=" .. tostring(nVictimHealthStatus))
+                        end)
+                        return
+                    end
+                    n = n + 1
+                end
+            end
+        end)
+        pcall(function()
+            local ok, KC = pcall(require, "GameLua.Mod.BaseMod.Client.InspectionSystem.InspectionSystemKickPlayerConfirm")
+            if ok and type(KC) == "table" and type(KC.OnClickConfirmBtn) == "function" and not rawget(KC, "__dxkick") then
+                rawset(KC, "__dxkick", true)
+                KC.OnClickConfirmBtn = function(self)
+                    pcall(function()
+                        local hud = rawget(_G, "slua_GameFrontendHUD")
+                        local pc = hud and hud.GetPlayerController and hud:GetPlayerController()
+                        local key = pc and pc.GetBeKickedPlayerKey and pc:GetBeKickedPlayerKey()
+                        local name, uid = DXNameByKey(key)
+                        DXLogReporter("KICK-CONFIRM (vote kick)", uid, name, "key=" .. tostring(key))
+                    end)
+                    pcall(function() if self and self.CloseSelf then self:CloseSelf() end end)
+                    return
+                end
+                n = n + 1
+            end
+        end)
+        pcall(function()
+            local ok, VP = pcall(require, "GameLua.Mod.BaseMod.Client.Ban.VoiceReportPop")
+            if ok and type(VP) == "table" and type(VP._ReportToSecReportFlow) == "function" and not rawget(VP, "__dxvp") then
+                rawset(VP, "__dxvp", true)
+                VP._ReportToSecReportFlow = function(self, bReportTeammate)
+                    DXLogReporter("VOICE-REPORT-FLOW", nil, nil, "teammate=" .. tostring(bReportTeammate))
+                    return
+                end
+                n = n + 1
+            end
+        end)
+        if n > 0 then
+            _G.DX._ACManipStage = 1
+            DXFw("ACMANIP-1: penangkap pelapor/inspector aktif (" .. n .. "/9 hook)")
+        end
+        return
+    end
+    -- TAHAP 1: spoofing kanal DS + short-circuit aman
+    local n = 0
+    pcall(function()
+        local ok, DN = pcall(require, "ds_net")
+        if ok and type(DN) == "table" and type(DN.SendMessage) == "function" and not rawget(DN, "__dxdsf") then
+            rawset(DN, "__dxdsf", true)
+            local DROP_MSG = {
+                inspection_system_report_to_inspector = true,
+                inspection_system_kick_out_one_team = true,
+            }
+            local oldSend = DN.SendMessage
+            DN.SendMessage = function(messageName, messageTable, uid)
+                if DROP_MSG[messageName] then
+                    DXFw("PKT-SPOOF > ds_net '" .. tostring(messageName) .. "' DIBUANG ✅")
+                    return true
+                end
+                return oldSend(messageName, messageTable, uid)
+            end
+            n = n + 1
+        end
+    end)
+    if n > 0 then
+        _G.DX._ACManipStage = 2
+        DXFw("ACMANIP-2: ds_net spoofing aktif")
+    end
+end
+
+-- Call _ACManipTry inside CompleteAntiBanSystem trigger
+pcall(_G.DX._ACManipTry)
+
     end)
 end
 
