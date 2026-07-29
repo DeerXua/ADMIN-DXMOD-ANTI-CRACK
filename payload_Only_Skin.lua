@@ -4459,7 +4459,7 @@ end
 
 -- INSTALL UNIFIED HIT HOOK (SMART MAGIC BULLET)
 function _G.X3.InstallUnifiedHitHook()
-end
+end   
 
 -- MAGIC BULLET / HITBOX SCALING --
 function _G.X3.InitializeCustomMagicBulletHooks()
@@ -10202,6 +10202,7 @@ end
 
     function _G.X3._XFWScan(...)
 end
+end -- /v46a
 
 -- TPP FORCE (FPP room)
 do
@@ -10209,7 +10210,9 @@ do
 -- KAMERA TPP / FORCE TPP IN FPP --
     function _G.X3._XFTPPTick(...)
 end
+end -- /v46b
 
+do
 -- WATERMARK MATCH / MATCH WATERMARK --
     local function XFWatermarkHookInstall()
         if _G.X3._WMHooked then return true end
@@ -10957,12 +10960,14 @@ do
     function _G.X3._MapMarkClearAll()
     end
 
+
     function _G.X3._MapMarkPosTick(lp)
     end
 
     -- MAP MARK TICK / MAP MARK MEMBERSHIP SWEEP (MAINLOOP 2 dtk: add/hapus/icon)
     function _G.X3._MapMarkTick(lp)
     end
+end
 
 -- ==============================================================================
 -- ============ FILES CRC CHECK BYPASS / PEMALSU VERIFIKASI FILE PAKS ==========
