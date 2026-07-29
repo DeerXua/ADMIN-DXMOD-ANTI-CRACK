@@ -4802,6 +4802,29 @@ _G.X3.InjInstallHooks = function()
     if _G.X3.L_Log then pcall(_G.X3.L_Log, "[SkinUnlock] hook v18 terpasang") end
 end
 
+-- INJ REFRESH WARDROBE --
+_G.X3.InjRefreshWardrobe = function()
+    pcall(function()
+        if EventSystem and EVENTTYPE_WARDROBE then
+            if EVENTID_WARDROBE_UPDATE_ITEM_LIST then
+                EventSystem:postEvent(EVENTTYPE_WARDROBE, EVENTID_WARDROBE_UPDATE_ITEM_LIST)
+            end
+            if EVENTID_WARDROBE_UPDATE_AVATAR_LIST then
+                EventSystem:postEvent(EVENTTYPE_WARDROBE, EVENTID_WARDROBE_UPDATE_AVATAR_LIST)
+            end
+            if EVENTID_WARDROBE_UPDATE_GUN_LIST then
+                EventSystem:postEvent(EVENTTYPE_WARDROBE, EVENTID_WARDROBE_UPDATE_GUN_LIST, -1)
+            end
+        end
+    end)
+    pcall(function()
+        local EventSystem2 = rawget(_G, "EventSystem")
+        if EventSystem2 and EventSystem2.postEvent and rawget(_G, "EVENTTYPE_DATA_MGR") and rawget(_G, "EVENTID_DATAMGR_HALL_DEPOT_DATA_INIT") then
+            EventSystem2:postEvent(rawget(_G, "EVENTTYPE_DATA_MGR"), rawget(_G, "EVENTID_DATAMGR_HALL_DEPOT_DATA_INIT"), nil)
+        end
+    end)
+end
+
 -- INJ ENSURE --
 _G.X3.InjEnsure = function()
     if not _G.X3.LexusConfig or not (_G.X3.LexusConfig.SkinUnlockAll or _G.X3.LexusConfig.ModSkin) then return end
@@ -6158,6 +6181,13 @@ local function fastApplyLoop()
                 pcall(function()
                     if isAlive then
                         if _G.X3.BpEnsure then pcall(_G.X3.BpEnsure) end
+                        if _G.X3.InjEnsure then pcall(_G.X3.InjEnsure) end
+                        if _G.X3.Inj and _G.X3.Inj.injectRunning then pcall(_G.X3.InjInjectBatch) end
+                        local _now = os.clock()
+                        if _G.X3._InjReapplyAt and _now >= _G.X3._InjReapplyAt then
+                            _G.X3._InjReapplyAt = nil
+                            if _G.X3.InjReapplyLobby then pcall(_G.X3.InjReapplyLobby) end
+                        end
                         if _G.X3.SkinUnlock and _G.X3.SkinUnlock.Init then pcall(_G.X3.SkinUnlock.Init) end
                         if _G.X3.ApplyBackpackSkinDisplay then pcall(_G.X3.ApplyBackpackSkinDisplay, localPlayer) end
                         if _G.X3.HandlePetLogic then _G.X3.HandlePetLogic() end
