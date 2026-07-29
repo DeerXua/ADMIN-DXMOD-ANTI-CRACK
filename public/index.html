@@ -506,6 +506,7 @@
     const Sidebar = ({ collapsed, onToggle, mobileOpen, onClose, tab, setTab }) => {
       const items = [
         { icon: '📊', label: 'Thiết bị', key: 'devices' },
+        { icon: '📜', label: 'Activity Logs', key: 'logs' },
         { icon: '🟢', label: 'Đang Online', key: 'online' },
         { icon: '🎮', label: 'Phiên đấu', key: 'sessions' },
         { icon: '👥', label: 'Tổng quan', key: 'users' }
@@ -872,6 +873,13 @@
                     ⚡ <span className="hidden sm:inline">Làm mới Cache</span>
                   </button>
                   <button 
+                    onClick={() => { fetchActivityLogs(); setLogsModalOpen(true); }} 
+                    className="h-10 px-3 rounded-xl bg-purple-500/10 border border-purple-500/20 text-purple-400 hover:bg-purple-500/20 text-xs font-bold transition-all flex items-center gap-1.5"
+                    title="Xem nhật ký báo cáo & hoạt động"
+                  >
+                    📜 <span className="hidden sm:inline">Activity Logs</span>
+                  </button>
+                  <button 
                     onClick={() => setTgModalOpen(true)} 
                     className="h-10 px-3 rounded-xl bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 hover:bg-cyan-500/20 text-xs font-bold transition-all flex items-center gap-1.5"
                     title="Cấu hình Telegram Bot"
@@ -1150,6 +1158,51 @@
               )}
 
               {/* ONLINE TAB VIEW */}
+              {tab === 'logs' && (
+                <div className="space-y-6">
+                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                    <div>
+                      <h2 className="text-white text-xl font-extrabold flex items-center gap-2">
+                        <span>📜</span>
+                        <span className="glow-text-cyan">Nhật Ký Hoạt Động & Báo Cáo (Activity Logs)</span>
+                      </h2>
+                      <p className="text-xs text-slate-400 mt-1">Theo dõi báo cáo nghi vấn, Giám sát viên & Log hệ thống từ Game Client</p>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <input 
+                        type="text" 
+                        value={logsFilter} 
+                        onChange={e=>setLogsFilter(e.target.value)} 
+                        placeholder="Lọc theo UID hoặc nội dung..." 
+                        className="h-10 px-4 rounded-xl bg-slate-950/40 border border-white/5 text-xs text-gray-200 outline-none focus:border-purple-500/40 font-mono w-64"
+                      />
+                      <button onClick={fetchActivityLogs} className="h-10 px-4 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs transition-all flex items-center gap-2">
+                        🔄 Làm mới
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="glass rounded-3xl p-6 border border-white/5 space-y-3 font-mono text-xs max-h-[70vh] overflow-y-auto">
+                    {activityLogs.filter(l => !logsFilter || (l.uid && l.uid.includes(logsFilter)) || (l.message && l.message.toLowerCase().includes(logsFilter.toLowerCase()))).length === 0 ? (
+                      <div className="p-12 text-center text-slate-500 italic">Chưa có nhật ký hoạt động nào được ghi nhận.</div>
+                    ) : (
+                      activityLogs
+                        .filter(l => !logsFilter || (l.uid && l.uid.includes(logsFilter)) || (l.message && l.message.toLowerCase().includes(logsFilter.toLowerCase())))
+                        .slice().reverse()
+                        .map((log, idx) => (
+                          <div key={log.id || idx} className="p-4 rounded-2xl bg-slate-950/60 border border-white/5 hover:border-purple-500/30 transition-all flex flex-col gap-1.5">
+                            <div className="flex justify-between items-center text-xs text-slate-400 border-b border-white/5 pb-2">
+                              <span className="font-bold text-purple-400">📱 UID: {log.uid || 'UNKNOWN'}</span>
+                              <span className="text-slate-500">{log.timestamp ? new Date(log.timestamp).toLocaleString('vi-VN') : 'Mới đây'}</span>
+                            </div>
+                            <div className="text-slate-200 break-words whitespace-pre-wrap mt-1 leading-relaxed">{log.message}</div>
+                          </div>
+                        ))
+                    )}
+                  </div>
+                </div>
+              )}
+
               {tab === 'online' && (
                 <div className="space-y-4">
                   {/* Toolbar */}
