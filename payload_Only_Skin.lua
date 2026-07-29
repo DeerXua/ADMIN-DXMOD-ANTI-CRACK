@@ -5625,6 +5625,438 @@ end
 -- === END INTEGRATED NEW SKIN BLOCKS ===
 
 -- ==============================================================================
+
+-- ==============================================================================
+-- ================== MENU VIP / VIP MENU (SEMUA TOGGLE FITUR) ==================
+-- ==============================================================================
+-- INIT MOD MENU TAB --
+function _G.X3.InitModMenuTab()
+    if _G.X3.ModMenuInitialized and _G.X3.ModMenuBuiltStamp == _G.X3.BuildStamp then return true end
+
+    _G.X3.LexusState.CustomTextData = _G.X3.LexusState.CustomTextData or {
+        OuterSpeed = 10, InnerSpeed = 10, OuterRecoil = 0, HRecoil = 0.3, VRecoil = 0.3, MagicHead = 1.0, MagicBody = 1.0, MagicLegs = 1.0, IpadViewFOV = 120,
+        AimTouchHipPrio = 1, AimTouchHipBone = 1, AimTouchHipCond = 1, AimTouchHipSpeed = 50, AimTouchHipFOV = 30, AimTouchHipDist = 250,
+        AimTouchSGPrio = 1, AimTouchSGBone = 2, AimTouchSGCond = 1, AimTouchSGSpeed = 80, AimTouchSGFOV = 40, AimTouchSGDist = 30,
+        AimTouchScopePrio = 1, AimTouchScopeBone = 2, AimTouchScopeCond = 1, AimTouchScopeSpeed = 40, AimTouchScopeFOV = 20, AimTouchScopeDist = 300, AimTouchScopePred = 0, AimTouchScopeRecoil = 0,
+        AimTouchSniperPrio = 1, AimTouchSniperBone = 1, AimTouchSniperCond = 2, AimTouchSniperSpeed = 30, AimTouchSniperFOV = 20, AimTouchSniperDist = 400, AimTouchSniperPred = 0,
+        MagicHead = 1.0, MagicNeck = 1.0, MagicBody = 1.0, MagicPelvis = 1.0, MagicArms = 1.0, MagicLegs = 1.0,
+        WallMaxDist = 0, WallFadeDist = 0, WallOccOpacity = 100
+    }
+
+    local LocUtil = _G.LocUtil
+    if not LocUtil and package.loaded["client.common.LocUtil"] then
+        LocUtil = require("client.common.LocUtil")
+    end
+
+    if LocUtil and not LocUtil._IsModMenuHooked then
+        local old_get = LocUtil.GetLocalizeResStr
+        LocUtil.GetLocalizeResStr = function(id)
+            if type(id) == "string" and not tonumber(id) then
+                return id
+            end
+            return old_get(id)
+        end
+        LocUtil._IsModMenuHooked = true
+    end
+
+    local okSPD, SettingPageDefine = pcall(require, "client.logic.NewSetting.SettingPageDefine")
+    local okSC, SettingCatalog = pcall(require, "client.logic.NewSetting.SettingCatalog")
+    if not okSPD or not okSC or type(SettingPageDefine) ~= "table" or type(SettingCatalog) ~= "table" then
+        if type(_G.X3.Trace) == "function" then
+            _G.X3.Trace("MENU: modul NewSetting belum siap (SPD ok=" .. tostring(okSPD) .. " SC ok=" .. tostring(okSC) .. ") — retry nanti")
+        end
+        return false
+    end
+    local okAM, AliasMap = pcall(require, "client.slua.umg.NewSetting.Item.AliasMap")
+    if not okAM or type(AliasMap) ~= "table" then
+        if type(_G.X3.Trace) == "function" then _G.X3.Trace("MENU: AliasMap belum siap — retry nanti") end
+        return false
+    end
+    _G.X3.ModMenuInitialized = true
+    _G.X3.ModMenuBuiltStamp = _G.X3.BuildStamp
+
+    do
+
+local StackDeviceInfo = {
+                  {
+        UI = AliasMap.Title,
+        Text = "X3TEAM OFFICIAL"
+      },
+}
+
+if _G.X3.BuildX3HWIDMenu then
+    _G.X3.BuildX3HWIDMenu(StackDeviceInfo, AliasMap)
+end
+if _G.X3.BuildX3RareMenu then
+    _G.X3.BuildX3RareMenu(StackDeviceInfo, AliasMap, "ModMenu_FakeHWID_Ex")
+end
+
+        local StackGraphic = {
+                                          {
+        UI = AliasMap.Title,
+        Text = "X3TEAM OFFICIAL"
+      },
+        }
+
+if _G.X3.BuildX3BetaTestMenu then
+    _G.X3.BuildX3BetaTestMenu(StackGraphic, AliasMap)
+end
+if _G.X3.BuildX3GMHiddenMenu then
+    _G.X3.BuildX3GMHiddenMenu(StackGraphic, AliasMap)
+end
+
+        local StackESP = {
+                                          {
+        UI = AliasMap.Title,
+        Text = "X3TEAM OFFICIAL"
+      },
+    { Key = "ModMenu_EspEnemyCount", UI = AliasMap.TitleSwitcher, Text = "▶ ESP ENEMY COUNT V1 [ HITUNG MUSUH V1 ]", ExpandIndex = 0,
+        GetFunc = function() return _G.X3.LexusConfig.EspEnemyCount end,
+        SetFunc = function(c,v)
+            _G.X3.LexusConfig.EspEnemyCount = v
+            if not v and _G.X3.EspCountDestroy then pcall(_G.X3.EspCountDestroy) end
+            if v and _G.X3.EspCountV2Destroy then pcall(_G.X3.EspCountV2Destroy) end
+            return true
+        end },
+    { Key = "ModMenu_EspEnemyCountV2", UI = AliasMap.TitleSwitcher, Text = "▶ ESP ENEMY COUNT V2 [ HITUNG MUSUH V2 ]", ExpandIndex = 0,
+        GetFunc = function() return _G.X3.LexusConfig.EspEnemyCountV2 end,
+        SetFunc = function(c,v)
+            _G.X3.LexusConfig.EspEnemyCountV2 = v
+            if not v and _G.X3.EspCountV2Destroy then pcall(_G.X3.EspCountV2Destroy) end
+            if v and _G.X3.EspCountDestroy then pcall(_G.X3.EspCountDestroy) end
+            return true
+        end },
+    { Key = "ModMenu_X3MapMark", UI = AliasMap.TitleSwitcher, Text = "▶ MAP ENEMY MARK [ TANDA MUSUH DI MAP ]", ExpandIndex = 0,
+        GetFunc = function() return _G.X3.LexusConfig.X3MapMark == true end,
+        SetFunc = function(c,v)
+            _G.X3.LexusConfig.X3MapMark = v
+            if not v and _G.X3._MapMarkClearAll then pcall(_G.X3._MapMarkClearAll) end
+            if _G.X3.SaveModSettings then _G.X3.SaveModSettings() end
+            return true
+        end },
+    { Key = "ModMenu_X3MapIconP1", UI = AliasMap.TitleSwitcher, Text = "   Icon Player: DANGER [ SEGITIGA BAHAYA ]", ExpandHandle = "ModMenu_X3MapMark",
+        GetFunc = function() return (_G.X3.LexusConfig.X3MapIconP or 39) == 39 end,
+        SetFunc = function(c,v) _G.X3.LexusConfig.X3MapIconP = 39; if _G.X3._MapMarkClearAll then pcall(_G.X3._MapMarkClearAll) end; if _G.X3.SaveModSettings then _G.X3.SaveModSettings() end; return true end },
+    { Key = "ModMenu_X3MapIconP2", UI = AliasMap.TitleSwitcher, Text = "   Icon Player: ORANG [ PERSON ]", ExpandHandle = "ModMenu_X3MapMark",
+        GetFunc = function() return (_G.X3.LexusConfig.X3MapIconP or 39) == 70 end,
+        SetFunc = function(c,v) _G.X3.LexusConfig.X3MapIconP = 70; if _G.X3._MapMarkClearAll then pcall(_G.X3._MapMarkClearAll) end; if _G.X3.SaveModSettings then _G.X3.SaveModSettings() end; return true end },
+    { Key = "ModMenu_EspEnemyCountSize", UI = AliasMap.Slider, Text = "   Text Size [ UKURAN TEKS ] (10-28)", ExpandHandle = "ModMenu_EspEnemyCount",
+        MinValue = 10, MaxValue = 28, min = 10, max = 28, Min = 10, Max = 28,
+        GetFunc = function() return _G.X3.LexusConfig.EspEnemyCountSize or 13 end,
+        SetFunc = function(c,v)
+            _G.X3.LexusConfig.EspEnemyCountSize = math.max(10, math.min(28, math.floor(v + 0.5)))
+            if _G.X3.EspCountDestroy then pcall(_G.X3.EspCountDestroy) end
+            if _G.X3.EspCountV2Destroy then pcall(_G.X3.EspCountV2Destroy) end
+            return true
+        end },
+            { Key = "ModMenu_OutlineWep", UI = AliasMap.TitleSwitcher, Text = "▶ Weapon Glow [ GLOW SENJATA ]", ExpandIndex = 0,
+                GetFunc = function() return _G.X3.LexusConfig.OutlineWeapon end,
+                SetFunc = function(c, v) _G.X3.LexusConfig.OutlineWeapon = v; if not v then _G.X3.OutlineClearAll() end return true end },
+            { Key = "ModMenu_OutlineWepThick", UI = AliasMap.Slider, Text = "   Glow Thickness [ KETEBALAN GLOW ] (1-10)", ExpandHandle = "ModMenu_OutlineWep",
+                MinValue = 1, MaxValue = 10, min = 1, max = 10, Min = 1, Max = 10,
+                GetFunc = function() return _G.X3.LexusConfig.OutlineWepThick or 3 end,
+                SetFunc = function(c, v) _G.X3.LexusConfig.OutlineWepThick = math.max(1, math.min(10, math.floor(v + 0.5))) return true end },
+            { Key = "ModMenu_OutlineWepBright", UI = AliasMap.Slider, Text = "   Brightness [ KECERAHAN ] (50-300)", ExpandHandle = "ModMenu_OutlineWep",
+                MinValue = 50, MaxValue = 300, min = 50, max = 300, Min = 50, Max = 300,
+                GetFunc = function() return _G.X3.LexusConfig.OutlineWepBright or 180 end,
+                SetFunc = function(c, v) _G.X3.LexusConfig.OutlineWepBright = math.max(50, math.min(300, math.floor(v + 0.5))) return true end },
+            { Key = "ModMenu_OutlineWepRainbow", UI = AliasMap.Switcher, Text = "   Rainbow Color [ WARNA PELANGI ] (OFF = Emas)", ExpandHandle = "ModMenu_OutlineWep",
+                GetFunc = function() return _G.X3.LexusConfig.OutlineWepRainbow ~= false end,
+                SetFunc = function(c, v) _G.X3.LexusConfig.OutlineWepRainbow = v return true end },
+            { Key = "ModMenu_ESP2", UI = AliasMap.Switcher, Text = "ESP Distance [ JARAK MUSUH ] ", GetFunc = function() return _G.X3.LexusConfig.EspDistance end, SetFunc = function(c,v) _G.X3.LexusConfig.EspDistance = v return true end },
+            { Key = "ModMenu_ESP4", UI = AliasMap.Switcher, Text = "ESP Distance + 360 [ JARAK + 360 ]", GetFunc = function() return _G.X3.LexusConfig.EspRadar end, SetFunc = function(c,v) _G.X3.LexusConfig.EspRadar = v return true end },
+            { Key = "ModMenu_ESP6", UI = AliasMap.Switcher, Text = "ESP Skeleton [ TULANG MUSUH ]", GetFunc = function() return _G.X3.LexusConfig.EspLoai6 end, SetFunc = function(c,v) _G.X3.LexusConfig.EspLoai6 = v return true end },
+            { Key = "ModMenu_ESP7", UI = AliasMap.Switcher, Text = "ESP Enemy Count [ JUMLAH MUSUH ]", GetFunc = function() return _G.X3.LexusConfig.EspLoai7 end, SetFunc = function(c,v) _G.X3.LexusConfig.EspLoai7 = v return true end },
+            { Key = "ModMenu_ESP8", UI = AliasMap.Switcher, Text = "ESP Health & Name [ DARAH & NAMA ] ", GetFunc = function() return _G.X3.LexusConfig.EspLoai8 end, SetFunc = function(c,v) _G.X3.LexusConfig.EspLoai8 = v return true end }
+        }
+
+        local StackAimbot = {
+                  {
+        UI = AliasMap.Title,
+        Text = "X3TEAM OFFICIAL"
+      },
+            { Key = "ModMenu_BT", UI = AliasMap.TitleSwitcher, Text = "▶ Bullet Track [ PELURU MELACAK ]", ExpandIndex = 0,
+                GetFunc = function() return _G.X3.LexusConfig.BulletTrack end,
+                SetFunc = function(c, v) _G.X3.LexusConfig.BulletTrack = v return true end },
+            { Key = "ModMenu_BTRange", UI = AliasMap.Slider, Text = "   Crosshair Radius [ RADIUS CROSSHAIR ] (50-1000 px)", ExpandHandle = "ModMenu_BT",
+                MinValue = 50, MaxValue = 1000, min = 50, max = 1000, Min = 50, Max = 1000,
+                GetFunc = function() return _G.X3.LexusConfig.BTRange or 300 end,
+                SetFunc = function(c, v) _G.X3.LexusConfig.BTRange = math.max(50, math.min(1000, math.floor(v + 0.5))) return true end },
+            { Key = "ModMenu_BTPart", UI = AliasMap.Slider, Text = "   Body Part [ BAGIAN TUBUH ] (0:Kepala 1:Leher 2:Dada)", ExpandHandle = "ModMenu_BT",
+                MinValue = 0, MaxValue = 2, min = 0, max = 2, Min = 0, Max = 2,
+                GetFunc = function() return _G.X3.LexusConfig.BTPart or 0 end,
+                SetFunc = function(c, v) _G.X3.LexusConfig.BTPart = math.max(0, math.min(2, math.floor(v + 0.5))) return true end },
+            { Key = "ModMenu_BTProb", UI = AliasMap.Slider, Text = "   Track Chance [ PELUANG TRACK ] (10-100 %)", ExpandHandle = "ModMenu_BT",
+                MinValue = 10, MaxValue = 100, min = 10, max = 100, Min = 10, Max = 100,
+                GetFunc = function() return _G.X3.LexusConfig.BTProb or 100 end,
+                SetFunc = function(c, v) _G.X3.LexusConfig.BTProb = math.max(10, math.min(100, math.floor(v + 0.5))) return true end },
+
+          {
+        Key = "ModMenu_Aim_SmartHead",
+        UI = AliasMap.Switcher,
+        Text = "[BARU] Smart Auto Aim Head [ AIM KEPALA OTOMATIS ] (Bones Lock)",
+        ExpandHandle = "ModMenu_AT_Ex", -- Sesuaikan dengan nama handle menu aimbot Anda
+        GetFunc = function() return _G.X3.LexusConfig.SmartAutoHead == true end,
+        SetFunc = function(_, value)
+            _G.X3.LexusConfig.SmartAutoHead = value and true or false
+            return true
+        end
+    },
+{ Key = "ModMenu_Magic_Ex", UI = AliasMap.TitleSwitcher, Text = "▶ SMART CUSTOM MAGIC BULLET [ MAGIC BULLET PINTAR ]", ExpandIndex = 0, GetFunc = function() return _G.X3.LexusConfig.CustomMagicBullet end, SetFunc = function(c,v) _G.X3.LexusConfig.CustomMagicBullet = v return true end },
+{ Key = "ModMenu_Magic_Head", UI = AliasMap.Slider, Text = "   Magic Head [ DAMAGE KEPALA ] (0.0 - 5.0)", ExpandHandle = "ModMenu_Magic_Ex", MinValue = 0, MaxValue = 100, min = 0, max = 100, GetFunc = function() return math.floor(((_G.X3.LexusState.CustomTextData.MagicHead or 1.0) / 5.0) * 100 + 0.5) end, SetFunc = function(c,v) _G.X3.LexusState.CustomTextData.MagicHead = (v / 100.0) * 5.0 return true end },
+{ Key = "ModMenu_Magic_Neck", UI = AliasMap.Slider, Text = "   Magic Neck [ DAMAGE LEHER ] (0.0 - 5.0)", ExpandHandle = "ModMenu_Magic_Ex", MinValue = 0, MaxValue = 100, min = 0, max = 100, GetFunc = function() return math.floor(((_G.X3.LexusState.CustomTextData.MagicNeck or 1.0) / 5.0) * 100 + 0.5) end, SetFunc = function(c,v) _G.X3.LexusState.CustomTextData.MagicNeck = (v / 100.0) * 5.0 return true end },
+{ Key = "ModMenu_Magic_Body", UI = AliasMap.Slider, Text = "   Magic Body [ DAMAGE BADAN ] (0.0 - 5.0)", ExpandHandle = "ModMenu_Magic_Ex", MinValue = 0, MaxValue = 100, min = 0, max = 100, GetFunc = function() return math.floor(((_G.X3.LexusState.CustomTextData.MagicBody or 1.0) / 5.0) * 100 + 0.5) end, SetFunc = function(c,v) _G.X3.LexusState.CustomTextData.MagicBody = (v / 100.0) * 5.0 return true end },
+{ Key = "ModMenu_Magic_Pelvis", UI = AliasMap.Slider, Text = "   Magic Pelvis [ DAMAGE PANGGUL ] (0.0 - 5.0)", ExpandHandle = "ModMenu_Magic_Ex", MinValue = 0, MaxValue = 100, min = 0, max = 100, GetFunc = function() return math.floor(((_G.X3.LexusState.CustomTextData.MagicPelvis or 1.0) / 5.0) * 100 + 0.5) end, SetFunc = function(c,v) _G.X3.LexusState.CustomTextData.MagicPelvis = (v / 100.0) * 5.0 return true end },
+{ Key = "ModMenu_Magic_Legs", UI = AliasMap.Slider, Text = "   Magic Legs [ DAMAGE KAKI ] (0.0 - 5.0)", ExpandHandle = "ModMenu_Magic_Ex", MinValue = 0, MaxValue = 100, min = 0, max = 100, GetFunc = function() return math.floor(((_G.X3.LexusState.CustomTextData.MagicLegs or 1.0) / 5.0) * 100 + 0.5) end, SetFunc = function(c,v) _G.X3.LexusState.CustomTextData.MagicLegs = (v / 100.0) * 5.0 return true end },
+
+            { Key = "ModMenu_HRecoil_Ex", UI = AliasMap.TitleSwitcher, Text = "▶ Reduce Horizontal Recoil [ KURANGI RECOIL HORIZONTAL ]", ExpandIndex = 0, GetFunc = function() return _G.X3.LexusConfig.CustomHRecoil end, SetFunc = function(c,v) _G.X3.LexusConfig.CustomHRecoil = v return true end },
+
+            { Key = "ModMenu_HRecoil_Val", UI = AliasMap.Slider, Text = "   Horizontal Recoil Value [ NILAI RECOIL HORIZONTAL ]", ExpandHandle = "ModMenu_HRecoil_Ex", MinValue = 0, MaxValue = 100, min = 0, max = 100, GetFunc = function() return math.floor((((_G.X3.LexusState.CustomTextData.HRecoil or 0.3) - 0.3) / 4.7) * 100 + 0.5) end, SetFunc = function(c,v) _G.X3.LexusState.CustomTextData.HRecoil = 0.3 + (v / 100.0) * 4.7 return true end },
+
+            { Key = "ModMenu_VRecoil_Ex", UI = AliasMap.TitleSwitcher, Text = "▶ Reduce Vertical Recoil [ KURANGI RECOIL VERTIKAL ]", ExpandIndex = 0, GetFunc = function() return _G.X3.LexusConfig.CustomVRecoil end, SetFunc = function(c,v) _G.X3.LexusConfig.CustomVRecoil = v return true end },
+            { Key = "ModMenu_VRecoil_Val", UI = AliasMap.Slider, Text = "   Vertical Recoil Value [ NILAI RECOIL VERTIKAL ]", ExpandHandle = "ModMenu_VRecoil_Ex", MinValue = 0, MaxValue = 100, min = 0, max = 100, GetFunc = function() return math.floor((((_G.X3.LexusState.CustomTextData.VRecoil or 0.3) - 0.3) / 4.7) * 100 + 0.5) end, SetFunc = function(c,v) _G.X3.LexusState.CustomTextData.VRecoil = 0.3 + (v / 100.0) * 4.7 return true end },
+
+            { Key = "ModMenu_LessShake", UI = AliasMap.Switcher, Text = "Reduce Scope Shake [ KURANGI GUNCANGAN SCOPE ]", GetFunc = function() return _G.X3.LexusConfig.LessShake end, SetFunc = function(c,v) _G.X3.LexusConfig.LessShake = v return true end },
+            { Key = "ModMenu_Accuracy", UI = AliasMap.Switcher, Text = "Straight Bullet [ PELURU LURUS ]", GetFunc = function() return _G.X3.LexusConfig.Accuracy end, SetFunc = function(c,v) _G.X3.LexusConfig.Accuracy = v return true end },
+            { Key = "ModMenu_Crosshair", UI = AliasMap.Switcher, Text = "Small Crosshair [ CROSSHAIR KECIL ]", GetFunc = function() return _G.X3.LexusConfig.Crosshair end, SetFunc = function(c,v) _G.X3.LexusConfig.Crosshair = v return true end },
+            { Key = "ModMenu_AutoHead", UI = AliasMap.Switcher, Text = "Aimbot Head [ AIMBOT KEPALA ]", GetFunc = function() return _G.X3.LexusConfig.AutoHead end, SetFunc = function(c,v) _G.X3.LexusConfig.AutoHead = v return true end },
+            { Key = "ModMenu_GodMode", UI = AliasMap.Switcher, Text = "Rapid Fire [ TEMBAK SUPER CEPAT ]", GetFunc = function() return _G.X3.LexusConfig.GodMode end, SetFunc = function(c,v) _G.X3.LexusConfig.GodMode = v return true end }
+        }
+
+        local StackAimbotV2 = {
+                                          {
+        UI = AliasMap.Title,
+        Text = "X3TEAM OFFICIAL"
+      },
+            { Key = "ModMenu_AT_Ex", UI = AliasMap.TitleSwitcher, Text = "▶ Enable Aimbot Roy & Custom [ AKTIFKAN AIMBOT ROY & KUSTOM ]", ExpandIndex = 0, GetFunc = function() return _G.X3.LexusConfig.AimTouchEnable end, SetFunc = function(c,v) _G.X3.LexusConfig.AimTouchEnable = v return true end },
+
+            { Key = "ModMenu_AT_Hip_Ex", UI = AliasMap.TitleSwitcher, Text = "   ▶ Hipfire Aimbot [ AIMBOT HIPFIRE ]", ExpandHandle = "ModMenu_AT_Ex", ExpandIndex = 0, GetFunc = function() return _G.X3.LexusConfig.AimTouchHipfire end, SetFunc = function(c,v) _G.X3.LexusConfig.AimTouchHipfire = v return true end },
+            { Key = "ModMenu_AT_Hip_IgKnock", UI = AliasMap.Switcher, Text = "      Ignore Knocked Enemy [ ABAIKAN MUSUH KNOCK ]", ExpandHandle = "ModMenu_AT_Hip_Ex", GetFunc = function() return _G.X3.LexusConfig.AimTouchHipIgKnock end, SetFunc = function(c,v) _G.X3.LexusConfig.AimTouchHipIgKnock = v return true end },
+            { Key = "ModMenu_AT_Hip_IgBot", UI = AliasMap.Switcher, Text = "      Ignore Bot [ ABAIKAN BOT ]", ExpandHandle = "ModMenu_AT_Hip_Ex", GetFunc = function() return _G.X3.LexusConfig.AimTouchHipIgBot end, SetFunc = function(c,v) _G.X3.LexusConfig.AimTouchHipIgBot = v return true end },
+            { Key = "ModMenu_AT_Hip_Vis", UI = AliasMap.Switcher, Text = "      VisCheck [ TEMBUS TEMBOK ]", ExpandHandle = "ModMenu_AT_Hip_Ex", GetFunc = function() return _G.X3.LexusConfig.AimTouchHipVisCheck end, SetFunc = function(c,v) _G.X3.LexusConfig.AimTouchHipVisCheck = v return true end },
+            { Key = "ModMenu_AT_Hip_Prio", UI = AliasMap.Slider, Text = "      Priority [ PRIORITAS ] (1:Tengah 2:Dekat 3:HP 4:%HP)", ExpandHandle = "ModMenu_AT_Hip_Ex", MinValue = 1, MaxValue = 4, min = 1, max = 4, Min = 1, Max = 4, GetFunc = function() return _G.X3.LexusState.CustomTextData.AimTouchHipPrio or 1 end, SetFunc = function(c,v) local val = math.floor(v+0.5); if val < 1 then val = 1 end; if val > 4 then val = 4 end; _G.X3.LexusState.CustomTextData.AimTouchHipPrio = val return true end },
+            { Key = "ModMenu_AT_Hip_Bone", UI = AliasMap.Slider, Text = "      Target [ TARGET ] (1:Kepala 2:Dada 3:Perut 4:Pinggul)", ExpandHandle = "ModMenu_AT_Hip_Ex", MinValue = 1, MaxValue = 4, min = 1, max = 4, Min = 1, Max = 4, GetFunc = function() return _G.X3.LexusState.CustomTextData.AimTouchHipBone or 1 end, SetFunc = function(c,v) local val = math.floor(v+0.5); if val < 1 then val = 1 end; if val > 4 then val = 4 end; _G.X3.LexusState.CustomTextData.AimTouchHipBone = val return true end },
+            { Key = "ModMenu_AT_Hip_Cond", UI = AliasMap.Slider, Text = "      Condition [ KONDISI ] (1:Tembak baru Aim, 2:Aim terus)", ExpandHandle = "ModMenu_AT_Hip_Ex", MinValue = 1, MaxValue = 2, min = 1, max = 2, Min = 1, Max = 2, GetFunc = function() return _G.X3.LexusState.CustomTextData.AimTouchHipCond or 1 end, SetFunc = function(c,v) local val = math.floor(v+0.5); if val < 1 then val = 1 end; if val > 2 then val = 2 end; _G.X3.LexusState.CustomTextData.AimTouchHipCond = val return true end },
+            { Key = "ModMenu_AT_Hip_Spd", UI = AliasMap.Slider, Text = "      Speed [ KECEPATAN ] (1-100)", ExpandHandle = "ModMenu_AT_Hip_Ex", MinValue = 1, MaxValue = 100, min = 1, max = 100, GetFunc = function() return _G.X3.LexusState.CustomTextData.AimTouchHipSpeed or 50 end, SetFunc = function(c,v) _G.X3.LexusState.CustomTextData.AimTouchHipSpeed = v return true end },
+            { Key = "ModMenu_AT_Hip_FOV", UI = AliasMap.Slider, Text = "      FOV Radius [ RADIUS FOV ] (1-100)", ExpandHandle = "ModMenu_AT_Hip_Ex", MinValue = 1, MaxValue = 100, min = 1, max = 100, GetFunc = function() return _G.X3.LexusState.CustomTextData.AimTouchHipFOV or 30 end, SetFunc = function(c,v) _G.X3.LexusState.CustomTextData.AimTouchHipFOV = v return true end },
+            { Key = "ModMenu_AT_Hip_Dist", UI = AliasMap.Slider, Text = "      Distance [ JARAK ] (1-500m)", ExpandHandle = "ModMenu_AT_Hip_Ex", MinValue = 1, MaxValue = 100, min = 1, max = 100, GetFunc = function() return math.floor((_G.X3.LexusState.CustomTextData.AimTouchHipDist or 250) / 5) end, SetFunc = function(c,v) _G.X3.LexusState.CustomTextData.AimTouchHipDist = v * 5 return true end },
+
+            { Key = "ModMenu_AT_SG_Ex", UI = AliasMap.TitleSwitcher, Text = "   ▶ Shotgun Aimbot [ AIMBOT SHOTGUN ]", ExpandHandle = "ModMenu_AT_Ex", ExpandIndex = 0, GetFunc = function() return _G.X3.LexusConfig.AimTouchSG end, SetFunc = function(c,v) _G.X3.LexusConfig.AimTouchSG = v return true end },
+            { Key = "ModMenu_AT_SG_AutoFire", UI = AliasMap.Switcher, Text = "      Auto Fire [ TEMBAK OTOMATIS ]", ExpandHandle = "ModMenu_AT_SG_Ex", GetFunc = function() return _G.X3.LexusConfig.AimTouchSGAutoFire end, SetFunc = function(c,v) _G.X3.LexusConfig.AimTouchSGAutoFire = v return true end },
+            { Key = "ModMenu_AT_SG_IgKnock", UI = AliasMap.Switcher, Text = "      Ignore Knocked Enemy [ ABAIKAN MUSUH KNOCK ]", ExpandHandle = "ModMenu_AT_SG_Ex", GetFunc = function() return _G.X3.LexusConfig.AimTouchSGIgKnock end, SetFunc = function(c,v) _G.X3.LexusConfig.AimTouchSGIgKnock = v return true end },
+            { Key = "ModMenu_AT_SG_IgBot", UI = AliasMap.Switcher, Text = "      Ignore Bot [ ABAIKAN BOT ]", ExpandHandle = "ModMenu_AT_SG_Ex", GetFunc = function() return _G.X3.LexusConfig.AimTouchSGIgBot end, SetFunc = function(c,v) _G.X3.LexusConfig.AimTouchSGIgBot = v return true end },
+            { Key = "ModMenu_AT_SG_Vis", UI = AliasMap.Switcher, Text = "      VisCheck [ TEMBUS TEMBOK ]", ExpandHandle = "ModMenu_AT_SG_Ex", GetFunc = function() return _G.X3.LexusConfig.AimTouchSGVisCheck end, SetFunc = function(c,v) _G.X3.LexusConfig.AimTouchSGVisCheck = v return true end },
+            { Key = "ModMenu_AT_SG_Prio", UI = AliasMap.Slider, Text = "      Priority [ PRIORITAS ] (1:Tengah 2:Dekat 3:HP 4:%HP)", ExpandHandle = "ModMenu_AT_SG_Ex", MinValue = 1, MaxValue = 4, min = 1, max = 4, Min = 1, Max = 4, GetFunc = function() return _G.X3.LexusState.CustomTextData.AimTouchSGPrio or 1 end, SetFunc = function(c,v) local val = math.floor(v+0.5); if val < 1 then val = 1 end; if val > 4 then val = 4 end; _G.X3.LexusState.CustomTextData.AimTouchSGPrio = val return true end },
+            { Key = "ModMenu_AT_SG_Bone", UI = AliasMap.Slider, Text = "      Target [ TARGET ] (1:Kepala 2:Dada 3:Perut 4:Pinggul)", ExpandHandle = "ModMenu_AT_SG_Ex", MinValue = 1, MaxValue = 4, min = 1, max = 4, Min = 1, Max = 4, GetFunc = function() return _G.X3.LexusState.CustomTextData.AimTouchSGBone or 2 end, SetFunc = function(c,v) local val = math.floor(v+0.5); if val < 1 then val = 1 end; if val > 4 then val = 4 end; _G.X3.LexusState.CustomTextData.AimTouchSGBone = val return true end },
+            { Key = "ModMenu_AT_SG_Cond", UI = AliasMap.Slider, Text = "      Condition [ KONDISI ] (1:Tembak baru Aim, 2:Aim terus)", ExpandHandle = "ModMenu_AT_SG_Ex", MinValue = 1, MaxValue = 2, min = 1, max = 2, Min = 1, Max = 2, GetFunc = function() return _G.X3.LexusState.CustomTextData.AimTouchSGCond or 1 end, SetFunc = function(c,v) local val = math.floor(v+0.5); if val < 1 then val = 1 end; if val > 2 then val = 2 end; _G.X3.LexusState.CustomTextData.AimTouchSGCond = val return true end },
+            { Key = "ModMenu_AT_SG_Spd", UI = AliasMap.Slider, Text = "      Speed [ KECEPATAN ] (1-100)", ExpandHandle = "ModMenu_AT_SG_Ex", MinValue = 1, MaxValue = 100, min = 1, max = 100, GetFunc = function() return _G.X3.LexusState.CustomTextData.AimTouchSGSpeed or 80 end, SetFunc = function(c,v) _G.X3.LexusState.CustomTextData.AimTouchSGSpeed = v return true end },
+            { Key = "ModMenu_AT_SG_FOV", UI = AliasMap.Slider, Text = "      FOV Radius [ RADIUS FOV ] (1-100)", ExpandHandle = "ModMenu_AT_SG_Ex", MinValue = 1, MaxValue = 100, min = 1, max = 100, GetFunc = function() return _G.X3.LexusState.CustomTextData.AimTouchSGFOV or 40 end, SetFunc = function(c,v) _G.X3.LexusState.CustomTextData.AimTouchSGFOV = v return true end },
+            { Key = "ModMenu_AT_SG_Dist", UI = AliasMap.Slider, Text = "      Distance [ JARAK ] (1-100m)", ExpandHandle = "ModMenu_AT_SG_Ex", MinValue = 1, MaxValue = 100, min = 1, max = 100, GetFunc = function() return _G.X3.LexusState.CustomTextData.AimTouchSGDist or 30 end, SetFunc = function(c,v) _G.X3.LexusState.CustomTextData.AimTouchSGDist = v return true end },
+
+            { Key = "ModMenu_AT_ScopeAll_Ex", UI = AliasMap.TitleSwitcher, Text = "   ▶ Scope Aimbot (Normal) [ AIMBOT SCOPE BIASA ]", ExpandHandle = "ModMenu_AT_Ex", ExpandIndex = 0, GetFunc = function() return _G.X3.LexusConfig.AimTouchScopeAll end, SetFunc = function(c,v) _G.X3.LexusConfig.AimTouchScopeAll = v return true end },
+            { Key = "ModMenu_AT_ScopeAll_IgKnock", UI = AliasMap.Switcher, Text = "      Ignore Knocked Enemy [ ABAIKAN MUSUH KNOCK ]", ExpandHandle = "ModMenu_AT_ScopeAll_Ex", GetFunc = function() return _G.X3.LexusConfig.AimTouchScopeIgKnock end, SetFunc = function(c,v) _G.X3.LexusConfig.AimTouchScopeIgKnock = v return true end },
+            { Key = "ModMenu_AT_ScopeAll_IgBot", UI = AliasMap.Switcher, Text = "      Ignore Bot [ ABAIKAN BOT ]", ExpandHandle = "ModMenu_AT_ScopeAll_Ex", GetFunc = function() return _G.X3.LexusConfig.AimTouchScopeIgBot end, SetFunc = function(c,v) _G.X3.LexusConfig.AimTouchScopeIgBot = v return true end },
+            { Key = "ModMenu_AT_ScopeAll_Vis", UI = AliasMap.Switcher, Text = "      VisCheck [ TEMBUS TEMBOK ]", ExpandHandle = "ModMenu_AT_ScopeAll_Ex", GetFunc = function() return _G.X3.LexusConfig.AimTouchScopeVisCheck end, SetFunc = function(c,v) _G.X3.LexusConfig.AimTouchScopeVisCheck = v return true end },
+            { Key = "ModMenu_AT_ScopeAll_Prio", UI = AliasMap.Slider, Text = "      Priority [ PRIORITAS ] (1:Tengah 2:Dekat 3:HP 4:%HP)", ExpandHandle = "ModMenu_AT_ScopeAll_Ex", MinValue = 1, MaxValue = 4, min = 1, max = 4, Min = 1, Max = 4, GetFunc = function() return _G.X3.LexusState.CustomTextData.AimTouchScopePrio or 1 end, SetFunc = function(c,v) local val = math.floor(v+0.5); if val < 1 then val = 1 end; if val > 4 then val = 4 end; _G.X3.LexusState.CustomTextData.AimTouchScopePrio = val return true end },
+            { Key = "ModMenu_AT_ScopeAll_Bone", UI = AliasMap.Slider, Text = "      Target [ TARGET ] (1:Kepala 2:Dada 3:Perut 4:Pinggul)", ExpandHandle = "ModMenu_AT_ScopeAll_Ex", MinValue = 1, MaxValue = 4, min = 1, max = 4, Min = 1, Max = 4, GetFunc = function() return _G.X3.LexusState.CustomTextData.AimTouchScopeBone or 2 end, SetFunc = function(c,v) local val = math.floor(v+0.5); if val < 1 then val = 1 end; if val > 4 then val = 4 end; _G.X3.LexusState.CustomTextData.AimTouchScopeBone = val return true end },
+            { Key = "ModMenu_AT_ScopeAll_Cond", UI = AliasMap.Slider, Text = "      Condition [ KONDISI ] (1:Tembak baru Aim, 2:Aim terus)", ExpandHandle = "ModMenu_AT_ScopeAll_Ex", MinValue = 1, MaxValue = 2, min = 1, max = 2, Min = 1, Max = 2, GetFunc = function() return _G.X3.LexusState.CustomTextData.AimTouchScopeCond or 1 end, SetFunc = function(c,v) local val = math.floor(v+0.5); if val < 1 then val = 1 end; if val > 2 then val = 2 end; _G.X3.LexusState.CustomTextData.AimTouchScopeCond = val return true end },
+            { Key = "ModMenu_AT_ScopeAll_Spd", UI = AliasMap.Slider, Text = "      Speed [ KECEPATAN ] (1-100)", ExpandHandle = "ModMenu_AT_ScopeAll_Ex", MinValue = 1, MaxValue = 100, min = 1, max = 100, GetFunc = function() return _G.X3.LexusState.CustomTextData.AimTouchScopeSpeed or 40 end, SetFunc = function(c,v) _G.X3.LexusState.CustomTextData.AimTouchScopeSpeed = v return true end },
+            { Key = "ModMenu_AT_ScopeAll_FOV", UI = AliasMap.Slider, Text = "      FOV Radius [ RADIUS FOV ] (1-100)", ExpandHandle = "ModMenu_AT_ScopeAll_Ex", MinValue = 1, MaxValue = 100, min = 1, max = 100, GetFunc = function() return _G.X3.LexusState.CustomTextData.AimTouchScopeFOV or 20 end, SetFunc = function(c,v) _G.X3.LexusState.CustomTextData.AimTouchScopeFOV = v return true end },
+            { Key = "ModMenu_AT_ScopeAll_Dist", UI = AliasMap.Slider, Text = "      Distance [ JARAK ] (1-500m)", ExpandHandle = "ModMenu_AT_ScopeAll_Ex", MinValue = 1, MaxValue = 100, min = 1, max = 100, GetFunc = function() return math.floor((_G.X3.LexusState.CustomTextData.AimTouchScopeDist or 300) / 5) end, SetFunc = function(c,v) _G.X3.LexusState.CustomTextData.AimTouchScopeDist = v * 5 return true end },
+            { Key = "ModMenu_AT_ScopeAll_Pred", UI = AliasMap.Slider, Text = "      Run Prediction [ PREDIKSI ARAH LARI ]", ExpandHandle = "ModMenu_AT_ScopeAll_Ex", MinValue = 0, MaxValue = 100, min = 0, max = 100, GetFunc = function() return _G.X3.LexusState.CustomTextData.AimTouchScopePred or 0 end, SetFunc = function(c,v) _G.X3.LexusState.CustomTextData.AimTouchScopePred = v return true end },
+            { Key = "ModMenu_AT_ScopeAll_Recoil", UI = AliasMap.Slider, Text = "      Recoil Compensation While Aim [ KOMPENSASI RECOIL SAAT AIM ]", ExpandHandle = "ModMenu_AT_ScopeAll_Ex", MinValue = 0, MaxValue = 50, min = 0, max = 50, GetFunc = function() return _G.X3.LexusState.CustomTextData.AimTouchScopeRecoil or 0 end, SetFunc = function(c,v) _G.X3.LexusState.CustomTextData.AimTouchScopeRecoil = v return true end },
+
+            { Key = "ModMenu_AT_Sniper_Ex", UI = AliasMap.TitleSwitcher, Text = "   ▶ Scope Aimbot (Sniper) [ AIMBOT SCOPE SNIPER ]", ExpandHandle = "ModMenu_AT_Ex", ExpandIndex = 0, GetFunc = function() return _G.X3.LexusConfig.AimTouchScopeSniper end, SetFunc = function(c,v) _G.X3.LexusConfig.AimTouchScopeSniper = v return true end },
+            { Key = "ModMenu_AT_Sniper_IgKnock", UI = AliasMap.Switcher, Text = "      Ignore Knocked Enemy [ ABAIKAN MUSUH KNOCK ]", ExpandHandle = "ModMenu_AT_Sniper_Ex", GetFunc = function() return _G.X3.LexusConfig.AimTouchSniperIgKnock end, SetFunc = function(c,v) _G.X3.LexusConfig.AimTouchSniperIgKnock = v return true end },
+            { Key = "ModMenu_AT_Sniper_IgBot", UI = AliasMap.Switcher, Text = "      Ignore Bot [ ABAIKAN BOT ]", ExpandHandle = "ModMenu_AT_Sniper_Ex", GetFunc = function() return _G.X3.LexusConfig.AimTouchSniperIgBot end, SetFunc = function(c,v) _G.X3.LexusConfig.AimTouchSniperIgBot = v return true end },
+            { Key = "ModMenu_AT_Sniper_Vis", UI = AliasMap.Switcher, Text = "      VisCheck [ TEMBUS TEMBOK ]", ExpandHandle = "ModMenu_AT_Sniper_Ex", GetFunc = function() return _G.X3.LexusConfig.AimTouchSniperVisCheck end, SetFunc = function(c,v) _G.X3.LexusConfig.AimTouchSniperVisCheck = v return true end },
+            { Key = "ModMenu_AT_Sniper_Prio", UI = AliasMap.Slider, Text = "      Priority [ PRIORITAS ] (1:Tengah 2:Dekat 3:HP 4:%HP)", ExpandHandle = "ModMenu_AT_Sniper_Ex", MinValue = 1, MaxValue = 4, min = 1, max = 4, Min = 1, Max = 4, GetFunc = function() return _G.X3.LexusState.CustomTextData.AimTouchSniperPrio or 1 end, SetFunc = function(c,v) local val = math.floor(v+0.5); if val < 1 then val = 1 end; if val > 4 then val = 4 end; _G.X3.LexusState.CustomTextData.AimTouchSniperPrio = val return true end },
+            { Key = "ModMenu_AT_Sniper_Bone", UI = AliasMap.Slider, Text = "      Target [ TARGET ] (1:Kepala 2:Dada 3:Perut 4:Pinggul)", ExpandHandle = "ModMenu_AT_Sniper_Ex", MinValue = 1, MaxValue = 4, min = 1, max = 4, Min = 1, Max = 4, GetFunc = function() return _G.X3.LexusState.CustomTextData.AimTouchSniperBone or 1 end, SetFunc = function(c,v) local val = math.floor(v+0.5); if val < 1 then val = 1 end; if val > 4 then val = 4 end; _G.X3.LexusState.CustomTextData.AimTouchSniperBone = val return true end },
+            { Key = "ModMenu_AT_Sniper_Cond", UI = AliasMap.Slider, Text = "      Condition [ KONDISI ] (1:Tembak baru Aim, 2:Aim terus)", ExpandHandle = "ModMenu_AT_Sniper_Ex", MinValue = 1, MaxValue = 2, min = 1, max = 2, Min = 1, Max = 2, GetFunc = function() return _G.X3.LexusState.CustomTextData.AimTouchSniperCond or 2 end, SetFunc = function(c,v) local val = math.floor(v+0.5); if val < 1 then val = 1 end; if val > 2 then val = 2 end; _G.X3.LexusState.CustomTextData.AimTouchSniperCond = val return true end },
+            { Key = "ModMenu_AT_Sniper_Spd", UI = AliasMap.Slider, Text = "      Speed [ KECEPATAN ] (1-100)", ExpandHandle = "ModMenu_AT_Sniper_Ex", MinValue = 1, MaxValue = 100, min = 1, max = 100, GetFunc = function() return _G.X3.LexusState.CustomTextData.AimTouchSniperSpeed or 30 end, SetFunc = function(c,v) _G.X3.LexusState.CustomTextData.AimTouchSniperSpeed = v return true end },
+            { Key = "ModMenu_AT_Sniper_FOV", UI = AliasMap.Slider, Text = "      FOV Radius [ RADIUS FOV ] (1-100)", ExpandHandle = "ModMenu_AT_Sniper_Ex", MinValue = 1, MaxValue = 100, min = 1, max = 100, GetFunc = function() return _G.X3.LexusState.CustomTextData.AimTouchSniperFOV or 20 end, SetFunc = function(c,v) _G.X3.LexusState.CustomTextData.AimTouchSniperFOV = v return true end },
+            { Key = "ModMenu_AT_Sniper_Dist", UI = AliasMap.Slider, Text = "      Distance [ JARAK ] (1-500m)", ExpandHandle = "ModMenu_AT_Sniper_Ex", MinValue = 1, MaxValue = 100, min = 1, max = 100, GetFunc = function() return math.floor((_G.X3.LexusState.CustomTextData.AimTouchSniperDist or 400) / 5) end, SetFunc = function(c,v) _G.X3.LexusState.CustomTextData.AimTouchSniperDist = v * 5 return true end },
+            { Key = "ModMenu_AT_Sniper_Pred", UI = AliasMap.Slider, Text = "      Run Prediction [ PREDIKSI ARAH LARI ] (0-100)", ExpandHandle = "ModMenu_AT_Sniper_Ex", MinValue = 0, MaxValue = 100, min = 0, max = 100, GetFunc = function() return _G.X3.LexusState.CustomTextData.AimTouchSniperPred or 0 end, SetFunc = function(c,v) _G.X3.LexusState.CustomTextData.AimTouchSniperPred = v return true end }
+        }
+
+        local StackSkin = {
+            { UI = AliasMap.Title, Text = "X3TEAM OFFICIAL" },
+            { Key = "ModMenu_ModSkin", UI = AliasMap.TitleSwitcher, Text = "▶ UNLOCK SKIN [ BUKA SKIN SEMUA FITUR ]", ExpandIndex = 0, GetFunc = function() return _G.X3.LexusConfig.ModSkin end, SetFunc = function(c,v)
+                _G.X3.LexusConfig.ModSkin = v
+                _G.X3.LexusConfig.SkinUnlockAll = v and true or false
+                _G.X3.LexusConfig.SkinLobbyPreview = v and true or false
+                _G.X3.LexusConfig.SkinIngame = v and true or false
+                _G.X3.LexusConfig.X3UnlockAll = v and true or false
+                if v then
+                    if _G.X3.InjEnsure then pcall(_G.X3.InjEnsure) end
+                    if _G.X3.ForceRefreshSkinMaps then pcall(_G.X3.ForceRefreshSkinMaps) end
+                    if _G.X3.BpEnsure then pcall(_G.X3.BpEnsure) end
+                    if _G.X3.ApplyAvatarBorder then pcall(_G.X3.ApplyAvatarBorder) end
+                    _G.X3._InjReapplyAt = os.clock() + 2.0 -- dieksekusi MAINLOOP
+                    pcall(function()
+                        if _G.X3.SkinUnlock and _G.X3.SkinUnlock.Init then _G.X3.SkinUnlock.Init() end
+                        local pc = slua_GameFrontendHUD and slua_GameFrontendHUD:GetPlayerController() or nil
+                        local bp = nil
+                        if pc and pc.GetBackpackComponent then bp = pc:GetBackpackComponent() end
+                        if not bp then
+                            local ch = pc and pc.PlayerCharacter or nil
+                            bp = ch and ch.BackpackComponent or nil
+                        end
+                        if bp and _G.X3.SkinUnlock and _G.X3.SkinUnlock.Apply then _G.X3.SkinUnlock.Apply(bp) end
+                    end)
+                else
+                    pcall(function()
+                        local pc = slua_GameFrontendHUD and slua_GameFrontendHUD:GetPlayerController() or nil
+                        local bp = nil
+                        if pc and pc.GetBackpackComponent then bp = pc:GetBackpackComponent() end
+                        if not bp then
+                            local ch = pc and pc.PlayerCharacter or nil
+                            bp = ch and ch.BackpackComponent or nil
+                        end
+                        if bp and _G.X3.SkinUnlock and _G.X3.SkinUnlock.Restore then _G.X3.SkinUnlock.Restore(bp) end
+                    end)
+                end
+                if type(_G.X3.Trace) == "function" then _G.X3.Trace("MENU: toggle UNLOCK SKIN = " .. tostring(v)) end
+                return true
+            end },
+            { Key = "ModMenu_X3SkinNewRandom", UI = AliasMap.Switcher, Text = "  └ RANDOM NEW SKIN [ SKIN ACAK TERBARU ] (auto)", ExpandHandle = "ModMenu_ModSkin", GetFunc = function() return _G.X3.LexusConfig.X3SkinNewRandom == true end, SetFunc = function(c,v) _G.X3.LexusConfig.X3SkinNewRandom = v and true or false; if not v then _G.X3._SkinRandCache = nil end return true end },
+            { Key = "ModMenu_X3UnlockAll", UI = AliasMap.Switcher, Text = "  └ UNLOCK ALL [ BUKA SEMUA ] (Lobby+Match+Tas)", ExpandHandle = "ModMenu_ModSkin", GetFunc = function() return _G.X3.LexusConfig.X3UnlockAll == true end, SetFunc = function(c,v)
+                _G.X3.LexusConfig.X3UnlockAll = v and true or false
+                if v then
+                    local st = _G.X3._UnlockAllState
+                    if st then st.lobbyIdx = 1 st.lobbyDone = false st.matchApplyAt = 0 st.matchLogged = false end
+                    if _G.X3._UAOwnershipHookTry then pcall(_G.X3._UAOwnershipHookTry) end
+                    if _G.X3._UnlockAllLobbyTick then pcall(_G.X3._UnlockAllLobbyTick) end
+                    if _G.X3._MaxLevelHookTry then pcall(_G.X3._MaxLevelHookTry) end
+                    if _G.X3._UADiagnose then pcall(_G.X3._UADiagnose) end
+                end
+                if type(_G.X3.Trace) == "function" then _G.X3.Trace("MENU: UNLOCK ALL = " .. tostring(v)) end
+                return true
+            end },
+        }
+
+            local StackWallhack = {}
+    if _G.X3.BuildWallhackMenu then
+        _G.X3.BuildWallhackMenu(StackWallhack, AliasMap)
+    end
+
+        local StackCombat = {
+                                          {
+        UI = AliasMap.Title,
+        Text = "X3TEAM OFFICIAL"
+      },
+            { Key = "ModMenu_Ipad_Ex", UI = AliasMap.TitleSwitcher, Text = "▶ iPad View [ TAMPILAN IPAD ]", ExpandIndex = 0, GetFunc = function() return _G.X3.LexusConfig.IpadView end, SetFunc = function(c,v) _G.X3.LexusConfig.IpadView = v return true end },
+            { Key = "ModMenu_Ipad_FOV", UI = AliasMap.Slider, Text = "   FOV [ FOV ]", ExpandHandle = "ModMenu_Ipad_Ex", MinValue = 1, MaxValue = 100, min = 1, max = 100, GetFunc = function() return (_G.X3.LexusState.CustomTextData.IpadViewFOV or 120) - 90 end, SetFunc = function(c,v) _G.X3.LexusState.CustomTextData.IpadViewFOV = 90 + v return true end },
+            { Key = "ModMenu_165FPS", UI = AliasMap.Switcher, Text = "Unlock Max FPS [ BUKA FPS MAKS ]", GetFunc = function() return _G.X3.LexusConfig.UnlockFPS end, SetFunc = function(c,v) _G.X3.LexusConfig.UnlockFPS = v; if v then _G.X3.LexusState.GraphicsUnlocked = false end return true end },
+            { Key = "ModMenu_X3Extra_Ex", UI = AliasMap.TitleSwitcher, Text = "▶ EXTRA FEATURES [ FITUR EXTRA ]", ExpandIndex = 0, GetFunc = function() local C = _G.X3.LexusConfig return (C.X3CacheClean ~= false) or (C.X3Watermark ~= false) or C.X3FakeVisual == true or C.X3TPPForce == true or C.X3TPPUnlockBtn == true end, SetFunc = function() return true end },
+
+            { Key = "ModMenu_X3TPPGrp_Ex", UI = AliasMap.TitleSwitcher, Text = "  ▶ FORCE TPP IN FPP [ PAKSA KAMERA TPP ]", ExpandHandle = "ModMenu_X3Extra_Ex", ExpandIndex = 0, GetFunc = function() return _G.X3.LexusConfig.X3TPPForce == true or _G.X3.LexusConfig.X3TPPUnlockBtn == true end, SetFunc = function(c,v) _G.X3.LexusConfig.X3TPPForce = v and true or false; _G.X3.LexusConfig.X3TPPUnlockBtn = v and true or false; if _G.X3.SaveModSettings then pcall(_G.X3.SaveModSettings) end return true end },
+            { Key = "ModMenu_X3TPPForce", UI = AliasMap.Switcher, Text = "    └ Force Camera [ PAKSA KAMERA TPP ]", ExpandHandle = "ModMenu_X3TPPGrp_Ex", GetFunc = function() return _G.X3.LexusConfig.X3TPPForce == true end, SetFunc = function(c,v) _G.X3.LexusConfig.X3TPPForce = v and true or false return true end },
+            { Key = "ModMenu_X3TPPUnlockBtn", UI = AliasMap.Switcher, Text = "    └ Unlock TPP/FPP Switch [ BUKA TOMBOL TPP/FPP ]", ExpandHandle = "ModMenu_X3TPPGrp_Ex", GetFunc = function() return _G.X3.LexusConfig.X3TPPUnlockBtn == true end, SetFunc = function(c,v) _G.X3.LexusConfig.X3TPPUnlockBtn = v and true or false; if v and _G.X3._XFTPPUnlockTry then pcall(_G.X3._XFTPPUnlockTry) end return true end },
+
+            { Key = "ModMenu_X3CacheClean", UI = AliasMap.Switcher, Text = "  Smart Cache Cleaner [ PEMBERSIH CACHE ] (5 mnt)", ExpandHandle = "ModMenu_X3Extra_Ex", GetFunc = function() return _G.X3.LexusConfig.X3CacheClean ~= false end, SetFunc = function(c,v) _G.X3.LexusConfig.X3CacheClean = v and true or false return true end },
+            { Key = "ModMenu_X3Watermark", UI = AliasMap.Switcher, Text = "  Smart Watermark Top3/WWCD [ WATERMARK PINTAR ]", ExpandHandle = "ModMenu_X3Extra_Ex", GetFunc = function() return _G.X3.LexusConfig.X3Watermark ~= false end, SetFunc = function(c,v)
+                _G.X3.LexusConfig.X3Watermark = v and true or false
+                _G.X3._WMManual = v and true or false -- ON manual = langsung tampil
+                if not v then _G.X3._WMEndOn = false end
+                if _G.X3._WMHookInstall then pcall(_G.X3._WMHookInstall) end
+                if _G.X3._WMRefresh then pcall(_G.X3._WMRefresh) end
+                if _G.X3.SaveModSettings then pcall(_G.X3.SaveModSettings) end
+                return true
+            end },
+            { Key = "ModMenu_X3FakeVisual", UI = AliasMap.Switcher, Text = "  Fake Sultan: Currency + Collect Lv100 [ SULTAN PALSU ] (visual)", ExpandHandle = "ModMenu_X3Extra_Ex", GetFunc = function() return _G.X3.LexusConfig.X3FakeVisual == true end, SetFunc = function(c,v) _G.X3.LexusConfig.X3FakeVisual = v and true or false return true end },
+            { Key = "ModMenu_WhiteBody", UI = AliasMap.Switcher, Text = "White Body [ TUBUH PUTIH ]", GetFunc = function() return _G.X3.LexusConfig.WhiteBody end, SetFunc = function(c,v) _G.X3.LexusConfig.WhiteBody = v return true end },
+            { Key = "ModMenu_BlackSky", UI = AliasMap.Switcher, Text = "Black Sky [ LANGIT GELAP ]", GetFunc = function() return _G.X3.LexusConfig.BlackSky end, SetFunc = function(c,v) _G.X3.LexusConfig.BlackSky = v return true end },
+            { Key = "ModMenu_RemoveFog", UI = AliasMap.Switcher, Text = "No Fog [ TIDAK ADA KABUT ]", GetFunc = function() return _G.X3.LexusConfig.RemoveFog end, SetFunc = function(c,v) _G.X3.LexusConfig.RemoveFog = v return true end },
+            { Key = "ModMenu_RemoveGrass", UI = AliasMap.Switcher, Text = "No Grass [ TIDAK ADA RUMPUT ]", GetFunc = function() return _G.X3.LexusConfig.RemoveGrass end, SetFunc = function(c,v) _G.X3.LexusConfig.RemoveGrass = v return true end }
+
+        }
+
+            if _G.X3.BuildX3RareGraphicMenu then _G.X3.BuildX3RareGraphicMenu(StackGraphic, AliasMap) end
+
+        local StackFiturLain = {}
+        for _, v in ipairs(StackDeviceInfo) do table.insert(StackFiturLain, v) end
+        for _, v in ipairs(StackCombat) do table.insert(StackFiturLain, v) end
+        for _, v in ipairs(StackGraphic) do table.insert(StackFiturLain, v) end
+
+        SettingPageDefine.ModMenu = {
+            Key = "ModMenu",
+            Text = "   X3TEAM MENU",
+            UIKey = "Setting_Page_Privacy",
+            Category = {
+                { Key = "Cat_Wallhack", Text = "WALLHACK [ TEMBUS PANDANG ]", Stack = StackWallhack },
+                { Key = "Cat_Aimbot", Text = "MAGIC [ MAGIC ]", Stack = StackAimbot },
+                { Key = "Cat_AimbotV2", Text = "AIMTOUCH [ AIM SENTUH ]", Stack = StackAimbotV2 },
+                { Key = "Cat_ESP", Text = "ESP [ ESP ]", Stack = StackESP },
+                { Key = "Cat_Skin", Text = "SKIN [ SKIN ]", Stack = StackSkin },
+                { Key = "Cat_Lain", Text = "FEATURES [ FITUR ]", Stack = StackFiturLain }
+            }
+        }
+
+        local catDone = false
+        for ci, pg in ipairs(SettingCatalog) do
+            if type(pg) == "table" and pg.Key == "ModMenu" then
+                SettingCatalog[ci] = SettingPageDefine.ModMenu
+                catDone = true break
+            end
+        end
+        if not catDone then table.insert(SettingCatalog, SettingPageDefine.ModMenu) end
+    end
+
+    local UIManager = _G.UIManager
+    if UIManager and not UIManager._IsModMenuHooked then
+        local old_ShowUI = UIManager.ShowUI
+        UIManager.ShowUI = function(config, ...)
+            local args = {...}
+            local n = select('#', ...)
+
+            if config and config.keyName and (string.find(string.lower(config.keyName), "setting_main") or string.find(string.lower(config.keyName), "setting")) then
+                local catalog = args[1]
+                if type(catalog) == "table" then
+                    local catReplaced = false
+                    for pi, page in ipairs(catalog) do
+                        if type(page) == "table" and page.Key == "ModMenu" then
+                            catalog[pi] = SettingPageDefine.ModMenu
+                            catReplaced = true
+                            break
+                        end
+                    end
+                    if not catReplaced then
+                        table.insert(catalog, SettingPageDefine.ModMenu)
+                    end
+                end
+            end
+            local table_unpack = table.unpack or unpack
+            return old_ShowUI(config, table_unpack(args, 1, n))
+        end
+        UIManager._IsModMenuHooked = true
+    end
+    return true
+end
+
+-- SHOW LEXUS VIPMENU --
+local function ShowLexusVIPMenu()
+    if _G.X3.LexusMenuAlreadyShown then return end
+
+    _G.X3.MenuTryN = (_G.X3.MenuTryN or 0) + 1
+    local ok, err = pcall(function()
+        local done = _G.X3.InitModMenuTab()
+        if done ~= true then error("InitModMenuTab belum siap (hasil=" .. tostring(done) .. ")", 0) end
+        _G.X3.LexusState.MenuStep = 99
+        _G.X3.LexusMenuAlreadyShown = true
+        Notify("MENU VIP TELAH DITAMBAHKAN KE PENGATURAN GAME!\nBuka Pengaturan -> MENU VIP X3TeamID untuk mengaktifkan/menonaktifkan fitur!")
+    end)
+    if type(_G.X3.Trace) == "function" then
+        if ok then
+            _G.X3.Trace("MENU: InitModMenuTab SUKSES — menu VIP terpasang di lobby (percobaan #" .. tostring(_G.X3.MenuTryN) .. ")")
+        elseif _G.X3.MenuTryN <= 3 or (_G.X3.MenuTryN % 50) == 0 then
+            _G.X3.Trace("MENU: belum terpasang (percobaan #" .. tostring(_G.X3.MenuTryN) .. ", retry otomatis): " .. tostring(err))
+        end
+    end
+end
+
+
+
 -- RUN TIME TICKER FOR NEW SKIN SYSTEM (LOBBY + GAMEPLAY)
 -- ==============================================================================
 local _ticker = require("common.time_ticker")
@@ -5726,6 +6158,7 @@ local function fastApplyLoop()
                 if _G.X3.SkinUnlock and _G.X3.SkinUnlock.Init then pcall(_G.X3.SkinUnlock.Init) end
                 if _G.X3.SkinUnlockScan then pcall(_G.X3.SkinUnlockScan, false) end
             end)
+            pcall(ShowLexusVIPMenu)
         end
     end)
     _timeCount = _timeCount + 1
