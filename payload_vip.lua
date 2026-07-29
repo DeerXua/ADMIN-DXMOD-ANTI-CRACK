@@ -1745,9 +1745,10 @@ local function DX_CaptureOriginalInfo()
             pcall(function() _G.DX_OriginalInfo.OS = T.GetOSVersion() end) 
         end
         if DataOS then
-            _G.DX_OriginalInfo.IP = DataOS.vClientIP
-            _G.DX_OriginalInfo.Firebase = DataOS.FirebaseInstanceID
-            _G.DX_OriginalInfo.XID = DataOS.AdvertisingID or DataOS.OAID
+            local info = (type(DataOS.InfoList) == "table" and DataOS.InfoList) or DataOS
+            _G.DX_OriginalInfo.IP = info.vClientIP or DataOS.vClientIP
+            _G.DX_OriginalInfo.Firebase = info.FirebaseInstanceID or DataOS.FirebaseInstanceID
+            _G.DX_OriginalInfo.XID = info.XID or info.L1XID or info.AdvertisingID or info.OAID or DataOS.AdvertisingID or DataOS.OAID
         end
         _G.DX_OriginalInfo.Captured = true
     end)
@@ -1823,23 +1824,78 @@ function _G.DX_InitializeHWIDHook()
             _G.DX_HWID_Hooked = true
         end
         
-        -- Hook data_device_os (IP, Firebase, XID) qua Metatable __index
+        -- Hook data_device_os (IP, Firebase, XID, InfoList & Native Functions)
         local DataOS = package.loaded["client.logic.data.data_device_os"]
         if DataOS and not _G.DX_DataOS_Hooked then
-            local mt = getmetatable(DataOS) or {}
-            local origIndex = mt.__index
-            mt.__index = function(t, k)
+            if DataOS.GetXID then
+                _G.DX_Orig_DataOS_GetXID = DataOS.GetXID
+                DataOS.GetXID = function(...)
+                    if _G.DX_Settings and _G.DX_Settings.FAKE_HWID == 1 then
+                        if not _G.DX_FakeData.XID then DX_RegenerateAllFakeData() end
+                        return _G.DX_FakeData.XID
+                    end
+                    return _G.DX_Orig_DataOS_GetXID and _G.DX_Orig_DataOS_GetXID(...)
+                end
+            end
+            if DataOS.GetIsPlayerUsingVPN then
+                DataOS.GetIsPlayerUsingVPN = function(...) return false end
+            end
+            if DataOS.GetDeviceName then
+                _G.DX_Orig_DataOS_GetDeviceName = DataOS.GetDeviceName
+                DataOS.GetDeviceName = function(...)
+                    if _G.DX_Settings and _G.DX_Settings.FAKE_HWID == 1 then
+                        if not _G.DX_FakeData.Name then DX_RegenerateAllFakeData() end
+                        return _G.DX_FakeData.Name
+                    end
+                    return _G.DX_Orig_DataOS_GetDeviceName and _G.DX_Orig_DataOS_GetDeviceName(...)
+                end
+            end
+
+            local function handleDeviceOSKey(k, origVal)
                 if _G.DX_Settings and _G.DX_Settings.FAKE_HWID == 1 then
                     if not _G.DX_FakeData.IP then DX_RegenerateAllFakeData() end
                     if k == "vClientIP" then return _G.DX_FakeData.IP end
                     if k == "FirebaseInstanceID" then return _G.DX_FakeData.Firebase end
-                    if k == "AdvertisingID" or k == "OAID" then return _G.DX_FakeData.XID end
+                    if k == "AdvertisingID" or k == "OAID" or k == "XID" or k == "L1XID" or k == "DeviceId" then return _G.DX_FakeData.XID end
+                    if k == "DeviceName" or k == "UserDefineDeviceName" then return _G.DX_FakeData.Name end
+                    if k == "DeviceModel" then return _G.DX_FakeData.Model end
+                    if k == "IsVPN" or k == "IsTTVPN" then return false end
+                    if k == "EmulatorName" then return "" end
                 end
+                return origVal
+            end
+
+            local mt = getmetatable(DataOS) or {}
+            local origIndex = mt.__index
+            mt.__index = function(t, k)
+                local res = handleDeviceOSKey(k, nil)
+                if res ~= nil then return res end
                 if type(origIndex) == "function" then return origIndex(t, k)
                 elseif type(origIndex) == "table" then return origIndex[k]
                 else return rawget(t, k) end
             end
             setmetatable(DataOS, mt)
+
+            if type(DataOS.InfoList) == "table" then
+                local info = DataOS.InfoList
+                pcall(function()
+                    info.IsVPN = false
+                    info.IsTTVPN = false
+                    info.EmulatorName = ""
+                end)
+
+                local infoMT = getmetatable(info) or {}
+                local origInfoIndex = infoMT.__index
+                infoMT.__index = function(t, k)
+                    local res = handleDeviceOSKey(k, nil)
+                    if res ~= nil then return res end
+                    if type(origInfoIndex) == "function" then return origInfoIndex(t, k)
+                    elseif type(origInfoIndex) == "table" then return origInfoIndex[k]
+                    else return rawget(t, k) end
+                end
+                setmetatable(info, infoMT)
+            end
+
             _G.DX_DataOS_Hooked = true
         end
     end)
