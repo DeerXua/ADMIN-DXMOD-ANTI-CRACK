@@ -5979,6 +5979,7 @@ do
     end
 
     function _G.X3._UnlockAllTick()
+        local XC = _G.X3.LexusConfig or {}
         if not XC.X3UnlockAll then UA.matchLogged = false return end
         local now = os.clock()
         if now - (UA.matchApplyAt or 0) >= 8.0 then
@@ -6001,6 +6002,7 @@ do
     end
 
     function _G.X3._UnlockAllLobbyTick()
+        local XC = _G.X3.LexusConfig or {}
         if not XC.X3UnlockAll then return end
         if UA.lobbyDone then
             local ent = UAGetEntity()
