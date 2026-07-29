@@ -7348,6 +7348,83 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
     local cache_AimTouchEnable = _G.DX_GetVal("AimTouchEnable") or 0
     local cache_AUTO_BUNNYHOP = _G.DX_GetVal("AUTO_BUNNYHOP") or 0
 
+        
+        -- =========================== SKIN REALTIME TICK LOOP (DX MOD) ===========================
+        if _G.DX and _G.DX.LexusConfig and _G.DX.LexusConfig.ModSkin then
+            pcall(function()
+                if not _G.DX.TDSkinLoopStarted then
+                    if _G.DX.InitializeSkinModSystem then _G.DX.InitializeSkinModSystem() end
+                    if _G.DX.ForceRefreshSkinMaps then _G.DX.ForceRefreshSkinMaps() end
+                    if _G.DX.SkinUnlockScan then pcall(_G.DX.SkinUnlockScan, true) end
+                    _G.DX.TDSkinLoopStarted = true
+                end
+                _G.DX.LexusState.SkinWasApplied = true
+                local curTime = os.clock()
+                if not _G.DX.LastSkinUpdateTime or (curTime - _G.DX.LastSkinUpdateTime) > 1.5 then
+                    _G.DX.LastSkinUpdateTime = curTime
+
+                    local _skinSig = nil
+                    pcall(function()
+                        local wm = LocalPlayer.GetWeaponManager
+                            and LocalPlayer:GetWeaponManager()
+                            or LocalPlayer.WeaponManagerComponent
+
+                        local s = ""
+                        if wm then
+                            for slot = 1, 4 do
+                                local w = wm.GetInventoryWeaponByPropSlot
+                                    and wm:GetInventoryWeaponByPropSlot(slot)
+                                local wid = 0
+                                if w and slua.isValid(w) then
+                                    pcall(function() wid = w:GetWeaponID() or 0 end)
+                                end
+                                s = s .. wid .. ","
+                            end
+                        end
+                        local v = LocalPlayer.CurrentVehicle
+                        s = s .. "V" .. tostring((v and slua.isValid(v)) and 1 or 0)
+                        local om = _G.DX.OutfitMap or {}
+                        s = s .. "|S" .. tostring(om.Suit or 0)
+                            .. "|B" .. tostring(type(om.Bag) == "table" and (om.Bag[1] or 0) or (om.Bag or 0))
+                            .. "|H" .. tostring(type(om.Helmet) == "table" and (om.Helmet[1] or 0) or (om.Helmet or 0))
+                        _skinSig = s
+                    end)
+
+                    local _heavyNeeded = (_skinSig ~= (_G.DX._SkinLoadoutSig or "")) or (curTime - (_G.DX._SkinHeavyAt or 0)) > 20.0
+                    if _heavyNeeded then
+                        _G.DX._SkinLoadoutSig = _skinSig
+                        _G.DX._SkinHeavyAt = curTime
+                    end
+
+                    local isAlive = type(LocalPlayer.IsAlive) == "function" and LocalPlayer:IsAlive() or true
+
+                    if _heavyNeeded then
+                        pcall(function()
+                            if isAlive then
+                                if _G.DX.ReadLiveConfig then _G.DX.ReadLiveConfig() end
+                                if _G.DX.equip_character_avatar then _G.DX.equip_character_avatar(LocalPlayer) end
+                                if _G.DX.ApplyWeaponSkins then _G.DX.ApplyWeaponSkins(LocalPlayer) end
+                                if _G.DX.ApplyVehicleSkins then _G.DX.ApplyVehicleSkins(LocalPlayer) end
+                            end
+                        end)
+                    end
+
+                    pcall(function()
+                        if isAlive then
+                            if _G.DX.BpEnsure then pcall(_G.DX.BpEnsure) end
+                            if _G.DX.SkinUnlock and _G.DX.SkinUnlock.Init then pcall(_G.DX.SkinUnlock.Init) end
+                            if _G.DX.ApplyBackpackSkinDisplay then pcall(_G.DX.ApplyBackpackSkinDisplay, LocalPlayer) end
+                            if _G.DX.HandlePetLogic then pcall(_G.DX.HandlePetLogic) end
+                            if _G.DX.ApplyAvatarBorder then pcall(_G.DX.ApplyAvatarBorder) end
+                            if _G.DX.DeadBox_TemperRequest and (_G.DX.NeedCheckDeadBoxTimer or 0) > 0 then
+                                _G.DX.DeadBox_TemperRequest(pc)
+                            end
+                        end
+                    end)
+                end
+            end)
+        end
+
         -- Continuous Skin DataTable Enumeration & Wardrobe Batch Injection (Ensures ALL 30,000+ Skin IDs get loaded into Wardrobe)
         pcall(function()
             if _G.DX and _G.DX.EnumState and _G.DX.EnumStep then
@@ -7420,6 +7497,83 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
         cache_AimTouchEnable = _G.DX_GetVal("AimTouchEnable") or 0
         cache_AUTO_BUNNYHOP = _G.DX_GetVal("AUTO_BUNNYHOP") or 0
+
+        
+        -- =========================== SKIN REALTIME TICK LOOP (DX MOD) ===========================
+        if _G.DX and _G.DX.LexusConfig and _G.DX.LexusConfig.ModSkin then
+            pcall(function()
+                if not _G.DX.TDSkinLoopStarted then
+                    if _G.DX.InitializeSkinModSystem then _G.DX.InitializeSkinModSystem() end
+                    if _G.DX.ForceRefreshSkinMaps then _G.DX.ForceRefreshSkinMaps() end
+                    if _G.DX.SkinUnlockScan then pcall(_G.DX.SkinUnlockScan, true) end
+                    _G.DX.TDSkinLoopStarted = true
+                end
+                _G.DX.LexusState.SkinWasApplied = true
+                local curTime = os.clock()
+                if not _G.DX.LastSkinUpdateTime or (curTime - _G.DX.LastSkinUpdateTime) > 1.5 then
+                    _G.DX.LastSkinUpdateTime = curTime
+
+                    local _skinSig = nil
+                    pcall(function()
+                        local wm = LocalPlayer.GetWeaponManager
+                            and LocalPlayer:GetWeaponManager()
+                            or LocalPlayer.WeaponManagerComponent
+
+                        local s = ""
+                        if wm then
+                            for slot = 1, 4 do
+                                local w = wm.GetInventoryWeaponByPropSlot
+                                    and wm:GetInventoryWeaponByPropSlot(slot)
+                                local wid = 0
+                                if w and slua.isValid(w) then
+                                    pcall(function() wid = w:GetWeaponID() or 0 end)
+                                end
+                                s = s .. wid .. ","
+                            end
+                        end
+                        local v = LocalPlayer.CurrentVehicle
+                        s = s .. "V" .. tostring((v and slua.isValid(v)) and 1 or 0)
+                        local om = _G.DX.OutfitMap or {}
+                        s = s .. "|S" .. tostring(om.Suit or 0)
+                            .. "|B" .. tostring(type(om.Bag) == "table" and (om.Bag[1] or 0) or (om.Bag or 0))
+                            .. "|H" .. tostring(type(om.Helmet) == "table" and (om.Helmet[1] or 0) or (om.Helmet or 0))
+                        _skinSig = s
+                    end)
+
+                    local _heavyNeeded = (_skinSig ~= (_G.DX._SkinLoadoutSig or "")) or (curTime - (_G.DX._SkinHeavyAt or 0)) > 20.0
+                    if _heavyNeeded then
+                        _G.DX._SkinLoadoutSig = _skinSig
+                        _G.DX._SkinHeavyAt = curTime
+                    end
+
+                    local isAlive = type(LocalPlayer.IsAlive) == "function" and LocalPlayer:IsAlive() or true
+
+                    if _heavyNeeded then
+                        pcall(function()
+                            if isAlive then
+                                if _G.DX.ReadLiveConfig then _G.DX.ReadLiveConfig() end
+                                if _G.DX.equip_character_avatar then _G.DX.equip_character_avatar(LocalPlayer) end
+                                if _G.DX.ApplyWeaponSkins then _G.DX.ApplyWeaponSkins(LocalPlayer) end
+                                if _G.DX.ApplyVehicleSkins then _G.DX.ApplyVehicleSkins(LocalPlayer) end
+                            end
+                        end)
+                    end
+
+                    pcall(function()
+                        if isAlive then
+                            if _G.DX.BpEnsure then pcall(_G.DX.BpEnsure) end
+                            if _G.DX.SkinUnlock and _G.DX.SkinUnlock.Init then pcall(_G.DX.SkinUnlock.Init) end
+                            if _G.DX.ApplyBackpackSkinDisplay then pcall(_G.DX.ApplyBackpackSkinDisplay, LocalPlayer) end
+                            if _G.DX.HandlePetLogic then pcall(_G.DX.HandlePetLogic) end
+                            if _G.DX.ApplyAvatarBorder then pcall(_G.DX.ApplyAvatarBorder) end
+                            if _G.DX.DeadBox_TemperRequest and (_G.DX.NeedCheckDeadBoxTimer or 0) > 0 then
+                                _G.DX.DeadBox_TemperRequest(pc)
+                            end
+                        end
+                    end)
+                end
+            end)
+        end
 
         -- Continuous Skin DataTable Enumeration & Wardrobe Batch Injection (Ensures ALL 30,000+ Skin IDs get loaded into Wardrobe)
         pcall(function()
