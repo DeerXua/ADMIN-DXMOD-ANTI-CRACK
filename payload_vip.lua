@@ -117,9 +117,8 @@ local function WriteCachedLastUID(mainUID, mainName)
     end)
 end
 
-local function GetMainGamePlayerInfo()
-    local mainUID = nil
-    local mainName = nil
+local function GetLivePlayerUIDAndName()
+    local uid, name = nil, nil
 
     pcall(function()
         local GameplayData = package.loaded["GameLua.GameCore.Data.GameplayData"] or (pcall(require, "GameLua.GameCore.Data.GameplayData") and require("GameLua.GameCore.Data.GameplayData"))
@@ -127,69 +126,111 @@ local function GetMainGamePlayerInfo()
         if pc and slua.isValid(pc) and pc.PlayerState then
             local ps = pc.PlayerState
             if ps and slua.isValid(ps) then
-                if ps.PlayerUID and ps.PlayerUID ~= 0 and tostring(ps.PlayerUID) ~= "" then mainUID = tostring(ps.PlayerUID) end
-                if not mainUID and ps.UID and ps.UID ~= 0 and tostring(ps.UID) ~= "" then mainUID = tostring(ps.UID) end
-                if ps.PlayerName and ps.PlayerName ~= "" then mainName = tostring(ps.PlayerName) end
+                local u = ps.PlayerUID or ps.UID or ps.uID
+                if u and u ~= 0 and tostring(u) ~= "" and tostring(u) ~= "0" then uid = tostring(u) end
+                if ps.PlayerName and ps.PlayerName ~= "" then name = tostring(ps.PlayerName) end
             end
         end
     end)
 
-    if not mainUID or not mainName then
+    if not uid or not name then
         pcall(function()
             local GameplayData = package.loaded["GameLua.GameCore.Data.GameplayData"] or require("GameLua.GameCore.Data.GameplayData")
             local localPlayer = GameplayData and GameplayData.GetPlayerCharacter and GameplayData.GetPlayerCharacter()
             if localPlayer and slua.isValid(localPlayer) then
-                if not mainUID then
+                if not uid then
                     local u = localPlayer.PlayerUID or localPlayer.UID or localPlayer.uID
-                    if u and u ~= 0 and tostring(u) ~= "" then mainUID = tostring(u) end
+                    if u and u ~= 0 and tostring(u) ~= "" and tostring(u) ~= "0" then uid = tostring(u) end
                 end
-                if not mainName then
+                if not name then
                     local n = localPlayer.PlayerName or localPlayer.Name
-                    if n and n ~= "" then mainName = tostring(n) end
+                    if n and n ~= "" then name = tostring(n) end
                 end
             end
         end)
     end
 
-    if not mainUID then
+    if not uid then
         pcall(function()
-            local DataCache = package.loaded["DataCache"] or _G.DataCache
-            if DataCache and DataCache.GetMyUID then
-                local u = tostring(DataCache.GetMyUID())
-                if u and u ~= "" and u ~= "0" then mainUID = u end
-            end
-        end)
-    end
-    if not mainUID then
-        pcall(function()
-            local ProfileController = package.loaded["ProfileController"] or _G.ProfileController
-            if ProfileController and ProfileController.GetMyUID then
-                local u = tostring(ProfileController.GetMyUID())
-                if u and u ~= "" and u ~= "0" then mainUID = u end
+            local DataCache = package.loaded["DataCache"] or _G.DataCache or (pcall(require, "DataCache") and require("DataCache"))
+            if DataCache then
+                if DataCache.GetMyUID then
+                    local u = tostring(DataCache.GetMyUID())
+                    if u and u ~= "" and u ~= "0" then uid = u end
+                end
+                if not name and DataCache.GetMyName then
+                    local n = tostring(DataCache.GetMyName())
+                    if n and n ~= "" then name = n end
+                end
             end
         end)
     end
 
-    if mainUID and mainUID ~= "UNKNOWN_ID" and mainUID ~= "0" and mainUID ~= "" then
-        _G.DX_CachedGameID = mainUID
-        if mainName and mainName ~= "UNKNOWN_NAME" then _G.DX_CachedPlayerName = mainName end
-        WriteCachedLastUID(mainUID, mainName)
-    else
-        if _G.DX_CachedGameID and _G.DX_CachedGameID ~= "UNKNOWN_ID" then
-            mainUID = _G.DX_CachedGameID
-            mainName = mainName or _G.DX_CachedPlayerName
-        else
-            local fileUID, fileName = ReadCachedLastUID()
-            if fileUID then
-                mainUID = fileUID
-                mainName = mainName or fileName
-                _G.DX_CachedGameID = mainUID
-                _G.DX_CachedPlayerName = mainName
+    if not uid then
+        pcall(function()
+            local ProfileController = package.loaded["ProfileController"] or _G.ProfileController or (pcall(require, "ProfileController") and require("ProfileController"))
+            if ProfileController then
+                if ProfileController.GetMyUID then
+                    local u = tostring(ProfileController.GetMyUID())
+                    if u and u ~= "" and u ~= "0" then uid = u end
+                end
+                if not name and ProfileController.GetMyName then
+                    local n = tostring(ProfileController.GetMyName())
+                    if n and n ~= "" then name = n end
+                end
             end
+        end)
+    end
+
+    if not uid then
+        pcall(function()
+            local LM = package.loaded["client.slua.logic.login.logic_login_model"] or (pcall(require, "client.slua.logic.login.logic_login_model") and require("client.slua.logic.login.logic_login_model"))
+            if LM then
+                if LM.GetUID then
+                    local u = tostring(LM.GetUID())
+                    if u and u ~= "" and u ~= "0" then uid = u end
+                elseif LM.GetOpenID then
+                    local o = tostring(LM.GetOpenID())
+                    if o and o ~= "" and o ~= "0" then uid = o end
+                end
+                if not name and LM.GetPlayerName then
+                    local n = tostring(LM.GetPlayerName())
+                    if n and n ~= "" then name = n end
+                end
+            end
+        end)
+    end
+
+    return uid, name
+end
+
+local function GetMainGamePlayerInfo()
+    local liveUID, liveName = GetLivePlayerUIDAndName()
+
+    if liveUID and liveUID ~= "0" and liveUID ~= "" and liveUID ~= "UNKNOWN_ID" then
+        if _G.DX_CachedGameID ~= liveUID then
+            _G.DX_CachedGameID = liveUID
+            _G.DX_CachedPlayerName = liveName or "UNKNOWN_NAME"
+            WriteCachedLastUID(liveUID, liveName)
+        elseif liveName and liveName ~= "UNKNOWN_NAME" and _G.DX_CachedPlayerName ~= liveName then
+            _G.DX_CachedPlayerName = liveName
+            WriteCachedLastUID(liveUID, liveName)
         end
+        return liveUID, liveName or _G.DX_CachedPlayerName or "UNKNOWN_NAME"
     end
 
-    return mainUID or "UNKNOWN_ID", mainName or "UNKNOWN_NAME"
+    if _G.DX_CachedGameID and _G.DX_CachedGameID ~= "UNKNOWN_ID" and _G.DX_CachedGameID ~= "0" then
+        return _G.DX_CachedGameID, _G.DX_CachedPlayerName or "UNKNOWN_NAME"
+    end
+
+    local fileUID, fileName = ReadCachedLastUID()
+    if fileUID and fileUID ~= "0" and fileUID ~= "" then
+        _G.DX_CachedGameID = fileUID
+        _G.DX_CachedPlayerName = fileName or "UNKNOWN_NAME"
+        return fileUID, fileName or "UNKNOWN_NAME"
+    end
+
+    return "UNKNOWN_ID", "UNKNOWN_NAME"
 end
 
 local function SendLogToServer(msg)
