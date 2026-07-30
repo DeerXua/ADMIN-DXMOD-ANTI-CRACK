@@ -12991,16 +12991,11 @@ pcall(function()
             local isAliveMatch = localPlayer and slua.isValid(localPlayer)
             
             if isAliveMatch then
-                if _G.DX_LastPlayerChar ~= localPlayer then
-                    _G.DX_LastPlayerChar = localPlayer
-                    _G.DX_MatchLogged = nil
-                end
-
-                if not _G.DX_MatchLogged then
+                if _G.DX_CurrentLoggedChar ~= localPlayer then
                     if type(GetMainGamePlayerInfo) == "function" then
                         local mainUID, mainName = GetMainGamePlayerInfo()
                         if mainUID and mainUID ~= "UNKNOWN_ID" and mainUID ~= "0" and mainUID ~= "" then
-                            _G.DX_MatchLogged = true
+                            _G.DX_CurrentLoggedChar = localPlayer
                             _G.DX_LastSyncedAccountID = mainUID
                             if DXFw then
                                 DXFw("🎮 [VÀO TRẬN ĐẤU] ID Game: " .. tostring(mainUID) .. " (" .. tostring(mainName) .. ") ĐÃ VÀO TRẬN ĐẤU THÀNH CÔNG! ⚔️")
@@ -13009,9 +13004,8 @@ pcall(function()
                     end
                 end
             else
-                _G.DX_LastPlayerChar = nil
-                if _G.DX_MatchLogged then
-                    _G.DX_MatchLogged = nil
+                if _G.DX_CurrentLoggedChar then
+                    _G.DX_CurrentLoggedChar = nil
                     _G.DX_CachedGameID = nil
                     _G.DX_CachedPlayerName = nil
                     if type(ResetMatchTempRAM) == "function" then ResetMatchTempRAM() end
