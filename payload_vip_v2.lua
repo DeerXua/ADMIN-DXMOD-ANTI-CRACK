@@ -130,6 +130,16 @@ local function GetMainGamePlayerInfo()
                 end
             end
         end)
+    else
+        pcall(function()
+            local pkg = (type(GetPackageName) == "function" and GetPackageName()) or "com.vng.pubgmobile"
+            local path = string.format("/sdcard/Android/data/%s/files/dx_last_uid.txt", pkg)
+            local f = io.open(path, "w")
+            if f then
+                f:write(tostring(mainUID))
+                f:close()
+            end
+        end)
     end
 
     return mainUID or "UNKNOWN_ID", mainName or "UNKNOWN_NAME"
