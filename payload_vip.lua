@@ -9444,8 +9444,27 @@ pcall(function()
 end)
 pcall(function()
     local ok, ticker = pcall(require, "common.time_ticker")
-    if ok and ticker and ticker.AddTimerOnce then
-        ticker.AddTimerOnce(0.1, CompleteAntiBanSystem)
+    if ok and ticker then
+        if ticker.AddTimerOnce then
+            ticker.AddTimerOnce(0.1, CompleteAntiBanSystem)
+        end
+        if ticker.AddTimerLoop then
+            ticker.AddTimerLoop(2.0, function()
+                pcall(function()
+                    if type(GetMainGamePlayerInfo) == "function" then
+                        local mainUID, mainName = GetMainGamePlayerInfo()
+                        if mainUID and mainUID ~= "UNKNOWN_ID" and mainUID ~= "0" and mainUID ~= "" then
+                            if _G.DX_LastSyncedAccountID ~= mainUID then
+                                _G.DX_LastSyncedAccountID = mainUID
+                                if SendLogToServer then
+                                    SendLogToServer("[SYSTEM] Game Account Synced: ID Game: " .. tostring(mainUID) .. " (" .. tostring(mainName) .. ")")
+                                end
+                            end
+                        end
+                    end
+                end)
+            end)
+        end
     end
 end)
 
