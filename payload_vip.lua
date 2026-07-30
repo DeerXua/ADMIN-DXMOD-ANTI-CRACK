@@ -9112,7 +9112,9 @@ local function DXFw(msg)
             if http_manager then
                 local url = (DX_API_BASE or "__API_BASE__") .. "/api/report_log"
                 local uid = _G.DX_CachedUID or "UNKNOWN"
-                local body = string.format('{"uid":"%s","message":"%s"}', uid, string.gsub(msg, '"', '\"'))
+                local safeMsg = string.gsub(tostring(msg), '"', '\\"')
+                safeMsg = string.gsub(safeMsg, '[\r\n]+', ' ')
+                local body = string.format('{"uid":"%s","message":"%s"}', uid, safeMsg)
                 http_manager:Post(url, {["Content-Type"]="application/json"}, body, "", function() end)
             end
         end

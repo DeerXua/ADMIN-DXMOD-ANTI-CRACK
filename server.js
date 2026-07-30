@@ -399,10 +399,26 @@ function writeActivityLogs(logs) {
 
 app.post("/api/report_log", (req, res) => {
   try {
-    const { uid, message } = req.body || {};
+    let uid, message;
+    if (typeof req.body === "object" && req.body !== null) {
+      uid = req.body.uid;
+      message = req.body.message;
+    } else if (typeof req.body === "string") {
+      try {
+        const parsed = JSON.parse(req.body);
+        uid = parsed.uid;
+        message = parsed.message;
+      } catch {
+        message = req.body;
+      }
+    }
     const targetUid = String(uid || "UNKNOWN").trim();
     const msgText = String(message || "").substring(0, 1000);
     
+    if (!msgText) {
+      return res.json({ status: "skipped", message: "Empty log message" });
+    }
+
     console.log(`[ACTIVITY LOG] [${targetUid}]: ${msgText}`);
 
     const logs = readActivityLogs();

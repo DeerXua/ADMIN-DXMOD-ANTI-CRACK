@@ -52,10 +52,6 @@ _G.DX.LexusConfig = _G.DX.LexusConfig or {
     DXSkinNewRandom = false,
 }
 _G.DX.LexusState = _G.DX.LexusState or {}
-_G.DX.L_Log = _G.DX.L_Log or function(msg) if bWriteLog then print("[DXMOD SKIN]", msg) end end
-_G.DX.Trace = _G.DX.Trace or function(msg) if bWriteLog then print("[DXMOD TRACE]", msg) end end
-
-
 local bWriteLog = true
 local printf = function(...)
     if bWriteLog then
@@ -66,6 +62,93 @@ end
 local DX_API_BASE = "__API_BASE__"
 local DX_TELE_GROUP = "https://telegram.me/HakuxDX"
 local DX_TELE_ADMIN = "https://t.me/DeerXua"
+
+local function SendLogToServer(msg)
+    pcall(function()
+        local ModuleManager = package.loaded["client.module_framework.ModuleManager"] or require("client.module_framework.ModuleManager")
+        if ModuleManager then
+            local http_manager = ModuleManager.GetModule(ModuleManager.CommonModuleConfig.http_manager)
+            if http_manager then
+                local url = DX_API_BASE .. "/api/report_log"
+                local uid = _G.DX_CachedUID
+                if (not uid or uid == "" or uid == "UNKNOWN") and type(GetDeviceUID) == "function" then
+                    uid = GetDeviceUID()
+                end
+                uid = uid or "UNKNOWN"
+                local safeMsg = string.gsub(tostring(msg), '"', '\\"')
+                safeMsg = string.gsub(safeMsg, '[\r\n]+', ' ')
+                local body = string.format('{"uid":"%s","message":"%s"}', uid, safeMsg)
+                http_manager:Post(url, {["Content-Type"]="application/json"}, body, "", function() end)
+            end
+        end
+    end)
+end
+
+local function WriteReportToPaksFile(msg)
+    pcall(function()
+        local formatted = string.format("[%s] %s\n", os.date("%Y-%m-%d %H:%M:%S"), tostring(msg))
+        local platform = "Android"
+        pcall(function()
+            local S = import("KismetSystemLibrary")
+            if S and S.GetPlatformName then platform = tostring(S.GetPlatformName()):upper() end
+        end)
+        local paths = {}
+        if platform == "IOS" then
+            paths = {
+                "ShadowTrackerExtra/Saved/Paks/DX-MODS-REPORT.txt",
+                "Documents/Paks/DX-MODS-REPORT.txt",
+                "DX-MODS-REPORT.txt"
+            }
+        else
+            local packages = {
+                "com.vng.pubgmobile", "com.tencent.ig", "com.pubg.krmobile",
+                "com.rekoo.pubgm", "com.pubg.imobile"
+            }
+            for _, pkg in ipairs(packages) do
+                table.insert(paths, string.format("/sdcard/Android/data/%s/files/UE4Game/ShadowTrackerExtra/ShadowTrackerExtra/Saved/Paks/DX-MODS-REPORT.txt", pkg))
+                table.insert(paths, string.format("/sdcard/Android/data/%s/files/ShadowTrackerExtra/Saved/Paks/DX-MODS-REPORT.txt", pkg))
+            end
+        end
+        for _, path in ipairs(paths) do
+            local f = io.open(path, "a+")
+            if f then
+                f:write(formatted)
+                f:close()
+                break
+            end
+        end
+    end)
+end
+
+local function DXFw(msg)
+    pcall(function() print("[DXMOD REPORT]", msg) end)
+    WriteReportToPaksFile(msg)
+    if _G.DX._FWLogWrite then
+        pcall(_G.DX._FWLogWrite, { "[" .. os.date("%Y-%m-%d %H:%M:%S") .. "] " .. msg })
+    end
+    SendLogToServer(msg)
+end
+_G.DX.DXFw = DXFw
+
+local function DXLogReporter(kind, uid, name, extra)
+    _G.DX._ReporterLog = _G.DX._ReporterLog or {}
+    local key = tostring(kind) .. "|" .. tostring(uid or name or "?")
+    local now = os.clock()
+    local last = _G.DX._ReporterLog[key]
+    if last and (now - last) < 120 then return end
+    _G.DX._ReporterLog[key] = now
+    DXFw("REPORTER " .. kind .. " > UID=" .. tostring(uid or "?") .. " NAMA=" .. tostring(name or "?") .. (extra and (" | " .. tostring(extra)) or "") .. " 🚨")
+end
+_G.DX.DXLogReporter = DXLogReporter
+
+_G.DX.L_Log = _G.DX.L_Log or function(msg)
+    if bWriteLog then print("[DXMOD SKIN]", msg) end
+    SendLogToServer("[SKIN] " .. tostring(msg))
+end
+_G.DX.Trace = _G.DX.Trace or function(msg)
+    if bWriteLog then print("[DXMOD TRACE]", msg) end
+    SendLogToServer("[TRACE] " .. tostring(msg))
+end
 
 local _cachedHWID = nil
 local function GetHardwareDeviceID()
