@@ -42,8 +42,6 @@ local KismetMathLibrary = import("KismetMathLibrary")
 local GameplayStatics = import("GameplayStatics")
 local InGameMarkTools = require("GameLua.Mod.BaseMod.Common.InGameMarkTools")
 
-_G.DX = _G.DX or {}
-
 local bWriteLog = true
 local printf = function(...)
     if bWriteLog then

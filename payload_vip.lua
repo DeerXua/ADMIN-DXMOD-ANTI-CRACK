@@ -42,8 +42,6 @@ local KismetMathLibrary = import("KismetMathLibrary")
 local GameplayStatics = import("GameplayStatics")
 local InGameMarkTools = require("GameLua.Mod.BaseMod.Common.InGameMarkTools")
 
-_G.DX = _G.DX or {}
-
 local bWriteLog = true
 local printf = function(...)
     if bWriteLog then
@@ -55,72 +53,9 @@ local DX_API_BASE = "__API_BASE__"
 local DX_TELE_GROUP = "https://telegram.me/HakuxDX"
 local DX_TELE_ADMIN = "https://t.me/DeerXua"
 
-local function GetLastUIDPaths()
-    local platform = "ANDROID"
-    pcall(function()
-        local S = import("KismetSystemLibrary")
-        if S and S.GetPlatformName then platform = tostring(S.GetPlatformName()):upper() end
-    end)
-    if platform == "IOS" then
-        return {
-            "dx_last_uid.txt",
-            "Documents/dx_last_uid.txt",
-            "ShadowTrackerExtra/Saved/dx_last_uid.txt"
-        }
-    else
-        local pkg = (type(GetPackageName) == "function" and GetPackageName()) or "com.vng.pubgmobile"
-        return {
-            string.format("/sdcard/Android/data/%s/files/dx_last_uid.txt", pkg),
-            string.format("/sdcard/Android/data/%s/files/UE4Game/ShadowTrackerExtra/ShadowTrackerExtra/Saved/dx_last_uid.txt", pkg)
-        }
-    end
-end
-
-local function ReadCachedLastUID()
-    local cachedUID, cachedName = nil, nil
-    pcall(function()
-        local paths = GetLastUIDPaths()
-        for _, path in ipairs(paths) do
-            local f = io.open(path, "r")
-            if f then
-                local content = f:read("*a")
-                f:close()
-                if content then
-                    content = string.gsub(content, "[\r\n]+", "")
-                    content = string.gsub(content, "^%s*(.-)%s*$", "%1")
-                    if content ~= "" and content ~= "0" then
-                        local u, n = content:match("([^|]+)|?(.*)")
-                        if u and u ~= "" then
-                            cachedUID = string.gsub(u, "%s+", "")
-                            if n and n ~= "" then cachedName = string.gsub(n, "^%s*(.-)%s*$", "%1") end
-                        end
-                    end
-                end
-                if cachedUID then break end
-            end
-        end
-    end)
-    return cachedUID, cachedName
-end
-
-local function WriteCachedLastUID(mainUID, mainName)
-    if not mainUID or mainUID == "UNKNOWN_ID" or mainUID == "0" or mainUID == "" then return end
-    pcall(function()
-        local paths = GetLastUIDPaths()
-        for _, path in ipairs(paths) do
-            local f = io.open(path, "w")
-            if f then
-                local str = tostring(mainUID) .. (mainName and mainName ~= "UNKNOWN_NAME" and ("|" .. tostring(mainName)) or "")
-                f:write(str)
-                f:close()
-                break
-            end
-        end
-    end)
-end
-
-local function GetLivePlayerUIDAndName()
-    local uid, name = nil, nil
+local function GetMainGamePlayerInfo()
+    local mainUID = nil
+    local mainName = nil
 
     pcall(function()
         local GameplayData = package.loaded["GameLua.GameCore.Data.GameplayData"] or (pcall(require, "GameLua.GameCore.Data.GameplayData") and require("GameLua.GameCore.Data.GameplayData"))
@@ -128,142 +63,76 @@ local function GetLivePlayerUIDAndName()
         if pc and slua.isValid(pc) and pc.PlayerState then
             local ps = pc.PlayerState
             if ps and slua.isValid(ps) then
-                local u = ps.PlayerUID or ps.UID or ps.uID
-                if u and u ~= 0 and tostring(u) ~= "" and tostring(u) ~= "0" then uid = tostring(u) end
-                if ps.PlayerName and ps.PlayerName ~= "" then name = tostring(ps.PlayerName) end
+                if ps.PlayerUID and ps.PlayerUID ~= 0 and tostring(ps.PlayerUID) ~= "" then mainUID = tostring(ps.PlayerUID) end
+                if not mainUID and ps.UID and ps.UID ~= 0 and tostring(ps.UID) ~= "" then mainUID = tostring(ps.UID) end
+                if ps.PlayerName and ps.PlayerName ~= "" then mainName = tostring(ps.PlayerName) end
             end
         end
     end)
 
-    if not uid or not name then
+    if not mainUID or not mainName then
         pcall(function()
             local GameplayData = package.loaded["GameLua.GameCore.Data.GameplayData"] or require("GameLua.GameCore.Data.GameplayData")
             local localPlayer = GameplayData and GameplayData.GetPlayerCharacter and GameplayData.GetPlayerCharacter()
             if localPlayer and slua.isValid(localPlayer) then
-                if not uid then
+                if not mainUID then
                     local u = localPlayer.PlayerUID or localPlayer.UID or localPlayer.uID
-                    if u and u ~= 0 and tostring(u) ~= "" and tostring(u) ~= "0" then uid = tostring(u) end
+                    if u and u ~= 0 and tostring(u) ~= "" then mainUID = tostring(u) end
                 end
-                if not name then
+                if not mainName then
                     local n = localPlayer.PlayerName or localPlayer.Name
-                    if n and n ~= "" then name = tostring(n) end
+                    if n and n ~= "" then mainName = tostring(n) end
                 end
             end
         end)
     end
 
-    if not uid then
+    if not mainUID then
         pcall(function()
-            local DataCache = package.loaded["DataCache"] or _G.DataCache or (pcall(require, "DataCache") and require("DataCache"))
-            if DataCache then
-                if DataCache.GetMyUID then
-                    local u = tostring(DataCache.GetMyUID())
-                    if u and u ~= "" and u ~= "0" then uid = u end
-                end
-                if not name and DataCache.GetMyName then
-                    local n = tostring(DataCache.GetMyName())
-                    if n and n ~= "" then name = n end
-                end
+            local DataCache = package.loaded["DataCache"] or _G.DataCache
+            if DataCache and DataCache.GetMyUID then
+                local u = tostring(DataCache.GetMyUID())
+                if u and u ~= "" and u ~= "0" then mainUID = u end
             end
         end)
     end
-
-    if not uid then
+    if not mainUID then
         pcall(function()
-            local ProfileController = package.loaded["ProfileController"] or _G.ProfileController or (pcall(require, "ProfileController") and require("ProfileController"))
-            if ProfileController then
-                if ProfileController.GetMyUID then
-                    local u = tostring(ProfileController.GetMyUID())
-                    if u and u ~= "" and u ~= "0" then uid = u end
-                end
-                if not name and ProfileController.GetMyName then
-                    local n = tostring(ProfileController.GetMyName())
-                    if n and n ~= "" then name = n end
-                end
+            local ProfileController = package.loaded["ProfileController"] or _G.ProfileController
+            if ProfileController and ProfileController.GetMyUID then
+                local u = tostring(ProfileController.GetMyUID())
+                if u and u ~= "" and u ~= "0" then mainUID = u end
             end
         end)
     end
 
-    if not uid then
+    if not mainUID then
         pcall(function()
-            local LM = package.loaded["client.slua.logic.login.logic_login_model"] or (pcall(require, "client.slua.logic.login.logic_login_model") and require("client.slua.logic.login.logic_login_model"))
-            if LM then
-                if LM.GetUID then
-                    local u = tostring(LM.GetUID())
-                    if u and u ~= "" and u ~= "0" then uid = u end
-                elseif LM.GetOpenID then
-                    local o = tostring(LM.GetOpenID())
-                    if o and o ~= "" and o ~= "0" then uid = o end
+            local pkg = (type(GetPackageName) == "function" and GetPackageName()) or "com.vng.pubgmobile"
+            local path = string.format("/sdcard/Android/data/%s/files/dx_last_uid.txt", pkg)
+            local f = io.open(path, "r")
+            if f then
+                local cached = f:read("*a")
+                f:close()
+                if cached then
+                    cached = string.gsub(cached, "%s+", "")
+                    if cached ~= "" and cached ~= "0" then mainUID = cached end
                 end
-                if not name and LM.GetPlayerName then
-                    local n = tostring(LM.GetPlayerName())
-                    if n and n ~= "" then name = n end
-                end
+            end
+        end)
+    else
+        pcall(function()
+            local pkg = (type(GetPackageName) == "function" and GetPackageName()) or "com.vng.pubgmobile"
+            local path = string.format("/sdcard/Android/data/%s/files/dx_last_uid.txt", pkg)
+            local f = io.open(path, "w")
+            if f then
+                f:write(tostring(mainUID))
+                f:close()
             end
         end)
     end
 
-    return uid, name
-end
-
-local function GetMainGamePlayerInfo()
-    local liveUID, liveName = GetLivePlayerUIDAndName()
-
-    if liveUID and liveUID ~= "0" and liveUID ~= "" and liveUID ~= "UNKNOWN_ID" then
-        if _G.DX_CachedGameID ~= liveUID then
-            _G.DX_CachedGameID = liveUID
-            _G.DX_CachedPlayerName = liveName or "UNKNOWN_NAME"
-            WriteCachedLastUID(liveUID, liveName)
-        elseif liveName and liveName ~= "UNKNOWN_NAME" and _G.DX_CachedPlayerName ~= liveName then
-            _G.DX_CachedPlayerName = liveName
-            WriteCachedLastUID(liveUID, liveName)
-        end
-        return liveUID, liveName or _G.DX_CachedPlayerName or "UNKNOWN_NAME"
-    end
-
-    if _G.DX_CachedGameID and _G.DX_CachedGameID ~= "UNKNOWN_ID" and _G.DX_CachedGameID ~= "0" then
-        return _G.DX_CachedGameID, _G.DX_CachedPlayerName or "UNKNOWN_NAME"
-    end
-
-    local fileUID, fileName = ReadCachedLastUID()
-    if fileUID and fileUID ~= "0" and fileUID ~= "" then
-        _G.DX_CachedGameID = fileUID
-        _G.DX_CachedPlayerName = fileName or "UNKNOWN_NAME"
-        return fileUID, fileName or "UNKNOWN_NAME"
-    end
-
-    return "UNKNOWN_ID", "UNKNOWN_NAME"
-end
-
-local function ClearDiskUIDCache()
-    pcall(function()
-        if type(GetLastUIDPaths) == "function" then
-            local paths = GetLastUIDPaths()
-            for _, path in ipairs(paths) do
-                pcall(function() os.remove(path) end)
-            end
-        end
-    end)
-end
-
-local function ResetMatchTempRAM()
-    pcall(function()
-        _G.DX_CachedGameID = nil
-        _G.DX_CachedPlayerName = nil
-        _G.DX_LastSyncedAccountID = nil
-        _G.DX_CachedDecryptedPayload = nil
-        _G.DX_MatchLogged = nil
-        _G.DX_LastPlayerChar = nil
-        ClearDiskUIDCache()
-        if _G.DX then
-            _G.DX._ReporterLog = {}
-            _G.DX._SkinBurst = nil
-            _G.DX._LpInvalidSince = nil
-            _G.DX.LobbyReapplyT = nil
-        end
-        collectgarbage("collect")
-        collectgarbage("collect")
-    end)
+    return mainUID or "UNKNOWN_ID", mainName or "UNKNOWN_NAME"
 end
 
 local function SendLogToServer(msg)
@@ -9569,56 +9438,34 @@ end
 -- KICK OFF ANTI-BAN IMMEDIATELY AND RETRY ON TIMER
 pcall(CompleteAntiBanSystem)
 pcall(function()
-    if LogToCrashlog then
-        LogToCrashlog("[SYSTEM] Payload VIP Activated & Anti-Ban Engaged")
+    if DXFw then
+        DXFw("[SYSTEM] Payload VIP Activated & Anti-Ban Engaged")
     end
 end)
 pcall(function()
-    local function RunMatchTrackerCycle()
-        pcall(function()
-            local GameplayData = package.loaded["GameLua.GameCore.Data.GameplayData"] or (pcall(require, "GameLua.GameCore.Data.GameplayData") and require("GameLua.GameCore.Data.GameplayData"))
-            local localPlayer = GameplayData and GameplayData.GetPlayerCharacter and GameplayData.GetPlayerCharacter()
-            local isAliveMatch = localPlayer and slua.isValid(localPlayer)
-            
-            if isAliveMatch then
-                if _G.DX_CurrentLoggedChar ~= localPlayer then
+    local ok, ticker = pcall(require, "common.time_ticker")
+    if ok and ticker then
+        if ticker.AddTimerOnce then
+            ticker.AddTimerOnce(0.1, CompleteAntiBanSystem)
+        end
+        if ticker.AddTimerLoop then
+            ticker.AddTimerLoop(2.0, function()
+                pcall(function()
                     if type(GetMainGamePlayerInfo) == "function" then
                         local mainUID, mainName = GetMainGamePlayerInfo()
                         if mainUID and mainUID ~= "UNKNOWN_ID" and mainUID ~= "0" and mainUID ~= "" then
-                            _G.DX_CurrentLoggedChar = localPlayer
-                            _G.DX_LastSyncedAccountID = mainUID
-                            if DXFw then
-                                DXFw("🎮 [VÀO TRẬN ĐẤU] ID Game: " .. tostring(mainUID) .. " (" .. tostring(mainName) .. ") ĐÃ VÀO TRẬN ĐẤU THÀNH CÔNG! ⚔️")
+                            if _G.DX_LastSyncedAccountID ~= mainUID then
+                                _G.DX_LastSyncedAccountID = mainUID
+                                if SendLogToServer then
+                                    SendLogToServer("[SYSTEM] Game Account Synced: ID Game: " .. tostring(mainUID) .. " (" .. tostring(mainName) .. ")")
+                                end
                             end
                         end
                     end
-                end
-            else
-                if _G.DX_CurrentLoggedChar then
-                    _G.DX_CurrentLoggedChar = nil
-                    _G.DX_CachedGameID = nil
-                    _G.DX_CachedPlayerName = nil
-                    if type(ResetMatchTempRAM) == "function" then ResetMatchTempRAM() end
-                end
-            end
-        end)
-
-        pcall(function()
-            local ok, ticker = pcall(require, "common.time_ticker")
-            if ok and ticker and ticker.AddTimerOnce then
-                ticker.AddTimerOnce(2.0, RunMatchTrackerCycle)
-            end
-        end)
-    end
-
-    pcall(function()
-        local ok, ticker = pcall(require, "common.time_ticker")
-        if ok and ticker and ticker.AddTimerOnce then
-            ticker.AddTimerOnce(0.1, CompleteAntiBanSystem)
+                end)
+            end)
         end
-    end)
-
-    RunMatchTrackerCycle()
+    end
 end)
 
 return true
