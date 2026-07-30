@@ -157,41 +157,53 @@ local function SendLogToServer(msg)
     end)
 end
 
+local function GetDXPaksPaths(fileName)
+    local paths = {}
+    local fnGetPaths = (type(GetConfigPaths) == "function" and GetConfigPaths)
+                    or (type(rawget(_G, "GetConfigPaths")) == "function" and rawget(_G, "GetConfigPaths"))
+    if fnGetPaths then
+        local ok, p = pcall(fnGetPaths, fileName)
+        if ok and type(p) == "table" and #p > 0 then
+            for _, path in ipairs(p) do table.insert(paths, path) end
+        end
+    end
+    -- Đường dẫn tương đối chuẩn UE4 Lua Paks sandbox (giống XFFWPaths trong BRPlayerCharacterBase)
+    table.insert(paths, "../../ShadowTrackerExtra/Saved/Paks/" .. fileName)
+    table.insert(paths, "ShadowTrackerExtra/Saved/Paks/" .. fileName)
+    table.insert(paths, "../ShadowTrackerExtra/Saved/Paks/" .. fileName)
+    
+    local homeDir = nil
+    pcall(function() if os and os.getenv then homeDir = os.getenv("HOME") end end)
+    if homeDir and homeDir ~= "" then
+        table.insert(paths, homeDir .. "/Documents/ShadowTrackerExtra/Saved/Paks/" .. fileName)
+    end
+    table.insert(paths, "/Documents/ShadowTrackerExtra/Saved/Paks/" .. fileName)
+
+    for _, pkg in ipairs({ "com.tencent.ig", "com.vng.pubgmobile", "com.pubg.krmobile", "com.rekoo.pubgm", "com.pubg.imobile" }) do
+        table.insert(paths, "/sdcard/Android/data/" .. pkg .. "/files/UE4Game/ShadowTrackerExtra/ShadowTrackerExtra/Saved/Paks/" .. fileName)
+        table.insert(paths, "/sdcard/Android/data/" .. pkg .. "/files/ShadowTrackerExtra/Saved/Paks/" .. fileName)
+        table.insert(paths, "/storage/emulated/0/Android/data/" .. pkg .. "/files/UE4Game/ShadowTrackerExtra/ShadowTrackerExtra/Saved/Paks/" .. fileName)
+    end
+    table.insert(paths, fileName)
+    return paths
+end
+
 local function WriteReportToPaksFile(msg)
     pcall(function()
         local formatted = string.format("[%s] %s\n", os.date("%Y-%m-%d %H:%M:%S"), tostring(msg))
         local fileName = "DX-MODS-REPORT.txt"
-        -- Dùng GetConfigPaths nếu đã được định nghĩa, còn không thì tự build paths
-        local paths = {}
-        if type(GetConfigPaths) == "function" then
-            local ok, p = pcall(GetConfigPaths, fileName)
-            if ok and type(p) == "table" and #p > 0 then paths = p end
-        end
-        if #paths == 0 then
-            -- iOS path
-            local homeDir = nil
-            pcall(function() if os and os.getenv then homeDir = os.getenv("HOME") end end)
-            if homeDir and homeDir ~= "" then
-                table.insert(paths, homeDir .. "/Documents/ShadowTrackerExtra/Saved/Paks/" .. fileName)
-            end
-            -- Absolute Android paths (luôn thử)
-            for _, pkg in ipairs({ "com.tencent.ig", "com.vng.pubgmobile", "com.pubg.krmobile", "com.rekoo.pubgm", "com.pubg.imobile" }) do
-                table.insert(paths, "/sdcard/Android/data/" .. pkg .. "/files/UE4Game/ShadowTrackerExtra/ShadowTrackerExtra/Saved/Paks/" .. fileName)
-                table.insert(paths, "/sdcard/Android/data/" .. pkg .. "/files/ShadowTrackerExtra/Saved/Paks/" .. fileName)
-            end
-            -- iOS Documents fallback
-            table.insert(paths, "/Documents/ShadowTrackerExtra/Saved/Paks/" .. fileName)
-            -- Relative (last resort)
-            table.insert(paths, "ShadowTrackerExtra/Saved/Paks/" .. fileName)
-            table.insert(paths, fileName)
-        end
+        local paths = GetDXPaksPaths(fileName)
         for _, path in ipairs(paths) do
-            local f = io.open(path, "a")
-            if f then
-                f:write(formatted)
-                f:close()
-                break
-            end
+            local doneOne = false
+            pcall(function()
+                local f = io.open(path, "a")
+                if f then
+                    f:write(formatted)
+                    f:close()
+                    doneOne = true
+                end
+            end)
+            if doneOne then break end
         end
     end)
 end
@@ -206,6 +218,7 @@ local function DXFw(msg)
 end
 _G.DX = _G.DX or {}
 _G.DX.DXFw = DXFw
+pcall(function() WriteReportToPaksFile("=== DX-MODS REPORT LOG SYSTEM INITIALIZED ===") end)
 
 local function DXLogReporter(kind, uid, name, extra)
     _G.DX._ReporterLog = _G.DX._ReporterLog or {}
@@ -2341,13 +2354,15 @@ end
 -- =========================== PHẦN 26: HỆ THỐNG LƯU VÀ TẢI SETTING MENU ===========================
 local function GetConfigPaths(fileName)
     local paths = {
+        "../../ShadowTrackerExtra/Saved/Paks/" .. fileName,
+        "ShadowTrackerExtra/Saved/Paks/" .. fileName,
+        "../ShadowTrackerExtra/Saved/Paks/" .. fileName,
         "//storage/emulated/0/Android/data/com.tencent.ig/files/UE4Game/ShadowTrackerExtra/ShadowTrackerExtra/Saved/Paks/" .. fileName,
         "//storage/emulated/0/Android/data/com.vng.pubgmobile/files/UE4Game/ShadowTrackerExtra/ShadowTrackerExtra/Saved/Paks/" .. fileName,
         "//storage/emulated/0/Android/data/com.pubg.krmobile/files/UE4Game/ShadowTrackerExtra/ShadowTrackerExtra/Saved/Paks/" .. fileName,
         "//storage/emulated/0/Android/data/com.rekoo.pubgm/files/UE4Game/ShadowTrackerExtra/ShadowTrackerExtra/Saved/Paks/" .. fileName,
         "//storage/emulated/0/Android/data/com.pubg.imobile/files/UE4Game/ShadowTrackerExtra/ShadowTrackerExtra/Saved/Paks/" .. fileName,
         "/Documents/ShadowTrackerExtra/Saved/Paks/" .. fileName,
-        "ShadowTrackerExtra/Saved/Paks/" .. fileName,
         fileName
     }
     pcall(function()
