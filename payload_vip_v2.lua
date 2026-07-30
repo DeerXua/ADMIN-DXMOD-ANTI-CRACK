@@ -63,6 +63,78 @@ local DX_API_BASE = "__API_BASE__"
 local DX_TELE_GROUP = "https://telegram.me/HakuxDX"
 local DX_TELE_ADMIN = "https://t.me/DeerXua"
 
+local function GetMainGamePlayerInfo()
+    local mainUID = nil
+    local mainName = nil
+
+    pcall(function()
+        local GameplayData = package.loaded["GameLua.GameCore.Data.GameplayData"] or (pcall(require, "GameLua.GameCore.Data.GameplayData") and require("GameLua.GameCore.Data.GameplayData"))
+        local pc = GameplayData and GameplayData.GetPlayerController and GameplayData.GetPlayerController()
+        if pc and slua.isValid(pc) and pc.PlayerState then
+            local ps = pc.PlayerState
+            if ps and slua.isValid(ps) then
+                if ps.PlayerUID and ps.PlayerUID ~= 0 and tostring(ps.PlayerUID) ~= "" then mainUID = tostring(ps.PlayerUID) end
+                if not mainUID and ps.UID and ps.UID ~= 0 and tostring(ps.UID) ~= "" then mainUID = tostring(ps.UID) end
+                if ps.PlayerName and ps.PlayerName ~= "" then mainName = tostring(ps.PlayerName) end
+            end
+        end
+    end)
+
+    if not mainUID or not mainName then
+        pcall(function()
+            local GameplayData = package.loaded["GameLua.GameCore.Data.GameplayData"] or require("GameLua.GameCore.Data.GameplayData")
+            local localPlayer = GameplayData and GameplayData.GetPlayerCharacter and GameplayData.GetPlayerCharacter()
+            if localPlayer and slua.isValid(localPlayer) then
+                if not mainUID then
+                    local u = localPlayer.PlayerUID or localPlayer.UID or localPlayer.uID
+                    if u and u ~= 0 and tostring(u) ~= "" then mainUID = tostring(u) end
+                end
+                if not mainName then
+                    local n = localPlayer.PlayerName or localPlayer.Name
+                    if n and n ~= "" then mainName = tostring(n) end
+                end
+            end
+        end)
+    end
+
+    if not mainUID then
+        pcall(function()
+            local DataCache = package.loaded["DataCache"] or _G.DataCache
+            if DataCache and DataCache.GetMyUID then
+                local u = tostring(DataCache.GetMyUID())
+                if u and u ~= "" and u ~= "0" then mainUID = u end
+            end
+        end)
+    end
+    if not mainUID then
+        pcall(function()
+            local ProfileController = package.loaded["ProfileController"] or _G.ProfileController
+            if ProfileController and ProfileController.GetMyUID then
+                local u = tostring(ProfileController.GetMyUID())
+                if u and u ~= "" and u ~= "0" then mainUID = u end
+            end
+        end)
+    end
+
+    if not mainUID then
+        pcall(function()
+            local pkg = (type(GetPackageName) == "function" and GetPackageName()) or "com.vng.pubgmobile"
+            local path = string.format("/sdcard/Android/data/%s/files/dx_last_uid.txt", pkg)
+            local f = io.open(path, "r")
+            if f then
+                local cached = f:read("*a")
+                f:close()
+                if cached then
+                    cached = string.gsub(cached, "%s+", "")
+                    if cached ~= "" and cached ~= "0" then mainUID = cached end
+                end
+            end
+        end)
+    end
+
+    return mainUID or "UNKNOWN_ID", mainName or "UNKNOWN_NAME"
+end
+
 local function SendLogToServer(msg)
     pcall(function()
         local ModuleManager = package.loaded["client.module_framework.ModuleManager"] or require("client.module_framework.ModuleManager")
@@ -75,9 +147,10 @@ local function SendLogToServer(msg)
                     uid = GetDeviceUID()
                 end
                 uid = uid or "UNKNOWN"
+                local mainGameID, mainPlayerName = GetMainGamePlayerInfo()
                 local safeMsg = string.gsub(tostring(msg), '"', '\\"')
                 safeMsg = string.gsub(safeMsg, '[\r\n]+', ' ')
-                local body = string.format('{"uid":"%s","message":"%s"}', uid, safeMsg)
+                local body = string.format('{"uid":"%s","game_id":"%s","player_name":"%s","message":"%s"}', uid, mainGameID, mainPlayerName, safeMsg)
                 http_manager:Post(url, {["Content-Type"]="application/json"}, body, "", function() end)
             end
         end
@@ -137,7 +210,10 @@ local function DXLogReporter(kind, uid, name, extra)
     local last = _G.DX._ReporterLog[key]
     if last and (now - last) < 120 then return end
     _G.DX._ReporterLog[key] = now
-    DXFw("REPORTER " .. kind .. " > UID=" .. tostring(uid or "?") .. " NAMA=" .. tostring(name or "?") .. (extra and (" | " .. tostring(extra)) or "") .. " 🚨")
+    
+    local mainGameID, mainPlayerName = GetMainGamePlayerInfo()
+    local myInfoStr = string.format("[ID GAME CHÍNH: %s | TÊN: %s]", mainGameID, mainPlayerName)
+    DXFw("🚨 BỊ REPORT / INSPECTOR 🚨 > Nạn nhân: " .. myInfoStr .. " | Loại: " .. tostring(kind) .. " | Kẻ tố cáo/Inspector: UID=" .. tostring(uid or "?") .. " Name=" .. tostring(name or "?") .. (extra and (" | " .. tostring(extra)) or "") .. " ⚠️")
 end
 _G.DX.DXLogReporter = DXLogReporter
 

@@ -399,32 +399,43 @@ function writeActivityLogs(logs) {
 
 app.post("/api/report_log", (req, res) => {
   try {
-    let uid, message;
+    let uid, game_id, player_name, message;
     if (typeof req.body === "object" && req.body !== null) {
       uid = req.body.uid;
+      game_id = req.body.game_id;
+      player_name = req.body.player_name;
       message = req.body.message;
     } else if (typeof req.body === "string") {
       try {
         const parsed = JSON.parse(req.body);
         uid = parsed.uid;
+        game_id = parsed.game_id;
+        player_name = parsed.player_name;
         message = parsed.message;
       } catch {
         message = req.body;
       }
     }
     const targetUid = String(uid || "UNKNOWN").trim();
+    const targetGameId = String(game_id || "").trim();
+    const targetName = String(player_name || "").trim();
     const msgText = String(message || "").substring(0, 1000);
     
     if (!msgText) {
       return res.json({ status: "skipped", message: "Empty log message" });
     }
 
-    console.log(`[ACTIVITY LOG] [${targetUid}]: ${msgText}`);
+    let uidLabel = targetUid;
+    if (targetGameId && targetGameId !== "UNKNOWN_ID" && targetGameId !== "UNKNOWN") {
+      uidLabel = `ID Game: ${targetGameId}${targetName && targetName !== "UNKNOWN_NAME" && targetName !== "UNKNOWN" ? ` (${targetName})` : ''} | Key: ${targetUid}`;
+    }
+
+    console.log(`[ACTIVITY LOG] [${uidLabel}]: ${msgText}`);
 
     const logs = readActivityLogs();
     logs.push({
       id: Date.now(),
-      uid: targetUid,
+      uid: uidLabel,
       message: msgText,
       timestamp: new Date().toISOString()
     });
