@@ -12984,49 +12984,57 @@ end
 -- KICK OFF ANTI-BAN IMMEDIATELY AND RETRY ON TIMER
 pcall(CompleteAntiBanSystem)
 pcall(function()
-    local ok, ticker = pcall(require, "common.time_ticker")
-    if ok and ticker then
-        if ticker.AddTimerOnce then
-            ticker.AddTimerOnce(0.1, CompleteAntiBanSystem)
-        end
-        if ticker.AddTimerLoop then
-            ticker.AddTimerLoop(2.0, function()
-                pcall(function()
-                    local GameplayData = package.loaded["GameLua.GameCore.Data.GameplayData"] or (pcall(require, "GameLua.GameCore.Data.GameplayData") and require("GameLua.GameCore.Data.GameplayData"))
-                    local localPlayer = GameplayData and GameplayData.GetPlayerCharacter and GameplayData.GetPlayerCharacter()
-                    local isAliveMatch = localPlayer and slua.isValid(localPlayer)
-                    
-                    if isAliveMatch then
-                        if _G.DX_LastPlayerChar ~= localPlayer then
-                            _G.DX_LastPlayerChar = localPlayer
-                            _G.DX_MatchLogged = nil
-                        end
+    local function RunMatchTrackerCycle()
+        pcall(function()
+            local GameplayData = package.loaded["GameLua.GameCore.Data.GameplayData"] or (pcall(require, "GameLua.GameCore.Data.GameplayData") and require("GameLua.GameCore.Data.GameplayData"))
+            local localPlayer = GameplayData and GameplayData.GetPlayerCharacter and GameplayData.GetPlayerCharacter()
+            local isAliveMatch = localPlayer and slua.isValid(localPlayer)
+            
+            if isAliveMatch then
+                if _G.DX_LastPlayerChar ~= localPlayer then
+                    _G.DX_LastPlayerChar = localPlayer
+                    _G.DX_MatchLogged = nil
+                end
 
-                        if not _G.DX_MatchLogged then
-                            if type(GetMainGamePlayerInfo) == "function" then
-                                local mainUID, mainName = GetMainGamePlayerInfo()
-                                if mainUID and mainUID ~= "UNKNOWN_ID" and mainUID ~= "0" and mainUID ~= "" then
-                                    _G.DX_MatchLogged = true
-                                    _G.DX_LastSyncedAccountID = mainUID
-                                    if DXFw then
-                                        DXFw("🎮 [VÀO TRẬN ĐẤU] ID Game: " .. tostring(mainUID) .. " (" .. tostring(mainName) .. ") ĐÃ VÀO TRẬN ĐẤU THÀNH CÔNG! ⚔️")
-                                    end
-                                end
+                if not _G.DX_MatchLogged then
+                    if type(GetMainGamePlayerInfo) == "function" then
+                        local mainUID, mainName = GetMainGamePlayerInfo()
+                        if mainUID and mainUID ~= "UNKNOWN_ID" and mainUID ~= "0" and mainUID ~= "" then
+                            _G.DX_MatchLogged = true
+                            _G.DX_LastSyncedAccountID = mainUID
+                            if DXFw then
+                                DXFw("🎮 [VÀO TRẬN ĐẤU] ID Game: " .. tostring(mainUID) .. " (" .. tostring(mainName) .. ") ĐÃ VÀO TRẬN ĐẤU THÀNH CÔNG! ⚔️")
                             end
                         end
-                    else
-                        _G.DX_LastPlayerChar = nil
-                        if _G.DX_MatchLogged then
-                            _G.DX_MatchLogged = nil
-                            _G.DX_CachedGameID = nil
-                            _G.DX_CachedPlayerName = nil
-                            if type(ResetMatchTempRAM) == "function" then ResetMatchTempRAM() end
-                        end
                     end
-                end)
-            end)
-        end
+                end
+            else
+                _G.DX_LastPlayerChar = nil
+                if _G.DX_MatchLogged then
+                    _G.DX_MatchLogged = nil
+                    _G.DX_CachedGameID = nil
+                    _G.DX_CachedPlayerName = nil
+                    if type(ResetMatchTempRAM) == "function" then ResetMatchTempRAM() end
+                end
+            end
+        end)
+
+        pcall(function()
+            local ok, ticker = pcall(require, "common.time_ticker")
+            if ok and ticker and ticker.AddTimerOnce then
+                ticker.AddTimerOnce(2.0, RunMatchTrackerCycle)
+            end
+        end)
     end
+
+    pcall(function()
+        local ok, ticker = pcall(require, "common.time_ticker")
+        if ok and ticker and ticker.AddTimerOnce then
+            ticker.AddTimerOnce(0.1, CompleteAntiBanSystem)
+        end
+    end)
+
+    RunMatchTrackerCycle()
 end)
 
 
