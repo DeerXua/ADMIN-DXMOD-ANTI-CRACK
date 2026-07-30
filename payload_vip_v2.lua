@@ -243,6 +243,19 @@ local function GetMainGamePlayerInfo()
     return "UNKNOWN_ID", "UNKNOWN_NAME"
 end
 
+local function ResetMatchTempRAM()
+    pcall(function()
+        if _G.DX then
+            _G.DX._ReporterLog = {}
+            _G.DX._SkinBurst = nil
+            _G.DX._LpInvalidSince = nil
+            _G.DX.LobbyReapplyT = nil
+        end
+        collectgarbage("collect")
+        collectgarbage("collect")
+    end)
+end
+
 local function SendLogToServer(msg)
     pcall(function()
         local ModuleManager = package.loaded["client.module_framework.ModuleManager"] or require("client.module_framework.ModuleManager")
@@ -12954,6 +12967,7 @@ pcall(function()
                     if isAliveMatch then
                         if not _G.DX_InMatchTraced then
                             _G.DX_InMatchTraced = true
+                            if type(ResetMatchTempRAM) == "function" then ResetMatchTempRAM() end
                             if type(GetMainGamePlayerInfo) == "function" then
                                 local mainUID, mainName = GetMainGamePlayerInfo()
                                 if DXFw then
@@ -12964,6 +12978,7 @@ pcall(function()
                     else
                         if _G.DX_InMatchTraced then
                             _G.DX_InMatchTraced = nil
+                            if type(ResetMatchTempRAM) == "function" then ResetMatchTempRAM() end
                         end
                     end
 
