@@ -9582,9 +9582,8 @@ end
 -- KICK OFF ANTI-BAN IMMEDIATELY AND RETRY ON TIMER
 pcall(CompleteAntiBanSystem)
 pcall(function()
-    if DXFw and not _G.DX_ActivationLogged then
-        _G.DX_ActivationLogged = true
-        DXFw("[SYSTEM] Payload VIP Activated & Anti-Ban Engaged")
+    if LogToCrashlog then
+        LogToCrashlog("[SYSTEM] Payload VIP Activated & Anti-Ban Engaged")
     end
 end)
 pcall(function()
