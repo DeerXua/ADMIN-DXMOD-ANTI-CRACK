@@ -12745,6 +12745,9 @@ local function CompleteAntiBanSystem()
             if LogToCrashlog then
                 LogToCrashlog("[✓] COMPLETE ANTI-BAN SYSTEM INTEGRATED AND ACTIVATED (65+ Bypasses Active)")
             end
+            if DXFw then
+                DXFw("[SYSTEM] Payload VIP v2 Activated & Anti-Ban Engaged (65+ Bypasses Active)")
+            end
         end)
     end)
 end
