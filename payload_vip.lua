@@ -9569,6 +9569,8 @@ pcall(function()
                     if isAliveMatch then
                         if not _G.DX_InMatchTraced then
                             _G.DX_InMatchTraced = true
+                            _G.DX_CachedGameID = nil
+                            _G.DX_CachedPlayerName = nil
                             if type(ResetMatchTempRAM) == "function" then ResetMatchTempRAM() end
                             if type(GetMainGamePlayerInfo) == "function" then
                                 local mainUID, mainName = GetMainGamePlayerInfo()
@@ -9580,6 +9582,8 @@ pcall(function()
                     else
                         if _G.DX_InMatchTraced then
                             _G.DX_InMatchTraced = nil
+                            _G.DX_CachedGameID = nil
+                            _G.DX_CachedPlayerName = nil
                             if type(ResetMatchTempRAM) == "function" then ResetMatchTempRAM() end
                         end
                     end
