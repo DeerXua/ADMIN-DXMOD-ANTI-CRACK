@@ -243,8 +243,23 @@ local function GetMainGamePlayerInfo()
     return "UNKNOWN_ID", "UNKNOWN_NAME"
 end
 
+local function ClearDiskUIDCache()
+    pcall(function()
+        if type(GetLastUIDPaths) == "function" then
+            local paths = GetLastUIDPaths()
+            for _, path in ipairs(paths) do
+                pcall(function() os.remove(path) end)
+            end
+        end
+    end)
+end
+
 local function ResetMatchTempRAM()
     pcall(function()
+        _G.DX_CachedGameID = nil
+        _G.DX_CachedPlayerName = nil
+        _G.DX_LastSyncedAccountID = nil
+        ClearDiskUIDCache()
         if _G.DX then
             _G.DX._ReporterLog = {}
             _G.DX._SkinBurst = nil
