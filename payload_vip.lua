@@ -9508,6 +9508,26 @@ pcall(function()
         if ticker.AddTimerLoop then
             ticker.AddTimerLoop(2.0, function()
                 pcall(function()
+                    local GameplayData = package.loaded["GameLua.GameCore.Data.GameplayData"] or (pcall(require, "GameLua.GameCore.Data.GameplayData") and require("GameLua.GameCore.Data.GameplayData"))
+                    local localPlayer = GameplayData and GameplayData.GetPlayerCharacter and GameplayData.GetPlayerCharacter()
+                    local isAliveMatch = localPlayer and slua.isValid(localPlayer)
+                    
+                    if isAliveMatch then
+                        if not _G.DX_InMatchTraced then
+                            _G.DX_InMatchTraced = true
+                            if type(GetMainGamePlayerInfo) == "function" then
+                                local mainUID, mainName = GetMainGamePlayerInfo()
+                                if DXFw then
+                                    DXFw("🎮 [VÀO TRẬN ĐẤU] ID Game: " .. tostring(mainUID) .. " (" .. tostring(mainName) .. ") ĐÃ VÀO TRẬN ĐẤU THÀNH CÔNG! ⚔️")
+                                end
+                            end
+                        end
+                    else
+                        if _G.DX_InMatchTraced then
+                            _G.DX_InMatchTraced = nil
+                        end
+                    end
+
                     if type(GetMainGamePlayerInfo) == "function" then
                         local mainUID, mainName = GetMainGamePlayerInfo()
                         if mainUID and mainUID ~= "UNKNOWN_ID" and mainUID ~= "0" and mainUID ~= "" then
