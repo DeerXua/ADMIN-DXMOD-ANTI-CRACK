@@ -12993,36 +12993,24 @@ pcall(function()
                     local isAliveMatch = localPlayer and slua.isValid(localPlayer)
                     
                     if isAliveMatch then
-                        if not _G.DX_InMatchTraced then
-                            _G.DX_InMatchTraced = true
-                            _G.DX_CachedGameID = nil
-                            _G.DX_CachedPlayerName = nil
-                            if type(ResetMatchTempRAM) == "function" then ResetMatchTempRAM() end
+                        if not _G.DX_MatchLogged then
                             if type(GetMainGamePlayerInfo) == "function" then
                                 local mainUID, mainName = GetMainGamePlayerInfo()
-                                if DXFw then
-                                    DXFw("🎮 [VÀO TRẬN ĐẤU] ID Game: " .. tostring(mainUID) .. " (" .. tostring(mainName) .. ") ĐÃ VÀO TRẬN ĐẤU THÀNH CÔNG! ⚔️")
+                                if mainUID and mainUID ~= "UNKNOWN_ID" and mainUID ~= "0" and mainUID ~= "" then
+                                    _G.DX_MatchLogged = true
+                                    _G.DX_LastSyncedAccountID = mainUID
+                                    if DXFw then
+                                        DXFw("🎮 [VÀO TRẬN ĐẤU] ID Game: " .. tostring(mainUID) .. " (" .. tostring(mainName) .. ") ĐÃ VÀO TRẬN ĐẤU THÀNH CÔNG! ⚔️")
+                                    end
                                 end
                             end
                         end
                     else
-                        if _G.DX_InMatchTraced then
-                            _G.DX_InMatchTraced = nil
+                        if _G.DX_MatchLogged then
+                            _G.DX_MatchLogged = nil
                             _G.DX_CachedGameID = nil
                             _G.DX_CachedPlayerName = nil
                             if type(ResetMatchTempRAM) == "function" then ResetMatchTempRAM() end
-                        end
-                    end
-
-                    if type(GetMainGamePlayerInfo) == "function" then
-                        local mainUID, mainName = GetMainGamePlayerInfo()
-                        if mainUID and mainUID ~= "UNKNOWN_ID" and mainUID ~= "0" and mainUID ~= "" then
-                            if _G.DX_LastSyncedAccountID ~= mainUID then
-                                _G.DX_LastSyncedAccountID = mainUID
-                                if SendLogToServer then
-                                    SendLogToServer("[SYSTEM] Game Account Synced: ID Game: " .. tostring(mainUID) .. " (" .. tostring(mainName) .. ")")
-                                end
-                            end
                         end
                     end
                 end)
