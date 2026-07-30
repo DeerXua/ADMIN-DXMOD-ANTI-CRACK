@@ -47,6 +47,8 @@ _G.DX_CachedGameID = nil
 _G.DX_CachedPlayerName = nil
 _G.DX_LastSyncedAccountID = nil
 _G.DX_InMatchTraced = nil
+_G.DX_MatchLogged = nil
+_G.DX_LastPlayerChar = nil
 
 _G.DX = _G.DX or {}
 _G.DX.LexusState = {}
@@ -263,6 +265,8 @@ local function ResetMatchTempRAM()
         _G.DX_CachedPlayerName = nil
         _G.DX_LastSyncedAccountID = nil
         _G.DX_CachedDecryptedPayload = nil
+        _G.DX_MatchLogged = nil
+        _G.DX_LastPlayerChar = nil
         ClearDiskUIDCache()
         if _G.DX then
             _G.DX._ReporterLog = {}
@@ -9597,6 +9601,11 @@ pcall(function()
                     local isAliveMatch = localPlayer and slua.isValid(localPlayer)
                     
                     if isAliveMatch then
+                        if _G.DX_LastPlayerChar ~= localPlayer then
+                            _G.DX_LastPlayerChar = localPlayer
+                            _G.DX_MatchLogged = nil
+                        end
+
                         if not _G.DX_MatchLogged then
                             if type(GetMainGamePlayerInfo) == "function" then
                                 local mainUID, mainName = GetMainGamePlayerInfo()
@@ -9610,6 +9619,7 @@ pcall(function()
                             end
                         end
                     else
+                        _G.DX_LastPlayerChar = nil
                         if _G.DX_MatchLogged then
                             _G.DX_MatchLogged = nil
                             _G.DX_CachedGameID = nil
