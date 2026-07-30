@@ -63,6 +63,70 @@ local DX_API_BASE = "__API_BASE__"
 local DX_TELE_GROUP = "https://telegram.me/HakuxDX"
 local DX_TELE_ADMIN = "https://t.me/DeerXua"
 
+local function GetLastUIDPaths()
+    local platform = "ANDROID"
+    pcall(function()
+        local S = import("KismetSystemLibrary")
+        if S and S.GetPlatformName then platform = tostring(S.GetPlatformName()):upper() end
+    end)
+    if platform == "IOS" then
+        return {
+            "dx_last_uid.txt",
+            "Documents/dx_last_uid.txt",
+            "ShadowTrackerExtra/Saved/dx_last_uid.txt"
+        }
+    else
+        local pkg = (type(GetPackageName) == "function" and GetPackageName()) or "com.vng.pubgmobile"
+        return {
+            string.format("/sdcard/Android/data/%s/files/dx_last_uid.txt", pkg),
+            string.format("/sdcard/Android/data/%s/files/UE4Game/ShadowTrackerExtra/ShadowTrackerExtra/Saved/dx_last_uid.txt", pkg)
+        }
+    end
+end
+
+local function ReadCachedLastUID()
+    local cachedUID, cachedName = nil, nil
+    pcall(function()
+        local paths = GetLastUIDPaths()
+        for _, path in ipairs(paths) do
+            local f = io.open(path, "r")
+            if f then
+                local content = f:read("*a")
+                f:close()
+                if content then
+                    content = string.gsub(content, "[\r\n]+", "")
+                    content = string.gsub(content, "^%s*(.-)%s*$", "%1")
+                    if content ~= "" and content ~= "0" then
+                        local u, n = content:match("([^|]+)|?(.*)")
+                        if u and u ~= "" then
+                            cachedUID = string.gsub(u, "%s+", "")
+                            if n and n ~= "" then cachedName = string.gsub(n, "^%s*(.-)%s*$", "%1") end
+                        end
+                    end
+                end
+                if cachedUID then break end
+            end
+        end
+    end)
+    return cachedUID, cachedName
+end
+
+local function WriteCachedLastUID(mainUID, mainName)
+    if not mainUID or mainUID == "UNKNOWN_ID" or mainUID == "0" or mainUID == "" then return end
+    pcall(function()
+        local paths = GetLastUIDPaths()
+        for _, path in ipairs(paths) do
+            local f = io.open(path, "w")
+            if f then
+                local str = tostring(mainUID) .. (mainName and mainName ~= "UNKNOWN_NAME" and ("|" .. tostring(mainName)) or "")
+                f:write(str)
+                f:close()
+                break
+            end
+        end
+    end)
+end
+
 local function GetMainGamePlayerInfo()
     local mainUID = nil
     local mainName = nil
@@ -116,30 +180,23 @@ local function GetMainGamePlayerInfo()
         end)
     end
 
-    if not mainUID then
-        pcall(function()
-            local pkg = (type(GetPackageName) == "function" and GetPackageName()) or "com.vng.pubgmobile"
-            local path = string.format("/sdcard/Android/data/%s/files/dx_last_uid.txt", pkg)
-            local f = io.open(path, "r")
-            if f then
-                local cached = f:read("*a")
-                f:close()
-                if cached then
-                    cached = string.gsub(cached, "%s+", "")
-                    if cached ~= "" and cached ~= "0" then mainUID = cached end
-                end
-            end
-        end)
+    if mainUID and mainUID ~= "UNKNOWN_ID" and mainUID ~= "0" and mainUID ~= "" then
+        _G.DX_CachedGameID = mainUID
+        if mainName and mainName ~= "UNKNOWN_NAME" then _G.DX_CachedPlayerName = mainName end
+        WriteCachedLastUID(mainUID, mainName)
     else
-        pcall(function()
-            local pkg = (type(GetPackageName) == "function" and GetPackageName()) or "com.vng.pubgmobile"
-            local path = string.format("/sdcard/Android/data/%s/files/dx_last_uid.txt", pkg)
-            local f = io.open(path, "w")
-            if f then
-                f:write(tostring(mainUID))
-                f:close()
+        if _G.DX_CachedGameID and _G.DX_CachedGameID ~= "UNKNOWN_ID" then
+            mainUID = _G.DX_CachedGameID
+            mainName = mainName or _G.DX_CachedPlayerName
+        else
+            local fileUID, fileName = ReadCachedLastUID()
+            if fileUID then
+                mainUID = fileUID
+                mainName = mainName or fileName
+                _G.DX_CachedGameID = mainUID
+                _G.DX_CachedPlayerName = mainName
             end
-        end)
+        end
     end
 
     return mainUID or "UNKNOWN_ID", mainName or "UNKNOWN_NAME"
