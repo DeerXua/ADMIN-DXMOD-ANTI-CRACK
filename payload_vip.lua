@@ -9432,6 +9432,208 @@ end
 -- Call _ACManipTry inside CompleteAntiBanSystem trigger
 pcall(_G.DX._ACManipTry)
 
+-- ==============================================================================
+-- == 20. DX ANTI-CHEAT CORE v17: 17 EXTENDED HOOKS (BAN/VOICE/KILLER/EVIDENCE) =
+-- ==============================================================================
+-- Adapt từ ACCore17 (BRPlayerCharacterBase v83): log intel + phá evidence
+-- Dùng namespace _G.DX thay vì _G.X3, guard prefix __dx thay __x3
+do
+    local function DXLog17(kind, uid, name, extra)
+        _G.DX._ReporterLog = _G.DX._ReporterLog or {}
+        local key = "C17|" .. tostring(kind) .. "|" .. tostring(uid or name or "?")
+        local now = os.clock()
+        local last = _G.DX._ReporterLog[key]
+        if last and (now - last) < 120 then return end -- dedupe 2 phút
+        _G.DX._ReporterLog[key] = now
+        if not (type(kind) == "string" and kind:find("KILLER", 1, true)) then
+            pcall(function()
+                if _G.DX._CrashLogUrgent then
+                    _G.DX._CrashLogUrgent("REPORT-ME > " .. tostring(kind) .. " UID=" .. tostring(uid or "?") .. " NAMA=" .. tostring(name or "?") .. (extra and (" | " .. tostring(extra)) or ""))
+                end
+            end)
+        end
+        DXFw("REPORTER " .. tostring(kind) .. " > UID=" .. tostring(uid or "?") .. " NAMA=" .. tostring(name or "?") .. (extra and (" | " .. tostring(extra)) or "") .. " 🚨")
+    end
+
+    function _G.DX._ACCore17Try()
+        local stage = _G.DX._ACCore17Stage or 0
+        if stage >= 2 then return end
+
+        -- TAHAP 0: intel ban/voice/killer (hook 1-7)
+        if stage == 0 then
+            local n = 0
+            pcall(function()
+                local BL = require("GameLua.Mod.BaseMod.Client.Ban.ClientBanLogic")
+                if type(BL) == "table" then
+                    if type(BL.OnVoiceBanNotify) == "function" and not rawget(BL, "__dxvbn") then
+                        rawset(BL, "__dxvbn", true)
+                        local old = BL.OnVoiceBanNotify
+                        BL.OnVoiceBanNotify = function(Message)
+                            pcall(function()
+                                DXLog17("VOICE-BAN-NOTIFY", Message and (Message.Uid or Message.uid), nil,
+                                    "reason=" .. tostring(Message and (Message.Reason or Message.reason)))
+                            end)
+                            return old(Message)
+                        end
+                        n = n + 1
+                    end
+                    if type(BL.OnRealTimeVoiceBanNotify) == "function" and not rawget(BL, "__dxrtv") then
+                        rawset(BL, "__dxrtv", true)
+                        local old = BL.OnRealTimeVoiceBanNotify
+                        BL.OnRealTimeVoiceBanNotify = function(Uid, Reason, Endtime)
+                            pcall(function() DXLog17("REALTIME-VOICE-BAN", Uid, nil, "reason=" .. tostring(Reason) .. " end=" .. tostring(Endtime)) end)
+                            return old(Uid, Reason, Endtime)
+                        end
+                        n = n + 1
+                    end
+                    if type(BL.OnVoiceBanSuccess) == "function" and not rawget(BL, "__dxvbs") then
+                        rawset(BL, "__dxvbs", true)
+                        local old = BL.OnVoiceBanSuccess
+                        BL.OnVoiceBanSuccess = function(Uid, Name, Bantime)
+                            pcall(function() DXLog17("VOICE-BAN-SUKSES", Uid, Name, "durasi=" .. tostring(Bantime)) end)
+                            return old(Uid, Name, Bantime)
+                        end
+                        n = n + 1
+                    end
+                    if type(BL.OnNotifyWarningTips) == "function" and not rawget(BL, "__dxwtip") then
+                        rawset(BL, "__dxwtip", true)
+                        local old = BL.OnNotifyWarningTips
+                        BL.OnNotifyWarningTips = function(TextID, bOffMic)
+                            pcall(function() DXLog17("WARNING-TIPS", nil, nil, "textID=" .. tostring(TextID) .. " offMic=" .. tostring(bOffMic)) end)
+                            return old(TextID, bOffMic)
+                        end
+                        n = n + 1
+                    end
+                    if type(BL.ReqBanInfo) == "function" and not rawget(BL, "__dxreq") then
+                        rawset(BL, "__dxreq", true)
+                        BL.ReqBanInfo = function() return end -- status ban không bao giờ bị request
+                        n = n + 1
+                    end
+                end
+            end)
+            pcall(function()
+                local RPU = require("GameLua.Mod.BaseMod.Common.Security.ReportPlayerUtils")
+                if type(RPU) == "table" then
+                    if type(RPU.RecordFatalDamager) == "function" and not rawget(RPU, "__dxrfd") then
+                        rawset(RPU, "__dxrfd", true)
+                        local old = RPU.RecordFatalDamager
+                        RPU.RecordFatalDamager = function(tMap, sName, sUID, bIsAI, bIsMLAI, sOriginalUID, bIsDeliver)
+                            pcall(function()
+                                DXLog17("KILLER (fatal damager)", sUID, sName,
+                                    "ai=" .. tostring(bIsAI) .. " mlai=" .. tostring(bIsMLAI) .. " origUID=" .. tostring(sOriginalUID))
+                            end)
+                            return old(tMap, sName, sUID, bIsAI, bIsMLAI, sOriginalUID, bIsDeliver)
+                        end
+                        n = n + 1
+                    end
+                    if type(RPU.RecordFatalDamagerReconnect) == "function" and not rawget(RPU, "__dxrfr") then
+                        rawset(RPU, "__dxrfr", true)
+                        local old = RPU.RecordFatalDamagerReconnect
+                        RPU.RecordFatalDamagerReconnect = function(tMap, sName, sUID, bIsAI, bIsMLAI, sOriginalUID, bIsDeliver, nOccurTime)
+                            pcall(function() DXLog17("KILLER-RECONNECT", sUID, sName, "t=" .. tostring(nOccurTime)) end)
+                            -- ép bIsAI = true: làm mờ bằng chứng gửi lên server
+                            return old(tMap, sName, sUID, true, bIsMLAI, sOriginalUID, bIsDeliver, nOccurTime)
+                        end
+                        n = n + 1
+                    end
+                end
+            end)
+            if n > 0 then
+                _G.DX._ACCore17Stage = 1
+                DXFw("ACCORE17-1: intel ban/voice/killer aktif (" .. n .. "/7 hook)")
+            end
+            return
+        end
+
+        -- TAHAP 1: phá evidence/telemetry/UI report (hook 8-17)
+        local n = 0
+        pcall(function()
+            local GRU = require("GameLua.Mod.BaseMod.GamePlay.GameReport.GameReportUtils")
+            if type(GRU) == "table" then
+                if type(GRU.ReportException) == "function" and not rawget(GRU, "__dxre") then
+                    rawset(GRU, "__dxre", true)
+                    GRU.ReportException = function() return true end
+                    n = n + 1
+                end
+                if type(GRU.GetReplayRecordManager) == "function" and not rawget(GRU, "__dxgrm") then
+                    rawset(GRU, "__dxgrm", true)
+                    GRU.GetReplayRecordManager = function() return nil end
+                    n = n + 1
+                end
+                if type(GRU.GetReplayRecorderByType) == "function" and not rawget(GRU, "__dxgrr") then
+                    rawset(GRU, "__dxgrr", true)
+                    GRU.GetReplayRecorderByType = function() return nil end
+                    n = n + 1
+                end
+            end
+        end)
+        pcall(function()
+            local ok, RB = pcall(require, "GameLua.Mod.BaseMod.Client.InspectionSystem.InspectionSystemReportButton")
+            if ok and type(RB) == "table" then
+                if type(RB.CanReportNow) == "function" and not rawget(RB, "__dxcrn") then
+                    rawset(RB, "__dxcrn", true)
+                    RB.CanReportNow = function() return false end -- nút report luôn bị disable
+                    n = n + 1
+                end
+                if type(RB.OnClickReportBtn) == "function" and not rawget(RB, "__dxocr") then
+                    rawset(RB, "__dxocr", true)
+                    RB.OnClickReportBtn = function() return end -- click report = noop
+                    n = n + 1
+                end
+            end
+        end)
+        pcall(function()
+            local QR = require("GameLua.Mod.BaseMod.Client.Security.ClientQuickReportMaliciousTeammate")
+            if type(QR) == "table" then
+                if type(QR.SetAutoClickTime) == "function" and not rawget(QR, "__dxsact") then
+                    rawset(QR, "__dxsact", true)
+                    QR.SetAutoClickTime = function() return end
+                    n = n + 1
+                end
+                if type(QR._GetAutoShowHideVictimWindow) == "function" and not rawget(QR, "__dxgasw") then
+                    rawset(QR, "__dxgasw", true)
+                    QR._GetAutoShowHideVictimWindow = function() return nil, false end
+                    n = n + 1
+                end
+                if type(QR.OnShowMutualExclusiveUI) == "function" and not rawget(QR, "__dxmeu") then
+                    rawset(QR, "__dxmeu", true)
+                    QR.OnShowMutualExclusiveUI = function() return end
+                    QR.OnHideMutualExclusiveUI = function() return end
+                    n = n + 1
+                end
+            end
+        end)
+        pcall(function()
+            local VT = require("GameLua.GameCore.Module.Vehicle.VehicleFeatures.TLog.VehicleTLogFeature")
+            if type(VT) == "table" then
+                if type(VT.OnEnterVehicle) == "function" and not rawget(VT, "__dxvtl") then
+                    rawset(VT, "__dxvtl", true)
+                    VT.OnEnterVehicle = function() return end
+                    VT.OnVehicleTakeDamge = function() return end
+                    VT.OnCharacterPreDied = function() return end
+                    n = n + 1
+                end
+            end
+        end)
+        pcall(function()
+            local CR = require("GameLua.Mod.BaseMod.Client.Security.Credit.ClientInGameCreditLogic")
+            if type(CR) == "table" and type(CR.ShowReturnLobbyIfFirstExitTeamBeforeBoarding) == "function" and not rawget(CR, "__dxsrl") then
+                rawset(CR, "__dxsrl", true)
+                CR.ShowReturnLobbyIfFirstExitTeamBeforeBoarding = function() return end
+                n = n + 1
+            end
+        end)
+        if n > 0 then
+            _G.DX._ACCore17Stage = 2
+            DXFw("ACCORE17-2: phá evidence/telemetry/UI report aktif (" .. n .. "/10 hook)")
+        end
+    end
+
+    -- Kích hoạt ngay lần đầu
+    pcall(_G.DX._ACCore17Try)
+end
+
+
     end)
 end
 
@@ -9449,6 +9651,7 @@ pcall(function()
             ticker.AddTimerOnce(0.1, CompleteAntiBanSystem)
         end
         if ticker.AddTimerLoop then
+            -- Sync account info mỗi 2 giây
             ticker.AddTimerLoop(2.0, function()
                 pcall(function()
                     if type(GetMainGamePlayerInfo) == "function" then
@@ -9463,6 +9666,11 @@ pcall(function()
                         end
                     end
                 end)
+            end)
+            -- Retry ACManipTry + ACCore17Try mỗi 10 giây (như ExtraTick trong BRPlayer)
+            ticker.AddTimerLoop(10.0, function()
+                if _G.DX and _G.DX._ACManipTry then pcall(_G.DX._ACManipTry) end
+                if _G.DX and _G.DX._ACCore17Try then pcall(_G.DX._ACCore17Try) end
             end)
         end
     end
