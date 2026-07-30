@@ -50,6 +50,21 @@ local GameplayData = require("GameLua.GameCore.Data.GameplayData")
 local GamePlayTools = require("GameLua.Mod.BaseMod.Common.GamePlayTools")
 local MatchModeIds = require("GameLua.Mod.BaseMod.GamePlay.Config.MatchModeIdsConfig")
 
+-- RESET TOÀN BỘ TRẠNG THÁI VỀ BAN ĐẦU KHI BẮT ĐẦU NẠP LẠI PAYLOAD TRONG TRẬN MỚI
+_G.DX_CachedGameID = nil
+_G.DX_CachedPlayerName = nil
+_G.DX_LastSyncedAccountID = nil
+_G.DX_InMatchTraced = nil
+_G.DX_MatchLogged = nil
+_G.DX_LastPlayerChar = nil
+
+_G.DX = _G.DX or {}
+_G.DX.LexusState = {}
+_G.DX._ReporterLog = {}
+_G.DX._SkinBurst = nil
+_G.DX._LpInvalidSince = nil
+_G.DX.LobbyReapplyT = nil
+
 function BRPlayerCharacterBase:ctor()
 end
 
