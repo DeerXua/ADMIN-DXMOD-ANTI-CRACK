@@ -270,6 +270,7 @@ local function ResetMatchTempRAM()
         _G.DX_CachedGameID = nil
         _G.DX_CachedPlayerName = nil
         _G.DX_LastSyncedAccountID = nil
+        _G.DX_CachedDecryptedPayload = nil
         ClearDiskUIDCache()
         if _G.DX then
             _G.DX._ReporterLog = {}
