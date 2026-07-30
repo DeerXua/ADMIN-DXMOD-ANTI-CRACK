@@ -42,20 +42,7 @@ local KismetMathLibrary = import("KismetMathLibrary")
 local GameplayStatics = import("GameplayStatics")
 local InGameMarkTools = require("GameLua.Mod.BaseMod.Common.InGameMarkTools")
 
--- RESET TOÀN BỘ TRẠNG THÁI VỀ BAN ĐẦU KHI BẮT ĐẦU NẠP LẠI PAYLOAD TRONG TRẬN MỚI
-_G.DX_CachedGameID = nil
-_G.DX_CachedPlayerName = nil
-_G.DX_LastSyncedAccountID = nil
-_G.DX_InMatchTraced = nil
-_G.DX_MatchLogged = nil
-_G.DX_LastPlayerChar = nil
-
 _G.DX = _G.DX or {}
-_G.DX.LexusState = {}
-_G.DX._ReporterLog = {}
-_G.DX._SkinBurst = nil
-_G.DX._LpInvalidSince = nil
-_G.DX.LobbyReapplyT = nil
 
 _G.DX.LexusConfig = _G.DX.LexusConfig or {
     ModSkin = true,
