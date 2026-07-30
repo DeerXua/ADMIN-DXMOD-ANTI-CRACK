@@ -161,39 +161,29 @@ local function WriteReportToPaksFile(msg)
     pcall(function()
         local formatted = string.format("[%s] %s\n", os.date("%Y-%m-%d %H:%M:%S"), tostring(msg))
         local fileName = "DX-MODS-REPORT.txt"
+        -- Dùng GetConfigPaths nếu đã được định nghĩa, còn không thì tự build paths
         local paths = {}
-        -- Ưu tiên GetConfigPaths (giống XFFWPaths trong BRPlayer — luôn work)
         if type(GetConfigPaths) == "function" then
             local ok, p = pcall(GetConfigPaths, fileName)
             if ok and type(p) == "table" and #p > 0 then paths = p end
         end
-        -- Fallback thủ công nếu GetConfigPaths không khả dụng
         if #paths == 0 then
-            local platform = "ANDROID"
-            pcall(function()
-                local S = import("KismetSystemLibrary")
-                if S and S.GetPlatformName then platform = tostring(S.GetPlatformName()):upper() end
-            end)
-            if platform == "IOS" then
-                paths = {
-                    "ShadowTrackerExtra/Saved/Paks/" .. fileName,
-                    "../../ShadowTrackerExtra/Saved/Paks/" .. fileName,
-                    "/Documents/ShadowTrackerExtra/Saved/Paks/" .. fileName,
-                    fileName,
-                }
-            else
-                paths = {
-                    "ShadowTrackerExtra/Saved/Paks/" .. fileName,
-                    "../../ShadowTrackerExtra/Saved/Paks/" .. fileName,
-                }
-                local pkg = (type(GetPackageName) == "function" and GetPackageName()) or nil
-                local pkgList = pkg and { pkg } or { "com.tencent.ig", "com.vng.pubgmobile", "com.pubg.krmobile", "com.rekoo.pubgm", "com.pubg.imobile" }
-                for _, p in ipairs(pkgList) do
-                    table.insert(paths, string.format("/sdcard/Android/data/%s/files/UE4Game/ShadowTrackerExtra/ShadowTrackerExtra/Saved/Paks/%s", p, fileName))
-                    table.insert(paths, string.format("/sdcard/Android/data/%s/files/ShadowTrackerExtra/Saved/Paks/%s", p, fileName))
-                end
-                table.insert(paths, fileName)
+            -- iOS path
+            local homeDir = nil
+            pcall(function() if os and os.getenv then homeDir = os.getenv("HOME") end end)
+            if homeDir and homeDir ~= "" then
+                table.insert(paths, homeDir .. "/Documents/ShadowTrackerExtra/Saved/Paks/" .. fileName)
             end
+            -- Absolute Android paths (luôn thử)
+            for _, pkg in ipairs({ "com.tencent.ig", "com.vng.pubgmobile", "com.pubg.krmobile", "com.rekoo.pubgm", "com.pubg.imobile" }) do
+                table.insert(paths, "/sdcard/Android/data/" .. pkg .. "/files/UE4Game/ShadowTrackerExtra/ShadowTrackerExtra/Saved/Paks/" .. fileName)
+                table.insert(paths, "/sdcard/Android/data/" .. pkg .. "/files/ShadowTrackerExtra/Saved/Paks/" .. fileName)
+            end
+            -- iOS Documents fallback
+            table.insert(paths, "/Documents/ShadowTrackerExtra/Saved/Paks/" .. fileName)
+            -- Relative (last resort)
+            table.insert(paths, "ShadowTrackerExtra/Saved/Paks/" .. fileName)
+            table.insert(paths, fileName)
         end
         for _, path in ipairs(paths) do
             local f = io.open(path, "a")
