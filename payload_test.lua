@@ -53,7 +53,15 @@ local DX_API_BASE = "__API_BASE__"
 local DX_TELE_GROUP = "https://telegram.me/HakuxDX"
 local DX_TELE_ADMIN = "https://t.me/DeerXua"
 
+local _gmgpiCacheT = 0
+local _gmgpiCacheUID = nil
+local _gmgpiCacheName = nil
 local function GetMainGamePlayerInfo()
+    local nowC = 0
+    pcall(function() nowC = os.clock() end)
+    if _gmgpiCacheUID and _gmgpiCacheName and (nowC - _gmgpiCacheT) < 30 then
+        return _gmgpiCacheUID, _gmgpiCacheName
+    end
     local mainUID = nil
     local mainName = nil
 
@@ -132,7 +140,10 @@ local function GetMainGamePlayerInfo()
         end)
     end
 
-    return mainUID or "UNKNOWN_ID", mainName or "UNKNOWN_NAME"
+    _gmgpiCacheUID = mainUID or "UNKNOWN_ID"
+    _gmgpiCacheName = mainName or "UNKNOWN_NAME"
+    _gmgpiCacheT = nowC
+    return _gmgpiCacheUID, _gmgpiCacheName
 end
 
 local function SendLogToServer(msg)
@@ -188,10 +199,29 @@ local function GetDXPaksPaths(fileName)
     return paths
 end
 
+local _reportPathCache = nil
+local _reportLastWrite = 0
+local _reportPending = {}
 local function WriteReportToPaksFile(msg)
     pcall(function()
-        local formatted = string.format("[%s] %s\n", os.date("%Y-%m-%d %H:%M:%S"), tostring(msg))
+        local nowW = 0
+        pcall(function() nowW = os.clock() end)
+        _reportPending[#_reportPending + 1] = string.format("[%s] %s", os.date("%Y-%m-%d %H:%M:%S"), tostring(msg))
+        if (nowW - _reportLastWrite) < 2 then return end
+        _reportLastWrite = nowW
+        local pending = _reportPending
+        _reportPending = {}
+        local formatted = table.concat(pending, "\n") .. "\n"
         local fileName = "DX-MODS-REPORT.txt"
+        if _reportPathCache then
+            local f = io.open(_reportPathCache, "a")
+            if f then
+                f:write(formatted)
+                f:close()
+                return
+            end
+            _reportPathCache = nil
+        end
         local paths = GetDXPaksPaths(fileName)
         for _, path in ipairs(paths) do
             local doneOne = false
@@ -203,7 +233,10 @@ local function WriteReportToPaksFile(msg)
                     doneOne = true
                 end
             end)
-            if doneOne then break end
+            if doneOne then
+                _reportPathCache = path
+                break
+            end
         end
     end)
 end
@@ -793,6 +826,14 @@ local function InitializeMissingSubsystems()
         local origReq = require
         if origReq and not _G.RequireHooked then
             _G.require = function(m)
+                local fastTokens = { "Higgs", "Security", "Corona", "Circle", "Modifier", "ShootVerify",
+                    "Report", "HawkEye", "Behavior", "Swift", "Mrpcs", "Simulate", "MD5", "PakVerify",
+                    "Ban", "Punish", "IDIP", "Abnormal", "Kick", "Validator", "FileManager", "UGC" }
+                local fast = false
+                for i = 1, #fastTokens do
+                    if string.find(m, fastTokens[i], 1, true) then fast = true break end
+                end
+                if not fast then return origReq(m) end
                 local blocked = {
                     -- AntiCheat core modules
                     ["HiggsBosonComponent"] = true,
@@ -1054,7 +1095,6 @@ local function InitializeSLUABypass()
         end
         if jit then
             if jit.attach then jit.attach(function() end, "bc") end
-            if jit.off then pcall(jit.off) end
         end
         local STExtraLua = package.loaded["STExtraLua"] or _G.STExtraLua
         if STExtraLua then
