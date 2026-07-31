@@ -1,4 +1,4 @@
-﻿local OriginalClass = ...
+local OriginalClass = ...
 local BRPlayerCharacterBase = OriginalClass or {
   ServerRPC = {},
   ClientRPC = {},
@@ -11576,6 +11576,7 @@ do
         _G.AddOutfitSyncCacheBeforeSave = syncAllCacheFromLive
 
         local function snapshotLobbyWear()
+            if isInGamePlay and isInGamePlay() then return end
             syncWeaponCacheFromLobby()
             syncClothesCacheFromLobby()
             syncThrowObjectCacheFromLobby()
@@ -11606,6 +11607,7 @@ do
         pcall(function() _ticker = require("common.time_ticker") end)
         local function later(sec, fn)
             if _G.SetTimer then pcall(_G.SetTimer, sec, fn) return end
+            if _ticker and _ticker.AddTimerOnce then pcall(_ticker.AddTimerOnce, sec, fn) return end
             if _ticker and _ticker.AddTimer then pcall(_ticker.AddTimer, sec, fn) end
         end
 
@@ -16199,7 +16201,28 @@ do
             if _S.bootstrapped then return true end
             char = char or getLocalChar()
             if not char or not slua.isValid(char) then return false end
-            snapshotLobbyWear()
+            pcall(_loadEquippedCache)
+            local cch = cache()
+            if (not cch.outfitRes or cch.outfitRes == 0) and _G._savedOutfitRes then
+                cch.outfitRes = _G._savedOutfitRes
+            end
+            if _G._savedOutfitClothes then
+                cch.clothes = cch.clothes or {}
+                for resID in pairs(_G._savedOutfitClothes) do
+                    cch.clothes[resID] = true
+                end
+            end
+            if _G._savedOutfitEquip then
+                for k, v in pairs(_G._savedOutfitEquip) do
+                    if k == "bag" then cch.equip.bag = v
+                    elseif k == "helmet" then cch.equip.helmet = v
+                    elseif k == "armor" then cch.equip.armor = v
+                    elseif k == "parachute" then cch.equip.parachute = v
+                    elseif k == "glider" then cch.equip.glider = v
+                    end
+                end
+            end
+            syncMatchConfigFromCache()
             _S.weaponApplied = false
             _S.weaponDiagDone = false
             _S.matchOutfitDone = false
