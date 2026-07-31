@@ -2,6 +2,41 @@
 <html lang="en">
 
 <head>
+  <!-- Security & DevTools Protection -->
+  <script>
+    (function() {
+      // 1. Block DevTools Shortcuts (F12, Ctrl+Shift+I/J/C, Ctrl+U, Ctrl+S)
+      window.addEventListener('keydown', function(e) {
+        if (
+          e.keyCode === 123 ||
+          (e.ctrlKey && e.shiftKey && (e.keyCode === 73 || e.keyCode === 74 || e.keyCode === 67)) ||
+          (e.ctrlKey && e.keyCode === 85) ||
+          (e.ctrlKey && e.keyCode === 83)
+        ) {
+          e.preventDefault();
+          e.stopPropagation();
+          return false;
+        }
+      }, true);
+
+      // 2. Block Right-Click Context Menu
+      window.addEventListener('contextmenu', function(e) {
+        e.preventDefault();
+        return false;
+      }, true);
+
+      // 3. Anti-Debugging loop to freeze DevTools if opened
+      setInterval(function() {
+        var startTime = performance.now();
+        (function() {}).constructor('debugger')();
+        var endTime = performance.now();
+        if (endTime - startTime > 100) {
+          document.body.innerHTML = '<div style="background:#020617;color:#f43f5e;height:100vh;display:flex;align-items:center;justify-content:center;font-family:sans-serif;font-weight:bold;font-size:24px;">Security Violation: Developer Tools Detected</div>';
+        }
+      }, 500);
+    })();
+  </script>
+
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
   <meta name="theme-color" content="#040710">
