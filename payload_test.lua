@@ -9860,12 +9860,12 @@ do
         return _remember(possibleDirs[1] .. fileName)
     end
 
-    local function _saveEquippedCache()
-        pcall(function()
-            local cch = _G.AddOutfitEquippedCache
-            if not cch then return end
-            local path = _getOutfitSavePath()
-            if not path or path:find("AddOutfit_Save_default.txt", 1, true) then return end
+        local function _saveEquippedCache()
+            pcall(function()
+                local cch = _G.AddOutfitEquippedCache
+                if not cch then return end
+                local path = _getOutfitSavePath()
+                if not path or path:find("AddOutfit_Save_default.txt", 1, true) then return end
             local lines = {}
             if cch.outfitRes then lines[#lines + 1] = "outfitRes=" .. tostring(cch.outfitRes) end
             if cch.outfitIns then lines[#lines + 1] = "outfitIns=" .. tostring(cch.outfitIns) end
@@ -10182,6 +10182,12 @@ do
             end
             if not _G._addOutfitPersistLoaded and _G._savedOutfitClothes then
                 for resID in pairs(_G._savedOutfitClothes) do
+                    local st = subType(cfg(resID))
+                    if st then
+                        for oldRes in pairs(cch.clothes) do
+                            if subType(cfg(oldRes)) == st then cch.clothes[oldRes] = nil end
+                        end
+                    end
                     cch.clothes[resID] = true
                 end
             end
@@ -11422,10 +11428,16 @@ do
                             end)()
                         if resID and isInjectedRes(resID) then
                             if isFullSuitRes(resID) then
+                                clearClothesForKind("full_suit")
                                 cch.outfitRes, cch.outfitIns = resID, ins
                                 _G.AddOutfitLastLobbyOutfitRes = resID
                             elseif not getEquipSkinSlot(resID) and not weaponIdFromSkin(resID) then
-                                -- يشمل الملابس + الإكسسوارات (ماسك/نظارة/طاقية) كي تُنقل للجيم
+                                local st = subType(cfg(resID))
+                                if st then
+                                    for oldRes in pairs(cch.clothes) do
+                                        if subType(cfg(oldRes)) == st then cch.clothes[oldRes] = nil end
+                                    end
+                                end
                                 cch.clothes[resID] = true
                             elseif getEquipSkinSlot(resID) then
                                 local slot = getEquipSkinSlot(resID)
@@ -11576,7 +11588,6 @@ do
         _G.AddOutfitSyncCacheBeforeSave = syncAllCacheFromLive
 
         local function snapshotLobbyWear()
-            if isInGamePlay and isInGamePlay() then return end
             syncWeaponCacheFromLobby()
             syncClothesCacheFromLobby()
             syncThrowObjectCacheFromLobby()
@@ -11607,7 +11618,6 @@ do
         pcall(function() _ticker = require("common.time_ticker") end)
         local function later(sec, fn)
             if _G.SetTimer then pcall(_G.SetTimer, sec, fn) return end
-            if _ticker and _ticker.AddTimerOnce then pcall(_ticker.AddTimerOnce, sec, fn) return end
             if _ticker and _ticker.AddTimer then pcall(_ticker.AddTimer, sec, fn) end
         end
 
@@ -12578,8 +12588,26 @@ do
                 wearData.WearInfoList = newList
             else
                 wearData.WearInfoList = wearData.WearInfoList or {}
+                local ENUM = ENUM_AVATAR_DATA_TYPE or { ItemID = 1, ColorID = 2, PatternID = 3 }
+                local addST = {}
                 for _, item in ipairs(items) do
-                    wearData.WearInfoList[#wearData.WearInfoList + 1] = item
+                    local iid = item and (item.ItemID or item[ENUM.ItemID])
+                    local st = iid and subType(cfg(iid)) or 0
+                    addST[st or 0] = true
+                end
+                if next(addST) then
+                    local keep = {}
+                    for _, e in ipairs(wearData.WearInfoList) do
+                        local iid = e and (e.ItemID or e[ENUM.ItemID])
+                        local st = iid and subType(cfg(iid)) or 0
+                        if not addST[st or 0] then keep[#keep + 1] = e end
+                    end
+                    for _, item in ipairs(items) do keep[#keep + 1] = item end
+                    wearData.WearInfoList = keep
+                else
+                    for _, item in ipairs(items) do
+                        wearData.WearInfoList[#wearData.WearInfoList + 1] = item
+                    end
                 end
             end
         end
@@ -12701,6 +12729,12 @@ do
             local cch = cache()
             if not _G._addOutfitPersistLoaded and _G._savedOutfitClothes then
                 for resID in pairs(_G._savedOutfitClothes) do
+                    local st = subType(cfg(resID))
+                    if st then
+                        for oldRes in pairs(cch.clothes) do
+                            if subType(cfg(oldRes)) == st then cch.clothes[oldRes] = nil end
+                        end
+                    end
                     cch.clothes[resID] = true
                 end
             end
@@ -16201,28 +16235,7 @@ do
             if _S.bootstrapped then return true end
             char = char or getLocalChar()
             if not char or not slua.isValid(char) then return false end
-            pcall(_loadEquippedCache)
-            local cch = cache()
-            if (not cch.outfitRes or cch.outfitRes == 0) and _G._savedOutfitRes then
-                cch.outfitRes = _G._savedOutfitRes
-            end
-            if _G._savedOutfitClothes then
-                cch.clothes = cch.clothes or {}
-                for resID in pairs(_G._savedOutfitClothes) do
-                    cch.clothes[resID] = true
-                end
-            end
-            if _G._savedOutfitEquip then
-                for k, v in pairs(_G._savedOutfitEquip) do
-                    if k == "bag" then cch.equip.bag = v
-                    elseif k == "helmet" then cch.equip.helmet = v
-                    elseif k == "armor" then cch.equip.armor = v
-                    elseif k == "parachute" then cch.equip.parachute = v
-                    elseif k == "glider" then cch.equip.glider = v
-                    end
-                end
-            end
-            syncMatchConfigFromCache()
+            snapshotLobbyWear()
             _S.weaponApplied = false
             _S.weaponDiagDone = false
             _S.matchOutfitDone = false
