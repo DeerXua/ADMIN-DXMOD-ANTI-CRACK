@@ -8595,7 +8595,13 @@ local function LogToCrashlog(msg)
     end)
 end
 
--- Hàm dọn RAM định kỳ tổng quát
+-- Tune GC ngay khi nạp script để giải phóng RAM tối đa
+pcall(function()
+    collectgarbage("setpause", 100)
+    collectgarbage("setstepmul", 500)
+end)
+
+-- Hàm dọn RAM định kỳ tổng quát (Đã tối ưu & tự khởi chạy)
 local function StartRAMCleaner()
     if _G._RAMCleanerRunning then return end
     _G._RAMCleanerRunning = true
@@ -8603,30 +8609,33 @@ local function StartRAMCleaner()
     local function RunRAMCleanerCycle()
         pcall(function()
             local before = collectgarbage("count")
-            collectgarbage("step", 200)
+            collectgarbage("step", 2000)
             local after = collectgarbage("count")
             local freed = before - after
             if freed > 0.1 then
                 local logMsg = string.format("[RAM Cleaner] Truoc: %.2f KB | Sau: %.2f KB | Giai phong: %.2f KB", before, after, freed)
                 print(logMsg)
-                LogToCrashlog(logMsg)
+                if LogToCrashlog then LogToCrashlog(logMsg) end
             end
         end)
         
-        -- Tự gọi lại sau mỗi 25 giây qua bộ đếm thời gian (nếu có)
+        -- Tự gọi lại sau mỗi 15 giây qua bộ đếm thời gian (nếu có)
         local ok, ticker = pcall(require, "common.time_ticker")
         if ok and ticker and ticker.AddTimerOnce then
-            ticker.AddTimerOnce(25.0, RunRAMCleanerCycle)
+            ticker.AddTimerOnce(15.0, RunRAMCleanerCycle)
         else
             _G._RAMCleanerRunning = false
             pcall(function()
-                LogToCrashlog("[RAM Cleaner] Khong tim thay ticker hoac khong ho tro AddTimerOnce")
+                if LogToCrashlog then LogToCrashlog("[RAM Cleaner] Khong tim thay ticker hoac khong ho tro AddTimerOnce") end
             end)
         end
     end
 
     RunRAMCleanerCycle()
 end
+
+_G.StartRAMCleaner = StartRAMCleaner
+pcall(StartRAMCleaner)
 
 -- ============================================================================
 -- [DX-MOD INTEGRATION NOTE]: INTEGRATED COMPLETE ANTI-BAN SYSTEM v5.0
