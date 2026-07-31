@@ -9771,16 +9771,53 @@ do
                 end
             end
         end)
+        local function _remember(path)
+            if pid ~= "default" then _outfitSavePathCache = path end
+            return path
+        end
         for _, dir in ipairs(possibleDirs) do
             local f = io.open(dir .. fileName, 'r')
-            if f then f:close(); _outfitSavePathCache = dir .. fileName; return _outfitSavePathCache end
+            if f then f:close(); return _remember(dir .. fileName) end
+        end
+        if pid ~= "default" then
+            local defPath = nil
+            local defContent = nil
+            for _, dir in ipairs(possibleDirs) do
+                local f = io.open(dir .. 'AddOutfit_Save_default.txt', 'r')
+                if f then
+                    defContent = f:read('*a')
+                    f:close()
+                    if defContent and defContent ~= "" then
+                        defPath = dir .. 'AddOutfit_Save_default.txt'
+                        break
+                    end
+                end
+            end
+            if defPath then
+                for _, dir in ipairs(possibleDirs) do
+                    local target = dir .. fileName
+                    local fw = io.open(target, 'w')
+                    if fw then
+                        fw:write(defContent)
+                        fw:close()
+                        _outfitSavePathCache = target
+                        return _outfitSavePathCache
+                    end
+                end
+                return _remember(defPath)
+            end
         end
         for _, dir in ipairs(possibleDirs) do
-            local f = io.open(dir .. "config.ini", 'r')
-            if f then f:close(); _outfitSavePathCache = dir .. fileName; return _outfitSavePathCache end
+            local probe = dir .. ".ao_write_probe"
+            local f = io.open(probe, 'w')
+            if f then
+                f:write('1')
+                f:close()
+                os.remove(probe)
+                return _remember(dir .. fileName)
+            end
         end
-        _outfitSavePathCache = possibleDirs[1] .. fileName
-        return _outfitSavePathCache
+        return _remember(possibleDirs[1] .. fileName)
     end
 
     local function _saveEquippedCache()
