@@ -9865,6 +9865,7 @@ do
             local cch = _G.AddOutfitEquippedCache
             if not cch then return end
             local path = _getOutfitSavePath()
+            if not path or path:find("AddOutfit_Save_default.txt", 1, true) then return end
             local lines = {}
             if cch.outfitRes then lines[#lines + 1] = "outfitRes=" .. tostring(cch.outfitRes) end
             if cch.outfitIns then lines[#lines + 1] = "outfitIns=" .. tostring(cch.outfitIns) end
@@ -10014,6 +10015,58 @@ do
                 parts[#parts + 1] = "throw_" .. tostring(st) .. ":" .. tostring(info.resID or 0)
             end
         end
+        pcall(function()
+            if DataMgr then
+                parts[#parts + 1] = "vst=" .. tostring(tonumber(DataMgr.vst_skin) or 0)
+                if DataMgr.equipmentSkinInsIDTable then
+                    local ids = {}
+                    for subType, ins in pairs(DataMgr.equipmentSkinInsIDTable) do
+                        ins = tonumber(ins)
+                        if ins and ins > 0 then ids[#ids + 1] = tostring(subType) .. ":" .. tostring(ins) end
+                    end
+                    table.sort(ids)
+                    parts[#parts + 1] = "equipins=" .. table.concat(ids, ",")
+                end
+                if DataMgr.MotionSlotList then
+                    local ids = {}
+                    for _, ins in ipairs(DataMgr.MotionSlotList) do
+                        ins = tonumber(ins)
+                        if ins and ins > 0 then ids[#ids + 1] = tostring(ins) end
+                    end
+                    table.sort(ids)
+                    parts[#parts + 1] = "motion=" .. table.concat(ids, ",")
+                end
+                if DataMgr.VehicleSlotList then
+                    local ids = {}
+                    for subType, insList in pairs(DataMgr.VehicleSlotList) do
+                        if insList and type(insList) == "table" then
+                            for _, ins in ipairs(insList) do
+                                ins = tonumber(ins)
+                                if ins and ins > 0 then ids[#ids + 1] = tostring(subType) .. ":" .. tostring(ins) end
+                            end
+                        end
+                    end
+                    table.sort(ids)
+                    parts[#parts + 1] = "vehicle=" .. table.concat(ids, ",")
+                end
+            end
+        end)
+        pcall(function()
+            local AvatarData = require("client.logic.data.AvatarData")
+            local ids = {}
+            for _, ins in pairs(AvatarData.GetRoleWear()) do
+                ins = tonumber(ins)
+                if ins and ins > 0 then ids[#ids + 1] = tostring(ins) end
+            end
+            table.sort(ids)
+            parts[#parts + 1] = "rolewear=" .. table.concat(ids, ",")
+        end)
+        pcall(function()
+            local HT = require("client.logic.lobby.hall_theme_utils")
+            local ins = tonumber(HT.GetThemeInstId and HT.GetThemeInstId()) or 0
+            local res = tonumber(HT.homeThemeItemId) or 0
+            parts[#parts + 1] = "theme=" .. tostring(ins) .. ":" .. tostring(res)
+        end)
         return table.concat(parts, "|")
     end
 
@@ -10187,8 +10240,11 @@ do
         _saveDirty = false
         pcall(function()
             if _G.AddOutfitSyncCacheBeforeSave then _G.AddOutfitSyncCacheBeforeSave() end
-            _lastSnapshot = _snapshotCache()
-            pcall(_saveEquippedCache)
+            local newSnap = _snapshotCache()
+            if newSnap ~= _lastSnapshot then
+                _lastSnapshot = newSnap
+                pcall(_saveEquippedCache)
+            end
             local cch2 = _G.AddOutfitEquippedCache
             if cch2 then
                 _G._savedOutfitRes = tonumber(cch2.outfitRes) and cch2.outfitRes > 0 and cch2.outfitRes or nil
@@ -11197,6 +11253,7 @@ do
         local function saveWeaponToCache(weaponID, resID, insID)
             weaponID, resID, insID = tonumber(weaponID), tonumber(resID), tonumber(insID)
             if not weaponID or not resID or resID <= 0 then return end
+            if resID == weaponID and not isInjectedRes(resID) then return end
             local cch = cache()
             cch.weapons[weaponID] = { resID = resID, insID = insID or 0 }
             _G.AddOutfitLastAppliedSkin = {}
