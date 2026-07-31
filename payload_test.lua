@@ -11338,6 +11338,8 @@ do
             pcall(function() now = os.clock() end)
             if (now - _lastSyncWeaponCache) < 0.3 then return end  -- throttle: max ~3x per second
             _lastSyncWeaponCache = now
+            if GameStatus and GameStatus.IsInLobbyOrMainCity
+                and not GameStatus.IsInLobbyOrMainCity() then return end  -- freeze cache in match
             local cch = cache()
             pcall(function()
                 local fbd = require("client.slua.logic.wardrobe.fashionbag.fashionbag_data")
@@ -11402,6 +11404,8 @@ do
             pcall(function() now = os.clock() end)
             if (now - _lastSyncClothesCache) < 0.3 then return end  -- throttle: max ~3x per second
             _lastSyncClothesCache = now
+            if GameStatus and GameStatus.IsInLobbyOrMainCity
+                and not GameStatus.IsInLobbyOrMainCity() then return end  -- freeze cache in match
             local cch = cache()
             pcall(function()
                 local inLobby = false
@@ -13993,12 +13997,8 @@ do
             return applyItemToMatchAvatar(comp, resID)
         end
 
-        local function matchApplyOutfit(char)
-            syncWeaponCacheFromLobby()
-            syncClothesCacheFromLobby()
-            local comp = char.CharacterAvatarComp2_BP
+        local function applyBodyClothesToComp(comp)
             if not slua.isValid(comp) then return false end
-
             local outfitRes = getDesiredOutfit()
             local applied = false
 
@@ -14035,6 +14035,25 @@ do
                 end
             end
             return applied
+        end
+
+        local function matchApplyOutfit(char)
+            syncWeaponCacheFromLobby()
+            syncClothesCacheFromLobby()
+            local comp = char.CharacterAvatarComp2_BP
+            if not slua.isValid(comp) then return false end
+            return applyBodyClothesToComp(comp)
+        end
+
+        local _lastReapplyBody = 0
+        local function reapplyMatchBodyClothes()
+            local now = 0
+            pcall(function() now = os.clock() end)
+            if (now - _lastReapplyBody) < 0.5 then return false end
+            _lastReapplyBody = now
+            local char = getLocalChar()
+            if not char or not slua.isValid(char) then return false end
+            return applyBodyClothesToComp(char.CharacterAvatarComp2_BP)
         end
 
         local _lastPatchTime = 0
@@ -14644,7 +14663,10 @@ do
                         local char = getLocalChar()
                         if char then
                             char:AddGameTimer(0.2, false, function()
-                                if slua.isValid(char) then matchApplyEquipSkins(char) end
+                                if slua.isValid(char) then
+                                    pcall(reapplyMatchBodyClothes)
+                                    matchApplyEquipSkins(char)
+                                end
                             end)
                         end
                     end)
@@ -14666,6 +14688,7 @@ do
                     end
                     orig(self, PlayerInfo, uPlayerController, ...)
                     if uPlayerController and slua.isValid(uPlayerController) and uPlayerController == localPC then
+                        pcall(reapplyMatchBodyClothes)
                         applyMatchEquipAvatarToController()
                     end
                 end
@@ -14700,6 +14723,7 @@ do
                     end
                     origGen(uPlayerController)
                     if uPlayerController and slua.isValid(uPlayerController) and uPlayerController == localPC then
+                        pcall(reapplyMatchBodyClothes)
                         applyMatchEquipAvatarToController()
                     end
                     return
@@ -14713,6 +14737,7 @@ do
                     end
                     origInit(PlayerInfo, uPlayerController)
                     if uPlayerController and slua.isValid(uPlayerController) and uPlayerController == localPC then
+                        pcall(reapplyMatchBodyClothes)
                         applyMatchEquipAvatarToController()
                     end
                 end
