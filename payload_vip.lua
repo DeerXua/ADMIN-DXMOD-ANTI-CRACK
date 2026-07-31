@@ -8601,33 +8601,42 @@ pcall(function()
     collectgarbage("setstepmul", 500)
 end)
 
--- Hàm dọn RAM định kỳ tổng quát (Ghi nhật ký trực tiếp vào DX-MODS-REPORT.txt)
+-- Hàm dọn RAM định kỳ thông minh (Đã tối ưu dọn rác sâu + lọc log rác)
 local function StartRAMCleaner()
     if _G._RAMCleanerRunning then return end
     _G._RAMCleanerRunning = true
 
     pcall(function()
         if WriteReportToPaksFile then
-            WriteReportToPaksFile("[RAM CLEANER] Hệ thống tự động dọn RAM & GC Tuning đã khởi chạy (Chu kỳ 15s)")
+            WriteReportToPaksFile("[RAM CLEANER] Hệ thống dọn RAM tự động & GC Tuning đã kích hoạt (Tối ưu dọn rác 15s/lần)")
         end
     end)
 
     local function RunRAMCleanerCycle()
         pcall(function()
             local beforeKB = collectgarbage("count")
-            collectgarbage("step", 2000)
+            
+            -- Nếu bộ nhớ Lua > 150 MB: ép full-collect để quét sạch rác tồn đọng
+            if beforeKB > 150 * 1024 then
+                collectgarbage("collect")
+            else
+                collectgarbage("step", 3000)
+            end
+
             local afterKB = collectgarbage("count")
             local freedKB = beforeKB - afterKB
             
             local beforeMB = beforeKB / 1024.0
             local afterMB = afterKB / 1024.0
 
-            local logMsg = string.format("[RAM Cleaner] Bộ nhớ Lua - Trước: %.2f MB | Sau: %.2f MB | Đã giải phóng: %.2f KB", beforeMB, afterMB, freedKB)
-            print(logMsg)
-            if WriteReportToPaksFile then
-                WriteReportToPaksFile(logMsg)
+            -- Chỉ ghi log khi thực sự dọn được rác (> 1 KB) hoặc bộ nhớ vượt mốc 150 MB
+            if freedKB > 1.0 or beforeMB > 150.0 then
+                local logMsg = string.format("[RAM Cleaner] Dọn rác thành công - Trước: %.2f MB | Sau: %.2f MB | Đã giải phóng: %.2f KB (~%.2f MB)", 
+                    beforeMB, afterMB, freedKB, freedKB / 1024.0)
+                print(logMsg)
+                if WriteReportToPaksFile then WriteReportToPaksFile(logMsg) end
+                if LogToCrashlog then LogToCrashlog(logMsg) end
             end
-            if LogToCrashlog then LogToCrashlog(logMsg) end
         end)
         
         -- Tự gọi lại sau mỗi 15 giây qua bộ đếm thời gian (nếu có)
