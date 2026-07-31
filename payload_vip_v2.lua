@@ -13165,7 +13165,7 @@ do
             end)
             if n > 0 then
                 _G.DX._ACManipStage = 1
-                DXFw("ACMANIP-1: penangkap pelapor/inspector aktif (" .. n .. "/9 hook)")
+                DXFw("[BẢO VỆ] Hệ thống bắt Report & Inspector đã kích hoạt thành công (" .. n .. "/9 hook)")
             end
             return
         end
