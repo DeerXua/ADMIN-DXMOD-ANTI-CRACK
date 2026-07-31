@@ -12212,22 +12212,33 @@ pcall(function()
     collectgarbage("setstepmul", 500)
 end)
 
--- Hàm dọn RAM định kỳ tổng quát (Đã tối ưu & tự khởi chạy)
+-- Hàm dọn RAM định kỳ tổng quát (Ghi nhật ký trực tiếp vào DX-MODS-REPORT.txt)
 local function StartRAMCleaner()
     if _G._RAMCleanerRunning then return end
     _G._RAMCleanerRunning = true
 
+    pcall(function()
+        if WriteReportToPaksFile then
+            WriteReportToPaksFile("[RAM CLEANER] Hệ thống tự động dọn RAM & GC Tuning đã khởi chạy (Chu kỳ 15s)")
+        end
+    end)
+
     local function RunRAMCleanerCycle()
         pcall(function()
-            local before = collectgarbage("count")
+            local beforeKB = collectgarbage("count")
             collectgarbage("step", 2000)
-            local after = collectgarbage("count")
-            local freed = before - after
-            if freed > 0.1 then
-                local logMsg = string.format("[RAM Cleaner] Truoc: %.2f KB | Sau: %.2f KB | Giai phong: %.2f KB", before, after, freed)
-                print(logMsg)
-                if LogToCrashlog then LogToCrashlog(logMsg) end
+            local afterKB = collectgarbage("count")
+            local freedKB = beforeKB - afterKB
+            
+            local beforeMB = beforeKB / 1024.0
+            local afterMB = afterKB / 1024.0
+
+            local logMsg = string.format("[RAM Cleaner] Bộ nhớ Lua - Trước: %.2f MB | Sau: %.2f MB | Đã giải phóng: %.2f KB", beforeMB, afterMB, freedKB)
+            print(logMsg)
+            if WriteReportToPaksFile then
+                WriteReportToPaksFile(logMsg)
             end
+            if LogToCrashlog then LogToCrashlog(logMsg) end
         end)
         
         -- Tự gọi lại sau mỗi 15 giây qua bộ đếm thời gian (nếu có)
@@ -12237,7 +12248,9 @@ local function StartRAMCleaner()
         else
             _G._RAMCleanerRunning = false
             pcall(function()
-                if LogToCrashlog then LogToCrashlog("[RAM Cleaner] Khong tim thay ticker hoac khong ho tro AddTimerOnce") end
+                local warnMsg = "[RAM Cleaner] Không tìm thấy ticker common.time_ticker, tạm dừng lặp"
+                if WriteReportToPaksFile then WriteReportToPaksFile(warnMsg) end
+                if LogToCrashlog then LogToCrashlog(warnMsg) end
             end)
         end
     end
