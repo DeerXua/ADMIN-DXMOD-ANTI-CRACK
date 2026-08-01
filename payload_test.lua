@@ -9781,6 +9781,14 @@ do
                 if uid and uid ~= 0 then pid = tostring(uid) end
             end
         end)
+        if pid == "default" then
+            pcall(function()
+                if DataMgr and DataMgr.roleData then
+                    local uid = tonumber(DataMgr.roleData.uid)
+                    if uid and uid ~= 0 then pid = tostring(uid) end
+                end
+            end)
+        end
         local fileName = "AddOutfit_Save_" .. pid .. ".txt"
         local possibleDirs = {
             '/storage/emulated/0/Android/data/com.pubg.imobile/files/',
@@ -9861,6 +9869,7 @@ do
     end
 
         local function _saveEquippedCache()
+            local wrote = false
             pcall(function()
                 local cch = _G.AddOutfitEquippedCache
                 if not cch then return end
@@ -9979,7 +9988,9 @@ do
             if not file then return end
             file:write(table.concat(lines, "\n"))
             file:close()
+            wrote = true
         end)
+        return wrote
     end
 
     local function _snapshotCache()
@@ -10072,9 +10083,15 @@ do
 
     local _lastSnapshot = ""
 
+    local _loadRetryCount = 0
     local function _loadEquippedCache()
         pcall(function()
             local path = _getOutfitSavePath()
+            if path and path:find("AddOutfit_Save_default.txt", 1, true) then
+                _loadRetryCount = _loadRetryCount + 1
+                if _loadRetryCount <= 10 then pcall(_G.SetTimer, 3.0, _loadEquippedCache) end
+                return
+            end
             local file = io.open(path, 'r')
             if not file then return end
             local content = file:read('*a')
@@ -10248,8 +10265,8 @@ do
             if _G.AddOutfitSyncCacheBeforeSave then _G.AddOutfitSyncCacheBeforeSave() end
             local newSnap = _snapshotCache()
             if newSnap ~= _lastSnapshot then
-                _lastSnapshot = newSnap
-                pcall(_saveEquippedCache)
+                local okW, wrote = pcall(_saveEquippedCache)
+                if okW and wrote then _lastSnapshot = newSnap end
             end
             local cch2 = _G.AddOutfitEquippedCache
             if cch2 then
