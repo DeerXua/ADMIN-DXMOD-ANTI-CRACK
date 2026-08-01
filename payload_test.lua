@@ -17625,7 +17625,7 @@ do
         initHooks()
 
         log("AddOutfit Merged loaded")
-        notify(Kịch bản đã sẵn sàng")
+        notify("Kịch bản đã sẵn sàng")
         pcall(function() report("AddOutfit init DONE") end)
     end)
     if not _ao_ok then
