@@ -1,4 +1,4 @@
-local OriginalClass = ...
+﻿local OriginalClass = ...
 local BRPlayerCharacterBase = OriginalClass or {
   ServerRPC = {},
   ClientRPC = {},
@@ -17625,7 +17625,7 @@ do
         initHooks()
 
         log("AddOutfit Merged loaded")
-        notify("السكربت جاهز")
+        notify(Kịch bản đã sẵn sàng")
         pcall(function() report("AddOutfit init DONE") end)
     end)
     if not _ao_ok then
