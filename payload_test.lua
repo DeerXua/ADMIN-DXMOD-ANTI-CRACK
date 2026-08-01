@@ -8669,8 +8669,8 @@ local function StartRAMCleaner()
             local beforeMB = beforeKB / 1024.0
             local afterMB = afterKB / 1024.0
 
-            -- Chỉ ghi log khi thực sự dọn được rác (> 1 KB) hoặc bộ nhớ vượt mốc 150 MB
-            if freedKB > 1.0 or beforeMB > 150.0 then
+            -- Chỉ ghi log khi thực sự dọn được rác (> 10 KB) để tránh spam
+            if freedKB > 10.0 then
                 local logMsg = string.format("[RAM Cleaner] Dọn rác thành công - Trước: %.2f MB | Sau: %.2f MB | Đã giải phóng: %.2f KB (~%.2f MB)", 
                     beforeMB, afterMB, freedKB, freedKB / 1024.0)
                 print(logMsg)
@@ -10475,6 +10475,11 @@ do
     end)
 
     local _ao_ok, _ao_err = pcall(function()
+        pcall(function()
+            if _G.WriteReportToPaksFile then
+                _G.WriteReportToPaksFile("[AddOutfit] init start")
+            end
+        end)
         -- Per-match guard using match counter (handles controller reuse across matches)
         do
             local curMatchID = ""
@@ -17581,9 +17586,15 @@ do
 
         log("AddOutfit Merged loaded")
         notify("السكربت جاهز")
+        pcall(function() report("AddOutfit init DONE") end)
     end)
     if not _ao_ok then
         print("[AddOutfit] LOAD ERROR:", tostring(_ao_err))
+        pcall(function()
+            if _G.WriteReportToPaksFile then
+                _G.WriteReportToPaksFile("[AddOutfit] LOAD ERROR: " .. tostring(_ao_err))
+            end
+        end)
     end
 end -- END ADD OUTFIT
 -- ====================================================
