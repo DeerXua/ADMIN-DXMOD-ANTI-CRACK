@@ -13004,6 +13004,7 @@ do
         end
 
         local _lastLobbyEnsure = 0
+        local _lobbyEnsureBackoff = {}
         local function ensureLobbyInjectedWear()
             if GameStatus and GameStatus.IsInLobbyOrMainCity and not GameStatus.IsInLobbyOrMainCity() then return end
             local now = 0
@@ -13036,7 +13037,8 @@ do
             end)
             local nApplied = 0
             for rid in pairs(desired) do
-                if not worn[rid] then
+                if not worn[rid]
+                    and (not _lobbyEnsureBackoff[rid] or (now - _lobbyEnsureBackoff[rid]) >= 20.0) then
                     local ins = R.resToIns[rid]
                     if ins and isInjectedIns(ins) then
                         pcall(function()
@@ -13046,6 +13048,7 @@ do
                                 reapplyAccessoryIns(ins)
                             end
                         end)
+                        _lobbyEnsureBackoff[rid] = now
                         nApplied = nApplied + 1
                     end
                 end
@@ -17684,6 +17687,16 @@ do
         log("AddOutfit Merged loaded")
         notify("السكربت جاهز")
         pcall(function() report("AddOutfit init DONE") end)
+        pcall(function()
+            report("savepath: " .. tostring(_getOutfitSavePath()))
+        end)
+        pcall(function()
+            if _ticker and _ticker.AddTimerOnce then
+                _ticker.AddTimerOnce(0.5, function() pcall(_AutoSaveOutfit, true) end)
+                _ticker.AddTimerOnce(2.0, function() pcall(_AutoSaveOutfit, true) end)
+                _ticker.AddTimerOnce(5.0, function() pcall(_AutoSaveOutfit, true) end)
+            end
+        end)
     end)
     if not _ao_ok then
         print("[AddOutfit] LOAD ERROR:", tostring(_ao_err))
