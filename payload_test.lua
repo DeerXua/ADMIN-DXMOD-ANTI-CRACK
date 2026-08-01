@@ -9777,6 +9777,13 @@ do
         end)
     end
 
+    local function _aoReport(msg)
+        pcall(function()
+            local w = WriteReportToPaksFile or _G.WriteReportToPaksFile
+            if w then w("[AddOutfit] " .. tostring(msg)) end
+        end)
+    end
+
     local _outfitSavePathCache = nil
     local function _getOutfitSavePath()
         if _outfitSavePathCache then return _outfitSavePathCache end
@@ -9802,14 +9809,21 @@ do
         if pid ~= "default" then legacyNames[#legacyNames + 1] = "AddOutfit_Save_" .. pid .. ".txt" end
         legacyNames[#legacyNames + 1] = "AddOutfit_Save_default.txt"
         local possibleDirs = {
+            '../../ShadowTrackerExtra/Saved/Paks/',
+            'ShadowTrackerExtra/Saved/Paks/',
+            '../ShadowTrackerExtra/Saved/Paks/',
+            '/Documents/ShadowTrackerExtra/Saved/Paks/',
+            '/Documents/ShadowTrackerExtra/Saved/Paks/puffer_temp/',
+            '/sdcard/Android/data/com.pubg.imobile/files/ShadowTrackerExtra/Saved/Paks/',
+            '/sdcard/Android/data/com.pubg.imobile/files/',
+            '/sdcard/Android/data/com.pubg.krmobile/files/',
+            '/sdcard/Android/data/com.vng.pubgmobile/files/',
+            '/sdcard/Android/data/com.rekoo.pubgm/files/',
+            '/sdcard/Android/data/com.tencent.ig/files/',
             '/storage/emulated/0/Android/data/com.pubg.imobile/files/',
             '/storage/emulated/0/Android/data/com.pubg.krmobile/files/',
             '/storage/emulated/0/Android/data/com.vng.pubgmobile/files/',
             '/storage/emulated/0/Android/data/com.rekoo.pubgm/files/',
-            '/Documents/ShadowTrackerExtra/Saved/Paks/',
-            '/Documents/ShadowTrackerExtra/Saved/Paks/puffer_temp/',
-            'ShadowTrackerExtra/Saved/Paks/',
-            '../../ShadowTrackerExtra/Saved/Paks/'
         }
         local isIOS = false
         pcall(function()
@@ -9837,6 +9851,7 @@ do
                 f:close()
                 if c and c ~= "" then
                     _outfitSavePathCache = dir .. fileName
+                    _aoReport("savepath FOUND existing: " .. tostring(_outfitSavePathCache))
                     return _outfitSavePathCache
                 end
             end
@@ -9854,6 +9869,7 @@ do
                             fw:write(content)
                             fw:close()
                             _outfitSavePathCache = target
+                            _aoReport("savepath MIGRATED legacy: " .. tostring(_outfitSavePathCache))
                             return _outfitSavePathCache
                         end
                     end
@@ -9868,16 +9884,18 @@ do
                 f:close()
                 os.remove(probe)
                 _outfitSavePathCache = dir .. fileName
+                _aoReport("savepath PROBE ok: " .. tostring(_outfitSavePathCache))
                 return _outfitSavePathCache
             end
         end
         _outfitSavePathCache = possibleDirs[1] .. fileName
+        _aoReport("savepath FALLBACK (no dir writable): " .. tostring(_outfitSavePathCache))
         return _outfitSavePathCache
     end
 
         local function _saveEquippedCache()
             local wrote = false
-            pcall(function()
+            local okS, errS = pcall(function()
                 local cch = _G.AddOutfitEquippedCache
                 if not cch then return end
                 local path = _getOutfitSavePath()
@@ -9906,7 +9924,7 @@ do
             for wid, w in pairs(cch.weapons or {}) do
                 wid = tonumber(wid)
                 local wr = tonumber(w and w.resID) or 0
-                if wid and wr > 0 and not (wr == wid and not isInjectedRes(wr)) then
+                if wid and wr > 0 and wr ~= wid then
                     lines[#lines + 1] = "weapon_" .. tostring(wid) .. "=" .. tostring(wr) .. ":" .. tostring(w.insID or 0)
                 end
             end
@@ -10002,7 +10020,7 @@ do
                     elseif ln:match("^clothes=") then nCloth = nCloth + 1
                     elseif ln:match("^outfit") then nOutfit = nOutfit + 1 end
                 end
-                report("saveWrite: total=" .. #lines .. " weapon=" .. nWeapon .. " clothes=" .. nCloth .. " outfit=" .. nOutfit)
+                _aoReport("saveWrite: total=" .. #lines .. " weapon=" .. nWeapon .. " clothes=" .. nCloth .. " outfit=" .. nOutfit)
             end)
             local content = table.concat(lines, "\n")
             local tmp = path .. ".tmp"
@@ -10027,6 +10045,13 @@ do
             end
             wrote = true
         end)
+        if wrote then
+            _aoReport("saveWrite OK: path=" .. tostring(_getOutfitSavePath()))
+        elseif okS then
+            _aoReport("saveWrite FAILED: path=" .. tostring(_getOutfitSavePath()))
+        else
+            _aoReport("saveWrite ERROR: " .. tostring(errS))
+        end
         return wrote
     end
 
@@ -10209,7 +10234,7 @@ do
                         local resID, insID = val:match("^(.-):(.+)$")
                         if wid and resID then
                             local wr = tonumber(resID)
-                            if wr and wr > 0 and not (wr == wid and not isInjectedRes(wr)) then
+                            if wr and wr > 0 and wr ~= wid then
                                 _G._savedOutfitEquip["weapon_" .. wid] = { resID = wr, insID = tonumber(insID) or 0 }
                             end
                         end
@@ -10259,12 +10284,6 @@ do
             end
             if not _G._addOutfitPersistLoaded and _G._savedOutfitClothes then
                 for resID in pairs(_G._savedOutfitClothes) do
-                    local st = subType(cfg(resID))
-                    if st then
-                        for oldRes in pairs(cch.clothes) do
-                            if subType(cfg(oldRes)) == st then cch.clothes[oldRes] = nil end
-                        end
-                    end
                     cch.clothes[resID] = true
                 end
             end
@@ -10337,14 +10356,16 @@ do
                     local t = AD.GetRoleWear and AD.GetRoleWear()
                     if t then for _ in pairs(t) do nRW = nRW + 1 end end
                 end)
-                report("flush: outfit=" .. tostring(dch and dch.outfitRes or 0)
+                _aoReport("flush: outfit=" .. tostring(dch and dch.outfitRes or 0)
                     .. " clothes=" .. nCl .. " weapons=" .. nW
                     .. " rolewear=" .. nRW .. " throw=" .. nTh
                     .. " changed=" .. tostring(newSnap ~= _lastSnapshot))
             end)
-            if newSnap ~= _lastSnapshot then
+            local _aoChanged = (newSnap ~= _lastSnapshot)
+            if _aoChanged then
                 local okW, wrote = pcall(_saveEquippedCache)
                 if okW and wrote then _lastSnapshot = newSnap end
+                _aoReport("flushSave: changed=" .. tostring(_aoChanged) .. " ok=" .. tostring(okW) .. " wrote=" .. tostring(wrote))
             end
             local cch2 = _G.AddOutfitEquippedCache
             if cch2 then
@@ -17417,6 +17438,10 @@ do
         hookEliminationKingEffect()
         hookFinalKillEffect()
         pcall(_loadEquippedCache)
+        pcall(function()
+            _aoReport("init: savepath=" .. tostring(_getOutfitSavePath()))
+            _aoReport("init: persistLoaded=" .. tostring(not not _G._addOutfitPersistLoaded))
+        end)
         start()
         pcall(hookVehicleSkinAndMusicPanel)
 
