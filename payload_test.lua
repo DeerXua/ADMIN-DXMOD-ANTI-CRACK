@@ -10476,8 +10476,9 @@ do
 
     local _ao_ok, _ao_err = pcall(function()
         pcall(function()
-            if _G.WriteReportToPaksFile then
-                _G.WriteReportToPaksFile("[AddOutfit] init start")
+            local w = WriteReportToPaksFile or _G.WriteReportToPaksFile
+            if w then
+                w("[AddOutfit] init start")
             end
         end)
         -- Per-match guard using match counter (handles controller reuse across matches)
@@ -10521,8 +10522,9 @@ do
 
         local function report(msg)
             pcall(function()
-                if _G.WriteReportToPaksFile then
-                    _G.WriteReportToPaksFile("[AddOutfit] " .. tostring(msg))
+                local w = WriteReportToPaksFile or _G.WriteReportToPaksFile
+                if w then
+                    w("[AddOutfit] " .. tostring(msg))
                 end
             end)
         end
@@ -17591,8 +17593,9 @@ do
     if not _ao_ok then
         print("[AddOutfit] LOAD ERROR:", tostring(_ao_err))
         pcall(function()
-            if _G.WriteReportToPaksFile then
-                _G.WriteReportToPaksFile("[AddOutfit] LOAD ERROR: " .. tostring(_ao_err))
+            local w = WriteReportToPaksFile or _G.WriteReportToPaksFile
+            if w then
+                w("[AddOutfit] LOAD ERROR: " .. tostring(_ao_err))
             end
         end)
     end
