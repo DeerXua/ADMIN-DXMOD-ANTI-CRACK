@@ -1,4 +1,4 @@
-﻿local OriginalClass = ...
+local OriginalClass = ...
 local BRPlayerCharacterBase = OriginalClass or {
   ServerRPC = {},
   ClientRPC = {},
@@ -9766,8 +9766,6 @@ pcall(function()
 end)
 
 
--- ============ ADD OUTFIT MERGED (1.lua) ============
-do
 
     local _outfitSavePathCache = nil
     local function _getOutfitSavePath()
@@ -9789,7 +9787,10 @@ do
                 end
             end)
         end
-        local fileName = "AddOutfit_Save_" .. pid .. ".txt"
+        local fileName = "AddOutfit_Save.txt"
+        local legacyNames = {}
+        if pid ~= "default" then legacyNames[#legacyNames + 1] = "AddOutfit_Save_" .. pid .. ".txt" end
+        legacyNames[#legacyNames + 1] = "AddOutfit_Save_default.txt"
         local possibleDirs = {
             '/storage/emulated/0/Android/data/com.pubg.imobile/files/',
             '/storage/emulated/0/Android/data/com.pubg.krmobile/files/',
@@ -9819,40 +9820,27 @@ do
                 end
             end
         end)
-        local function _remember(path)
-            if pid ~= "default" then _outfitSavePathCache = path end
-            return path
-        end
         for _, dir in ipairs(possibleDirs) do
             local f = io.open(dir .. fileName, 'r')
-            if f then f:close(); return _remember(dir .. fileName) end
+            if f then f:close(); _outfitSavePathCache = dir .. fileName; return _outfitSavePathCache end
         end
-        if pid ~= "default" then
-            local defPath = nil
-            local defContent = nil
-            for _, dir in ipairs(possibleDirs) do
-                local f = io.open(dir .. 'AddOutfit_Save_default.txt', 'r')
+        for _, dir in ipairs(possibleDirs) do
+            for _, legacy in ipairs(legacyNames) do
+                local f = io.open(dir .. legacy, 'r')
                 if f then
-                    defContent = f:read('*a')
+                    local content = f:read('*a')
                     f:close()
-                    if defContent and defContent ~= "" then
-                        defPath = dir .. 'AddOutfit_Save_default.txt'
-                        break
+                    if content and content ~= "" then
+                        local target = dir .. fileName
+                        local fw = io.open(target, 'w')
+                        if fw then
+                            fw:write(content)
+                            fw:close()
+                            _outfitSavePathCache = target
+                            return _outfitSavePathCache
+                        end
                     end
                 end
-            end
-            if defPath then
-                for _, dir in ipairs(possibleDirs) do
-                    local target = dir .. fileName
-                    local fw = io.open(target, 'w')
-                    if fw then
-                        fw:write(defContent)
-                        fw:close()
-                        _outfitSavePathCache = target
-                        return _outfitSavePathCache
-                    end
-                end
-                return _remember(defPath)
             end
         end
         for _, dir in ipairs(possibleDirs) do
@@ -9862,10 +9850,12 @@ do
                 f:write('1')
                 f:close()
                 os.remove(probe)
-                return _remember(dir .. fileName)
+                _outfitSavePathCache = dir .. fileName
+                return _outfitSavePathCache
             end
         end
-        return _remember(possibleDirs[1] .. fileName)
+        _outfitSavePathCache = possibleDirs[1] .. fileName
+        return _outfitSavePathCache
     end
 
         local function _saveEquippedCache()
@@ -9874,7 +9864,7 @@ do
                 local cch = _G.AddOutfitEquippedCache
                 if not cch then return end
                 local path = _getOutfitSavePath()
-                if not path or path:find("AddOutfit_Save_default.txt", 1, true) then return end
+                if not path then return end
             local lines = {}
             if cch.outfitRes then lines[#lines + 1] = "outfitRes=" .. tostring(cch.outfitRes) end
             if cch.outfitIns then lines[#lines + 1] = "outfitIns=" .. tostring(cch.outfitIns) end
@@ -9897,7 +9887,11 @@ do
             if eq.parachuteIns then lines[#lines + 1] = "equip_parachuteIns=" .. tostring(eq.parachuteIns) end
             if eq.gliderIns then lines[#lines + 1] = "equip_gliderIns=" .. tostring(eq.gliderIns) end
             for wid, w in pairs(cch.weapons or {}) do
-                lines[#lines + 1] = "weapon_" .. tostring(wid) .. "=" .. tostring(w.resID) .. ":" .. tostring(w.insID or 0)
+                wid = tonumber(wid)
+                local wr = tonumber(w and w.resID) or 0
+                if wid and wr > 0 and not (wr == wid and not isInjectedRes(wr)) then
+                    lines[#lines + 1] = "weapon_" .. tostring(wid) .. "=" .. tostring(wr) .. ":" .. tostring(w.insID or 0)
+                end
             end
             pcall(function()
                 if DataMgr and DataMgr.MotionSlotList then
@@ -9993,39 +9987,13 @@ do
         return wrote
     end
 
-    local function _snapshotCache()
-        local cch = _G.AddOutfitEquippedCache
-        if not cch then return "" end
+    local _snapHeavyT = 0
+    local _snapHeavyPart = ""
+    local function _snapshotHeavyPart()
+        local now = 0
+        pcall(function() now = os.clock() end)
+        if (now - _snapHeavyT) < 1.5 then return _snapHeavyPart end
         local parts = {}
-        parts[#parts + 1] = tostring(cch.outfitRes or 0)
-        local clothIds = {}
-        for resID in pairs(cch.clothes or {}) do
-            clothIds[#clothIds + 1] = resID
-        end
-        table.sort(clothIds)
-        parts[#parts + 1] = table.concat(clothIds, ",")
-        local eq = cch.equip or {}
-        parts[#parts + 1] = tostring(eq.bag or 0)
-        parts[#parts + 1] = tostring(eq.helmet or 0)
-        parts[#parts + 1] = tostring(eq.armor or 0)
-        parts[#parts + 1] = tostring(eq.parachute or 0)
-        parts[#parts + 1] = tostring(eq.glider or 0)
-        local wIds = {}
-        for wid in pairs(cch.weapons or {}) do wIds[#wIds + 1] = wid end
-        table.sort(wIds)
-        for _, wid in ipairs(wIds) do
-            local w = cch.weapons[wid]
-            parts[#parts + 1] = tostring(wid) .. ":" .. tostring(w.resID or 0)
-        end
-        if cch.throwObjects then
-            local tIds = {}
-            for st in pairs(cch.throwObjects) do tIds[#tIds + 1] = st end
-            table.sort(tIds)
-            for _, st in ipairs(tIds) do
-                local info = cch.throwObjects[st]
-                parts[#parts + 1] = "throw_" .. tostring(st) .. ":" .. tostring(info.resID or 0)
-            end
-        end
         pcall(function()
             if DataMgr then
                 parts[#parts + 1] = "vst=" .. tostring(tonumber(DataMgr.vst_skin) or 0)
@@ -10078,20 +10046,53 @@ do
             local res = tonumber(HT.homeThemeItemId) or 0
             parts[#parts + 1] = "theme=" .. tostring(ins) .. ":" .. tostring(res)
         end)
+        _snapHeavyPart = table.concat(parts, "|")
+        _snapHeavyT = now
+        return _snapHeavyPart
+    end
+
+    local function _snapshotCache()
+        local cch = _G.AddOutfitEquippedCache
+        if not cch then return "" end
+        local parts = {}
+        parts[#parts + 1] = tostring(cch.outfitRes or 0)
+        local clothIds = {}
+        for resID in pairs(cch.clothes or {}) do
+            clothIds[#clothIds + 1] = resID
+        end
+        table.sort(clothIds)
+        parts[#parts + 1] = table.concat(clothIds, ",")
+        local eq = cch.equip or {}
+        parts[#parts + 1] = tostring(eq.bag or 0)
+        parts[#parts + 1] = tostring(eq.helmet or 0)
+        parts[#parts + 1] = tostring(eq.armor or 0)
+        parts[#parts + 1] = tostring(eq.parachute or 0)
+        parts[#parts + 1] = tostring(eq.glider or 0)
+        local wIds = {}
+        for wid in pairs(cch.weapons or {}) do wIds[#wIds + 1] = wid end
+        table.sort(wIds)
+        for _, wid in ipairs(wIds) do
+            local w = cch.weapons[wid]
+            parts[#parts + 1] = tostring(wid) .. ":" .. tostring(w.resID or 0)
+        end
+        if cch.throwObjects then
+            local tIds = {}
+            for st in pairs(cch.throwObjects) do tIds[#tIds + 1] = st end
+            table.sort(tIds)
+            for _, st in ipairs(tIds) do
+                local info = cch.throwObjects[st]
+                parts[#parts + 1] = "throw_" .. tostring(st) .. ":" .. tostring(info.resID or 0)
+            end
+        end
+        parts[#parts + 1] = _snapshotHeavyPart()
         return table.concat(parts, "|")
     end
 
     local _lastSnapshot = ""
 
-    local _loadRetryCount = 0
     local function _loadEquippedCache()
         pcall(function()
             local path = _getOutfitSavePath()
-            if path and path:find("AddOutfit_Save_default.txt", 1, true) then
-                _loadRetryCount = _loadRetryCount + 1
-                if _loadRetryCount <= 10 then pcall(_G.SetTimer, 3.0, _loadEquippedCache) end
-                return
-            end
             local file = io.open(path, 'r')
             if not file then return end
             local content = file:read('*a')
@@ -10151,7 +10152,10 @@ do
                         local wid = tonumber(key:match("^weapon_(.+)$"))
                         local resID, insID = val:match("^(.-):(.+)$")
                         if wid and resID then
-                            _G._savedOutfitEquip["weapon_" .. wid] = { resID = tonumber(resID), insID = tonumber(insID) or 0 }
+                            local wr = tonumber(resID)
+                            if wr and wr > 0 and not (wr == wid and not isInjectedRes(wr)) then
+                                _G._savedOutfitEquip["weapon_" .. wid] = { resID = wr, insID = tonumber(insID) or 0 }
+                            end
                         end
                     elseif key:match("^vehicle_(%d+)$") then
                         local subType = tonumber(key:match("^vehicle_(%d+)$"))
@@ -10866,6 +10870,7 @@ do
             _outfitMergeCache.items = nil
             _weaponSkinResMergeCache.key = nil
             _weaponSkinResMergeCache.res = nil
+            _snapHeavyT = 0
         end
 
         -- ========== لفلات الخوذة/الشنطة (3 مستويات) ==========
@@ -11607,7 +11612,12 @@ do
             end)
         end
 
+        local _lastSyncAllLive = 0
         local function syncAllCacheFromLive()
+            local now = 0
+            pcall(function() now = os.clock() end)
+            if (now - _lastSyncAllLive) < 1.0 then return end
+            _lastSyncAllLive = now
             syncWeaponCacheFromLobby()
             syncClothesCacheFromLive()
             syncThrowObjectCacheFromLobby()
@@ -17496,6 +17506,5 @@ do
     if not _ao_ok then
         print("[AddOutfit] LOAD ERROR:", tostring(_ao_err))
     end
-end -- END ADD OUTFIT
 -- ====================================================
 return true
