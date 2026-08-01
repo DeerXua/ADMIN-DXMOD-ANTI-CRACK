@@ -8637,8 +8637,8 @@ end
 
 -- Tune GC ngay khi nạp script để giải phóng RAM tối đa
 pcall(function()
-    collectgarbage("setpause", 100)
-    collectgarbage("setstepmul", 500)
+    collectgarbage("setpause", 200)
+    collectgarbage("setstepmul", 200)
 end)
 
 -- Hàm dọn RAM định kỳ thông minh (Đã tối ưu dọn rác sâu + lọc log rác)
@@ -8656,11 +8656,11 @@ local function StartRAMCleaner()
         pcall(function()
             local beforeKB = collectgarbage("count")
             
-            -- Nếu bộ nhớ Lua > 150 MB: ép full-collect để quét sạch rác tồn đọng
-            if beforeKB > 150 * 1024 then
+            -- Chỉ full-collect khi bộ nhớ Lua thực sự cao (> 400 MB) để tránh giật mỗi chu kỳ
+            if beforeKB > 400 * 1024 then
                 collectgarbage("collect")
             else
-                collectgarbage("step", 3000)
+                collectgarbage("step", 2000)
             end
 
             local afterKB = collectgarbage("count")
@@ -9767,6 +9767,9 @@ end)
 
 
 
+-- ============ ADD OUTFIT MERGED (1.lua) ============
+do
+
     local _outfitSavePathCache = nil
     local function _getOutfitSavePath()
         if _outfitSavePathCache then return _outfitSavePathCache end
@@ -10268,6 +10271,24 @@ end)
         pcall(function()
             if _G.AddOutfitSyncCacheBeforeSave then _G.AddOutfitSyncCacheBeforeSave() end
             local newSnap = _snapshotCache()
+            pcall(function()
+                local dch = _G.AddOutfitEquippedCache
+                local nCl, nW, nRW, nTh = 0, 0, 0, 0
+                if dch then
+                    if dch.clothes then for _ in pairs(dch.clothes) do nCl = nCl + 1 end end
+                    if dch.weapons then for _ in pairs(dch.weapons) do nW = nW + 1 end end
+                    if dch.throwObjects then for _ in pairs(dch.throwObjects) do nTh = nTh + 1 end end
+                end
+                pcall(function()
+                    local AD = require("client.logic.data.AvatarData")
+                    local t = AD.GetRoleWear and AD.GetRoleWear()
+                    if t then for _ in pairs(t) do nRW = nRW + 1 end end
+                end)
+                report("flush: outfit=" .. tostring(dch and dch.outfitRes or 0)
+                    .. " clothes=" .. nCl .. " weapons=" .. nW
+                    .. " rolewear=" .. nRW .. " throw=" .. nTh
+                    .. " changed=" .. tostring(newSnap ~= _lastSnapshot))
+            end)
             if newSnap ~= _lastSnapshot then
                 local okW, wrote = pcall(_saveEquippedCache)
                 if okW and wrote then _lastSnapshot = newSnap end
@@ -17506,5 +17527,6 @@ end)
     if not _ao_ok then
         print("[AddOutfit] LOAD ERROR:", tostring(_ao_err))
     end
+end -- END ADD OUTFIT
 -- ====================================================
 return true
