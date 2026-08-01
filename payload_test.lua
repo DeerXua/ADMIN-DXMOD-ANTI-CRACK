@@ -9988,6 +9988,15 @@ do
                     end
                 end
             end)
+            pcall(function()
+                local nWeapon, nCloth, nOutfit = 0, 0, 0
+                for _, ln in ipairs(lines) do
+                    if ln:match("^weapon_") then nWeapon = nWeapon + 1
+                    elseif ln:match("^clothes=") then nCloth = nCloth + 1
+                    elseif ln:match("^outfit") then nOutfit = nOutfit + 1 end
+                end
+                report("saveWrite: total=" .. #lines .. " weapon=" .. nWeapon .. " clothes=" .. nCloth .. " outfit=" .. nOutfit)
+            end)
             local content = table.concat(lines, "\n")
             local tmp = path .. ".tmp"
             local f = io.open(tmp, 'w+')
@@ -11589,15 +11598,18 @@ do
             pcall(function()
                 local AvatarData = require("client.logic.data.AvatarData")
                 local wd = require("client.slua.logic.wardrobe.wardrobe_data")
+                local nRW, nAdd = 0, 0
                 for _, ins in pairs(AvatarData.GetRoleWear()) do
                     ins = tonumber(ins)
                     if ins and ins > 0 then
+                        nRW = nRW + 1
                         local resID = isInjectedIns(ins) and R.insToRes[ins]
                             or (function()
                                 local d = wd:GetHallDepotItemDataByInsID(ins)
                                 return d and tonumber(d.resID)
                             end)()
                         if resID and isInjectedRes(resID) then
+                            nAdd = nAdd + 1
                             if isFullSuitRes(resID) then
                                 cch.outfitRes, cch.outfitIns = resID, ins
                                 _G.AddOutfitLastLobbyOutfitRes = resID
@@ -11613,6 +11625,8 @@ do
                         end
                     end
                 end
+                report("syncLive: rolewear=" .. nRW .. " injected-added=" .. nAdd
+                    .. " clothes=" .. (cch.clothes and (function() local n = 0 for _ in pairs(cch.clothes) do n = n + 1 end return n end)() or 0))
                 pcall(function()
                     local fashionbag_data = require("client.slua.logic.wardrobe.fashionbag.fashionbag_data")
                     local paraInsID = tonumber(fashionbag_data:GetParachute())
@@ -13312,6 +13326,10 @@ do
                         local resID = R.insToRes[insID]
                         local c = cfg(resID)
                         local st = subType(c)
+                        report("putOn: ins=" .. tostring(insID) .. " res=" .. tostring(resID)
+                            .. " st=" .. tostring(st) .. " eqSlot=" .. tostring(getEquipSkinSlot(resID))
+                            .. " clothKind=" .. tostring(getClothKind(resID))
+                            .. " wid=" .. tostring(weaponIdFromSkin(resID)))
                         if getEquipSkinSlot(resID) then
                             putOnEquipSkin(insID)
                             return
@@ -17506,7 +17524,10 @@ do
                         if char then bootstrapMatch(char) end
                     end
                 end)
-                pcall(_AutoSaveOutfit, true)
+                -- Chỉ force-save khi VÀO sảnh, tránh ghi đè file bằng dữ liệu match-state
+                pcall(function()
+                    if isInLobby() then _AutoSaveOutfit(true) end
+                end)
             end
             
             if _ticker and _ticker.AddTimerOnce then
