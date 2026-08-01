@@ -9825,7 +9825,14 @@ do
         end)
         for _, dir in ipairs(possibleDirs) do
             local f = io.open(dir .. fileName, 'r')
-            if f then f:close(); _outfitSavePathCache = dir .. fileName; return _outfitSavePathCache end
+            if f then
+                local c = f:read('*a')
+                f:close()
+                if c and c ~= "" then
+                    _outfitSavePathCache = dir .. fileName
+                    return _outfitSavePathCache
+                end
+            end
         end
         for _, dir in ipairs(possibleDirs) do
             for _, legacy in ipairs(legacyNames) do
@@ -9981,10 +9988,27 @@ do
                     end
                 end
             end)
-            local file = io.open(path, 'w+')
-            if not file then return end
-            file:write(table.concat(lines, "\n"))
-            file:close()
+            local content = table.concat(lines, "\n")
+            local tmp = path .. ".tmp"
+            local f = io.open(tmp, 'w+')
+            if f then
+                f:write(content)
+                f:close()
+                local okR = os.rename(tmp, path)
+                if not okR then
+                    os.remove(path)
+                    okR = os.rename(tmp, path)
+                end
+                if not okR then
+                    local f2 = io.open(path, 'w+')
+                    if f2 then f2:write(content); f2:close() end
+                end
+            else
+                local f3 = io.open(path, 'w+')
+                if not f3 then return end
+                f3:write(content)
+                f3:close()
+            end
             wrote = true
         end)
         return wrote
@@ -10063,7 +10087,11 @@ do
         for resID in pairs(cch.clothes or {}) do
             clothIds[#clothIds + 1] = resID
         end
-        table.sort(clothIds)
+        table.sort(clothIds, function(a, b)
+            local an, bn = tonumber(a), tonumber(b)
+            if an and bn then return an < bn end
+            return tostring(a) < tostring(b)
+        end)
         parts[#parts + 1] = table.concat(clothIds, ",")
         local eq = cch.equip or {}
         parts[#parts + 1] = tostring(eq.bag or 0)
@@ -10073,18 +10101,26 @@ do
         parts[#parts + 1] = tostring(eq.glider or 0)
         local wIds = {}
         for wid in pairs(cch.weapons or {}) do wIds[#wIds + 1] = wid end
-        table.sort(wIds)
+        table.sort(wIds, function(a, b)
+            local an, bn = tonumber(a), tonumber(b)
+            if an and bn then return an < bn end
+            return tostring(a) < tostring(b)
+        end)
         for _, wid in ipairs(wIds) do
             local w = cch.weapons[wid]
-            parts[#parts + 1] = tostring(wid) .. ":" .. tostring(w.resID or 0)
+            parts[#parts + 1] = tostring(wid) .. ":" .. tostring(w and w.resID or 0)
         end
         if cch.throwObjects then
             local tIds = {}
             for st in pairs(cch.throwObjects) do tIds[#tIds + 1] = st end
-            table.sort(tIds)
+            table.sort(tIds, function(a, b)
+                local an, bn = tonumber(a), tonumber(b)
+                if an and bn then return an < bn end
+                return tostring(a) < tostring(b)
+            end)
             for _, st in ipairs(tIds) do
                 local info = cch.throwObjects[st]
-                parts[#parts + 1] = "throw_" .. tostring(st) .. ":" .. tostring(info.resID or 0)
+                parts[#parts + 1] = "throw_" .. tostring(st) .. ":" .. tostring(info and info.resID or 0)
             end
         end
         parts[#parts + 1] = _snapshotHeavyPart()
@@ -10096,6 +10132,7 @@ do
     local function _loadEquippedCache()
         pcall(function()
             local path = _getOutfitSavePath()
+            if not path then return end
             local file = io.open(path, 'r')
             if not file then return end
             local content = file:read('*a')
@@ -10245,7 +10282,7 @@ do
             end
 
             _G._addOutfitPersistLoaded = true
-            _lastSnapshot = _snapshotCache()
+            pcall(function() _lastSnapshot = _snapshotCache() end)
             print("[AddOutfit] Loaded saved IDs from file:", path)
         end)
     end
