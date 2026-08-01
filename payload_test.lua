@@ -9893,6 +9893,29 @@ do
         return _outfitSavePathCache
     end
 
+        local _AO_INS_BASE = 2000000000
+        local function _aoIsInjIns(ins)
+            ins = tonumber(ins)
+            if not ins or ins <= 0 then return false end
+            local r = _G.AddOutfit_R
+            if r and r.insToRes[ins] then return true end
+            return ins >= _AO_INS_BASE
+        end
+        local function _aoIsInjRes(res)
+            res = tonumber(res)
+            if not res or res <= 0 then return false end
+            local r = _G.AddOutfit_R
+            return not not (r and r.resToIns[res])
+        end
+        local function _aoKeepList(parts)
+            local kept = {}
+            for _, v in ipairs(parts) do
+                local n = tonumber(v)
+                if n and _aoIsInjIns(n) then kept[#kept + 1] = tostring(n) end
+            end
+            return kept
+        end
+
         local function _saveEquippedCache()
             local wrote = false
             local okS, errS = pcall(function()
@@ -9901,57 +9924,49 @@ do
                 local path = _getOutfitSavePath()
                 if not path then return end
             local lines = {}
-            if cch.outfitRes then lines[#lines + 1] = "outfitRes=" .. tostring(cch.outfitRes) end
-            if cch.outfitIns then lines[#lines + 1] = "outfitIns=" .. tostring(cch.outfitIns) end
+            if cch.outfitRes and _aoIsInjRes(cch.outfitRes) then lines[#lines + 1] = "outfitRes=" .. tostring(cch.outfitRes) end
+            if cch.outfitIns and _aoIsInjIns(cch.outfitIns) then lines[#lines + 1] = "outfitIns=" .. tostring(cch.outfitIns) end
             local clothIds = {}
             for resID in pairs(cch.clothes or {}) do
-                clothIds[#clothIds + 1] = tostring(resID)
+                if _aoIsInjRes(resID) then clothIds[#clothIds + 1] = tostring(resID) end
             end
             if #clothIds > 0 then
                 lines[#lines + 1] = "clothes=" .. table.concat(clothIds, ",")
             end
             local eq = cch.equip or {}
-            if eq.bag then lines[#lines + 1] = "equip_bag=" .. tostring(eq.bag) end
-            if eq.helmet then lines[#lines + 1] = "equip_helmet=" .. tostring(eq.helmet) end
-            if eq.armor then lines[#lines + 1] = "equip_armor=" .. tostring(eq.armor) end
-            if eq.parachute then lines[#lines + 1] = "equip_parachute=" .. tostring(eq.parachute) end
-            if eq.glider then lines[#lines + 1] = "equip_glider=" .. tostring(eq.glider) end
-            if eq.bagIns then lines[#lines + 1] = "equip_bagIns=" .. tostring(eq.bagIns) end
-            if eq.helmetIns then lines[#lines + 1] = "equip_helmetIns=" .. tostring(eq.helmetIns) end
-            if eq.armorIns then lines[#lines + 1] = "equip_armorIns=" .. tostring(eq.armorIns) end
-            if eq.parachuteIns then lines[#lines + 1] = "equip_parachuteIns=" .. tostring(eq.parachuteIns) end
-            if eq.gliderIns then lines[#lines + 1] = "equip_gliderIns=" .. tostring(eq.gliderIns) end
+            if eq.bag and _aoIsInjRes(eq.bag) then lines[#lines + 1] = "equip_bag=" .. tostring(eq.bag) end
+            if eq.helmet and _aoIsInjRes(eq.helmet) then lines[#lines + 1] = "equip_helmet=" .. tostring(eq.helmet) end
+            if eq.armor and _aoIsInjRes(eq.armor) then lines[#lines + 1] = "equip_armor=" .. tostring(eq.armor) end
+            if eq.parachute and _aoIsInjRes(eq.parachute) then lines[#lines + 1] = "equip_parachute=" .. tostring(eq.parachute) end
+            if eq.glider and _aoIsInjRes(eq.glider) then lines[#lines + 1] = "equip_glider=" .. tostring(eq.glider) end
+            if eq.bagIns and _aoIsInjIns(eq.bagIns) then lines[#lines + 1] = "equip_bagIns=" .. tostring(eq.bagIns) end
+            if eq.helmetIns and _aoIsInjIns(eq.helmetIns) then lines[#lines + 1] = "equip_helmetIns=" .. tostring(eq.helmetIns) end
+            if eq.armorIns and _aoIsInjIns(eq.armorIns) then lines[#lines + 1] = "equip_armorIns=" .. tostring(eq.armorIns) end
+            if eq.parachuteIns and _aoIsInjIns(eq.parachuteIns) then lines[#lines + 1] = "equip_parachuteIns=" .. tostring(eq.parachuteIns) end
+            if eq.gliderIns and _aoIsInjIns(eq.gliderIns) then lines[#lines + 1] = "equip_gliderIns=" .. tostring(eq.gliderIns) end
             for wid, w in pairs(cch.weapons or {}) do
                 wid = tonumber(wid)
                 local wr = tonumber(w and w.resID) or 0
-                if wid and wr > 0 and wr ~= wid then
+                if wid and wr > 0 and wr ~= wid and _aoIsInjIns(w and w.insID) then
                     lines[#lines + 1] = "weapon_" .. tostring(wid) .. "=" .. tostring(wr) .. ":" .. tostring(w.insID or 0)
                 end
             end
             pcall(function()
                 if DataMgr and DataMgr.MotionSlotList then
-                    local parts = {}
-                    for _, ins in ipairs(DataMgr.MotionSlotList) do
-                        ins = tonumber(ins)
-                        if ins and ins > 0 then parts[#parts + 1] = tostring(ins) end
-                    end
-                    if #parts > 0 then lines[#lines + 1] = "motion=" .. table.concat(parts, ",") end
+                    local kept = _aoKeepList(DataMgr.MotionSlotList)
+                    if #kept > 0 then lines[#lines + 1] = "motion=" .. table.concat(kept, ",") end
                 end
             end)
             pcall(function()
                 local AvatarData = require("client.logic.data.AvatarData")
-                local parts = {}
-                for _, ins in pairs(AvatarData.GetRoleWear()) do
-                    ins = tonumber(ins)
-                    if ins and ins > 0 then parts[#parts + 1] = tostring(ins) end
-                end
-                if #parts > 0 then lines[#lines + 1] = "rolewear=" .. table.concat(parts, ",") end
+                local kept = _aoKeepList(AvatarData.GetRoleWear())
+                if #kept > 0 then lines[#lines + 1] = "rolewear=" .. table.concat(kept, ",") end
             end)
             pcall(function()
                 if DataMgr and DataMgr.equipmentSkinInsIDTable then
                     for subType, ins in pairs(DataMgr.equipmentSkinInsIDTable) do
                         ins = tonumber(ins)
-                        if ins and ins > 0 then
+                        if ins and _aoIsInjIns(ins) then
                             lines[#lines + 1] = "equipins_" .. tostring(subType) .. "=" .. tostring(ins)
                         end
                     end
@@ -9960,13 +9975,13 @@ do
             pcall(function()
                 if DataMgr and DataMgr.vst_skin then
                     local ins = tonumber(DataMgr.vst_skin)
-                    if ins and ins > 0 then lines[#lines + 1] = "vst_skin=" .. tostring(ins) end
+                    if ins and _aoIsInjIns(ins) then lines[#lines + 1] = "vst_skin=" .. tostring(ins) end
                 end
             end)
             pcall(function()
                 local HT = require("client.logic.lobby.hall_theme_utils")
                 local ins = tonumber(HT.GetThemeInstId and HT.GetThemeInstId()) or 0
-                if ins > 0 then
+                if ins > 0 and _aoIsInjIns(ins) then
                     lines[#lines + 1] = "hall_theme_ins=" .. tostring(ins)
                     local res = tonumber(HT.homeThemeItemId) or 0
                     if res <= 0 and _G.AddOutfit_R and _G.AddOutfit_R.insToRes then
@@ -9979,13 +9994,9 @@ do
                 if DataMgr and DataMgr.VehicleSlotList then
                     for subType, insList in pairs(DataMgr.VehicleSlotList) do
                         if insList and type(insList) == "table" then
-                            local parts = {}
-                            for _, ins in ipairs(insList) do
-                                ins = tonumber(ins)
-                                if ins and ins > 0 then parts[#parts + 1] = tostring(ins) end
-                            end
-                            if #parts > 0 then
-                                lines[#lines + 1] = "vehicle_" .. tostring(subType) .. "=" .. table.concat(parts, ",")
+                            local kept = _aoKeepList(insList)
+                            if #kept > 0 then
+                                lines[#lines + 1] = "vehicle_" .. tostring(subType) .. "=" .. table.concat(kept, ",")
                             end
                         end
                     end
@@ -9996,7 +10007,7 @@ do
                     and ModuleManager.GetModule(ModuleManager.LobbyModuleConfig.GarageThemeSystem)
                 if GTS and GTS.GarageVehicleInfo then
                     for slot, info in pairs(GTS.GarageVehicleInfo) do
-                        if info and info.inst_id then
+                        if info and info.inst_id and _aoIsInjIns(info.inst_id) then
                             lines[#lines + 1] = "garage_" .. tostring(slot) .. "="
                                 .. tostring(info.inst_id) .. ":" .. tostring(info.res_id or 0)
                         end
@@ -10007,7 +10018,7 @@ do
                 local cch2 = _G.AddOutfitEquippedCache
                 if cch2 and cch2.throwObjects then
                     for st, info in pairs(cch2.throwObjects) do
-                        if info.resID and info.resID > 0 then
+                        if info.resID and info.resID > 0 and _aoIsInjIns(info.insID) then
                             lines[#lines + 1] = "throw_" .. tostring(st) .. "=" .. tostring(info.resID) .. ":" .. tostring(info.insID or 0)
                         end
                     end
