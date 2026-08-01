@@ -9770,6 +9770,13 @@ end)
 -- ============ ADD OUTFIT MERGED (1.lua) ============
 do
 
+    local function notify(msg)
+        pcall(function()
+            local fn = ShowNotice or _G.ShowNotice
+            if fn then fn("[AddOutfit] " .. tostring(msg), false, 10) end
+        end)
+    end
+
     local _outfitSavePathCache = nil
     local function _getOutfitSavePath()
         if _outfitSavePathCache then return _outfitSavePathCache end
