@@ -14143,6 +14143,28 @@ do
             return applyItemToMatchAvatar(comp, resID)
         end
 
+        local function isClothWornOnComp(comp, resID)
+            resID = tonumber(resID)
+            if not resID then return false end
+            local worn = false
+            pcall(function()
+                local AvatarData = require("client.logic.data.AvatarData")
+                for _, ins in pairs(AvatarData.GetRoleWear()) do
+                    ins = tonumber(ins)
+                    if ins and ins > 0 then
+                        local rid = R.insToRes[ins]
+                        if not rid then
+                            local wd = require("client.slua.logic.wardrobe.wardrobe_data")
+                            local d = wd:GetHallDepotItemDataByInsID(ins)
+                            rid = d and tonumber(d.resID)
+                        end
+                        if tonumber(rid) == resID then worn = true break end
+                    end
+                end
+            end)
+            return worn
+        end
+
         local function applyBodyClothesToComp(comp)
             if not slua.isValid(comp) then
                 report("body: comp invalid")
@@ -14174,7 +14196,10 @@ do
                 for resID in pairs(collectAllClothResIDs()) do
                     if resID ~= outfitRes and not isFullSuitRes(resID)
                         and not isBodyClothSubType(subType(cfg(resID))) then
-                        if applyClothToComp(comp, resID) then
+                        if isClothWornOnComp(comp, resID) then
+                            applied = true
+                            okList[#okList + 1] = tostring(resID)
+                        elseif applyClothToComp(comp, resID) then
                             applied = true
                             okList[#okList + 1] = tostring(resID)
                             notify("إكسسوار OK " .. resID)
@@ -14186,7 +14211,10 @@ do
             else
                 for resID in pairs(collectAllClothResIDs()) do
                     if not isFullSuitRes(resID) then
-                        if applyClothToComp(comp, resID) then
+                        if isClothWornOnComp(comp, resID) then
+                            applied = true
+                            okList[#okList + 1] = tostring(resID)
+                        elseif applyClothToComp(comp, resID) then
                             applied = true
                             okList[#okList + 1] = tostring(resID)
                             notify("ملابس OK " .. resID)
@@ -15788,6 +15816,14 @@ do
                 local cur = getLocalChar()
                 if not cur or not slua.isValid(cur) then return end
                 pcall(matchApplyAll, cur)
+                pcall(function()
+                    if attempts % 5 == 0 then
+                        report("matchWatcher: attempt=" .. attempts
+                            .. " outfitDone=" .. tostring(_S.matchOutfitDone)
+                            .. " weaponApplied=" .. tostring(_S.weaponApplied)
+                            .. " matchTimer=" .. tostring(not not _S.matchTimer))
+                    end
+                end)
                 if attempts >= 15 then
                     pcall(function() if cur.RemoveGameTimer then cur:RemoveGameTimer(_S.matchTimer) end end)
                     _S.matchTimer = nil
