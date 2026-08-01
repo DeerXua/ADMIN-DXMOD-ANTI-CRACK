@@ -10309,6 +10309,7 @@ do
     local SAVE_MIN_INTERVAL = 2.5
 
     local function _flushSave(force)
+        pcall(function() report("flushCall: force=" .. tostring(force) .. " dirty=" .. tostring(_saveDirty) .. " inProg=" .. tostring(_saveInProgress)) end)
         if _saveInProgress then
             _saveDirty = true
             return
@@ -10322,8 +10323,17 @@ do
         _saveInProgress = true
         _saveDirty = false
         pcall(function()
-            if _G.AddOutfitSyncCacheBeforeSave then _G.AddOutfitSyncCacheBeforeSave() end
-            local newSnap = _snapshotCache()
+            pcall(function()
+                if _G.AddOutfitSyncCacheBeforeSave then _G.AddOutfitSyncCacheBeforeSave() end
+            end)
+            local newSnap
+            pcall(function()
+                newSnap = _snapshotCache()
+            end)
+            if newSnap == nil then
+                pcall(function() report("flush SNAP ERR") end)
+                newSnap = _lastSnapshot
+            end
             pcall(function()
                 local dch = _G.AddOutfitEquippedCache
                 local nCl, nW, nRW, nTh = 0, 0, 0, 0
@@ -10777,8 +10787,15 @@ do
             resID = tonumber(resID)
             if not resID then return nil end
             if _C.weaponId[resID] ~= nil then return _C.weaponId[resID] end
-            local m = CDataTable and CDataTable.GetTableData and CDataTable.GetTableData("WeaponSkinMapping", resID)
-            local wid = m and (m.WeaponID or m.WeaponId) or nil
+            local wid = nil
+            local c = cfg(resID)
+            if c then
+                wid = tonumber(c.WeaponID or c.WeaponId or c.weaponID or c.weaponId or c.GunID or c.GunId or c.Gun_id or 0) or nil
+            end
+            if not wid then
+                local m = CDataTable and CDataTable.GetTableData and CDataTable.GetTableData("WeaponSkinMapping", resID)
+                wid = m and (m.WeaponID or m.WeaponId) or nil
+            end
             _C.weaponId[resID] = wid
             return wid
         end
@@ -11399,6 +11416,9 @@ do
         local function saveEquip(resID, insID)
             resID, insID = tonumber(resID), tonumber(insID)
             if not resID or not insID then return end
+            local inLobbyNow = not (GameStatus and GameStatus.IsInLobbyOrMainCity
+                and not GameStatus.IsInLobbyOrMainCity())
+            if inLobbyNow then
             local c = cfg(resID)
             local st = subType(c)
             local kind = getClothKind(resID)
@@ -11438,6 +11458,7 @@ do
                 if mt ~= _K.WARDROBE_PAGE_VEHICLE then
                     saveClothPiece(resID)
                 end
+            end
             end
             _S.matchApplied = false
             pcall(_AutoSaveOutfit)
@@ -11608,6 +11629,8 @@ do
         end
 
         local function syncClothesCacheFromLive()
+            if GameStatus and GameStatus.IsInLobbyOrMainCity
+                and not GameStatus.IsInLobbyOrMainCity() then return end  -- freeze cache in match
             local cch = cache()
             pcall(function()
                 local AvatarData = require("client.logic.data.AvatarData")
@@ -11704,11 +11727,11 @@ do
             pcall(function() now = os.clock() end)
             if (now - _lastSyncAllLive) < 1.0 then return end
             _lastSyncAllLive = now
-            syncWeaponCacheFromLobby()
-            syncClothesCacheFromLive()
-            syncThrowObjectCacheFromLobby()
-            ensureMatchEquipCache()
-            syncMatchConfigFromCache()
+            pcall(syncWeaponCacheFromLobby)
+            pcall(syncClothesCacheFromLive)
+            pcall(syncThrowObjectCacheFromLobby)
+            pcall(ensureMatchEquipCache)
+            pcall(syncMatchConfigFromCache)
         end
         _G.AddOutfitSyncCacheBeforeSave = syncAllCacheFromLive
 
@@ -12840,6 +12863,14 @@ do
             if _S.lobbyApplied then return end
             _S.lobbyApplied = true
             later(2.0, function() _S.lobbyApplied = false end)
+            pcall(function()
+                local _cchR = cache()
+                local _nW = 0 for _ in pairs(_cchR.weapons or {}) do _nW = _nW + 1 end
+                local _nC = 0 for _ in pairs(_cchR.clothes or {}) do _nC = _nC + 1 end
+                report("reapply: persistLoaded=" .. tostring(_G._addOutfitPersistLoaded)
+                    .. " weapons=" .. _nW .. " clothes=" .. _nC
+                    .. " outfit=" .. tostring(_cchR.outfitRes))
+            end)
 
             restorePersistedVehicles()
             restorePersistedMotions()
