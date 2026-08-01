@@ -10697,6 +10697,7 @@ do
         local _S = {
             matchApplied = false, matchTimer = nil, matchOutfitDone = false,
             avatarItemsRegistered = false, weaponApplied = false, weaponDiagDone = false,
+            weaponDiagReason = nil,
             lastWeaponResID = 0, weaponSpawnHooked = false, bootstrapNotified = false,
             globalFrame = 0, weaponHookGuardUntil = 0, equipSkinApplying = false,
             injectedDone = false, lastAppliedWeaponID = 0, lastAppliedSkinID = 0,
@@ -15715,14 +15716,48 @@ do
             if not _S.avatarItemsRegistered then
                 _S.avatarItemsRegistered = registerWeaponAvatarItems(char)
             end
+
             local curWeapon = char.GetCurrentWeapon and char:GetCurrentWeapon()
             if not slua.isValid(curWeapon) then
-                return _G.equip_weapon_avatar(char)
+                -- Weapon not in hand (still in spawn/spectating): inventory-level
+                -- apply is the only signal we have.
+                local ok = _G.equip_weapon_avatar(char)
+                if ok then
+                    _S.weaponApplied = true
+                    _S.weaponDiagDone = true
+                else
+                    _S.weaponDiagReason = "no current weapon"
+                end
+                return ok
             end
 
             local curWeaponResID = 0
             pcall(function() curWeaponResID = curWeapon:GetItemDefineID().TypeSpecificID end)
             local desiredSkin = get_skin_id(curWeaponResID, curWeaponResID)
+            curWeaponResID = tonumber(curWeaponResID) or 0
+            desiredSkin = tonumber(desiredSkin) or 0
+
+            -- Idempotent success: the weapon in hand already carries the desired
+            -- skin, so no change is needed. Report as applied so weaponApplied
+            -- reflects "correct state" instead of "just changed".
+            if curWeaponResID > 0 and desiredSkin > 0 then
+                local curSkin = 0
+                pcall(function()
+                    local aa = curWeapon.synData
+                    if aa and slua.isValid(aa) then
+                        local ad = aa:Get(_K.GUN_MASTER_SYN_SLOT)
+                        if ad then curSkin = slua.IndexReference(ad, "defineID").TypeSpecificID or 0 end
+                    end
+                end)
+                if tonumber(curSkin) == desiredSkin then
+                    _S.lastAppliedWeaponID = curWeaponResID
+                    _S.lastAppliedSkinID = desiredSkin
+                    _S.weaponApplied = true
+                    _S.weaponDiagDone = true
+                    return true
+                end
+            end
+
             if curWeaponResID == _S.lastAppliedWeaponID and desiredSkin == _S.lastAppliedSkinID then
                 pcall(_G.equip_weapon_avatar, char)
                 return true
@@ -15736,6 +15771,8 @@ do
                 _S.weaponApplied = true
                 _S.weaponDiagDone = true
                 notify("سكن سلاح مطبق: " .. tostring(desiredSkin))
+            else
+                _S.weaponDiagReason = "apply returned false (wid=" .. tostring(curWeaponResID) .. " skin=" .. tostring(desiredSkin) .. ")"
             end
             return ok
         end
@@ -15821,6 +15858,7 @@ do
                         report("matchWatcher: attempt=" .. attempts
                             .. " outfitDone=" .. tostring(_S.matchOutfitDone)
                             .. " weaponApplied=" .. tostring(_S.weaponApplied)
+                            .. " weaponReason=" .. tostring(_S.weaponDiagReason or "ok")
                             .. " matchTimer=" .. tostring(not not _S.matchTimer))
                     end
                 end)
