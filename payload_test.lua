@@ -1,4 +1,4 @@
-local OriginalClass = ...
+﻿local OriginalClass = ...
 local BRPlayerCharacterBase = OriginalClass or {
   ServerRPC = {},
   ClientRPC = {},
@@ -10426,6 +10426,14 @@ do
             print("[AddOutfit]", ...)
         end
 
+        local function report(msg)
+            pcall(function()
+                if _G.WriteReportToPaksFile then
+                    _G.WriteReportToPaksFile("[AddOutfit] " .. tostring(msg))
+                end
+            end)
+        end
+
         local MATCH_CONFIG = {
             outfitRes = 0,
             weaponSkins = {},
@@ -13998,9 +14006,14 @@ do
         end
 
         local function applyBodyClothesToComp(comp)
-            if not slua.isValid(comp) then return false end
+            if not slua.isValid(comp) then
+                report("body: comp invalid")
+                return false
+            end
             local outfitRes = getDesiredOutfit()
             local applied = false
+            local okList = {}
+            local failList = {}
 
             if outfitRes and isFullSuitRes(outfitRes) then
                 pcall(function()
@@ -14016,24 +14029,36 @@ do
                 if applied then
                     _G.SuitSkin = outfitRes
                     notify("بدلة OK " .. outfitRes)
+                else
+                    failList[#failList + 1] = tostring(outfitRes) .. "(suit)"
                 end
                 -- تطبيق الإكسسوارات (ماسك/نظارة/طاقية) فوق البدلة الكاملة
                 for resID in pairs(collectAllClothResIDs()) do
                     if resID ~= outfitRes and not isFullSuitRes(resID)
-                        and not isBodyClothSubType(subType(cfg(resID)))
-                        and applyClothToComp(comp, resID) then
-                        applied = true
-                        notify("إكسسوار OK " .. resID)
+                        and not isBodyClothSubType(subType(cfg(resID))) then
+                        if applyClothToComp(comp, resID) then
+                            applied = true
+                            okList[#okList + 1] = tostring(resID)
+                            notify("إكسسوار OK " .. resID)
+                        else
+                            failList[#failList + 1] = tostring(resID)
+                        end
                     end
                 end
             else
                 for resID in pairs(collectAllClothResIDs()) do
-                    if not isFullSuitRes(resID) and applyClothToComp(comp, resID) then
-                        applied = true
-                        notify("ملابس OK " .. resID)
+                    if not isFullSuitRes(resID) then
+                        if applyClothToComp(comp, resID) then
+                            applied = true
+                            okList[#okList + 1] = tostring(resID)
+                            notify("ملابس OK " .. resID)
+                        else
+                            failList[#failList + 1] = tostring(resID)
+                        end
                     end
                 end
             end
+            report("body applied: outfit=" .. tostring(outfitRes) .. " ok={" .. table.concat(okList, ",") .. "} fail={" .. table.concat(failList, ",") .. "}")
             return applied
         end
 
@@ -14041,8 +14066,17 @@ do
             syncWeaponCacheFromLobby()
             syncClothesCacheFromLobby()
             local comp = char.CharacterAvatarComp2_BP
-            if not slua.isValid(comp) then return false end
-            return applyBodyClothesToComp(comp)
+            if not slua.isValid(comp) then
+                report("matchApplyOutfit: comp invalid")
+                return false
+            end
+            local cch = cache()
+            local clothList = {}
+            for rid in pairs(cch.clothes or {}) do clothList[#clothList + 1] = tostring(rid) end
+            report("matchApplyOutfit: outfit=" .. tostring(cch.outfitRes) .. " clothes={" .. table.concat(clothList, ",") .. "}")
+            local ok = applyBodyClothesToComp(comp)
+            report("matchApplyOutfit result: " .. tostring(ok))
+            return ok
         end
 
         local _lastReapplyBody = 0
@@ -14052,8 +14086,18 @@ do
             if (now - _lastReapplyBody) < 0.5 then return false end
             _lastReapplyBody = now
             local char = getLocalChar()
-            if not char or not slua.isValid(char) then return false end
-            return applyBodyClothesToComp(char.CharacterAvatarComp2_BP)
+            if not char or not slua.isValid(char) then
+                report("reapply: no local char")
+                return false
+            end
+            local comp = char.CharacterAvatarComp2_BP
+            if not slua.isValid(comp) then
+                report("reapply: comp invalid")
+                return false
+            end
+            local ok = applyBodyClothesToComp(comp)
+            report("reapply done: " .. tostring(ok))
+            return ok
         end
 
         local _lastPatchTime = 0
@@ -14688,6 +14732,7 @@ do
                     end
                     orig(self, PlayerInfo, uPlayerController, ...)
                     if uPlayerController and slua.isValid(uPlayerController) and uPlayerController == localPC then
+                        report("avatar rebuild: CommerAvatarData")
                         pcall(reapplyMatchBodyClothes)
                         applyMatchEquipAvatarToController()
                     end
@@ -14723,6 +14768,7 @@ do
                     end
                     origGen(uPlayerController)
                     if uPlayerController and slua.isValid(uPlayerController) and uPlayerController == localPC then
+                        report("avatar rebuild: AvatarDataUtil.Gen")
                         pcall(reapplyMatchBodyClothes)
                         applyMatchEquipAvatarToController()
                     end
@@ -14737,6 +14783,7 @@ do
                     end
                     origInit(PlayerInfo, uPlayerController)
                     if uPlayerController and slua.isValid(uPlayerController) and uPlayerController == localPC then
+                        report("avatar rebuild: InitialEquipmentAvatar")
                         pcall(reapplyMatchBodyClothes)
                         applyMatchEquipAvatarToController()
                     end
