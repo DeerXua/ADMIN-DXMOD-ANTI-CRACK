@@ -13003,6 +13003,58 @@ do
             end)
         end
 
+        local _lastLobbyEnsure = 0
+        local function ensureLobbyInjectedWear()
+            if GameStatus and GameStatus.IsInLobbyOrMainCity and not GameStatus.IsInLobbyOrMainCity() then return end
+            local now = 0
+            pcall(function() now = os.clock() end)
+            if (now - _lastLobbyEnsure) < 2.0 then return end
+            _lastLobbyEnsure = now
+            local cch = cache()
+            local desired = {}
+            if cch.outfitRes and isInjectedRes(cch.outfitRes) then desired[cch.outfitRes] = true end
+            for rid in pairs(cch.clothes or {}) do
+                if isInjectedRes(rid) then desired[rid] = true end
+            end
+            if cch.equip then
+                for slot, rid in pairs(cch.equip) do
+                    if type(slot) == "string" and not string.find(slot, "Ins$") and rid and isInjectedRes(rid) then
+                        desired[rid] = true
+                    end
+                end
+            end
+            local worn = {}
+            pcall(function()
+                local AvatarData = require("client.logic.data.AvatarData")
+                for _, ins in pairs(AvatarData.GetRoleWear()) do
+                    ins = tonumber(ins)
+                    if ins and isInjectedIns(ins) then
+                        local rid = R.insToRes[ins]
+                        if rid then worn[rid] = true end
+                    end
+                end
+            end)
+            local nApplied = 0
+            for rid in pairs(desired) do
+                if not worn[rid] then
+                    local ins = R.resToIns[rid]
+                    if ins and isInjectedIns(ins) then
+                        pcall(function()
+                            if getClothKind(rid) then
+                                putOnCloth(ins)
+                            else
+                                reapplyAccessoryIns(ins)
+                            end
+                        end)
+                        nApplied = nApplied + 1
+                    end
+                end
+            end
+            if nApplied > 0 then
+                pcall(function() report("ensureLobby: reinjected=" .. nApplied) end)
+            end
+        end
+
         local function initHooks()
         local function hookLobbySwipePersistence()
             pcall(function()
@@ -14851,6 +14903,10 @@ do
                 pc._lava_wear_done_hooked = true
                 if pc.OnPlayerChangeWearingDone and pc.OnPlayerChangeWearingDone.Add then
                     pc.OnPlayerChangeWearingDone:Add(function()
+                        if GameStatus and GameStatus.IsInLobbyOrMainCity and GameStatus.IsInLobbyOrMainCity() then
+                            ensureLobbyInjectedWear()
+                            return
+                        end
                         applyMatchEquipAvatarToController()
                         local char = getLocalChar()
                         if char then
@@ -15798,10 +15854,10 @@ do
                 local cur = getLocalChar()
                 if not cur or not slua.isValid(cur) then return end
                 pcall(matchApplyAll, cur)
-                if attempts >= 15 then
+                if (_S.matchOutfitDone and _S.weaponApplied) or attempts >= 8 then
                     pcall(function() if cur.RemoveGameTimer then cur:RemoveGameTimer(_S.matchTimer) end end)
                     _S.matchTimer = nil
-                    log("توقف مؤقت الماتش بعد 15 محاولة")
+                    log("توقف مؤقت الماتش بعد التطبيق الكامل")
                 end
             end)
         end
@@ -17471,6 +17527,7 @@ do
                     if _timeCount % 10 == 0 then
                         pcall(snapshotLobbyWear)
                     end
+                    pcall(ensureLobbyInjectedWear)
                     if _timeCount % 5 == 0 then
                         pcall(_G.AddOutfitTryFlushSave)
                     end
