@@ -11881,7 +11881,6 @@ do
 
         -- تعديل: منع إعادة الحقن
         local function injectAll(entity)
-            if _S.injectedDone then return true end
             refreshItems()
             entity = entity or getEntity()
             if not entity or not entity.bInit then return false end
@@ -11932,23 +11931,23 @@ do
                 end)
             end
 
-            local n = 0
+            local nAdded = 0
             for i, resID in ipairs(ITEMS) do
                 local insID = _K.INS_BASE + i
+                local had = alreadyHave(entity, resID)
                 if injectOne(entity, resID, insID) then
-                    n = n + 1
+                    if not had then nAdded = nAdded + 1 end
                     local c = cfg(resID)
                     if _K.GUN_SUB[subType(c)] or subType(c) == _K.MELEE_ID then
                         injectArmory(resID, insID)
                     end
                 end
             end
-            if n > 0 then
-                _S.injectedDone = true
-                _G.AddOutfit_R = R
-                log("حقن", n, "items")
+            _G.AddOutfit_R = R
+            if nAdded > 0 then
+                log("حقن", nAdded, "items")
             end
-            return n > 0
+            return true
         end
 
         local function injectAllSources()
@@ -11969,6 +11968,19 @@ do
                     end
                 end
             end)
+        end
+
+        local _lastWardrobeInject = 0
+        local function ensureWardrobeInjected()
+            if GameStatus and GameStatus.IsInLobbyOrMainCity and not GameStatus.IsInLobbyOrMainCity() then return end
+            local now = 0
+            pcall(function() now = os.clock() end)
+            if (now - _lastWardrobeInject) < 8.0 then return end
+            _lastWardrobeInject = now
+            local ok, res = pcall(injectAllSources)
+            if ok and res then
+                pcall(refreshWardrobe)
+            end
         end
 
         local function findWornInsBySubType(st)
@@ -17531,6 +17543,7 @@ do
                         pcall(snapshotLobbyWear)
                     end
                     pcall(ensureLobbyInjectedWear)
+                    pcall(ensureWardrobeInjected)
                     if _timeCount % 5 == 0 then
                         pcall(_G.AddOutfitTryFlushSave)
                     end
@@ -17620,6 +17633,7 @@ do
                 pcall(function()
                     if isInLobby() then 
                         snapshotLobbyWear()
+                        pcall(ensureWardrobeInjected)
                         later(2.0, reapplyLobbyEquipped)
                     end
                 end)
