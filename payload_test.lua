@@ -11571,12 +11571,8 @@ do
                 local wd = require("client.slua.logic.wardrobe.wardrobe_data")
                 for _, ins in pairs(AvatarData.GetRoleWear()) do
                     ins = tonumber(ins)
-                    if ins and ins > 0 then
-                        local resID = isInjectedIns(ins) and R.insToRes[ins]
-                            or (function()
-                                local d = wd:GetHallDepotItemDataByInsID(ins)
-                                return d and tonumber(d.resID)
-                            end)()
+                    if ins and ins > 0 and isInjectedIns(ins) then
+                        local resID = R.insToRes[ins]
                         if resID and isInjectedRes(resID) then
                             if isFullSuitRes(resID) then
                                 clearClothesForKind("full_suit")
