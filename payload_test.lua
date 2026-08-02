@@ -14249,6 +14249,10 @@ do
                 return false
             end
             local cch = cache()
+            if not cch.outfitRes and (not cch.clothes or next(cch.clothes) == nil) then
+                report("matchApplyOutfit: no outfit or clothes configured")
+                return true
+            end
             local clothList = {}
             for rid in pairs(cch.clothes or {}) do clothList[#clothList + 1] = tostring(rid) end
             report("matchApplyOutfit: outfit=" .. tostring(cch.outfitRes) .. " clothes={" .. table.concat(clothList, ",") .. "}")
