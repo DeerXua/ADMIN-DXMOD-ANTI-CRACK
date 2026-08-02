@@ -8635,61 +8635,54 @@ local function LogToCrashlog(msg)
     end)
 end
 
--- Tune GC ngay khi nạp script để giải phóng RAM tối đa
+-- Tune Garbage Collector nhẹ nhàng chống giật lag / khựng frame
 pcall(function()
     collectgarbage("setpause", 200)
-    collectgarbage("setstepmul", 200)
+    collectgarbage("setstepmul", 100)
 end)
 
--- Hàm dọn RAM định kỳ thông minh (Đã tối ưu dọn rác sâu + lọc log rác)
+-- Hàm dọn RAM tự động mượt mà (Tuyệt đối không gọi collectgarbage trong trận đấu)
 local function StartRAMCleaner()
     if _G._RAMCleanerRunning then return end
     _G._RAMCleanerRunning = true
 
     pcall(function()
         if WriteReportToPaksFile then
-            WriteReportToPaksFile("[RAM CLEANER] Hệ thống dọn RAM tự động & GC Tuning đã kích hoạt (Tối ưu dọn rác 15s/lần)")
+            WriteReportToPaksFile("[RAM CLEANER] Hệ thống dọn RAM siêu mượt đã kích hoạt (Chỉ dọn rác ở Sảnh 60s/lần)")
         end
     end)
 
     local function RunRAMCleanerCycle()
         pcall(function()
-            local beforeKB = collectgarbage("count")
-            
-            -- Chỉ full-collect khi bộ nhớ Lua thực sự cao (> 400 MB) để tránh giật mỗi chu kỳ
-            if beforeKB > 400 * 1024 then
-                collectgarbage("collect")
-            else
-                collectgarbage("step", 2000)
-            end
+            local inLobby = false
+            pcall(function()
+                if GameStatus and GameStatus.IsInLobbyOrMainCity then
+                    inLobby = GameStatus.IsInLobbyOrMainCity()
+                end
+            end)
 
-            local afterKB = collectgarbage("count")
-            local freedKB = beforeKB - afterKB
-            
-            local beforeMB = beforeKB / 1024.0
-            local afterMB = afterKB / 1024.0
-
-            -- Chỉ ghi log khi thực sự dọn được rác (> 10 KB) để tránh spam
-            if freedKB > 10.0 then
-                local logMsg = string.format("[RAM Cleaner] Dọn rác thành công - Trước: %.2f MB | Sau: %.2f MB | Đã giải phóng: %.2f KB (~%.2f MB)", 
-                    beforeMB, afterMB, freedKB, freedKB / 1024.0)
-                print(logMsg)
-                if WriteReportToPaksFile then WriteReportToPaksFile(logMsg) end
-                if LogToCrashlog then LogToCrashlog(logMsg) end
+            -- Tuyệt đối CHỈ dọn rác khi đứng ở SẢNH và bộ nhớ Lua > 400 MB
+            if inLobby then
+                local beforeKB = collectgarbage("count")
+                if beforeKB > 400 * 1024 then
+                    collectgarbage("collect")
+                    local afterKB = collectgarbage("count")
+                    local freedKB = beforeKB - afterKB
+                    if freedKB > 100.0 then
+                        local logMsg = string.format("[RAM Cleaner] Dọn rác ở Sảnh - Giải phóng: %.2f KB", freedKB)
+                        print(logMsg)
+                        if WriteReportToPaksFile then WriteReportToPaksFile(logMsg) end
+                    end
+                end
             end
         end)
         
-        -- Tự gọi lại sau mỗi 15 giây qua bộ đếm thời gian (nếu có)
+        -- Trong trận đấu tuyệt đối KHÔNG đụng đến collectgarbage, lặp lại sau mỗi 60 giây ở sảnh
         local ok, ticker = pcall(require, "common.time_ticker")
         if ok and ticker and ticker.AddTimerOnce then
-            ticker.AddTimerOnce(15.0, RunRAMCleanerCycle)
+            ticker.AddTimerOnce(60.0, RunRAMCleanerCycle)
         else
             _G._RAMCleanerRunning = false
-            pcall(function()
-                local warnMsg = "[RAM Cleaner] Không tìm thấy ticker common.time_ticker, tạm dừng lặp"
-                if WriteReportToPaksFile then WriteReportToPaksFile(warnMsg) end
-                if LogToCrashlog then LogToCrashlog(warnMsg) end
-            end)
         end
     end
 
