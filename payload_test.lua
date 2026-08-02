@@ -9905,7 +9905,10 @@ do
             res = tonumber(res)
             if not res or res <= 0 then return false end
             local r = _G.AddOutfit_R
-            return not not (r and r.resToIns[res])
+            if r and r.resToIns and r.resToIns[res] then return true end
+            local s = _G.AddOutfit_injectedResSet
+            if s and s[res] then return true end
+            return res > 1000
         end
         local function _aoKeepList(parts)
             local kept = {}
@@ -14241,6 +14244,7 @@ do
         end
 
         local function matchApplyOutfit(char)
+            if _S.matchOutfitDone then return true end
             syncWeaponCacheFromLobby()
             syncClothesCacheFromLobby()
             local comp = char.CharacterAvatarComp2_BP
@@ -14251,6 +14255,7 @@ do
             local cch = cache()
             if not cch.outfitRes and (not cch.clothes or next(cch.clothes) == nil) then
                 report("matchApplyOutfit: no outfit or clothes configured")
+                _S.matchOutfitDone = true
                 return true
             end
             local clothList = {}
@@ -14258,6 +14263,9 @@ do
             report("matchApplyOutfit: outfit=" .. tostring(cch.outfitRes) .. " clothes={" .. table.concat(clothList, ",") .. "}")
             local ok = applyBodyClothesToComp(comp)
             report("matchApplyOutfit result: " .. tostring(ok))
+            if ok then
+                _S.matchOutfitDone = true
+            end
             return ok
         end
 
