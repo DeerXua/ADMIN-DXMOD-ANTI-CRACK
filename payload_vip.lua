@@ -4238,7 +4238,7 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
     
     -- TIMER CHU KỲ 0.0083s DÀNH CHO AIMBOT ROYAL & CUSTOM (120 FPS)
     local aimTimerHandle
-    aimTimerHandle = self:AddGameTimer(0.0083, true, function()
+    aimTimerHandle = self:AddGameTimer(0.016, true, function()
         if not Valid(self.Object) then
             if aimTimerHandle then self:RemoveGameTimer(aimTimerHandle) end
             return
@@ -4265,7 +4265,7 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
     end)
 
     local systemTimerHandle
-    systemTimerHandle = self:AddGameTimer(0.03, true, function()
+    systemTimerHandle = self:AddGameTimer(0.06, true, function()
         if not Valid(self.Object) then
             if systemTimerHandle then self:RemoveGameTimer(systemTimerHandle) end
             return

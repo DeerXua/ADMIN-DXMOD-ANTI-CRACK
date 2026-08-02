@@ -7757,7 +7757,7 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
     
     -- TIMER CHU KỲ 0.0083s DÀNH CHO AIMBOT ROYAL & CUSTOM (120 FPS)
     local aimTimerHandle
-    aimTimerHandle = self:AddGameTimer(0.0083, true, function()
+    aimTimerHandle = self:AddGameTimer(0.016, true, function()
         if not Valid(self.Object) then
             if aimTimerHandle then self:RemoveGameTimer(aimTimerHandle) end
             return
@@ -7784,7 +7784,7 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
     end)
 
     local systemTimerHandle
-    systemTimerHandle = self:AddGameTimer(0.03, true, function()
+    systemTimerHandle = self:AddGameTimer(0.06, true, function()
         if not Valid(self.Object) then
             if systemTimerHandle then self:RemoveGameTimer(systemTimerHandle) end
             return
@@ -12939,7 +12939,7 @@ pcall(function()
     end
 
     if ok and ticker and ticker.AddTimerLoop then
-        ticker.AddTimerLoop(0.03, function()
+        ticker.AddTimerLoop(0.2, function()
             pcall(function()
                 -- 1. Quét nạp bảng dữ liệu Skin DataTable liên tục
                 if _G.DX and _G.DX.EnumState and _G.DX.EnumStep then pcall(_G.DX.EnumState and _G.DX.EnumStep) end
