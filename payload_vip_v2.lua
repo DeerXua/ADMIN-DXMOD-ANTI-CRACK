@@ -7243,6 +7243,20 @@ _G.DX.ApplyBackpackSkinDisplay = function(PlayerCharacter)
         if not slua.isValid(PlayerCharacter) then return end
         local bc = PlayerCharacter.BackpackComponent
         if not slua.isValid(bc) then
+            pcall(function()
+                local GCD = package.loaded["GameLua.GameCore.Data.GameComponentData"] or require("GameLua.GameCore.Data.GameComponentData")
+                if GCD and GCD.GetSelfBackpackComponent then bc = GCD.GetSelfBackpackComponent() end
+                if not slua.isValid(bc) and PlayerCharacter.GetPlayerControllerSafety then
+                    local pc = PlayerCharacter:GetPlayerControllerSafety()
+                    if pc and pc.GetBackpackComponent then bc = pc:GetBackpackComponent() end
+                end
+                if not slua.isValid(bc) and PlayerCharacter.GetPlayerController then
+                    local pc = PlayerCharacter:GetPlayerController()
+                    if pc and pc.GetBackpackComponent then bc = pc:GetBackpackComponent() end
+                end
+            end)
+        end
+        if not slua.isValid(bc) then
             if type(_G.DX.Trace) == "function" and not _G.DX.BpNoBcTraced then
                 _G.DX.BpNoBcTraced = true
                 _G.DX.Trace("BP-DATA: PlayerCharacter.BackpackComponent TIDAK valid (nama field berubah di 4.5?)")
