@@ -9794,6 +9794,7 @@ do
     end
 
     local _outfitSavePathCache = nil
+    local _outfitSaveHasUID = false
     local function _getOutfitSavePath()
         if _outfitSavePathCache then return _outfitSavePathCache end
         local pid = "default"
@@ -9814,6 +9815,7 @@ do
             end)
         end
         local fileName = "AddOutfit_Save.txt"
+        _outfitSaveHasUID = (pid ~= "default")
         local legacyNames = {}
         if pid ~= "default" then legacyNames[#legacyNames + 1] = "AddOutfit_Save_" .. pid .. ".txt" end
         legacyNames[#legacyNames + 1] = "AddOutfit_Save_default.txt"
@@ -9934,7 +9936,7 @@ do
                 local cch = _G.AddOutfitEquippedCache
                 if not cch then return end
                 local path = _getOutfitSavePath()
-                if not path then return end
+                if not path or not _outfitSaveHasUID then return end
             local lines = {}
             if cch.outfitRes and _aoIsInjRes(cch.outfitRes) then lines[#lines + 1] = "outfitRes=" .. tostring(cch.outfitRes) end
             if cch.outfitIns and _aoIsInjIns(cch.outfitIns) then lines[#lines + 1] = "outfitIns=" .. tostring(cch.outfitIns) end
@@ -11649,6 +11651,8 @@ do
         end
 
         local function syncClothesCacheFromLive()
+            if GameStatus and GameStatus.IsInLobbyOrMainCity
+                and not GameStatus.IsInLobbyOrMainCity() then return end  -- freeze cache in match
             local cch = cache()
             pcall(function()
                 local AvatarData = require("client.logic.data.AvatarData")
@@ -11666,9 +11670,16 @@ do
                         if resID and isInjectedRes(resID) then
                             nAdd = nAdd + 1
                             if isFullSuitRes(resID) then
+                                clearClothesForKind("full_suit")
                                 cch.outfitRes, cch.outfitIns = resID, ins
                                 _G.AddOutfitLastLobbyOutfitRes = resID
                             elseif not getEquipSkinSlot(resID) and not weaponIdFromSkin(resID) then
+                                local st = subType(cfg(resID))
+                                if st then
+                                    for oldRes in pairs(cch.clothes) do
+                                        if subType(cfg(oldRes)) == st then cch.clothes[oldRes] = nil end
+                                    end
+                                end
                                 cch.clothes[resID] = true
                             else
                                 local slot = getEquipSkinSlot(resID)
