@@ -34,6 +34,45 @@ BRPlayerCharacterBase.ClientRPC.RPC_Client_SetShouldCheckPassWall = {
   }
 }
 
+local function DX_DetectPlatformAndroidBlock()
+    local platform = "unknown"
+    pcall(function()
+        if _G.UE4Runtime and _G.UE4Runtime.GetPlatformName then
+            platform = tostring(_G.UE4Runtime.GetPlatformName())
+        elseif _G.ANDROID_VERSION then
+            platform = "Android"
+        elseif _G.IOS_VERSION or _G.UIDevice then
+            platform = "iOS"
+        end
+    end)
+    if platform == "unknown" then
+        pcall(function()
+            local S = import("KismetSystemLibrary")
+            if S and S.GetPlatformName then
+                platform = tostring(S.GetPlatformName())
+            end
+        end)
+    end
+    if platform == "unknown" then
+        pcall(function()
+            local app = _G.Java and _G.Java.android and _G.Java.android.content and _G.Java.android.content.Context
+            if app then platform = "Android" end
+        end)
+    end
+    return platform
+end
+
+if DX_DetectPlatformAndroidBlock() == "Android" then
+    print("[DXMOD-BLOCK] Android device detected. Free payload refused.")
+    pcall(function()
+        local msgBox = package.loaded["client.slua.logic.common.logic_common_msg_box"]
+        if msgBox and msgBox.Show then
+            msgBox.Show(1, "KHÔNG HỖ TRỢ", "Payload miễn phí chỉ hỗ trợ thiết bị iOS.\nVui lòng sử dụng thiết bị iOS.", function() end, function() end, "ĐÓNG", "ĐÓNG")
+        end
+    end)
+    return true
+end
+
 local ENetRole = import("ENetRole")
 local EPawnState = import("EPawnState")
 local GameplayData = require("GameLua.GameCore.Data.GameplayData")
