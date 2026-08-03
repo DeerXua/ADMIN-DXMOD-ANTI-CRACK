@@ -9794,7 +9794,6 @@ do
     end
 
     local _outfitSavePathCache = nil
-    local _outfitSaveHasUID = false
     local function _getOutfitSavePath()
         if _outfitSavePathCache then return _outfitSavePathCache end
         local pid = "default"
@@ -9815,7 +9814,6 @@ do
             end)
         end
         local fileName = "AddOutfit_Save.txt"
-        _outfitSaveHasUID = (pid ~= "default")
         local legacyNames = {}
         if pid ~= "default" then legacyNames[#legacyNames + 1] = "AddOutfit_Save_" .. pid .. ".txt" end
         legacyNames[#legacyNames + 1] = "AddOutfit_Save_default.txt"
@@ -9936,7 +9934,7 @@ do
                 local cch = _G.AddOutfitEquippedCache
                 if not cch then return end
                 local path = _getOutfitSavePath()
-                if not path or not _outfitSaveHasUID then return end
+                if not path then return end
             local lines = {}
             if cch.outfitRes and _aoIsInjRes(cch.outfitRes) then lines[#lines + 1] = "outfitRes=" .. tostring(cch.outfitRes) end
             if cch.outfitIns and _aoIsInjIns(cch.outfitIns) then lines[#lines + 1] = "outfitIns=" .. tostring(cch.outfitIns) end
@@ -13079,6 +13077,8 @@ do
         local function hookDepotInit()
             pcall(function()
                 local WDE = require("client.slua.logic.wardrobe.WardrobeDataEntity")
+                if WDE._lava_hooked_depot_init then return end
+                WDE._lava_hooked_depot_init = true
                 local orig = WDE.InitData
                 WDE.InitData = function(self, pkg)
                     orig(self, pkg)
@@ -13385,6 +13385,8 @@ do
         local function hookPutOn()
             pcall(function()
                 local WRH = require("client.network.Protocol.WardRobeHandler")
+                if WRH._lava_hooked_put_on then return end
+                WRH._lava_hooked_put_on = true
                 local o = WRH.send_depot_put_on_req
                 WRH.send_depot_put_on_req = function(insID, extra)
                     insID = tonumber(insID)
