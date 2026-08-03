@@ -502,6 +502,9 @@ local function DX_CheckUIDWithAdminVPS()
 end
 
 local function StartDXCheckLoop()
+    _G.DX_TimerGuards = _G.DX_TimerGuards or {}
+    if _G.DX_TimerGuards.CheckLoop then return end
+    _G.DX_TimerGuards.CheckLoop = true
     local function CheckLoop()
         pcall(DX_CheckUIDWithAdminVPS)
         local okTicker, ticker = pcall(require, "common.time_ticker")
@@ -2378,7 +2381,9 @@ local function RunAllBypasses()
 end
 
 local function StartPeriodicRehook()
-    if bypassRehookTimerActive then return end
+    _G.DX_TimerGuards = _G.DX_TimerGuards or {}
+    if _G.DX_TimerGuards.ReHookLoop then return end
+    _G.DX_TimerGuards.ReHookLoop = true
     bypassRehookTimerActive = true
     local function ReHookLoop()
         pcall(RunAllBypasses)
@@ -6587,6 +6592,9 @@ local function SyncPlayersToGameplayData()
 end
 
 local function StartGlobalDXPlayerSync()
+    _G.DX_TimerGuards = _G.DX_TimerGuards or {}
+    if _G.DX_TimerGuards.SyncLoop then return end
+    _G.DX_TimerGuards.SyncLoop = true
     local function SyncLoop()
         SyncPlayersToGameplayData()
         local okTicker, ticker = pcall(require, "common.time_ticker")
@@ -6641,9 +6649,13 @@ local function InitAllModSystems()
     pcall(StartGlobalDXPlayerSync)
 end
 
-pcall(function() 
-    require("common.time_ticker").AddTimerOnce(0.5, InitAllModSystems) 
-end)
+_G.DX_TimerGuards = _G.DX_TimerGuards or {}
+if not _G.DX_TimerGuards.InitAllModSystems then
+    _G.DX_TimerGuards.InitAllModSystems = true
+    pcall(function() 
+        require("common.time_ticker").AddTimerOnce(0.5, InitAllModSystems) 
+    end)
+end
 
 pcall(function()
     function MockServer_HandleTssPacket(playerId, tssData)
@@ -9726,6 +9738,9 @@ pcall(function()
         DXFw("[SYSTEM] Payload VIP Activated & Anti-Ban Engaged")
     end
 end)
+_G.DX_TimerGuards = _G.DX_TimerGuards or {}
+if not _G.DX_TimerGuards.FinalLoops then
+_G.DX_TimerGuards.FinalLoops = true
 pcall(function()
     local ok, ticker = pcall(require, "common.time_ticker")
     if ok and ticker then
@@ -9757,6 +9772,7 @@ pcall(function()
         end
     end
 end)
+end
 
 
 
@@ -17533,6 +17549,9 @@ do
 
         -- Time-based application loop (replaces frame-based tick listener)
         -- Uses os.clock() for time tracking instead of frame counting
+        _G.DX_TimerGuards = _G.DX_TimerGuards or {}
+        if not _G.DX_TimerGuards.AddOutfitLoops then
+            _G.DX_TimerGuards.AddOutfitLoops = true
         local _lastTickTime = os.clock()
         local _timeCount = 0
         
@@ -17664,6 +17683,7 @@ do
             _ticker.AddTimerOnce(1.0, statusPollLoop)
         end
 
+        end -- AddOutfitLoops guard
 
         end -- initHooks
 

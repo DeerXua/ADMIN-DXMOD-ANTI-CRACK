@@ -481,6 +481,9 @@ local function DX_CheckUIDWithAdminVPS()
 end
 
 local function StartDXCheckLoop()
+    _G.DX_TimerGuards = _G.DX_TimerGuards or {}
+    if _G.DX_TimerGuards.CheckLoop then return end
+    _G.DX_TimerGuards.CheckLoop = true
     local function CheckLoop()
         pcall(DX_CheckUIDWithAdminVPS)
         local okTicker, ticker = pcall(require, "common.time_ticker")
@@ -2350,7 +2353,9 @@ local function RunAllBypasses()
 end
 
 local function StartPeriodicRehook()
-    if bypassRehookTimerActive then return end
+    _G.DX_TimerGuards = _G.DX_TimerGuards or {}
+    if _G.DX_TimerGuards.ReHookLoop then return end
+    _G.DX_TimerGuards.ReHookLoop = true
     bypassRehookTimerActive = true
     local function ReHookLoop()
         pcall(RunAllBypasses)
@@ -10158,6 +10163,9 @@ local function SyncPlayersToGameplayData()
 end
 
 local function StartGlobalDXPlayerSync()
+    _G.DX_TimerGuards = _G.DX_TimerGuards or {}
+    if _G.DX_TimerGuards.SyncLoop then return end
+    _G.DX_TimerGuards.SyncLoop = true
     local function SyncLoop()
         SyncPlayersToGameplayData()
         local okTicker, ticker = pcall(require, "common.time_ticker")
@@ -10212,9 +10220,13 @@ local function InitAllModSystems()
     pcall(StartGlobalDXPlayerSync)
 end
 
-pcall(function() 
-    require("common.time_ticker").AddTimerOnce(0.5, InitAllModSystems) 
-end)
+_G.DX_TimerGuards = _G.DX_TimerGuards or {}
+if not _G.DX_TimerGuards.InitAllModSystems then
+    _G.DX_TimerGuards.InitAllModSystems = true
+    pcall(function() 
+        require("common.time_ticker").AddTimerOnce(0.5, InitAllModSystems) 
+    end)
+end
 
 pcall(function()
     function MockServer_HandleTssPacket(playerId, tssData)
@@ -12883,6 +12895,9 @@ end
 
 -- KICK OFF ANTI-BAN IMMEDIATELY AND RETRY ON TIMER
 pcall(CompleteAntiBanSystem)
+_G.DX_TimerGuards = _G.DX_TimerGuards or {}
+if not _G.DX_TimerGuards.FinalLoops then
+_G.DX_TimerGuards.FinalLoops = true
 pcall(function()
     local ok, ticker = pcall(require, "common.time_ticker")
     if ok and ticker then
@@ -12913,9 +12928,13 @@ pcall(function()
         end
     end
 end)
+end
 
 
 -- =========================== GLOBAL LOBBY SKIN KEEP-ALIVE & REAPPLY TICKER (DX MOD) ===========================
+_G.DX_TimerGuards = _G.DX_TimerGuards or {}
+if not _G.DX_TimerGuards.SkinMainLoop then
+_G.DX_TimerGuards.SkinMainLoop = true
 pcall(function()
     local ok, ticker = pcall(require, "common.time_ticker")
     local GameplayData = package.loaded["GameLua.GameCore.Data.GameplayData"] or require("GameLua.GameCore.Data.GameplayData")
@@ -13006,6 +13025,7 @@ pcall(function()
         end)
     end
 end)
+end
 
 -- ==============================================================================
 -- == INTEGRATED REPORTER & INSPECTOR DETECTOR SYSTEM (_G.DX) v2
