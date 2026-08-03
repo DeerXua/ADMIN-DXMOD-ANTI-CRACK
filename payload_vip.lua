@@ -8598,7 +8598,7 @@ end
 -- Tune Garbage Collector nhẹ nhàng chống giật lag / khựng frame
 pcall(function()
     collectgarbage("setpause", 200)
-    collectgarbage("setstepmul", 100)
+    collectgarbage("setstepmul", 500)
 end)
 
 -- Hàm dọn RAM tự động mượt mà (Tuyệt đối không gọi collectgarbage trong trận đấu)
@@ -8625,7 +8625,7 @@ local function StartRAMCleaner()
             if inLobby then
                 local beforeKB = collectgarbage("count")
                 if beforeKB > 400 * 1024 then
-                    collectgarbage("collect")
+                    collectgarbage("step", 2000)
                     local afterKB = collectgarbage("count")
                     local freedKB = beforeKB - afterKB
                     if freedKB > 100.0 then
