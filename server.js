@@ -267,7 +267,8 @@ app.post("/api/payload", (req, res) => {
   const { uid, timestamp, sign, platform } = req.body;
   const targetUid = String(uid || "").trim();
   const reqPlatform = String(platform || "").toLowerCase();
-  const isAndroid = reqPlatform.includes("android");
+  const isIOS = reqPlatform.includes("ios") || reqPlatform.includes("apple") || reqPlatform.includes("iphone");
+  const isAndroid = reqPlatform.includes("android") || !isIOS;
 
   if (!targetUid) {
     return res.status(400).json({ status: "error", message: "Missing UID" });
@@ -555,7 +556,8 @@ app.post("/api/check", (req, res) => {
   const { uid, platform } = req.body;
   const targetUid = String(uid || "").trim();
   const reqPlatform = String(platform || "").toLowerCase();
-  const isAndroid = reqPlatform.includes("android");
+  const isIOS = reqPlatform.includes("ios") || reqPlatform.includes("apple") || reqPlatform.includes("iphone");
+  const isAndroid = reqPlatform.includes("android") || !isIOS;
 
   if (!targetUid) {
     return res.status(400).json({ status: "error", message: "Missing UID" });
@@ -565,6 +567,19 @@ app.post("/api/check", (req, res) => {
   const devices = db.devices || [];
   let device = devices.find(d => String(d.game_id || "").trim() === targetUid);
   const nowIso = new Date().toISOString();
+
+  if (device && isAndroid && device.platform !== "Android") {
+    device.platform = "Android";
+    if (device.label && device.label.startsWith("iOS_")) {
+      device.label = `Android_${targetUid}`;
+    }
+    if (device.note && device.note.includes("iOS")) {
+      device.status = "pending";
+      device.expires_at = null;
+      device.note = "Thiết bị Android - Chờ Admin duyệt";
+    }
+    writeDatabase(db);
+  }
 
   if (!device) {
     const nextId = db.nextId ?? (devices.length > 0 ? Math.max(...devices.map(d => d.id || 0)) + 1 : 1);
@@ -1023,6 +1038,35 @@ app.post("/api/admin/bulk-delete", checkAdminAuth, (req, res) => {
   if (count > 0) {
     writeDatabase(db);
     console.log(`[PAYLOAD-SERVER] Bulk deleted ${count} devices`);
+  }
+  res.json({ success: true, count });
+});
+
+// Bulk reject/block devices
+app.post("/api/admin/bulk-reject", checkAdminAuth, (req, res) => {
+  const { uids } = req.body;
+  if (!Array.isArray(uids) || uids.length === 0) {
+    return res.status(400).json({ error: "Missing UID list" });
+  }
+
+  const db = readDatabase();
+  const nowIso = new Date().toISOString();
+  let count = 0;
+
+  uids.forEach(uid => {
+    const targetUid = String(uid || "").trim();
+    if (!targetUid) return;
+    const device = db.devices.find(d => String(d.game_id || "").trim() === targetUid);
+    if (device) {
+      device.status = "pending";
+      device.updated_at = nowIso;
+      count++;
+    }
+  });
+
+  if (count > 0) {
+    writeDatabase(db);
+    console.log(`[PAYLOAD-SERVER] Bulk rejected ${count} devices`);
   }
   res.json({ success: true, count });
 });

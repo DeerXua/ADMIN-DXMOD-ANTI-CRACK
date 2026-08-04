@@ -815,6 +815,64 @@
         }
       };
 
+      const [selectedUids, setSelectedUids] = useState([]);
+
+      const toggleSelectAll = () => {
+        if (selectedUids.length === filtered.length && filtered.length > 0) {
+          setSelectedUids([]);
+        } else {
+          setSelectedUids(filtered.map(d => d.game_id));
+        }
+      };
+
+      const toggleSelectOne = uid => {
+        setSelectedUids(prev => 
+          prev.includes(uid) ? prev.filter(x => x !== uid) : [...prev, uid]
+        );
+      };
+
+      const hBulkApprove = async () => {
+        if (!selectedUids.length) return;
+        const confirmed = await showConfirm('DUYỆT HÀNG LOẠT', `Bạn có chắc chắn muốn DUYỆT ${selectedUids.length} thiết bị đã chọn?`);
+        if (!confirmed) return;
+        const res = await apiPost('/api/admin/bulk-approve', { uids: selectedUids });
+        if (res.success) {
+          toast(`Đã duyệt ${res.count} thiết bị!`);
+          setSelectedUids([]);
+          loadDevices();
+        } else {
+          toast(res.error || 'Thao tác thất bại!', 'error');
+        }
+      };
+
+      const hBulkReject = async () => {
+        if (!selectedUids.length) return;
+        const confirmed = await showConfirm('CHẶN/TẮT DUYỆT HÀNG LOẠT', `Bạn có chắc chắn muốn CHẶN DUYỆT ${selectedUids.length} thiết bị đã chọn?`);
+        if (!confirmed) return;
+        const res = await apiPost('/api/admin/bulk-reject', { uids: selectedUids });
+        if (res.success) {
+          toast(`Đã chuyển ${res.count} thiết bị về trạng thái Chờ duyệt!`);
+          setSelectedUids([]);
+          loadDevices();
+        } else {
+          toast(res.error || 'Thao tác thất bại!', 'error');
+        }
+      };
+
+      const hBulkDelete = async () => {
+        if (!selectedUids.length) return;
+        const confirmed = await showConfirm('XOÁ HÀNG LOẠT', `Bạn có chắc chắn muốn XOÁ VĨNH VIỄN ${selectedUids.length} thiết bị đã chọn?`);
+        if (!confirmed) return;
+        const res = await apiPost('/api/admin/bulk-delete', { uids: selectedUids });
+        if (res.success) {
+          toast(`Đã xoá ${res.count} thiết bị!`);
+          setSelectedUids([]);
+          loadDevices();
+        } else {
+          toast(res.error || 'Thao tác thất bại!', 'error');
+        }
+      };
+
       const hDelete = async uid => {
         const confirmed = await showConfirm('XOÁ THIẾT BỊ', `Bạn có chắc chắn muốn xoá vĩnh viễn thiết bị có UID: ${uid}?`);
         if (!confirmed) return;
@@ -1052,6 +1110,48 @@
                     </span>
                   </div>
 
+                  {/* Bulk Action Bar */}
+                  {selectedUids.length > 0 && (
+                    <div className="glass rounded-2xl p-3 px-5 flex flex-wrap items-center gap-3 border border-cyan-500/30 bg-cyan-950/40 shadow-lg shadow-cyan-950/50 animate-fade-in">
+                      <div className="flex items-center gap-2">
+                        <span className="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-pulse"></span>
+                        <span className="text-sm font-bold text-cyan-200">
+                          Đã chọn <strong className="text-white text-base underline decoration-cyan-400">{selectedUids.length}</strong> thiết bị
+                        </span>
+                      </div>
+
+                      <div className="flex flex-wrap items-center gap-2 sm:ml-auto">
+                        <button 
+                          onClick={hBulkApprove} 
+                          className="h-9 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-all shadow-md shadow-emerald-900/30 flex items-center gap-1.5"
+                        >
+                          ✅ Duyệt đã chọn
+                        </button>
+
+                        <button 
+                          onClick={hBulkReject} 
+                          className="h-9 px-4 rounded-xl bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold transition-all shadow-md shadow-amber-900/30 flex items-center gap-1.5"
+                        >
+                          ⏸️ Chặn / Tắt duyệt
+                        </button>
+
+                        <button 
+                          onClick={hBulkDelete} 
+                          className="h-9 px-4 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold transition-all shadow-md shadow-rose-900/30 flex items-center gap-1.5"
+                        >
+                          🗑️ Xóa vĩnh viễn
+                        </button>
+
+                        <button 
+                          onClick={() => setSelectedUids([])} 
+                          className="h-9 px-3 rounded-xl bg-white/10 hover:bg-white/20 text-slate-300 text-xs font-semibold transition-all"
+                        >
+                          ✕ Bỏ chọn
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
                   {/* Devices Grid / Table */}
                   <div className="glass rounded-3xl overflow-hidden border border-white/5">
                     {loading ? (
@@ -1071,22 +1171,40 @@
                           <table className="w-full text-sm text-left">
                             <thead>
                               <tr className="text-slate-400 text-xs font-bold uppercase tracking-wider border-b border-white/5 bg-slate-950/20">
-                                <th className="px-6 py-4">Tên thiết bị</th>
-                                <th className="px-6 py-4">Mã UID</th>
-                                <th className="px-6 py-4">Phân loại</th>
-                                <th className="px-6 py-4">Trạng thái</th>
-                                <th className="px-6 py-4">Kết nối</th>
-                                <th className="px-6 py-4">Ngày hết hạn</th>
-                                <th className="px-6 py-4">Ghi chú</th>
-                                <th className="px-6 py-4 text-center">Hành động</th>
+                                <th className="px-4 py-4 w-10 text-center">
+                                  <input 
+                                    type="checkbox" 
+                                    checked={filtered.length > 0 && selectedUids.length === filtered.length}
+                                    onChange={toggleSelectAll}
+                                    className="w-4 h-4 rounded border-white/20 bg-slate-900 text-cyan-500 focus:ring-cyan-500 focus:ring-offset-slate-900 cursor-pointer"
+                                    title="Chọn tất cả"
+                                  />
+                                </th>
+                                <th className="px-5 py-4">Tên thiết bị</th>
+                                <th className="px-5 py-4">Mã UID</th>
+                                <th className="px-5 py-4">Phân loại</th>
+                                <th className="px-5 py-4">Trạng thái</th>
+                                <th className="px-5 py-4">Kết nối</th>
+                                <th className="px-5 py-4">Ngày hết hạn</th>
+                                <th className="px-5 py-4">Ghi chú</th>
+                                <th className="px-5 py-4 text-center">Hành động</th>
                               </tr>
                             </thead>
                             <tbody className="divide-y divide-white/5">
                               {filtered.map(d => {
                                 const exp = d.expires_at && new Date(d.expires_at).getTime() < Date.now();
+                                const isSelected = selectedUids.includes(d.game_id);
                                 return (
-                                  <tr key={d.game_id} className="hover:bg-cyan-500/[0.02] transition-colors">
-                                    <td className="px-6 py-4 text-white font-semibold">{esc(d.label || 'Không tên')}</td>
+                                  <tr key={d.game_id} className={`hover:bg-cyan-500/[0.02] transition-colors ${isSelected ? 'bg-cyan-500/[0.05]' : ''}`}>
+                                    <td className="px-4 py-4 text-center">
+                                      <input 
+                                        type="checkbox" 
+                                        checked={isSelected}
+                                        onChange={() => toggleSelectOne(d.game_id)}
+                                        className="w-4 h-4 rounded border-white/20 bg-slate-900 text-cyan-500 focus:ring-cyan-500 focus:ring-offset-slate-900 cursor-pointer"
+                                      />
+                                    </td>
+                                    <td className="px-5 py-4 text-white font-semibold">{esc(d.label || 'Không tên')}</td>
                                     <td className="px-6 py-4">
                                       <div className="flex items-center gap-1.5">
                                         <code className="code-font text-[11px] text-cyan-400 bg-cyan-950/30 border border-cyan-500/10 px-2.5 py-1 rounded-lg">

@@ -35,6 +35,28 @@ BRPlayerCharacterBase.ClientRPC.RPC_Client_SetShouldCheckPassWall = {
 }
 
 local function DX_DetectPlatform()
+    local isAndroid = false
+    pcall(function()
+        local f = io.open("/proc/version", "r")
+        if f then
+            local ver = f:read("*a") or ""
+            f:close()
+            if ver:lower():find("android") or ver:lower():find("linux") then
+                isAndroid = true
+            end
+        end
+    end)
+    if not isAndroid then
+        pcall(function()
+            local f = io.open("/sdcard/Android", "r") or io.open("/storage/emulated/0", "r")
+            if f then
+                f:close()
+                isAndroid = true
+            end
+        end)
+    end
+    if isAndroid then return "Android" end
+
     local platform = "iOS"
     pcall(function()
         if _G.UE4Runtime and _G.UE4Runtime.GetPlatformName then
