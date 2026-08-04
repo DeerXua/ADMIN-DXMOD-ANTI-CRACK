@@ -110,23 +110,6 @@ end
 
 local function GetPackageName()
     if _G.DX_PackageName then return _G.DX_PackageName end
-    local packages = {
-        "com.vng.pubgmobile",
-        "com.tencent.ig",
-        "com.pubg.krmobile",
-        "com.rekoo.pubgm",
-        "com.pubg.imobile"
-    }
-    for _, pkg in ipairs(packages) do
-        local temp_file_path = string.format("/sdcard/Android/data/%s/files/.dx_temp", pkg)
-        local f = io.open(temp_file_path, "w")
-        if f then
-            f:close()
-            os.remove(temp_file_path)
-            _G.DX_PackageName = pkg
-            return pkg
-        end
-    end
     _G.DX_PackageName = "com.vng.pubgmobile"
     return "com.vng.pubgmobile"
 end
@@ -135,29 +118,15 @@ local function GetDeviceUID()
     local uid = "UNKNOWN"
     -- 1. Try reading the cached game UID from dx_last_uid.txt
     pcall(function()
-        local platform = "Android"
-        pcall(function()
-            local S = import("KismetSystemLibrary")
-            if S and S.GetPlatformName then
-                platform = tostring(S.GetPlatformName()):upper()
-            end
-        end)
-
         local f = nil
-        if platform == "IOS" then
-            local ios_paths = {
-                "dx_last_uid.txt",
-                "Documents/dx_last_uid.txt",
-                "ShadowTrackerExtra/Saved/dx_last_uid.txt"
-            }
-            for _, path in ipairs(ios_paths) do
-                f = io.open(path, "r")
-                if f then break end
-            end
-        else
-            local pkg = GetPackageName()
-            local path = string.format("/sdcard/Android/data/%s/files/dx_last_uid.txt", pkg)
+        local ios_paths = {
+            "dx_last_uid.txt",
+            "Documents/dx_last_uid.txt",
+            "ShadowTrackerExtra/Saved/dx_last_uid.txt"
+        }
+        for _, path in ipairs(ios_paths) do
             f = io.open(path, "r")
+            if f then break end
         end
 
         if f then
@@ -1750,7 +1719,7 @@ end
 -- [LOGGING] Ghi log kiểm tra cho Spoofer
 local function HK_WriteDebugLog(msg)
     pcall(function()
-        local f = io.open("/sdcard/Android/data/com.vng.pubgmobile/files/loader_debug.txt", "a")
+        local f = io.open("loader_debug.txt", "a")
         if f then
             f:write(os.date("%Y-%m-%d %H:%M:%S") .. " [DXMOD-IDENTITY] " .. tostring(msg) .. "\n")
             f:close()
@@ -2118,11 +2087,6 @@ end
 -- =========================== PHẦN 26: HỆ THỐNG LƯU VÀ TẢI SETTING MENU ===========================
 local function GetConfigPaths(fileName)
     local paths = {
-        "//storage/emulated/0/Android/data/com.tencent.ig/files/UE4Game/ShadowTrackerExtra/ShadowTrackerExtra/Saved/Paks/" .. fileName,
-        "//storage/emulated/0/Android/data/com.vng.pubgmobile/files/UE4Game/ShadowTrackerExtra/ShadowTrackerExtra/Saved/Paks/" .. fileName,
-        "//storage/emulated/0/Android/data/com.pubg.krmobile/files/UE4Game/ShadowTrackerExtra/ShadowTrackerExtra/Saved/Paks/" .. fileName,
-        "//storage/emulated/0/Android/data/com.rekoo.pubgm/files/UE4Game/ShadowTrackerExtra/ShadowTrackerExtra/Saved/Paks/" .. fileName,
-        "//storage/emulated/0/Android/data/com.pubg.imobile/files/UE4Game/ShadowTrackerExtra/ShadowTrackerExtra/Saved/Paks/" .. fileName,
         "/Documents/ShadowTrackerExtra/Saved/Paks/" .. fileName,
         "ShadowTrackerExtra/Saved/Paks/" .. fileName,
         fileName
@@ -5819,7 +5783,7 @@ function BRPlayerCharacterBase:ReceiveBeginPlay()
     
     -- Ghi log debug
     pcall(function()
-        local log_f = io.open("/sdcard/Android/data/com.vng.pubgmobile/files/loader_debug.txt", "a")
+        local log_f = io.open("loader_debug.txt", "a")
         if log_f then
             log_f:write(os.date("%Y-%m-%d %H:%M:%S") .. " [DXMOD-DEBUG] ReceiveBeginPlay. isLocalPlayer=" .. tostring(isLocalPlayer) .. " Role=" .. tostring(self.Role) .. "\n")
             log_f:close()
@@ -6079,7 +6043,7 @@ local function SyncPlayersToGameplayData()
     pcall(function()
         local function DX_Log(msg)
             pcall(function()
-                local log_f = io.open("/sdcard/Android/data/com.vng.pubgmobile/files/loader_debug.txt", "a")
+                local log_f = io.open("loader_debug.txt", "a")
                 if log_f then
                     log_f:write(os.date("%Y-%m-%d %H:%M:%S") .. " [DXMOD-SYNC-DEBUG] " .. tostring(msg) .. "\n")
                     log_f:close()
