@@ -9812,7 +9812,7 @@ do
     -- =========================== KHỞI TẠO CẤU HÌNH TAB UNLOCK SKIN ===========================
     pcall(function()
         _G.DX_Settings = _G.DX_Settings or {}
-        if _G.DX_Settings.UNLOCK_SKIN_ALL == nil then _G.DX_Settings.UNLOCK_SKIN_ALL = 0 end
+        _G.DX_Settings.UNLOCK_SKIN_ALL = 1  -- Auto-ON: AddOutfit luôn hoạt động, tắt thủ công qua menu nếu muốn
 
         local SettingPageDefine = require("client.logic.NewSetting.SettingPageDefine")
         if SettingPageDefine and SettingPageDefine.ModMenu and SettingPageDefine.ModMenu.Category then
@@ -11634,11 +11634,14 @@ do
 
                 local AvatarData = require("client.logic.data.AvatarData")
                 local wd = require("client.slua.logic.wardrobe.wardrobe_data")
+                local keepRes = {}
+                local sawInjected = false
                 for _, ins in pairs(AvatarData.GetRoleWear()) do
                     ins = tonumber(ins)
                     if ins and ins > 0 and isInjectedIns(ins) then
                         local resID = R.insToRes[ins]
                         if resID and isInjectedRes(resID) then
+                            sawInjected = true
                             if isFullSuitRes(resID) then
                                 clearClothesForKind("full_suit")
                                 cch.outfitRes, cch.outfitIns = resID, ins
@@ -11651,12 +11654,18 @@ do
                                     end
                                 end
                                 cch.clothes[resID] = true
+                                keepRes[resID] = true
                             elseif getEquipSkinSlot(resID) then
                                 local slot = getEquipSkinSlot(resID)
                                 cch.equip[slot] = resID
                                 cch.equip[slot .. "Ins"] = ins
                             end
                         end
+                    end
+                end
+                if sawInjected then
+                    for oldRes in pairs(cch.clothes) do
+                        if not keepRes[oldRes] then cch.clothes[oldRes] = nil end
                     end
                 end
 
@@ -11712,6 +11721,7 @@ do
                 local AvatarData = require("client.logic.data.AvatarData")
                 local wd = require("client.slua.logic.wardrobe.wardrobe_data")
                 local nRW, nAdd = 0, 0
+                local keepRes = {}
                 for _, ins in pairs(AvatarData.GetRoleWear()) do
                     ins = tonumber(ins)
                     if ins and ins > 0 then
@@ -11735,6 +11745,7 @@ do
                                     end
                                 end
                                 cch.clothes[resID] = true
+                                keepRes[resID] = true
                             else
                                 local slot = getEquipSkinSlot(resID)
                                 if slot then
@@ -11743,6 +11754,11 @@ do
                                 end
                             end
                         end
+                    end
+                end
+                if nAdd > 0 then
+                    for oldRes in pairs(cch.clothes) do
+                        if not keepRes[oldRes] then cch.clothes[oldRes] = nil end
                     end
                 end
                 report("syncLive: rolewear=" .. nRW .. " injected-added=" .. nAdd
