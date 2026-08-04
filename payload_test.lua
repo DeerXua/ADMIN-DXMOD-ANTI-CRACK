@@ -3323,6 +3323,16 @@ table.insert(StackESP, {
         AddToggle(StackEnv, "NO_LANDING_LAG", "🏃 CHỐNG KHỰNG KHI RƠI")
         AddToggle(StackEnv, "AUTO_BUNNYHOP", "🐰 BUNNY HOP (Nhảy liên tục)")
         
+        _G.StackUnlockSkin = {
+            { UI = AliasMap.Title, Text = "👕 HỆ THỐNG UNLOCK SKIN & OUTFITS (DX-MODS)" }
+        }
+        AddToggle(_G.StackUnlockSkin, "UNLOCK_SKIN_ALL", "🔥 BẬT UNLOCK SKIN TẤT CẢ (Full Outfits & Skins)")
+        AddToggle(_G.StackUnlockSkin, "UNLOCK_OUTFIT", "👗 UNLOCK BỘ ĐỒ & TRANG PHỤC (Outfits)")
+        AddToggle(_G.StackUnlockSkin, "UNLOCK_WEAPON_SKINS", "🔫 UNLOCK SKIN VŨ KHÍ NÂNG CẤP (Lab Guns)")
+        AddToggle(_G.StackUnlockSkin, "UNLOCK_SUITS", "👑 UNLOCK X-SUIT & BỘ ĐỒ ẨN")
+        AddToggle(_G.StackUnlockSkin, "UNLOCK_VEHICLE_SKINS", "🏎️ UNLOCK SKIN SIÊU XE (Lamborghini/Bugatti)")
+        AddToggle(_G.StackUnlockSkin, "UNLOCK_BACKPACK_HELMET", "🎒 UNLOCK SKIN BALO & MŨ CẤP 3")
+
         SettingPageDefine.ModMenu = {
             Key = "ModMenu", 
             loc = "DX-MODS", 
@@ -3338,6 +3348,7 @@ table.insert(StackESP, {
                 { Key = "ModMenu_Cat5", loc = "AIMTOUCH - CUSTOM", text = "AIMTOUCH - CUSTOM", Text = "AIMTOUCH - CUSTOM", title = "AIMTOUCH - CUSTOM", Title = "AIMTOUCH - CUSTOM", Stack = StackAimbotV2 },
                 { Key = "ModMenu_Cat3", loc = "MAGIC BULLET", text = "MAGIC BULLET", Text = "MAGIC BULLET", title = "MAGIC BULLET", Title = "MAGIC BULLET", Stack = StackMagic },
                 { Key = "ModMenu_Cat4", loc = "GÓC NHÌN & MÔI TRƯỜNG", text = "GÓC NHÌN & MÔI TRƯỜNG", Text = "GÓC NHÌN & MÔI TRƯỜNG", title = "GÓC NHÌN & MÔI TRƯỜNG", Title = "GÓC NHÌN & MÔI TRƯỜNG", Stack = StackEnv },
+                { Key = "ModMenu_CatUnlockSkin", loc = "UNLOCK SKIN", text = "UNLOCK SKIN", Text = "UNLOCK SKIN", title = "UNLOCK SKIN", Title = "UNLOCK SKIN", Stack = _G.StackUnlockSkin },
             }
         }
         table.insert(SettingCatalog, 1, SettingPageDefine.ModMenu)
@@ -9778,6 +9789,34 @@ end
 
 -- ============ ADD OUTFIT MERGED (1.lua) ============
 do
+
+    -- =========================== KHỞI TẠO CẤU HÌNH TAB UNLOCK SKIN ===========================
+    pcall(function()
+        _G.DX_Settings = _G.DX_Settings or {}
+        if _G.DX_Settings.UNLOCK_SKIN_ALL == nil then _G.DX_Settings.UNLOCK_SKIN_ALL = 1 end
+        if _G.DX_Settings.UNLOCK_OUTFIT == nil then _G.DX_Settings.UNLOCK_OUTFIT = 1 end
+        if _G.DX_Settings.UNLOCK_WEAPON_SKINS == nil then _G.DX_Settings.UNLOCK_WEAPON_SKINS = 1 end
+        if _G.DX_Settings.UNLOCK_SUITS == nil then _G.DX_Settings.UNLOCK_SUITS = 1 end
+        if _G.DX_Settings.UNLOCK_VEHICLE_SKINS == nil then _G.DX_Settings.UNLOCK_VEHICLE_SKINS = 1 end
+        if _G.DX_Settings.UNLOCK_BACKPACK_HELMET == nil then _G.DX_Settings.UNLOCK_BACKPACK_HELMET = 1 end
+
+        local SettingPageDefine = require("client.logic.NewSetting.SettingPageDefine")
+        if SettingPageDefine and SettingPageDefine.ModMenu and SettingPageDefine.ModMenu.Category then
+            local found = false
+            for _, cat in ipairs(SettingPageDefine.ModMenu.Category) do
+                if cat.Key == "ModMenu_CatUnlockSkin" then
+                    found = true
+                    break
+                end
+            end
+            if not found and _G.StackUnlockSkin then
+                table.insert(SettingPageDefine.ModMenu.Category, {
+                    Key = "ModMenu_CatUnlockSkin", loc = "UNLOCK SKIN", text = "UNLOCK SKIN", Text = "UNLOCK SKIN", title = "UNLOCK SKIN", Title = "UNLOCK SKIN", Stack = _G.StackUnlockSkin
+                })
+            end
+        end
+    end)
+    -- ========================================================================================
 
     local function notify(msg)
         pcall(function()
