@@ -2469,9 +2469,11 @@ _G.DX_WeaponMap = {
 }
 
 _G.DX_OrderedKeywords = {
-    "m249", "m24", "helmet3", "helmet_lvl3", "armor3", "armor_lvl3", "vest_level3", "bag3", "bag_lvl3", "backpack_lvl3",
-    "mũ bảo hiểm (cấp 3)", "mũ (cấp 3)", "mũ cấp 3", "mũ 3", "helmet (lv. 3)", "helmet 3",
-    "giáp quân sự (cấp 3)", "giáp (cấp 3)", "giáp cấp 3", "giáp 3", "vest (lv. 3)", "vest 3",
+    "m249", "m24", "helmet3", "helmet_lvl3", "helmet_lv3", "helmet_3", "helmet lv3", "spetsnaz",
+    "armor3", "armor_lvl3", "armor_lv3", "armor_3", "armor lv3", "vest_level3", "vest_lvl3", "vest_lv3", "vest_3", "military vest",
+    "bag3", "bag_lvl3", "bag_lv3", "bag_3", "bag lv3", "backpack_lvl3", "backpack_lv3", "backpack_3", "backpack (lv.3)",
+    "mũ bảo hiểm (cấp 3)", "mũ (cấp 3)", "mũ cấp 3", "mũ 3", "helmet (lv. 3)", "helmet (lv.3)", "helmet 3",
+    "giáp quân sự (cấp 3)", "giáp (cấp 3)", "giáp cấp 3", "giáp 3", "vest (lv. 3)", "vest (lv.3)", "vest 3",
     "ba lô (cấp 3)", "ba lô cấp 3", "ba lo (cấp 3)", "balo (cấp 3)", "balo cấp 3", "balo 3", "backpack (lv. 3)", "backpack 3", "bag 3",
     "m416", "akm", "scar", "groza", "aug", "qbz", "m762", "g36c", "famas", "ace32", "honey",
     "kar98", "awm", "mosin", "win94", "amr",
@@ -2485,7 +2487,7 @@ _G.DX_OrderedKeywords = {
     "medkit", "firstaid", "bộ y tế", "sơ cứu"
 }
 
--- Bổ sung mapping theo ID số và từ khóa Tiếng Việt vào _G.DX_WeaponMap
+-- Bổ sung mapping theo ID số, ID chuỗi và từ khóa Tiếng Việt vào _G.DX_WeaponMap
 pcall(function()
     local extraMappings = {
         [101008] = "m416", [101001] = "akm", [101003] = "scar", [101004] = "groza", [101005] = "aug", [101006] = "qbz",
@@ -2498,11 +2500,17 @@ pcall(function()
         [106001] = "p1911", [106002] = "p92", [106003] = "r1895", [106004] = "deagle", [106005] = "skorpion", [106006] = "p18c",
         [108001] = "pan", [108002] = "sickle", [108003] = "machete", [108004] = "crowbar",
         [501003] = "helmet3", [501004] = "helmet3", [501005] = "helmet3", [501006] = "helmet3",
+        ["501003"] = "helmet3", ["501004"] = "helmet3", ["501005"] = "helmet3", ["501006"] = "helmet3",
         [502003] = "armor3", [502004] = "armor3", [502005] = "armor3", [502006] = "armor3",
+        ["502003"] = "armor3", ["502004"] = "armor3", ["502005"] = "armor3", ["502006"] = "armor3",
         [503003] = "bag3", [503004] = "bag3", [503005] = "bag3", [503006] = "bag3",
+        ["503003"] = "bag3", ["503004"] = "bag3", ["503005"] = "bag3", ["503006"] = "bag3",
         [201009] = "scope_8x", [201012] = "scope_6x", [201007] = "scope_4x",
         [601005] = "medkit", [601006] = "firstaid",
         
+        ["helmet_lv3"] = "helmet3", ["helmet_lvl3"] = "helmet3", ["helmet_3"] = "helmet3", ["helmet lv3"] = "helmet3", ["spetsnaz"] = "helmet3",
+        ["armor_lv3"] = "armor3", ["armor_lvl3"] = "armor3", ["armor_3"] = "armor3", ["armor lv3"] = "armor3", ["vest_lv3"] = "armor3", ["vest_3"] = "armor3", ["military vest"] = "armor3",
+        ["bag_lv3"] = "bag3", ["bag_lvl3"] = "bag3", ["bag_3"] = "bag3", ["bag lv3"] = "bag3", ["backpack_lvl3"] = "bag3", ["backpack_3"] = "bag3", ["backpack (lv.3)"] = "bag3",
         ["mũ bảo hiểm (cấp 3)"] = "helmet3", ["mũ (cấp 3)"] = "helmet3", ["mũ cấp 3"] = "helmet3", ["mũ 3"] = "helmet3",
         ["giáp quân sự (cấp 3)"] = "armor3", ["giáp (cấp 3)"] = "armor3", ["giáp cấp 3"] = "armor3", ["giáp 3"] = "armor3",
         ["ba lô (cấp 3)"] = "bag3", ["ba lô cấp 3"] = "bag3", ["ba lo (cấp 3)"] = "bag3", ["balo (cấp 3)"] = "bag3", ["balo cấp 3"] = "bag3", ["balo 3"] = "bag3",
@@ -5985,9 +5993,13 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                                                     local matchedKeyword = nil
                                                     local mapping = nil
                                                     
-                                                    if itemID and _G.DX_WeaponMap[itemID] then
-                                                        mapping = _G.DX_WeaponMap[itemID]
-                                                    else
+                                                    if itemID then
+                                                        local numID = tonumber(itemID)
+                                                        local strID = tostring(itemID)
+                                                        mapping = _G.DX_WeaponMap[itemID] or (numID and _G.DX_WeaponMap[numID]) or _G.DX_WeaponMap[strID]
+                                                    end
+                                                    
+                                                    if not mapping then
                                                         for _, kw in ipairs(_G.DX_OrderedKeywords) do
                                                             if string.find(nameLower, kw, 1, true) then
                                                                 matchedKeyword = kw
