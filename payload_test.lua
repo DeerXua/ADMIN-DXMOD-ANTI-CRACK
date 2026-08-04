@@ -3324,41 +3324,9 @@ table.insert(StackESP, {
         AddToggle(StackEnv, "AUTO_BUNNYHOP", "BUNNY HOP (Nhảy liên tục)")
         
         _G.StackUnlockSkin = {
-            { UI = AliasMap.Title, Text = "HỆ THỐNG UNLOCK SKIN" },
-            {
-                Key = "ModMenu_BTN_UNLOCK_SKIN_ON",
-                UI = AliasMap.TitleSwitcher,
-                Text = "▶ BẬT UNLOCK ALL SKIN",
-                GetFunc = function() return _G.DX_Settings.UNLOCK_SKIN_ALL == 1 end,
-                SetFunc = function()
-                    _G.DX_Settings.UNLOCK_SKIN_ALL = 1
-                    _G.EnvRequiresUpdate = true
-                    pcall(function()
-                        if _G.AddOutfitReviveAll then _G.AddOutfitReviveAll() end
-                        if _G.AddOutfitTryFlushSave then _G.AddOutfitTryFlushSave() end
-                        local fn = ShowNotice or _G.ShowNotice
-                        if fn then fn("[DX-MODS] Đã Bật Unlock All Skin!", false, 5) end
-                    end)
-                    return true
-                end
-            },
-            {
-                Key = "ModMenu_BTN_UNLOCK_SKIN_OFF",
-                UI = AliasMap.TitleSwitcher,
-                Text = "▶ TẮT UNLOCK ALL SKIN",
-                GetFunc = function() return _G.DX_Settings.UNLOCK_SKIN_ALL == 0 end,
-                SetFunc = function()
-                    _G.DX_Settings.UNLOCK_SKIN_ALL = 0
-                    _G.EnvRequiresUpdate = true
-                    pcall(function()
-                        if _G.AddOutfitTryFlushSave then _G.AddOutfitTryFlushSave() end
-                        local fn = ShowNotice or _G.ShowNotice
-                        if fn then fn("[DX-MODS] Đã Tắt Unlock All Skin!", false, 5) end
-                    end)
-                    return true
-                end
-            }
+            { UI = AliasMap.Title, Text = "HỆ THỐNG UNLOCK SKIN" }
         }
+        AddToggle(_G.StackUnlockSkin, "UNLOCK_SKIN_ALL", "UNLOCK SKIN BẬT/TẮT")
 
         SettingPageDefine.ModMenu = {
             Key = "ModMenu", 
