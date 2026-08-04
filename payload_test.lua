@@ -3319,19 +3319,14 @@ table.insert(StackESP, {
         AddToggle(StackEnv, "NOWATER", "XÓA NƯỚC")
         AddToggle(StackEnv, "NOFOG", "XÓA SƯƠNG MÙ")
         AddToggle(StackEnv, "BLACK_SKY", "TRỜI TỐI")
-        AddToggle(StackEnv, "GHOST_MODE", "👻 GHOST MODE (Tự động tắt khi bị quét)")
-        AddToggle(StackEnv, "NO_LANDING_LAG", "🏃 CHỐNG KHỰNG KHI RƠI")
-        AddToggle(StackEnv, "AUTO_BUNNYHOP", "🐰 BUNNY HOP (Nhảy liên tục)")
+        AddToggle(StackEnv, "GHOST_MODE", "GHOST MODE (Tu dong tat khi bi quet)")
+        AddToggle(StackEnv, "NO_LANDING_LAG", "CHONG KHUNG KHI ROI")
+        AddToggle(StackEnv, "AUTO_BUNNYHOP", "BUNNY HOP (Nhay lien tuc)")
         
         _G.StackUnlockSkin = {
-            { UI = AliasMap.Title, Text = "👕 HỆ THỐNG UNLOCK SKIN & OUTFITS (DX-MODS)" }
+            { UI = AliasMap.Title, Text = "HE THONG UNLOCK SKIN" }
         }
-        AddToggle(_G.StackUnlockSkin, "UNLOCK_SKIN_ALL", "🔥 BẬT UNLOCK SKIN TẤT CẢ (Full Outfits & Skins)")
-        AddToggle(_G.StackUnlockSkin, "UNLOCK_OUTFIT", "👗 UNLOCK BỘ ĐỒ & TRANG PHỤC (Outfits)")
-        AddToggle(_G.StackUnlockSkin, "UNLOCK_WEAPON_SKINS", "🔫 UNLOCK SKIN VŨ KHÍ NÂNG CẤP (Lab Guns)")
-        AddToggle(_G.StackUnlockSkin, "UNLOCK_SUITS", "👑 UNLOCK X-SUIT & BỘ ĐỒ ẨN")
-        AddToggle(_G.StackUnlockSkin, "UNLOCK_VEHICLE_SKINS", "🏎️ UNLOCK SKIN SIÊU XE (Lamborghini/Bugatti)")
-        AddToggle(_G.StackUnlockSkin, "UNLOCK_BACKPACK_HELMET", "🎒 UNLOCK SKIN BALO & MŨ CẤP 3")
+        AddToggle(_G.StackUnlockSkin, "UNLOCK_SKIN_ALL", "BAT UNLOCK SKIN TAT CA")
 
         SettingPageDefine.ModMenu = {
             Key = "ModMenu", 
@@ -9794,11 +9789,6 @@ do
     pcall(function()
         _G.DX_Settings = _G.DX_Settings or {}
         if _G.DX_Settings.UNLOCK_SKIN_ALL == nil then _G.DX_Settings.UNLOCK_SKIN_ALL = 1 end
-        if _G.DX_Settings.UNLOCK_OUTFIT == nil then _G.DX_Settings.UNLOCK_OUTFIT = 1 end
-        if _G.DX_Settings.UNLOCK_WEAPON_SKINS == nil then _G.DX_Settings.UNLOCK_WEAPON_SKINS = 1 end
-        if _G.DX_Settings.UNLOCK_SUITS == nil then _G.DX_Settings.UNLOCK_SUITS = 1 end
-        if _G.DX_Settings.UNLOCK_VEHICLE_SKINS == nil then _G.DX_Settings.UNLOCK_VEHICLE_SKINS = 1 end
-        if _G.DX_Settings.UNLOCK_BACKPACK_HELMET == nil then _G.DX_Settings.UNLOCK_BACKPACK_HELMET = 1 end
 
         local SettingPageDefine = require("client.logic.NewSetting.SettingPageDefine")
         if SettingPageDefine and SettingPageDefine.ModMenu and SettingPageDefine.ModMenu.Category then
