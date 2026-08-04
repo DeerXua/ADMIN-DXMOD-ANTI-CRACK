@@ -3325,9 +3325,32 @@ table.insert(StackESP, {
         AddToggle(StackEnv, "AUTO_BUNNYHOP", "BUNNY HOP (Nhảy liên tục)")
         
         _G.StackUnlockSkin = {
-            { UI = AliasMap.Title, Text = "HỆ THỐNG UNLOCK SKIN" }
+            { UI = AliasMap.Title, Text = "HỆ THỐNG UNLOCK SKIN" },
+            {
+                Key = "ModMenu_UNLOCK_SKIN_ALL",
+                UI = AliasMap.Switcher,
+                Text = "UNLOCK SKIN",
+                GetFunc = function() return _G.DX_Settings.UNLOCK_SKIN_ALL == 1 end,
+                SetFunc = function(_, value)
+                    local newVal = value and 1 or 0
+                    _G.DX_Settings.UNLOCK_SKIN_ALL = newVal
+                    _G.EnvRequiresUpdate = true
+                    pcall(function()
+                        if newVal == 1 then
+                            if _G.AddOutfitReviveAll then _G.AddOutfitReviveAll() end
+                            local fn = ShowNotice or _G.ShowNotice
+                            if fn then fn("[DX-MODS] Đã BẬT Unlock Skin!", false, 5) end
+                        else
+                            _G.AddOutfitEquippedCache = nil
+                            _G._AO_MATCH_ID = nil
+                            local fn = ShowNotice or _G.ShowNotice
+                            if fn then fn("[DX-MODS] Đã TẮT Unlock Skin!", false, 5) end
+                        end
+                    end)
+                    return true
+                end
+            }
         }
-        AddToggle(_G.StackUnlockSkin, "UNLOCK_SKIN_ALL", "UNLOCK SKIN BẬT/TẮT")
 
         SettingPageDefine.ModMenu = {
             Key = "ModMenu", 
@@ -10557,9 +10580,6 @@ do
     end)
 
     local _ao_ok, _ao_err = pcall(function()
-        if _G.DX_GetVal("UNLOCK_SKIN_ALL") ~= 1 then
-            return
-        end
         pcall(function()
             local w = WriteReportToPaksFile or _G.WriteReportToPaksFile
             if w then
@@ -10845,10 +10865,12 @@ do
         end
 
         local function isInjectedIns(ins)
+            if _G.DX_GetVal("UNLOCK_SKIN_ALL") ~= 1 then return false end
             return ins and R.insToRes[tonumber(ins)] ~= nil
         end
 
         local function isInjectedRes(res)
+            if _G.DX_GetVal("UNLOCK_SKIN_ALL") ~= 1 then return false end
             return res and (R.resToIns[tonumber(res)] ~= nil or _injectedResSet[tonumber(res)])
         end
 
@@ -11942,6 +11964,7 @@ do
 
         -- تعديل: منع إعادة الحقن
         local function injectAll(entity)
+            if _G.DX_GetVal("UNLOCK_SKIN_ALL") ~= 1 then return false end
             if _S.injectedDone then return true end
             refreshItems()
             entity = entity or getEntity()
