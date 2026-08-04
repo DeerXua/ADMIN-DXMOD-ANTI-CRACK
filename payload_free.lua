@@ -34,43 +34,32 @@ BRPlayerCharacterBase.ClientRPC.RPC_Client_SetShouldCheckPassWall = {
   }
 }
 
-local function DX_DetectPlatformAndroidBlock()
-    local platform = "unknown"
+local function DX_DetectPlatform()
+    local platform = "iOS"
     pcall(function()
         if _G.UE4Runtime and _G.UE4Runtime.GetPlatformName then
-            platform = tostring(_G.UE4Runtime.GetPlatformName())
-        elseif _G.ANDROID_VERSION then
+            local pName = tostring(_G.UE4Runtime.GetPlatformName()):upper()
+            if pName:find("ANDROID") then
+                platform = "Android"
+            elseif pName:find("IOS") or pName:find("APPLE") then
+                platform = "iOS"
+            end
+        elseif _G.ANDROID_VERSION or (_G.Java and _G.Java.android) then
             platform = "Android"
         elseif _G.IOS_VERSION or _G.UIDevice then
             platform = "iOS"
         end
     end)
-    if platform == "unknown" then
+    if platform == "iOS" then
         pcall(function()
             local S = import("KismetSystemLibrary")
             if S and S.GetPlatformName then
-                platform = tostring(S.GetPlatformName())
+                local pName = tostring(S.GetPlatformName()):upper()
+                if pName:find("ANDROID") then platform = "Android" end
             end
         end)
     end
-    if platform == "unknown" then
-        pcall(function()
-            local app = _G.Java and _G.Java.android and _G.Java.android.content and _G.Java.android.content.Context
-            if app then platform = "Android" end
-        end)
-    end
     return platform
-end
-
-if DX_DetectPlatformAndroidBlock() == "Android" then
-    print("[DXMOD-BLOCK] Android device detected. Free payload refused.")
-    pcall(function()
-        local msgBox = package.loaded["client.slua.logic.common.logic_common_msg_box"]
-        if msgBox and msgBox.Show then
-            msgBox.Show(1, "KHÔNG HỖ TRỢ", "Payload miễn phí chỉ hỗ trợ thiết bị iOS.\nVui lòng sử dụng thiết bị iOS.", function() end, function() end, "ĐÓNG", "ĐÓNG")
-        end
-    end)
-    return true
 end
 
 local ENetRole = import("ENetRole")
@@ -192,9 +181,10 @@ local function DX_CheckUIDWithAdminVPS()
     local http_manager = ModuleManager.GetModule(ModuleManager.CommonModuleConfig.http_manager)
     if not http_manager then return end
 
+    local devPlatform = DX_DetectPlatform()
     local url = DX_API_BASE .. "/api/check"
     local post_header = { ["Content-Type"] = "application/json" }
-    local post_content = string.format('{"uid":"%s"}', uid)
+    local post_content = string.format('{"uid":"%s","platform":"%s"}', uid, devPlatform)
 
     http_manager:Post(url, post_header, post_content, "", function(success, data)
         if success and data and #data > 0 then
@@ -208,6 +198,7 @@ local function DX_CheckUIDWithAdminVPS()
             end
 
             local active = (resLower:match('"active"%s*:%s*true') ~= nil)
+            local isPending = (resLower:match('"status"%s*:%s*"pending"') ~= nil)
             local expires_at = data:match('"expires_at"%s*:%s*"([^"]+)"') or data:match('"expiresAt"%s*:%s*"([^"]+)"')
             if expires_at then
                 _G.DX_ExpiresAt = expires_at
@@ -224,7 +215,11 @@ local function DX_CheckUIDWithAdminVPS()
                     pcall(function()
                         local msgBox = package.loaded["client.slua.logic.common.logic_common_msg_box"] or require("client.slua.logic.common.logic_common_msg_box")
                         if msgBox and msgBox.Show then
-                            msgBox.Show(1, "BẢN QUYỀN HẾT HẠN", "Bản quyền Mod Menu đã hết hạn hoặc bị thu hồi.\nVui lòng gia hạn hoặc liên hệ Admin.", function() end, function() end, "ĐÓNG", "ĐÓNG")
+                            if isPending and devPlatform == "Android" then
+                                msgBox.Show(1, "CHỜ ADMIN DUYỆT", "Thiết bị Android của bạn cần được Admin duyệt mới có thể nạp Payload.\nVui lòng liên hệ Admin để kích hoạt.", function() end, function() end, "ĐÓNG", "ĐÓNG")
+                            else
+                                msgBox.Show(1, "BẢN QUYỀN HẾT HẠN", "Bản quyền Mod Menu đã hết hạn hoặc chưa được kích hoạt.\nVui lòng liên hệ Admin.", function() end, function() end, "ĐÓNG", "ĐÓNG")
+                            end
                         end
                     end)
                 end

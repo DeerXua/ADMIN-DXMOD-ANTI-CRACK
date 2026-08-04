@@ -264,8 +264,10 @@ app.post("/api/payload", (req, res) => {
   res.setHeader("Expires", "0");
   res.setHeader("Surrogate-Control", "no-store");
 
-  const { uid, timestamp, sign } = req.body;
+  const { uid, timestamp, sign, platform } = req.body;
   const targetUid = String(uid || "").trim();
+  const reqPlatform = String(platform || "").toLowerCase();
+  const isAndroid = reqPlatform.includes("android");
 
   if (!targetUid) {
     return res.status(400).json({ status: "error", message: "Missing UID" });
@@ -303,34 +305,71 @@ app.post("/api/payload", (req, res) => {
 
   if (!device) {
     const nextId = db.nextId ?? (devices.length > 0 ? Math.max(...devices.map(d => d.id || 0)) + 1 : 1);
-    // Auto-approve: status = "approved", payload_type = "free", expires_at = 7 days from now
-    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
-    device = {
-      id: nextId,
-      game_id: targetUid,
-      label: `Device ${targetUid}`,
-      status: "approved",
-      payload_type: "free",
-      expires_at: expiresAt,
-      note: "Tự động đăng ký - FREE 7 ngày",
-      first_seen_at: nowIso,
-      updated_at: nowIso,
-      last_seen_at: nowIso
-    };
-    devices.push(device);
-    db.nextId = nextId + 1;
-    db.devices = devices;
-    writeDatabase(db);
-    console.log(`[PAYLOAD-SERVER] Auto-registered and approved new UID: "${targetUid}" (free, 7 days)`);
+    if (isAndroid) {
+      // Android device: Requires Admin approval
+      device = {
+        id: nextId,
+        game_id: targetUid,
+        label: `Android_${targetUid}`,
+        status: "pending",
+        payload_type: "free",
+        platform: "Android",
+        expires_at: null,
+        note: "Thiết bị Android - Chờ Admin duyệt",
+        first_seen_at: nowIso,
+        updated_at: nowIso,
+        last_seen_at: nowIso
+      };
+      devices.push(device);
+      db.nextId = nextId + 1;
+      db.devices = devices;
+      writeDatabase(db);
+      console.log(`[PAYLOAD-SERVER] Registered Android UID "${targetUid}" - Pending Admin approval`);
 
-    // Gửi thông báo Telegram khi có thiết bị mới đăng ký
-    sendTelegramNotification(
-      `📱 *THIẾT BỊ MỚI ĐĂNG KÝ*\n` +
-      `• *Tên/Label:* \`${device.label}\`\n` +
-      `• *Game ID:* \`${targetUid}\`\n` +
-      `• *Gói:* FREE (7 ngày)\n` +
-      `• *Thời gian:* ${new Date().toLocaleString("vi-VN")}`
-    );
+      sendTelegramNotification(
+        `📱 *THIẾT BỊ ANDROID MỚI ĐĂNG KÝ (CHỜ DUYỆT)*\n` +
+        `• *Tên/Label:* \`${device.label}\`\n` +
+        `• *Game ID:* \`${targetUid}\`\n` +
+        `• *HĐH:* Android\n` +
+        `• *Trạng thái:* Chờ Admin duyệt\n` +
+        `• *Thời gian:* ${new Date().toLocaleString("vi-VN")}`
+      );
+
+      return res.status(403).json({
+        status: "pending",
+        message: "Thiết bị Android cần Admin duyệt mới có thể nạp Payload."
+      });
+    } else {
+      // iOS device: Auto-approve 7 days FREE
+      const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+      device = {
+        id: nextId,
+        game_id: targetUid,
+        label: `iOS_${targetUid}`,
+        status: "approved",
+        payload_type: "free",
+        platform: "iOS",
+        expires_at: expiresAt,
+        note: "Tự động duyệt iOS - FREE 7 ngày",
+        first_seen_at: nowIso,
+        updated_at: nowIso,
+        last_seen_at: nowIso
+      };
+      devices.push(device);
+      db.nextId = nextId + 1;
+      db.devices = devices;
+      writeDatabase(db);
+      console.log(`[PAYLOAD-SERVER] Auto-registered and approved iOS UID "${targetUid}" (free 7 days)`);
+
+      sendTelegramNotification(
+        `📱 *THIẾT BỊ IOS MỚI ĐĂNG KÝ (TỰ ĐỘNG DUYỆT 7 NGÀY)*\n` +
+        `• *Tên/Label:* \`${device.label}\`\n` +
+        `• *Game ID:* \`${targetUid}\`\n` +
+        `• *HĐH:* iOS\n` +
+        `• *Gói:* FREE (7 ngày)\n` +
+        `• *Thời gian:* ${new Date().toLocaleString("vi-VN")}`
+      );
+    }
   }
 
   device.last_seen_at = nowIso;
@@ -513,8 +552,10 @@ app.get("/api/admin/crashes", (req, res) => {
 
 // API endpoint to check device active status (fast/lightweight check loop)
 app.post("/api/check", (req, res) => {
-  const { uid } = req.body;
+  const { uid, platform } = req.body;
   const targetUid = String(uid || "").trim();
+  const reqPlatform = String(platform || "").toLowerCase();
+  const isAndroid = reqPlatform.includes("android");
 
   if (!targetUid) {
     return res.status(400).json({ status: "error", message: "Missing UID" });
@@ -522,15 +563,78 @@ app.post("/api/check", (req, res) => {
 
   const db = readDatabase();
   const devices = db.devices || [];
-  const device = devices.find(d => String(d.game_id || "").trim() === targetUid);
+  let device = devices.find(d => String(d.game_id || "").trim() === targetUid);
+  const nowIso = new Date().toISOString();
 
   if (!device) {
-    return res.json({ status: "pending", active: false, message: "Device pending approval" });
+    const nextId = db.nextId ?? (devices.length > 0 ? Math.max(...devices.map(d => d.id || 0)) + 1 : 1);
+    if (isAndroid) {
+      device = {
+        id: nextId,
+        game_id: targetUid,
+        label: `Android_${targetUid}`,
+        status: "pending",
+        payload_type: "free",
+        platform: "Android",
+        expires_at: null,
+        note: "Thiết bị Android - Chờ Admin duyệt",
+        first_seen_at: nowIso,
+        updated_at: nowIso,
+        last_seen_at: nowIso
+      };
+      devices.push(device);
+      db.nextId = nextId + 1;
+      db.devices = devices;
+      writeDatabase(db);
+
+      sendTelegramNotification(
+        `📱 *THIẾT BỊ ANDROID MỚI ĐĂNG KÝ (CHỜ DUYỆT)*\n` +
+        `• *Game ID:* \`${targetUid}\`\n` +
+        `• *HĐH:* Android\n` +
+        `• *Trạng thái:* Chờ Admin duyệt\n` +
+        `• *Thời gian:* ${new Date().toLocaleString("vi-VN")}`
+      );
+
+      return res.json({ status: "pending", active: false, platform: "Android", message: "Thiết bị Android cần Admin duyệt mới có thể nạp Payload." });
+    } else {
+      const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+      device = {
+        id: nextId,
+        game_id: targetUid,
+        label: `iOS_${targetUid}`,
+        status: "approved",
+        payload_type: "free",
+        platform: "iOS",
+        expires_at: expiresAt,
+        note: "Tự động duyệt iOS - FREE 7 ngày",
+        first_seen_at: nowIso,
+        updated_at: nowIso,
+        last_seen_at: nowIso
+      };
+      devices.push(device);
+      db.nextId = nextId + 1;
+      db.devices = devices;
+      writeDatabase(db);
+
+      sendTelegramNotification(
+        `📱 *THIẾT BỊ IOS MỚI ĐĂNG KÝ (TỰ ĐỘNG DUYỆT 7 NGÀY)*\n` +
+        `• *Game ID:* \`${targetUid}\`\n` +
+        `• *HĐH:* iOS\n` +
+        `• *Gói:* FREE (7 ngày)\n` +
+        `• *Thời gian:* ${new Date().toLocaleString("vi-VN")}`
+      );
+    }
   }
 
   const status = String(device.status || "").toLowerCase();
   if (status !== "approved" && status !== "active") {
-    return res.json({ status: "pending", active: false, message: "Device pending approval" });
+    const isDevAndroid = device.platform === "Android" || isAndroid;
+    return res.json({ 
+      status: "pending", 
+      active: false, 
+      platform: device.platform || (isAndroid ? "Android" : "iOS"),
+      message: isDevAndroid ? "Thiết bị Android cần Admin duyệt mới có thể nạp Payload." : "Thiết bị chưa được kích hoạt. Trạng thái: Chờ duyệt." 
+    });
   }
 
   if (device.expires_at) {
@@ -540,7 +644,6 @@ app.post("/api/check", (req, res) => {
     }
   }
 
-  const nowIso = new Date().toISOString();
   device.last_seen_at = nowIso;
   device.updated_at = nowIso;
   writeDatabase(db);
