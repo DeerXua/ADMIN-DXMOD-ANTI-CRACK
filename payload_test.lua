@@ -2581,6 +2581,7 @@ local defaultSettings = {
     IpadViewFOV = 120,
     NOGRASS = 0, NOTREES = 0, NOWATER = 0, NOFOG = 0,
     BLACK_SKY = 0,
+    UNLOCK_SKIN_ALL = 0, -- Mặc định TẮT, chỉ khi bật mới apply skin
     FAKE_HWID = 1,  -- Luôn bật, không hiển thị trong menu
     GHOST_MODE = 0,
     NO_LANDING_LAG = 0,
@@ -9788,7 +9789,7 @@ do
     -- =========================== KHỞI TẠO CẤU HÌNH TAB UNLOCK SKIN ===========================
     pcall(function()
         _G.DX_Settings = _G.DX_Settings or {}
-        if _G.DX_Settings.UNLOCK_SKIN_ALL == nil then _G.DX_Settings.UNLOCK_SKIN_ALL = 1 end
+        if _G.DX_Settings.UNLOCK_SKIN_ALL == nil then _G.DX_Settings.UNLOCK_SKIN_ALL = 0 end
 
         local SettingPageDefine = require("client.logic.NewSetting.SettingPageDefine")
         if SettingPageDefine and SettingPageDefine.ModMenu and SettingPageDefine.ModMenu.Category then
@@ -9958,6 +9959,7 @@ do
         end
 
         local function _saveEquippedCache()
+            if _G.DX_GetVal("UNLOCK_SKIN_ALL") ~= 1 then return false end
             local wrote = false
             local okS, errS = pcall(function()
                 local cch = _G.AddOutfitEquippedCache
@@ -10555,6 +10557,9 @@ do
     end)
 
     local _ao_ok, _ao_err = pcall(function()
+        if _G.DX_GetVal("UNLOCK_SKIN_ALL") ~= 1 then
+            return
+        end
         pcall(function()
             local w = WriteReportToPaksFile or _G.WriteReportToPaksFile
             if w then
