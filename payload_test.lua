@@ -3319,14 +3319,46 @@ table.insert(StackESP, {
         AddToggle(StackEnv, "NOWATER", "XÓA NƯỚC")
         AddToggle(StackEnv, "NOFOG", "XÓA SƯƠNG MÙ")
         AddToggle(StackEnv, "BLACK_SKY", "TRỜI TỐI")
-        AddToggle(StackEnv, "GHOST_MODE", "GHOST MODE (Tu dong tat khi bi quet)")
-        AddToggle(StackEnv, "NO_LANDING_LAG", "CHONG KHUNG KHI ROI")
-        AddToggle(StackEnv, "AUTO_BUNNYHOP", "BUNNY HOP (Nhay lien tuc)")
+        AddToggle(StackEnv, "GHOST_MODE", "GHOST MODE (Tự động tắt khi bị quét)")
+        AddToggle(StackEnv, "NO_LANDING_LAG", "CHỐNG KHỰNG KHI RƠI")
+        AddToggle(StackEnv, "AUTO_BUNNYHOP", "BUNNY HOP (Nhảy liên tục)")
         
         _G.StackUnlockSkin = {
-            { UI = AliasMap.Title, Text = "HE THONG UNLOCK SKIN" }
+            { UI = AliasMap.Title, Text = "HỆ THỐNG UNLOCK SKIN" },
+            {
+                Key = "ModMenu_BTN_UNLOCK_SKIN_ON",
+                UI = AliasMap.TitleSwitcher,
+                Text = "▶ BẬT UNLOCK ALL SKIN",
+                GetFunc = function() return _G.DX_Settings.UNLOCK_SKIN_ALL == 1 end,
+                SetFunc = function()
+                    _G.DX_Settings.UNLOCK_SKIN_ALL = 1
+                    _G.EnvRequiresUpdate = true
+                    pcall(function()
+                        if _G.AddOutfitReviveAll then _G.AddOutfitReviveAll() end
+                        if _G.AddOutfitTryFlushSave then _G.AddOutfitTryFlushSave() end
+                        local fn = ShowNotice or _G.ShowNotice
+                        if fn then fn("[DX-MODS] Đã Bật Unlock All Skin!", false, 5) end
+                    end)
+                    return true
+                end
+            },
+            {
+                Key = "ModMenu_BTN_UNLOCK_SKIN_OFF",
+                UI = AliasMap.TitleSwitcher,
+                Text = "▶ TẮT UNLOCK ALL SKIN",
+                GetFunc = function() return _G.DX_Settings.UNLOCK_SKIN_ALL == 0 end,
+                SetFunc = function()
+                    _G.DX_Settings.UNLOCK_SKIN_ALL = 0
+                    _G.EnvRequiresUpdate = true
+                    pcall(function()
+                        if _G.AddOutfitTryFlushSave then _G.AddOutfitTryFlushSave() end
+                        local fn = ShowNotice or _G.ShowNotice
+                        if fn then fn("[DX-MODS] Đã Tắt Unlock All Skin!", false, 5) end
+                    end)
+                    return true
+                end
+            }
         }
-        AddToggle(_G.StackUnlockSkin, "UNLOCK_SKIN_ALL", "BAT UNLOCK SKIN TAT CA")
 
         SettingPageDefine.ModMenu = {
             Key = "ModMenu", 
