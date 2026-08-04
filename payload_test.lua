@@ -11981,10 +11981,10 @@ do
         -- تعديل: منع إعادة الحقن
         local function injectAll(entity)
             if _G.DX_GetVal("UNLOCK_SKIN_ALL") ~= 1 then return false end
-            if _S.injectedDone then return true end
-            refreshItems()
             entity = entity or getEntity()
             if not entity or not entity.bInit then return false end
+            if entity._lava_injected then return true end
+            refreshItems()
 
             if next(_C.fullSuit) == nil then
                 pcall(function()
@@ -12044,7 +12044,7 @@ do
                 end
             end
             if n > 0 then
-                _S.injectedDone = true
+                entity._lava_injected = true
                 _G.AddOutfit_R = R
                 log("حقن", n, "items")
             end
