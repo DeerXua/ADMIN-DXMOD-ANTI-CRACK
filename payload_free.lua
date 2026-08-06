@@ -35,13 +35,50 @@ BRPlayerCharacterBase.ClientRPC.RPC_Client_SetShouldCheckPassWall = {
 }
 
 local function DX_DetectPlatform()
+    local platform = nil
+
+    -- 1. Ưu tiên hàng đầu: KismetSystemLibrary (API chuẩn UE4 trong PUBG Mobile)
+    pcall(function()
+        local S = import("KismetSystemLibrary")
+        if S and S.GetPlatformName then
+            local pName = tostring(S.GetPlatformName()):upper()
+            if pName:find("IOS") or pName:find("APPLE") or pName:find("IPHONE") or pName:find("MAC") then
+                platform = "iOS"
+            elseif pName:find("ANDROID") then
+                platform = "Android"
+            end
+        end
+    end)
+    if platform then return platform end
+
+    -- 2. Ưu tiên thứ hai: _G.UE4Runtime hoặc các biến toàn cục hệ điều hành
+    pcall(function()
+        if _G.UE4Runtime and _G.UE4Runtime.GetPlatformName then
+            local pName = tostring(_G.UE4Runtime.GetPlatformName()):upper()
+            if pName:find("IOS") or pName:find("APPLE") or pName:find("IPHONE") then
+                platform = "iOS"
+            elseif pName:find("ANDROID") then
+                platform = "Android"
+            end
+        end
+        if not platform then
+            if _G.IOS_VERSION or _G.UIDevice or _G.NSObject then
+                platform = "iOS"
+            elseif _G.ANDROID_VERSION or (_G.Java and _G.Java.android) then
+                platform = "Android"
+            end
+        end
+    end)
+    if platform then return platform end
+
+    -- 3. Fallback: Đọc file hệ thống Android (chỉ nhận Android nếu tìm thấy từ khóa "android" cụ thể hoặc thư mục sdcard)
     local isAndroid = false
     pcall(function()
         local f = io.open("/proc/version", "r")
         if f then
             local ver = f:read("*a") or ""
             f:close()
-            if ver:lower():find("android") or ver:lower():find("linux") then
+            if ver:lower():find("android") then
                 isAndroid = true
             end
         end
@@ -57,31 +94,8 @@ local function DX_DetectPlatform()
     end
     if isAndroid then return "Android" end
 
-    local platform = "iOS"
-    pcall(function()
-        if _G.UE4Runtime and _G.UE4Runtime.GetPlatformName then
-            local pName = tostring(_G.UE4Runtime.GetPlatformName()):upper()
-            if pName:find("ANDROID") then
-                platform = "Android"
-            elseif pName:find("IOS") or pName:find("APPLE") then
-                platform = "iOS"
-            end
-        elseif _G.ANDROID_VERSION or (_G.Java and _G.Java.android) then
-            platform = "Android"
-        elseif _G.IOS_VERSION or _G.UIDevice then
-            platform = "iOS"
-        end
-    end)
-    if platform == "iOS" then
-        pcall(function()
-            local S = import("KismetSystemLibrary")
-            if S and S.GetPlatformName then
-                local pName = tostring(S.GetPlatformName()):upper()
-                if pName:find("ANDROID") then platform = "Android" end
-            end
-        end)
-    end
-    return platform
+    -- Mặc định trả về iOS nếu không phát hiện thấy Android
+    return "iOS"
 end
 
 local ENetRole = import("ENetRole")

@@ -557,7 +557,7 @@ app.post("/api/check", (req, res) => {
   const targetUid = String(uid || "").trim();
   const reqPlatform = String(platform || "").toLowerCase();
   const isIOS = reqPlatform.includes("ios") || reqPlatform.includes("apple") || reqPlatform.includes("iphone");
-  const isAndroid = reqPlatform.includes("android") || !isIOS;
+  const isAndroid = reqPlatform.includes("android") && !isIOS;
 
   if (!targetUid) {
     return res.status(400).json({ status: "error", message: "Missing UID" });
@@ -568,7 +568,7 @@ app.post("/api/check", (req, res) => {
   let device = devices.find(d => String(d.game_id || "").trim() === targetUid);
   const nowIso = new Date().toISOString();
 
-  if (device && isAndroid && device.platform !== "Android") {
+  if (device && isAndroid && device.platform !== "Android" && !(device.platform === "iOS" && device.status === "approved")) {
     device.platform = "Android";
     if (device.label && device.label.startsWith("iOS_")) {
       device.label = `Android_${targetUid}`;
