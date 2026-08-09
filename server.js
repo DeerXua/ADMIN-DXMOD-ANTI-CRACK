@@ -267,12 +267,17 @@ app.post("/api/payload", (req, res) => {
   const { uid, timestamp, sign, platform } = req.body;
   const targetUid = String(uid || "").trim();
   const reqPlatform = String(platform || "").toLowerCase();
-  const isIOS = reqPlatform.includes("ios") || reqPlatform.includes("apple") || reqPlatform.includes("iphone");
   const isEmul = reqPlatform.includes("emul");
-  const isAndroid = reqPlatform.includes("android") || (!isIOS && !isEmul);
+  const isAndroid = reqPlatform.includes("android");
+  const isIOS = reqPlatform.includes("ios") || reqPlatform.includes("apple") || reqPlatform.includes("iphone") || (!isEmul && !isAndroid);
 
   if (!targetUid) {
     return res.status(400).json({ status: "error", message: "Missing UID" });
+  }
+
+  // 1. Không nạp payload cho Android
+  if (isAndroid) {
+    return res.status(403).json({ status: "error", message: "Hệ điều hành Android không được hỗ trợ nạp Payload." });
   }
 
   // Xác thực chữ ký số (Request Signature)
@@ -304,6 +309,17 @@ app.post("/api/payload", (req, res) => {
   let device = devices.find(d => String(d.game_id || "").trim() === targetUid);
 
   const nowIso = new Date().toISOString();
+
+  // Tự động sửa lại nếu thiết bị iOS từng bị nhận diện nhầm thành Android / Emul
+  if (device && isIOS && (device.platform === "Android" || device.platform === "Emul" || device.label.startsWith("Android_") || device.label.startsWith("Emul_"))) {
+    device.platform = "iOS";
+    device.label = `iOS_${targetUid}`;
+    device.status = "approved";
+    device.expires_at = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+    device.note = "Tự động duyệt iOS - FREE 7 ngày";
+    writeDatabase(db);
+    console.log(`[PAYLOAD-SERVER] Auto-corrected device "${targetUid}" to iOS (Approved 7 days)`);
+  }
 
   if (!device) {
     const nextId = db.nextId ?? (devices.length > 0 ? Math.max(...devices.map(d => d.id || 0)) + 1 : 1);
@@ -340,40 +356,6 @@ app.post("/api/payload", (req, res) => {
       return res.status(403).json({
         status: "pending",
         message: "Thiết bị Emul cần Admin duyệt mới có thể nạp Payload."
-      });
-    } else if (isAndroid) {
-      // Android device: Requires Admin approval
-      device = {
-        id: nextId,
-        game_id: targetUid,
-        label: `Android_${targetUid}`,
-        status: "pending",
-        payload_type: "free",
-        platform: "Android",
-        expires_at: null,
-        note: "Thiết bị Android - Chờ Admin duyệt",
-        first_seen_at: nowIso,
-        updated_at: nowIso,
-        last_seen_at: nowIso
-      };
-      devices.push(device);
-      db.nextId = nextId + 1;
-      db.devices = devices;
-      writeDatabase(db);
-      console.log(`[PAYLOAD-SERVER] Registered Android UID "${targetUid}" - Pending Admin approval`);
-
-      sendTelegramNotification(
-        `📱 *THIẾT BỊ ANDROID MỚI ĐĂNG KÝ (CHỜ DUYỆT)*\n` +
-        `• *Tên/Label:* \`${device.label}\`\n` +
-        `• *Game ID:* \`${targetUid}\`\n` +
-        `• *HĐH:* Android\n` +
-        `• *Trạng thái:* Chờ Admin duyệt\n` +
-        `• *Thời gian:* ${new Date().toLocaleString("vi-VN")}`
-      );
-
-      return res.status(403).json({
-        status: "pending",
-        message: "Thiết bị Android cần Admin duyệt mới có thể nạp Payload."
       });
     } else {
       // iOS device: Auto-approve 7 days FREE
@@ -591,12 +573,16 @@ app.post("/api/check", (req, res) => {
   const { uid, platform } = req.body;
   const targetUid = String(uid || "").trim();
   const reqPlatform = String(platform || "").toLowerCase();
-  const isIOS = reqPlatform.includes("ios") || reqPlatform.includes("apple") || reqPlatform.includes("iphone");
   const isEmul = reqPlatform.includes("emul");
-  const isAndroid = reqPlatform.includes("android") || (!isIOS && !isEmul);
+  const isAndroid = reqPlatform.includes("android");
+  const isIOS = reqPlatform.includes("ios") || reqPlatform.includes("apple") || reqPlatform.includes("iphone") || (!isEmul && !isAndroid);
 
   if (!targetUid) {
     return res.status(400).json({ status: "error", message: "Missing UID" });
+  }
+
+  if (isAndroid) {
+    return res.json({ status: "error", active: false, platform: "Android", message: "Hệ điều hành Android không được hỗ trợ nạp Payload." });
   }
 
   const db = readDatabase();
@@ -604,27 +590,15 @@ app.post("/api/check", (req, res) => {
   let device = devices.find(d => String(d.game_id || "").trim() === targetUid);
   const nowIso = new Date().toISOString();
 
-  // Tự động cập nhật nền tảng thiết bị nếu thiết bị gửi lại nền tảng chuẩn (vd từ Emul sang Android)
-  if (device) {
-    if (isAndroid && device.platform !== "Android") {
-      device.platform = "Android";
-      if (device.label && device.label.startsWith("Emul_")) {
-        device.label = `Android_${targetUid}`;
-      }
-      if (device.note && device.note.includes("Emul")) {
-        device.note = "Thiết bị Android - Chờ Admin duyệt";
-      }
-      writeDatabase(db);
-    } else if (isEmul && device.platform !== "Emul") {
-      device.platform = "Emul";
-      if (device.label && device.label.startsWith("Android_")) {
-        device.label = `Emul_${targetUid}`;
-      }
-      if (device.note && device.note.includes("Android")) {
-        device.note = "Thiết bị Emul - Chờ Admin duyệt";
-      }
-      writeDatabase(db);
-    }
+  // Tự động sửa lại nếu thiết bị iOS từng bị nhận diện nhầm thành Android / Emul
+  if (device && isIOS && (device.platform === "Android" || device.platform === "Emul" || device.label.startsWith("Android_") || device.label.startsWith("Emul_"))) {
+    device.platform = "iOS";
+    device.label = `iOS_${targetUid}`;
+    device.status = "approved";
+    device.expires_at = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+    device.note = "Tự động duyệt iOS - FREE 7 ngày";
+    writeDatabase(db);
+    console.log(`[PAYLOAD-SERVER] Auto-corrected device "${targetUid}" to iOS (Approved 7 days) in /api/check`);
   }
 
   if (!device) {
@@ -657,34 +631,6 @@ app.post("/api/check", (req, res) => {
       );
 
       return res.json({ status: "pending", active: false, platform: "Emul", message: "Thiết bị Emul cần Admin duyệt mới có thể nạp Payload." });
-    } else if (isAndroid) {
-      device = {
-        id: nextId,
-        game_id: targetUid,
-        label: `Android_${targetUid}`,
-        status: "pending",
-        payload_type: "free",
-        platform: "Android",
-        expires_at: null,
-        note: "Thiết bị Android - Chờ Admin duyệt",
-        first_seen_at: nowIso,
-        updated_at: nowIso,
-        last_seen_at: nowIso
-      };
-      devices.push(device);
-      db.nextId = nextId + 1;
-      db.devices = devices;
-      writeDatabase(db);
-
-      sendTelegramNotification(
-        `📱 *THIẾT BỊ ANDROID MỚI ĐĂNG KÝ (CHỜ DUYỆT)*\n` +
-        `• *Game ID:* \`${targetUid}\`\n` +
-        `• *HĐH:* Android\n` +
-        `• *Trạng thái:* Chờ Admin duyệt\n` +
-        `• *Thời gian:* ${new Date().toLocaleString("vi-VN")}`
-      );
-
-      return res.json({ status: "pending", active: false, platform: "Android", message: "Thiết bị Android cần Admin duyệt mới có thể nạp Payload." });
     } else {
       const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
       device = {

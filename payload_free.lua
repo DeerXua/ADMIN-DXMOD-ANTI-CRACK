@@ -35,37 +35,26 @@ BRPlayerCharacterBase.ClientRPC.RPC_Client_SetShouldCheckPassWall = {
 }
 
 local function DX_DetectPlatform()
-    -- 1. Kiểm tra iOS
-    local isIOS = false
+    local hasAndroidProc = false
+    local isEmul = false
+
+    -- 1. Kiểm tra môi trường Android / Linux procfs
     pcall(function()
-        local S = import("KismetSystemLibrary")
-        if S and S.GetPlatformName then
-            local pName = tostring(S.GetPlatformName()):upper()
-            if pName:find("IOS") or pName:find("APPLE") or pName:find("IPHONE") or pName:find("MAC") then
-                isIOS = true
+        local f = io.open("/proc/version", "r")
+        if f then
+            hasAndroidProc = true
+            local ver = (f:read("*a") or ""):lower()
+            f:close()
+            if ver:find("x86") or ver:find("qemu") or ver:find("vbox") then
+                isEmul = true
             end
         end
     end)
-    if not isIOS then
-        pcall(function()
-            if _G.UE4Runtime and _G.UE4Runtime.GetPlatformName then
-                local pName = tostring(_G.UE4Runtime.GetPlatformName()):upper()
-                if pName:find("IOS") or pName:find("APPLE") or pName:find("IPHONE") then
-                    isIOS = true
-                end
-            end
-            if not isIOS and (_G.IOS_VERSION or _G.UIDevice or _G.NSObject) then
-                isIOS = true
-            end
-        end)
-    end
-    if isIOS then return "iOS" end
 
-    -- 2. Kiểm tra Giả lập PC (Emul) trên Android
-    local isEmul = false
     pcall(function()
         local f = io.open("/proc/cpuinfo", "r")
         if f then
+            hasAndroidProc = true
             local info = (f:read("*a") or ""):lower()
             f:close()
             if info:find("intel") or info:find("amd") or info:find("x86") or info:find("qemu") or info:find("vbox") or info:find("goldfish") then
@@ -88,6 +77,7 @@ local function DX_DetectPlatform()
                 local f = io.open(file, "r")
                 if f then
                     f:close()
+                    hasAndroidProc = true
                     isEmul = true
                     break
                 end
@@ -95,10 +85,12 @@ local function DX_DetectPlatform()
         end)
     end
 
+    -- Nếu là môi trường Android:
     if isEmul then return "Emul" end
+    if hasAndroidProc then return "Android" end
 
-    -- 3. Mặc định là Android (Máy Android thật)
-    return "Android"
+    -- Không có môi trường Android procfs (Môi trường iOS Sandbox) -> Trả về iOS
+    return "iOS"
 end
 
 local ENetRole = import("ENetRole")
