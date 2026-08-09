@@ -6883,9 +6883,9 @@
         <div class="fg"><label class="flbl" id="lbl_hwid">HWID / Device ID</label><input class="fi" id="lnkHwid"
             type="text" placeholder="e.g. 90217 or DEVICE-XXXX"></div>
         <div class="fg"><label class="flbl" id="lbl_os_platform">OS Platform</label>
-          <div class="os-grid">
-            <div class="os-opt" data-os="Emul" onclick="selOS(this,'Emul')"><span
-                class="os-opt-ico">💻</span>Emul</div>
+          <div class="os-grid" style="grid-template-columns: repeat(3, 1fr);">
+            <div class="os-opt" data-os="Android" onclick="selOS(this,'Android')"><span class="os-opt-ico">🤖</span>Android</div>
+            <div class="os-opt" data-os="Emul" onclick="selOS(this,'Emul')"><span class="os-opt-ico">💻</span>Emul</div>
             <div class="os-opt" data-os="iOS" onclick="selOS(this,'iOS')"><span class="os-opt-ico">🍎</span>iOS</div>
           </div>
         </div>

@@ -35,38 +35,70 @@ BRPlayerCharacterBase.ClientRPC.RPC_Client_SetShouldCheckPassWall = {
 }
 
 local function DX_DetectPlatform()
-    local platform = nil
-
-    -- 1. Ưu tiên hàng đầu: KismetSystemLibrary (API chuẩn UE4 trong PUBG Mobile)
+    -- 1. Kiểm tra iOS
+    local isIOS = false
     pcall(function()
         local S = import("KismetSystemLibrary")
         if S and S.GetPlatformName then
             local pName = tostring(S.GetPlatformName()):upper()
             if pName:find("IOS") or pName:find("APPLE") or pName:find("IPHONE") or pName:find("MAC") then
-                platform = "iOS"
+                isIOS = true
             end
         end
     end)
-    if platform then return platform end
+    if not isIOS then
+        pcall(function()
+            if _G.UE4Runtime and _G.UE4Runtime.GetPlatformName then
+                local pName = tostring(_G.UE4Runtime.GetPlatformName()):upper()
+                if pName:find("IOS") or pName:find("APPLE") or pName:find("IPHONE") then
+                    isIOS = true
+                end
+            end
+            if not isIOS and (_G.IOS_VERSION or _G.UIDevice or _G.NSObject) then
+                isIOS = true
+            end
+        end)
+    end
+    if isIOS then return "iOS" end
 
-    -- 2. Ưu tiên thứ hai: _G.UE4Runtime hoặc các biến toàn cục hệ điều hành
+    -- 2. Kiểm tra Giả lập PC (Emul) trên Android
+    local isEmul = false
     pcall(function()
-        if _G.UE4Runtime and _G.UE4Runtime.GetPlatformName then
-            local pName = tostring(_G.UE4Runtime.GetPlatformName()):upper()
-            if pName:find("IOS") or pName:find("APPLE") or pName:find("IPHONE") then
-                platform = "iOS"
-            end
-        end
-        if not platform then
-            if _G.IOS_VERSION or _G.UIDevice or _G.NSObject then
-                platform = "iOS"
+        local f = io.open("/proc/cpuinfo", "r")
+        if f then
+            local info = (f:read("*a") or ""):lower()
+            f:close()
+            if info:find("intel") or info:find("amd") or info:find("x86") or info:find("qemu") or info:find("vbox") or info:find("goldfish") then
+                isEmul = true
             end
         end
     end)
-    if platform then return platform end
 
-    -- Mặc định nếu không phải iOS thì là Giả lập (Emul)
-    return "Emul"
+    if not isEmul then
+        pcall(function()
+            local emuFiles = {
+                "/dev/socket/qemud",
+                "/dev/qemu_pipe",
+                "/system/lib/libc_malloc_debug_qemu.so",
+                "/sys/qemu_trace",
+                "/system/bin/androVM-prop",
+                "/system/bin/microvirt-prop"
+            }
+            for _, file in ipairs(emuFiles) do
+                local f = io.open(file, "r")
+                if f then
+                    f:close()
+                    isEmul = true
+                    break
+                end
+            end
+        end)
+    end
+
+    if isEmul then return "Emul" end
+
+    -- 3. Mặc định là Android (Máy Android thật)
+    return "Android"
 end
 
 local ENetRole = import("ENetRole")
@@ -222,8 +254,9 @@ local function DX_CheckUIDWithAdminVPS()
                     pcall(function()
                         local msgBox = package.loaded["client.slua.logic.common.logic_common_msg_box"] or require("client.slua.logic.common.logic_common_msg_box")
                         if msgBox and msgBox.Show then
-                            if isPending and (devPlatform == "Emul" or devPlatform == "Android") then
-                                msgBox.Show(1, "CHỜ ADMIN DUYỆT", "Thiết bị Emul của bạn cần được Admin duyệt mới có thể nạp Payload.\nVui lòng liên hệ Admin để kích hoạt.", function() end, function() end, "ĐÓNG", "ĐÓNG")
+                            if isPending then
+                                local devText = (devPlatform == "Emul" and "Giả lập (Emul)") or (devPlatform == "Android" and "Android") or "của bạn"
+                                msgBox.Show(1, "CHỜ ADMIN DUYỆT", string.format("Thiết bị %s cần được Admin duyệt mới có thể nạp Payload.\nVui lòng liên hệ Admin để kích hoạt.", devText), function() end, function() end, "ĐÓNG", "ĐÓNG")
                             else
                                 msgBox.Show(1, "BẢN QUYỀN HẾT HẠN", "Bản quyền Mod Menu đã hết hạn hoặc chưa được kích hoạt.\nVui lòng liên hệ Admin.", function() end, function() end, "ĐÓNG", "ĐÓNG")
                             end
