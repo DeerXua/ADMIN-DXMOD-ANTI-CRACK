@@ -608,7 +608,7 @@
         lbl_gen_title: "Tạo Key Mới", lbl_key_type: "Loại Key", lbl_custom_name: "Tên Tùy Chỉnh", lbl_key_preview: "Xem Trước Key",
         lbl_quick_dur: "Thời Hạn Nhanh", lbl_dur_custom: "Thời Hạn Tùy Chỉnh", lbl_qty: "Số Lượng", lbl_price_preview: "Giá Key",
         lbl_tags: "Nhãn", lbl_tags_hint: "(Enter để thêm)", lbl_cancel: "Hủy", lbl_gen_btn: "⊕ Tạo",
-        lbl_link_title: "🔗 Liên Kết Thiết Bị", lbl_link_sub: "Liên kết key này với iOS hoặc Android", lbl_hwid: "HWID",
+        lbl_link_title: "🔗 Liên Kết Thiết Bị", lbl_link_sub: "Liên kết key này với iOS hoặc Emul", lbl_hwid: "HWID",
         lbl_os_platform: "Nền Tảng OS", lbl_cancel2: "Hủy", lbl_link_btn: "Liên Kết", lbl_ext_title: "⏰ Gia Hạn Key",
         lbl_quick_sel: "Chọn Nhanh", lbl_duration: "Thời Hạn", lbl_unit: "Đơn Vị", lbl_exact_date: "Hoặc ngày chính xác",
         lbl_new_expiry: "Hết Hạn Mới", lbl_cancel3: "Hủy", lbl_ext_btn: "＋ Gia Hạn", lbl_det_title: "Chi Tiết Key",

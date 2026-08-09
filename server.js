@@ -268,7 +268,7 @@ app.post("/api/payload", (req, res) => {
   const targetUid = String(uid || "").trim();
   const reqPlatform = String(platform || "").toLowerCase();
   const isIOS = reqPlatform.includes("ios") || reqPlatform.includes("apple") || reqPlatform.includes("iphone");
-  const isAndroid = reqPlatform.includes("android") || !isIOS;
+  const isEmul = reqPlatform.includes("emul") || reqPlatform.includes("android") || !isIOS;
 
   if (!targetUid) {
     return res.status(400).json({ status: "error", message: "Missing UID" });
@@ -306,17 +306,17 @@ app.post("/api/payload", (req, res) => {
 
   if (!device) {
     const nextId = db.nextId ?? (devices.length > 0 ? Math.max(...devices.map(d => d.id || 0)) + 1 : 1);
-    if (isAndroid) {
-      // Android device: Requires Admin approval
+    if (isEmul) {
+      // Emul device: Requires Admin approval
       device = {
         id: nextId,
         game_id: targetUid,
-        label: `Android_${targetUid}`,
+        label: `Emul_${targetUid}`,
         status: "pending",
         payload_type: "free",
-        platform: "Android",
+        platform: "Emul",
         expires_at: null,
-        note: "Thiết bị Android - Chờ Admin duyệt",
+        note: "Thiết bị Emul - Chờ Admin duyệt",
         first_seen_at: nowIso,
         updated_at: nowIso,
         last_seen_at: nowIso
@@ -325,20 +325,20 @@ app.post("/api/payload", (req, res) => {
       db.nextId = nextId + 1;
       db.devices = devices;
       writeDatabase(db);
-      console.log(`[PAYLOAD-SERVER] Registered Android UID "${targetUid}" - Pending Admin approval`);
+      console.log(`[PAYLOAD-SERVER] Registered Emul UID "${targetUid}" - Pending Admin approval`);
 
       sendTelegramNotification(
-        `📱 *THIẾT BỊ ANDROID MỚI ĐĂNG KÝ (CHỜ DUYỆT)*\n` +
+        `💻 *THIẾT BỊ EMUL MỚI ĐĂNG KÝ (CHỜ DUYỆT)*\n` +
         `• *Tên/Label:* \`${device.label}\`\n` +
         `• *Game ID:* \`${targetUid}\`\n` +
-        `• *HĐH:* Android\n` +
+        `• *HĐH:* Emul\n` +
         `• *Trạng thái:* Chờ Admin duyệt\n` +
         `• *Thời gian:* ${new Date().toLocaleString("vi-VN")}`
       );
 
       return res.status(403).json({
         status: "pending",
-        message: "Thiết bị Android cần Admin duyệt mới có thể nạp Payload."
+        message: "Thiết bị Emul cần Admin duyệt mới có thể nạp Payload."
       });
     } else {
       // iOS device: Auto-approve 7 days FREE
@@ -557,7 +557,7 @@ app.post("/api/check", (req, res) => {
   const targetUid = String(uid || "").trim();
   const reqPlatform = String(platform || "").toLowerCase();
   const isIOS = reqPlatform.includes("ios") || reqPlatform.includes("apple") || reqPlatform.includes("iphone");
-  const isAndroid = reqPlatform.includes("android") && !isIOS;
+  const isEmul = reqPlatform.includes("emul") || reqPlatform.includes("android") || !isIOS;
 
   if (!targetUid) {
     return res.status(400).json({ status: "error", message: "Missing UID" });
@@ -568,31 +568,31 @@ app.post("/api/check", (req, res) => {
   let device = devices.find(d => String(d.game_id || "").trim() === targetUid);
   const nowIso = new Date().toISOString();
 
-  if (device && isAndroid && device.platform !== "Android" && !(device.platform === "iOS" && device.status === "approved")) {
-    device.platform = "Android";
-    if (device.label && device.label.startsWith("iOS_")) {
-      device.label = `Android_${targetUid}`;
+  if (device && (device.platform === "Android" || (isEmul && device.platform !== "Emul" && !(device.platform === "iOS" && device.status === "approved")))) {
+    device.platform = "Emul";
+    if (device.label && (device.label.startsWith("iOS_") || device.label.startsWith("Android_"))) {
+      device.label = `Emul_${targetUid}`;
     }
-    if (device.note && device.note.includes("iOS")) {
+    if (device.note && (device.note.includes("iOS") || device.note.includes("Android"))) {
       device.status = "pending";
       device.expires_at = null;
-      device.note = "Thiết bị Android - Chờ Admin duyệt";
+      device.note = "Thiết bị Emul - Chờ Admin duyệt";
     }
     writeDatabase(db);
   }
 
   if (!device) {
     const nextId = db.nextId ?? (devices.length > 0 ? Math.max(...devices.map(d => d.id || 0)) + 1 : 1);
-    if (isAndroid) {
+    if (isEmul) {
       device = {
         id: nextId,
         game_id: targetUid,
-        label: `Android_${targetUid}`,
+        label: `Emul_${targetUid}`,
         status: "pending",
         payload_type: "free",
-        platform: "Android",
+        platform: "Emul",
         expires_at: null,
-        note: "Thiết bị Android - Chờ Admin duyệt",
+        note: "Thiết bị Emul - Chờ Admin duyệt",
         first_seen_at: nowIso,
         updated_at: nowIso,
         last_seen_at: nowIso
@@ -603,14 +603,14 @@ app.post("/api/check", (req, res) => {
       writeDatabase(db);
 
       sendTelegramNotification(
-        `📱 *THIẾT BỊ ANDROID MỚI ĐĂNG KÝ (CHỜ DUYỆT)*\n` +
+        `💻 *THIẾT BỊ EMUL MỚI ĐĂNG KÝ (CHỜ DUYỆT)*\n` +
         `• *Game ID:* \`${targetUid}\`\n` +
-        `• *HĐH:* Android\n` +
+        `• *HĐH:* Emul\n` +
         `• *Trạng thái:* Chờ Admin duyệt\n` +
         `• *Thời gian:* ${new Date().toLocaleString("vi-VN")}`
       );
 
-      return res.json({ status: "pending", active: false, platform: "Android", message: "Thiết bị Android cần Admin duyệt mới có thể nạp Payload." });
+      return res.json({ status: "pending", active: false, platform: "Emul", message: "Thiết bị Emul cần Admin duyệt mới có thể nạp Payload." });
     } else {
       const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
       device = {
@@ -643,12 +643,12 @@ app.post("/api/check", (req, res) => {
 
   const status = String(device.status || "").toLowerCase();
   if (status !== "approved" && status !== "active") {
-    const isDevAndroid = device.platform === "Android" || isAndroid;
+    const isDevEmul = device.platform === "Emul" || device.platform === "Android" || isEmul;
     return res.json({ 
       status: "pending", 
       active: false, 
-      platform: device.platform || (isAndroid ? "Android" : "iOS"),
-      message: isDevAndroid ? "Thiết bị Android cần Admin duyệt mới có thể nạp Payload." : "Thiết bị chưa được kích hoạt. Trạng thái: Chờ duyệt." 
+      platform: device.platform || (isEmul ? "Emul" : "iOS"),
+      message: isDevEmul ? "Thiết bị Emul cần Admin duyệt mới có thể nạp Payload." : "Thiết bị chưa được kích hoạt. Trạng thái: Chờ duyệt." 
     });
   }
 

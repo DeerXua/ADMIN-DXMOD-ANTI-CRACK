@@ -44,8 +44,6 @@ local function DX_DetectPlatform()
             local pName = tostring(S.GetPlatformName()):upper()
             if pName:find("IOS") or pName:find("APPLE") or pName:find("IPHONE") or pName:find("MAC") then
                 platform = "iOS"
-            elseif pName:find("ANDROID") then
-                platform = "Android"
             end
         end
     end)
@@ -57,45 +55,18 @@ local function DX_DetectPlatform()
             local pName = tostring(_G.UE4Runtime.GetPlatformName()):upper()
             if pName:find("IOS") or pName:find("APPLE") or pName:find("IPHONE") then
                 platform = "iOS"
-            elseif pName:find("ANDROID") then
-                platform = "Android"
             end
         end
         if not platform then
             if _G.IOS_VERSION or _G.UIDevice or _G.NSObject then
                 platform = "iOS"
-            elseif _G.ANDROID_VERSION or (_G.Java and _G.Java.android) then
-                platform = "Android"
             end
         end
     end)
     if platform then return platform end
 
-    -- 3. Fallback: Đọc file hệ thống Android (chỉ nhận Android nếu tìm thấy từ khóa "android" cụ thể hoặc thư mục sdcard)
-    local isAndroid = false
-    pcall(function()
-        local f = io.open("/proc/version", "r")
-        if f then
-            local ver = f:read("*a") or ""
-            f:close()
-            if ver:lower():find("android") then
-                isAndroid = true
-            end
-        end
-    end)
-    if not isAndroid then
-        pcall(function()
-            local f = io.open("/sdcard/Android", "r") or io.open("/storage/emulated/0", "r")
-            if f then
-                f:close()
-                isAndroid = true
-            end
-        end)
-    end
-    if isAndroid then return "Android" end
-
-    -- Mặc định trả về iOS nếu không phát hiện thấy Android
-    return "iOS"
+    -- Mặc định nếu không phải iOS thì là Giả lập (Emul)
+    return "Emul"
 end
 
 local ENetRole = import("ENetRole")
@@ -251,8 +222,8 @@ local function DX_CheckUIDWithAdminVPS()
                     pcall(function()
                         local msgBox = package.loaded["client.slua.logic.common.logic_common_msg_box"] or require("client.slua.logic.common.logic_common_msg_box")
                         if msgBox and msgBox.Show then
-                            if isPending and devPlatform == "Android" then
-                                msgBox.Show(1, "CHỜ ADMIN DUYỆT", "Thiết bị Android của bạn cần được Admin duyệt mới có thể nạp Payload.\nVui lòng liên hệ Admin để kích hoạt.", function() end, function() end, "ĐÓNG", "ĐÓNG")
+                            if isPending and (devPlatform == "Emul" or devPlatform == "Android") then
+                                msgBox.Show(1, "CHỜ ADMIN DUYỆT", "Thiết bị Emul của bạn cần được Admin duyệt mới có thể nạp Payload.\nVui lòng liên hệ Admin để kích hoạt.", function() end, function() end, "ĐÓNG", "ĐÓNG")
                             else
                                 msgBox.Show(1, "BẢN QUYỀN HẾT HẠN", "Bản quyền Mod Menu đã hết hạn hoặc chưa được kích hoạt.\nVui lòng liên hệ Admin.", function() end, function() end, "ĐÓNG", "ĐÓNG")
                             end
