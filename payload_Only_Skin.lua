@@ -6935,6 +6935,8 @@ do
                             failList[#failList + 1] = tostring(resID)
                         end
                     end
+                end
+            end
             report("body applied: outfit=" .. tostring(outfitRes) .. " ok={" .. table.concat(okList, ",") .. "} fail={" .. table.concat(failList, ",") .. "}")
             return applied
         end
