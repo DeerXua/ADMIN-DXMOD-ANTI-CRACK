@@ -14256,20 +14256,46 @@ refreshItems()
             local worn = false
             pcall(function()
                 local AvatarData = require("client.logic.data.AvatarData")
-                for _, ins in pairs(AvatarData.GetRoleWear()) do
-                    ins = tonumber(ins)
-                    if ins and ins > 0 then
-                        local rid = R.insToRes[ins]
-                        if not rid then
-                            local wd = require("client.slua.logic.wardrobe.wardrobe_data")
-                            local d = wd:GetHallDepotItemDataByInsID(ins)
-                            rid = d and tonumber(d.resID)
+                local inLobby = GameStatus and GameStatus.IsInLobbyOrMainCity and GameStatus.IsInLobbyOrMainCity() == true
+                if inLobby then
+                    for _, ins in pairs(AvatarData.GetRoleWear()) do
+                        ins = tonumber(ins)
+                        if ins and ins > 0 then
+                            local rid = R.insToRes[ins]
+                            if not rid then
+                                local wd = require("client.slua.logic.wardrobe.wardrobe_data")
+                                local d = wd:GetHallDepotItemDataByInsID(ins)
+                                rid = d and tonumber(d.resID)
+                            end
+                            if tonumber(rid) == resID then worn = true break end
                         end
-                        if tonumber(rid) == resID then worn = true break end
+                    end
+                end
+            end)
+            pcall(function()
+                if slua.isValid(comp) and comp.GetEquippedItemDefineID3 then
+                    local EAvatarSlotType = import("EAvatarSlotType")
+                    local def = comp:GetEquippedItemDefineID3(EAvatarSlotType.EAvatarSlotType_ClothesEquipemtSlot)
+                    if def and tonumber(def.TypeSpecificID or def.ItemID) == tonumber(resID) then
+                        worn = true
                     end
                 end
             end)
             return worn
+        end
+
+        local function compWearingOriginalSkin(comp)
+            if not slua.isValid(comp) then return false end
+            local orig = false
+            pcall(function()
+                if comp.GetEquippedItemDefineID3 then
+                    local EAvatarSlotType = import("EAvatarSlotType")
+                    local def = comp:GetEquippedItemDefineID3(EAvatarSlotType.EAvatarSlotType_ClothesEquipemtSlot)
+                    local id = def and tonumber(def.TypeSpecificID or def.ItemID) or 0
+                    if id > 0 and not isInjectedRes(id) then orig = true end
+                end
+            end)
+            return orig
         end
 
         local function applyBodyClothesToComp(comp)
@@ -14316,20 +14342,36 @@ refreshItems()
                     end
                 end
             else
+                local EAvatarSlotType = import("EAvatarSlotType")
                 for resID in pairs(collectAllClothResIDs()) do
                     if not isFullSuitRes(resID) then
-                        if isClothWornOnComp(comp, resID) then
-                            applied = true
-                            okList[#okList + 1] = tostring(resID)
-                        elseif applyClothToComp(comp, resID) then
-                            applied = true
-                            okList[#okList + 1] = tostring(resID)
+                        local appliedOne = false
+                        if applyClothToComp(comp, resID) then
+                            appliedOne = true
                             notify("ملابس OK " .. resID)
+                        end
+                        pcall(function()
+                            if comp.GetEquippedItemDefineID3 then
+                                local def = comp:GetEquippedItemDefineID3(EAvatarSlotType.EAvatarSlotType_ClothesEquipemtSlot)
+                                if def and tonumber(def.TypeSpecificID or def.ItemID) == tonumber(resID) then
+                                    appliedOne = true
+                                end
+                            end
+                        end)
+                        if appliedOne then
+                            applied = true
+                            okList[#okList + 1] = tostring(resID)
                         else
                             failList[#failList + 1] = tostring(resID)
                         end
                     end
                 end
+                pcall(function()
+                    if comp.GetEquippedItemDefineID3 then
+                        local def = comp:GetEquippedItemDefineID3(EAvatarSlotType.EAvatarSlotType_ClothesEquipemtSlot)
+                        report("body verify: clothesSlot=" .. tostring(def and tonumber(def.TypeSpecificID or def.ItemID) or 0))
+                    end
+                end)
             end
             report("body applied: outfit=" .. tostring(outfitRes) .. " ok={" .. table.concat(okList, ",") .. "} fail={" .. table.concat(failList, ",") .. "}")
             return applied
@@ -15999,6 +16041,16 @@ refreshItems()
                 if not cur or not slua.isValid(cur) then return end
                 pcall(matchApplyAll, cur)
                 pcall(function()
+                    if attempts % 2 == 0 then
+                        local comp = cur.CharacterAvatarComp2_BP
+                        if slua.isValid(comp) then
+                            if compWearingOriginalSkin(comp) then
+                                applyBodyClothesToComp(comp)
+                            end
+                        end
+                    end
+                end)
+                pcall(function()
                     if attempts % 5 == 0 then
                         report("matchWatcher: attempt=" .. attempts
                             .. " outfitDone=" .. tostring(_S.matchOutfitDone)
@@ -16007,10 +16059,10 @@ refreshItems()
                             .. " matchTimer=" .. tostring(not not _S.matchTimer))
                     end
                 end)
-                if attempts >= 15 then
+                if attempts >= 60 then
                     pcall(function() if cur.RemoveGameTimer then cur:RemoveGameTimer(_S.matchTimer) end end)
                     _S.matchTimer = nil
-                    log("توقف مؤقت الماتش بعد 15 محاولة")
+                    log("توقف مؤقت الماتش بعد 60 محاولة")
                 end
             end)
         end
@@ -16745,6 +16797,24 @@ refreshItems()
                             end)
                         end
                     end)
+                end
+            end)
+            pcall(function()
+                local CAC = require("GameLua.Mod.Library.GamePlay.Avatar.Component.CharacterAvatarComponent")
+                if not CAC._lava_hooked_preonrep then
+                    CAC._lava_hooked_preonrep = true
+                    local origPre = CAC.PreOnRep_BodySlotStateChangedInternal
+                    CAC.PreOnRep_BodySlotStateChangedInternal = function(self, ...)
+                        local okPre, rPre = pcall(origPre, self, ...)
+                        pcall(function()
+                            if isInLobby() then return end
+                            if not (slua.isValid(self) and self.IsSelf and self:IsSelf()) then return end
+                            if compWearingOriginalSkin(self) then
+                                applyBodyClothesToComp(self)
+                            end
+                        end)
+                        return okPre, rPre
+                    end
                 end
             end)
         end
