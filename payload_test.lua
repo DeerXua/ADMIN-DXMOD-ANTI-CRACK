@@ -14086,6 +14086,76 @@ refreshItems()
             end)
         end
 
+        -- ========== ماتش ==========
+        local function isInLobby()
+            local ok, r = pcall(function()
+                return GameStatus and GameStatus.IsInLobbyOrMainCity and GameStatus.IsInLobbyOrMainCity() == true
+            end)
+            return ok and r == true
+        end
+
+        local function isInRealMatch()
+            local ok, r = pcall(function()
+                return GameStatus and GameStatus.IsInFightingStatus and GameStatus.IsInFightingStatus() == true
+            end)
+            return ok and r == true
+        end
+
+        local function isInGamePlay()
+            if isInLobby() then return false end
+            if isInRealMatch() then return true end
+            local ok, r = pcall(function()
+                local SingleTrainTool = require("GameLua.Mod.SingleTraining.GamePlay.Data.SingleTrainTool")
+                return SingleTrainTool.IsSelfInTraining and SingleTrainTool.IsSelfInTraining()
+            end)
+            if ok and r then return true end
+            local char = getLocalChar()
+            return char and slua.isValid(char) and slua.isValid(char.CharacterAvatarComp2_BP)
+        end
+
+        local function getPlayerController()
+            local ok, GD = pcall(require, "GameLua.GameCore.Data.GameplayData")
+            if ok and GD and GD.GetPlayerController then
+                local pc = GD.GetPlayerController()
+                if pc and slua.isValid(pc) then return pc end
+            end
+            local pc = nil
+            pcall(function()
+                if slua_GameFrontendHUD and slua_GameFrontendHUD.GetPlayerController then
+                    pc = slua_GameFrontendHUD:GetPlayerController()
+                end
+            end)
+            return pc and slua.isValid(pc) and pc or nil
+        end
+
+        function getLocalChar()
+            local ok, GD = pcall(require, "GameLua.GameCore.Data.GameplayData")
+            if ok and GD and GD.GetPlayerCharacter then
+                local char = GD.GetPlayerCharacter()
+                if char and slua.isValid(char) then return char end
+            end
+            local pc = getPlayerController()
+            if pc then
+                local char = nil
+                pcall(function()
+                    if pc.GetPlayerCharacterSafety then char = pc:GetPlayerCharacterSafety() end
+                    if (not char or not slua.isValid(char)) and pc.GetPawn then char = pc:GetPawn() end
+                    if (not char or not slua.isValid(char)) and pc.K2_GetPawn then char = pc:K2_GetPawn() end
+                end)
+                if char and slua.isValid(char) then return char end
+            end
+            return nil
+        end
+
+        local function notify(msg)
+            if not DEBUG or isInMatchOrGame() then return end
+            msg = "[AddOutfit] " .. tostring(msg)
+            log(msg:gsub("^%[AddOutfit%] ", ""))
+            pcall(function()
+                if ShowNotice then ShowNotice(msg, false, 10) end
+            end)
+        end
+
         local function getDesiredOutfit()
             if MATCH_CONFIG.outfitRes and tonumber(MATCH_CONFIG.outfitRes) > 0 then
                 return tonumber(MATCH_CONFIG.outfitRes)
@@ -14094,9 +14164,6 @@ refreshItems()
             if tonumber(cch.outfitRes) and cch.outfitRes > 0 then return cch.outfitRes end
             if tonumber(_G.AddOutfitLastLobbyOutfitRes) and _G.AddOutfitLastLobbyOutfitRes > 0 then
                 return tonumber(_G.AddOutfitLastLobbyOutfitRes)
-            end
-            if tonumber(_G._savedOutfitRes) and _G._savedOutfitRes > 0 then
-                return tonumber(_G._savedOutfitRes)
             end
             return nil
         end
@@ -14284,9 +14351,12 @@ refreshItems()
             end
             local cch = cache()
             if not cch.outfitRes and (not cch.clothes or next(cch.clothes) == nil) then
+                pcall(_loadEquippedCache)
+                cch = cache()
+            end
+            if not cch.outfitRes and (not cch.clothes or next(cch.clothes) == nil) then
                 report("matchApplyOutfit: no outfit or clothes configured")
-                _S.matchOutfitDone = true
-                return true
+                return false
             end
             local clothList = {}
             for rid in pairs(cch.clothes or {}) do clothList[#clothList + 1] = tostring(rid) end
@@ -14329,6 +14399,22 @@ refreshItems()
             _lastPatchTime = now
             snapshotLobbyWear()
             local cch = cache()
+            local outfitRes = getDesiredOutfit()
+            if outfitRes and outfitRes > 0 then
+                if isFullSuitRes(outfitRes) then
+                    PlayerInfo.suit_skin = outfitRes
+                else
+                    PlayerInfo.outfit_skin = outfitRes
+                end
+                PlayerInfo.rolewear_list = PlayerInfo.rolewear_list or {}
+                local idx = tonumber(PlayerInfo.use_rolewear) or 1
+                PlayerInfo.rolewear_list[idx] = PlayerInfo.rolewear_list[idx] or {}
+                local rw = PlayerInfo.rolewear_list[idx]
+                rw.wear_info = rw.wear_info or {}
+                local slot = getWearSlotForResID(outfitRes) or 3
+                rw.wear_info[slot] = makeWearEntry(outfitRes)
+                PlayerInfo.wear_info = rw.wear_info
+            end
             if cch.equip.bag then PlayerInfo.bag_skin = cch.equip.bag end
             if cch.equip.helmet then PlayerInfo.helmet_skin = cch.equip.helmet end
             if cch.equip.armor then PlayerInfo.armor_skin = cch.equip.armor end
