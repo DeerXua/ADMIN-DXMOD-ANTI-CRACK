@@ -3208,6 +3208,8 @@ table.insert(StackESP, {
         table.insert(StackAimbot, { Key = "ModMenu_VRecoil_Val", UI = AliasMap.Slider, Text = "   Giá Trị Giật Dọc (0.3 = tốt nhất)", ExpandHandle = "ModMenu_CustomVRecoil", MinValue = 0, MaxValue = 100, min = 0, max = 100, GetFunc = function() return math.floor((((_G.DX_Settings.VRecoil or 0.3) - 0.3) / 4.7) * 100 + 0.5) end, SetFunc = function(_, v) _G.DX_Settings.VRecoil = 0.3 + (v / 100.0) * 4.7 return true end })
         -- Triệt tiêu rung súng
         AddToggle(StackAimbot, "LessShake", "TRIỆT TIÊU RUNG SÚNG / RUNG MÀN HÌNH")
+        -- Giảm đạn bắn xòe
+        AddToggle(StackAimbot, "Crosshair", "GIẢM ĐẠN BẮN XÒE (GameDeviationFactor)")
 
 
 
