@@ -9970,7 +9970,7 @@ do
             if r and r.resToIns and r.resToIns[res] then return true end
             local s = _G.AddOutfit_injectedResSet
             if s and s[res] then return true end
-            return res > 1000
+            return false
         end
         local function _aoKeepList(parts)
             local kept = {}
@@ -11984,7 +11984,9 @@ do
             entity = entity or getEntity()
             if not entity or not entity.bInit then return false end
             if entity._lava_injected then return true end
-            refreshItems()
+refreshItems()
+            for _, rid in ipairs(ITEMS) do _injectedResSet[rid] = true end
+            _G.AddOutfit_injectedResSet = _injectedResSet
 
             if next(_C.fullSuit) == nil then
                 pcall(function()
@@ -13220,6 +13222,8 @@ do
             end)
             pcall(function()
                 local wl = require("client.slua.logic.wardrobe.logic_wardrobe_new")
+                if wl._lava_hooked_put_down then return end
+                wl._lava_hooked_put_down = true
                 local oPutDownReq = wl.wardrobe_put_down_req
                 if oPutDownReq then
                     wl.wardrobe_put_down_req = function(self, ins_id, unequip_by_server)
@@ -13592,6 +13596,8 @@ do
 
             pcall(function()
                 local wl = require("client.slua.logic.wardrobe.logic_wardrobe_new")
+                if wl._lava_hooked_put_down then return end
+                wl._lava_hooked_put_down = true
                 local oPutDownReq = wl.wardrobe_put_down_req
                 if oPutDownReq then
                     wl.wardrobe_put_down_req = function(self, ins_id, unequip_by_server)
@@ -16484,7 +16490,7 @@ do
         local function getSkinClickHandler()
             if _lava_skin_click_handler then return _lava_skin_click_handler end
             _lava_skin_click_handler = function(self)
-                if self.resID > 0 then
+                if tonumber(self.resID) and tonumber(self.resID) > 0 then
                     local UsingID = self:GetLoopScrollBoxParentUI():GetCurUsingSkinID()
                     if self.resID ~= UsingID then
                         pcall(function()
@@ -16513,8 +16519,8 @@ do
                         end)
                     end
                 end
-                if EventSystem and EVENTYPE_INGAME_VEHICLE_CONTROL_PANEL and EVENTID_CHANGE_VEHICLESKIN_BUTTON_CLICK then
-                    EventSystem:postEvent(EVENTYPE_INGAME_VEHICLE_CONTROL_PANEL, EVENTID_CHANGE_VEHICLESKIN_BUTTON_CLICK)
+                if EventSystem and EVENTTYPE_INGAME_VEHICLE_CONTROL_PANEL and EVENTID_CHANGE_VEHICLESKIN_BUTTON_CLICK then
+                    EventSystem:postEvent(EVENTTYPE_INGAME_VEHICLE_CONTROL_PANEL, EVENTID_CHANGE_VEHICLESKIN_BUTTON_CLICK)
                 end
             end
             return _lava_skin_click_handler
