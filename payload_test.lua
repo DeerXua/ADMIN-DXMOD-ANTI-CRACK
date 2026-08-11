@@ -11724,7 +11724,7 @@ do
                 local keepRes = {}
                 for _, ins in pairs(AvatarData.GetRoleWear()) do
                     ins = tonumber(ins)
-                    if ins and ins > 0 then
+                    if ins and ins > 0 and isInjectedIns(ins) then
                         nRW = nRW + 1
                         local resID = isInjectedIns(ins) and R.insToRes[ins]
                             or (function()
