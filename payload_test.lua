@@ -14044,6 +14044,12 @@ refreshItems()
                         end
                         return orig(resID, ...)
                     end
+                end
+            end)
+        end
+
+        local function hookAvatarValid()
+            pcall(function()
                 local CAC = require("GameLua.Mod.Library.GamePlay.Avatar.Component.CharacterAvatarComponent")
                 if not CAC._lava_hooked_check_valid then
                     CAC._lava_hooked_check_valid = true
