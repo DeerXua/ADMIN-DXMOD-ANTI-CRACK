@@ -2544,6 +2544,10 @@ local defaultSettings = {
     ESP_WEAPON = 0, ESP_COUNT = 0, ESP_BOX = 0, EspLoai5 = 0,
     AIMBOT = 0, SPEED_AIMBOT = 0, FOV_AIMBOT = 0, THU_TAM = 0,
     NO_RECOIL_100 = 0, GIAM_RUNG_SCOPE = 0,
+    LessRecoil = 0, LessShake = 0,
+    CustomHRecoil = 0, HRecoil = 0.3,
+    CustomVRecoil = 0, VRecoil = 0.3,
+    VerticalRecoil = 0, Accuracy = 0, Crosshair = 0,
 
     -- Per-weapon recoil adjustment (0 = use global NO_RECOIL_100)
     REC_WEAPON_MASTER = 0, REC_W_M416 = 0, REC_W_AKM = 0, REC_W_SCAR = 0, REC_W_Groza = 0, REC_W_AUG = 0, REC_W_QBZ = 0, REC_W_M762 = 0, REC_W_G36C = 0, REC_W_FAMAS = 0, REC_W_ACE32 = 0, REC_W_Honey = 0,
@@ -3197,6 +3201,19 @@ table.insert(StackESP, {
         AddSlider(StackAimbot, "THU_TAM", "THU NHỎ TÂM BẮN", 0, 100)
         AddSlider(StackAimbot, "NO_RECOIL_100", "GIẢM GIẬT (0-50%)", 0, 50)
         AddSlider(StackAimbot, "GIAM_RUNG_SCOPE", "GIẢM RUNG SCOPE", 0, 100)
+        -- Giảm giật ngang (Horizontal Recoil)
+        AddToggle(StackAimbot, "LessRecoil", "GIẢM GIẬT NGANG CỐ ĐỊNH (Horizontal ~70%)")
+        AddToggle(StackAimbot, "CustomHRecoil", "▶ GIẢM GIẬT NGANG TÙY CHỈNH")
+        table.insert(StackAimbot, { Key = "ModMenu_HRecoil_Val", UI = AliasMap.Slider, Text = "   Giá Trị Giật Ngang (0.3 = tốt nhất)", ExpandHandle = "ModMenu_CustomHRecoil", MinValue = 0, MaxValue = 100, min = 0, max = 100, GetFunc = function() return math.floor((((_G.DX_Settings.HRecoil or 0.3) - 0.3) / 4.7) * 100 + 0.5) end, SetFunc = function(_, v) _G.DX_Settings.HRecoil = 0.3 + (v / 100.0) * 4.7 return true end })
+        -- Giảm giật dọc (Vertical Recoil)
+        AddToggle(StackAimbot, "VerticalRecoil", "GIẢM GIẬT DỌC CỐ ĐỊNH (Vertical ~70%)")
+        AddToggle(StackAimbot, "CustomVRecoil", "▶ GIẢM GIẬT DỌC TÙY CHỈNH")
+        table.insert(StackAimbot, { Key = "ModMenu_VRecoil_Val", UI = AliasMap.Slider, Text = "   Giá Trị Giật Dọc (0.3 = tốt nhất)", ExpandHandle = "ModMenu_CustomVRecoil", MinValue = 0, MaxValue = 100, min = 0, max = 100, GetFunc = function() return math.floor((((_G.DX_Settings.VRecoil or 0.3) - 0.3) / 4.7) * 100 + 0.5) end, SetFunc = function(_, v) _G.DX_Settings.VRecoil = 0.3 + (v / 100.0) * 4.7 return true end })
+        -- Triệt tiêu rung súng
+        AddToggle(StackAimbot, "LessShake", "TRIỆT TIÊU RUNG SÚNG / RUNG MÀN HÌNH")
+        -- Tăng độ chụm đạn
+        AddToggle(StackAimbot, "Accuracy", "TĂNG ĐỘ CHỤM ĐẠN (GameDeviationAccuracy)")
+        AddToggle(StackAimbot, "Crosshair", "GIẢM ĐẠN BẮN XÒE (GameDeviationFactor)")
 
 
 
