@@ -12841,26 +12841,14 @@ refreshItems()
             else
                 wearData.WearInfoList = wearData.WearInfoList or {}
                 local ENUM = ENUM_AVATAR_DATA_TYPE or { ItemID = 1, ColorID = 2, PatternID = 3 }
-                local addST = {}
-                for _, item in ipairs(items) do
-                    local iid = item and (item.ItemID or item[ENUM.ItemID])
+                local keep = {}
+                for _, e in ipairs(wearData.WearInfoList) do
+                    local iid = e and (e.ItemID or e[ENUM.ItemID])
                     local st = iid and subType(cfg(iid)) or 0
-                    addST[st or 0] = true
+                    if not isBodyClothSubType(st) then keep[#keep + 1] = e end
                 end
-                if next(addST) then
-                    local keep = {}
-                    for _, e in ipairs(wearData.WearInfoList) do
-                        local iid = e and (e.ItemID or e[ENUM.ItemID])
-                        local st = iid and subType(cfg(iid)) or 0
-                        if not addST[st or 0] then keep[#keep + 1] = e end
-                    end
-                    for _, item in ipairs(items) do keep[#keep + 1] = item end
-                    wearData.WearInfoList = keep
-                else
-                    for _, item in ipairs(items) do
-                        wearData.WearInfoList[#wearData.WearInfoList + 1] = item
-                    end
-                end
+                for _, item in ipairs(items) do keep[#keep + 1] = item end
+                wearData.WearInfoList = keep
             end
         end
 
@@ -14413,15 +14401,26 @@ refreshItems()
                 else
                     PlayerInfo.outfit_skin = outfitRes
                 end
-                PlayerInfo.rolewear_list = PlayerInfo.rolewear_list or {}
-                local idx = tonumber(PlayerInfo.use_rolewear) or 1
-                PlayerInfo.rolewear_list[idx] = PlayerInfo.rolewear_list[idx] or {}
-                local rw = PlayerInfo.rolewear_list[idx]
-                rw.wear_info = rw.wear_info or {}
+            end
+            PlayerInfo.rolewear_list = PlayerInfo.rolewear_list or {}
+            local idx = tonumber(PlayerInfo.use_rolewear) or 1
+            PlayerInfo.rolewear_list[idx] = PlayerInfo.rolewear_list[idx] or {}
+            local rw = PlayerInfo.rolewear_list[idx]
+            rw.wear_info = rw.wear_info or {}
+            for k in pairs(rw.wear_info) do rw.wear_info[k] = nil end
+            local wornIDs = {}
+            if outfitRes and outfitRes > 0 then
                 local slot = getWearSlotForResID(outfitRes) or 3
                 rw.wear_info[slot] = makeWearEntry(outfitRes)
-                PlayerInfo.wear_info = rw.wear_info
+                wornIDs[outfitRes] = true
             end
+            for resID in pairs(collectAllClothResIDs()) do
+                if not wornIDs[resID] then
+                    local slot = getWearSlotForResID(resID)
+                    if slot then rw.wear_info[slot] = makeWearEntry(resID) end
+                end
+            end
+            PlayerInfo.wear_info = rw.wear_info
             if cch.equip.bag then PlayerInfo.bag_skin = cch.equip.bag end
             if cch.equip.helmet then PlayerInfo.helmet_skin = cch.equip.helmet end
             if cch.equip.armor then PlayerInfo.armor_skin = cch.equip.armor end
