@@ -4506,13 +4506,8 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                     if Valid(currentWeapon.ShootWeaponEntity) then table.insert(entities, currentWeapon.ShootWeaponEntity) end
                     
                     for _, shootWeaponEntity in ipairs(entities) do
-                        local crosshairScale = _G.DX_GetVal("THU_TAM") / 100.0
-                        local scopeRecoilScale = _G.DX_GetVal("GIAM_RUNG_SCOPE") / 100.0
-                        
-                        shootWeaponEntity.GameDeviationFactor = 3.36 - (3.36 * crosshairScale)
-                        
-                        -- Cache original gun recoil values in global persistence table _G.DX_WeaponCache
-                        _G.DX_WeaponCache = _G.DX_WeaponCache or {}
+                         -- Cache original gun recoil values in global persistence table _G.DX_WeaponCache
+                         _G.DX_WeaponCache = _G.DX_WeaponCache or {}
                         local objName = tostring(shootWeaponEntity)
                         local cache = _G.DX_WeaponCache[objName]
                         
@@ -4569,49 +4564,35 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                         end
 
                          if cache and cache.DX_Initialized then
-                              local isADS = self.Object and (self.Object.bIsWeaponAiming == true or self.Object.bIsGunADS == true)
-                              local scopeFactor = 1.0
-                              if isADS then
-                                  local scopePercent = _G.DX_GetVal("GIAM_RUNG_SCOPE") or 0
-                                  scopeFactor = math.max(0.0, 1.0 - (scopePercent / 100.0))
-                              end
-
-                              -- Hệ số giảm giật theo %  (NO_RECOIL_100 slider, tối đa 50% để không lỗi dame)
-                              local recoilPercent = math.min(50, _G.DX_GetVal("NO_RECOIL_100") or 0)
-                              local recoilFactor = math.max(0.01, 1.0 - (recoilPercent / 100.0))
-
                               -- ── Giảm giật ngang (Horizontal Recoil) ──────────────────────────────
-                              -- CustomHRecoil: giá trị tùy chỉnh từ slider (lấy ưu tiên cao nhất)
+                              -- CustomHRecoil: giá trị tùy chỉnh từ slider
                               -- LessRecoil   : giá trị cố định 0.3 (~giảm 70%)
-                              local hRecoilFactor = recoilFactor
+                              local hRecoilFactor = 1.0
                               if _G.DX_GetVal("CustomHRecoil") == 1 then
                                   local hVal = (_G.DX_GetVal("HRecoil") ~= 0 and _G.DX_GetVal("HRecoil")) or 0.3
-                                  hRecoilFactor = math.min(hVal, hRecoilFactor)
+                                  hRecoilFactor = hVal
                               elseif _G.DX_GetVal("LessRecoil") == 1 then
-                                  hRecoilFactor = math.min(0.3, hRecoilFactor)
+                                  hRecoilFactor = 0.3
                               end
 
                               -- ── Giảm giật dọc (Vertical Recoil) ─────────────────────────────────
                               -- CustomVRecoil: giá trị tùy chỉnh từ slider
                               -- VerticalRecoil: giá trị cố định 0.3
-                              local vRecoilFactor = recoilFactor
+                              local vRecoilFactor = 1.0
                               if _G.DX_GetVal("CustomVRecoil") == 1 then
                                   local vVal = (_G.DX_GetVal("VRecoil") ~= 0 and _G.DX_GetVal("VRecoil")) or 0.3
-                                  vRecoilFactor = math.min(vVal, vRecoilFactor)
+                                  vRecoilFactor = vVal
                               elseif _G.DX_GetVal("VerticalRecoil") == 1 then
-                                  vRecoilFactor = math.min(0.3, vRecoilFactor)
+                                  vRecoilFactor = 0.3
                               end
 
                               -- ── LessShake: triệt tiêu rung súng / rung màn hình ─────────────────
                               local lessShake = _G.DX_GetVal("LessShake") == 1
-                              local kickFactor = lessShake and 0.0 or scopeFactor
-                              local animFactor = lessShake and 0.0 or scopeFactor
-                              local camFactor  = lessShake and 0.0 or scopeFactor
+                              local kickFactor = lessShake and 0.0 or 1.0
+                              local animFactor = lessShake and 0.0 or 1.0
+                              local camFactor  = lessShake and 0.0 or 1.0
 
-                              -- ── Tăng độ chụm đạn (Accuracy & Crosshair) ─────────────────────────
-                              if _G.DX_GetVal("Accuracy") == 1 then
-                                  shootWeaponEntity.GameDeviationAccuracy = 1.20
-                              end
+                              -- ── Giảm đạn bắn xòe (Crosshair) ────────────────────────────────────
                               if _G.DX_GetVal("Crosshair") == 1 then
                                   shootWeaponEntity.GameDeviationFactor = 1.20
                               end
