@@ -10355,13 +10355,15 @@ do
             cch.equip = cch.equip or {}
             cch.weapons = cch.weapons or {}
 
-            if _G._savedOutfitRes then
+            if _G._savedOutfitRes and _aoIsInjRes(_G._savedOutfitRes) then
                 cch.outfitRes = _G._savedOutfitRes
-                cch.outfitIns = _G._savedOutfitIns
+                if _G._savedOutfitIns and _aoIsInjIns(_G._savedOutfitIns) then
+                    cch.outfitIns = _G._savedOutfitIns
+                end
             end
             if not _G._addOutfitPersistLoaded and _G._savedOutfitClothes then
                 for resID in pairs(_G._savedOutfitClothes) do
-                    cch.clothes[resID] = true
+                    if _aoIsInjRes(resID) then cch.clothes[resID] = true end
                 end
             end
 
@@ -12690,11 +12692,11 @@ refreshItems()
         local function collectAllClothResIDs()
             local ids = {}
             local cch = cache()
-            if tonumber(cch.outfitRes) and cch.outfitRes > 0 then
+            if tonumber(cch.outfitRes) and cch.outfitRes > 0 and isInjectedRes(cch.outfitRes) then
                 ids[cch.outfitRes] = true
             end
             for resID in pairs(cch.clothes) do
-                if not getEquipSkinSlot(resID) and not weaponIdFromSkin(resID) then
+                if isInjectedRes(resID) and not getEquipSkinSlot(resID) and not weaponIdFromSkin(resID) then
                     ids[resID] = true
                 end
             end
@@ -12979,18 +12981,23 @@ refreshItems()
             local cch = cache()
             if not _G._addOutfitPersistLoaded and _G._savedOutfitClothes then
                 for resID in pairs(_G._savedOutfitClothes) do
-                    local st = subType(cfg(resID))
-                    if st then
-                        for oldRes in pairs(cch.clothes) do
-                            if subType(cfg(oldRes)) == st then cch.clothes[oldRes] = nil end
+                    if isInjectedRes(resID) then
+                        local st = subType(cfg(resID))
+                        if st then
+                            for oldRes in pairs(cch.clothes) do
+                                if subType(cfg(oldRes)) == st then cch.clothes[oldRes] = nil end
+                            end
                         end
+                        cch.clothes[resID] = true
                     end
-                    cch.clothes[resID] = true
                 end
             end
-            if not _G._addOutfitPersistLoaded and _G._savedOutfitRes and (not cch.outfitRes or cch.outfitRes <= 0) then
+            if not _G._addOutfitPersistLoaded and _G._savedOutfitRes and isInjectedRes(_G._savedOutfitRes)
+                and (not cch.outfitRes or cch.outfitRes <= 0) then
                 cch.outfitRes = _G._savedOutfitRes
-                cch.outfitIns = _G._savedOutfitIns or R.resToIns[_G._savedOutfitRes]
+                if _G._savedOutfitIns and isInjectedIns(_G._savedOutfitIns) then
+                    cch.outfitIns = _G._savedOutfitIns
+                end
             end
             syncMatchConfigFromCache()
 
