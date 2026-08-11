@@ -3085,6 +3085,60 @@ do
         if _saveDirty then _flushSave(false) end
     end
 
+    _G.AddOutfitResetAll = function()
+        pcall(function()
+            _G.AddOutfitEquippedCache = {
+                outfitRes = nil, outfitIns = nil,
+                clothes = {}, equip = {}, weapons = {},
+                throwObjects = {}, vehicleSlotList = {}, garageVehicles = {},
+                motionList = {}, roleWearList = {}, equipIns = {}, vstSkin = nil,
+            }
+            _G._savedOutfitClothes = {}
+            _G._savedOutfitRes = nil
+            _G._savedOutfitIns = nil
+            _G._savedOutfitEquip = {}
+            _G._savedVehicleSlotList = {}
+            _G._savedGarageVehicles = {}
+            _G._savedMotionList = {}
+            _G._savedRoleWearList = {}
+            _G._savedEquipIns = {}
+            _G._savedVstSkin = nil
+            _G._savedHallThemeIns = nil
+            _G._savedHallThemeRes = nil
+            _G._savedThrowObjects = {}
+            _G._AO_MATCH_ID = nil
+            _G.AddOutfitLastAppliedSkin = {}
+            _G.AddOutfitLastLobbyOutfitRes = nil
+            if _G._S then
+                _G._S.matchOutfitDone = false
+                _G._S.matchEquipDone = false
+            end
+            _lastSnapshot = ""
+            _saveDirty = false
+
+            local savePath = nil
+            pcall(function()
+                if type(_getOutfitSavePath) == "function" then
+                    savePath = _getOutfitSavePath()
+                end
+            end)
+            if savePath then
+                pcall(function()
+                    local f = io.open(savePath, "w")
+                    if f then
+                        f:write("")
+                        f:close()
+                    end
+                end)
+            end
+
+            local fn = ShowNotice or _G.ShowNotice
+            if fn then
+                fn("[DX-MODS] Đã RESET toàn bộ trang phục về mặc định!", false, 5)
+            end
+        end)
+    end
+
     -- ========== Ø­Ù‚Ù† WardrobeNewHandler (Ù„Ø¥ØµÙ„Ø§Ø­ Ø­ÙØ¸ Ø§Ù„Ø³ÙŠØ§Ø±Ø§Øª ÙÙŠ Ø§Ù„Ù„ÙˆØ¨ÙŠ) ==========
     pcall(function()
         local WardrobeNewHandler = {}
