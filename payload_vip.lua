@@ -3186,9 +3186,6 @@ table.insert(StackESP, {
         end
 
         local StackAimbot = { { UI = AliasMap.Title, Text = "PHẦN 1: VŨ KHÍ" } }
-        AddSlider(StackAimbot, "THU_TAM", "THU NHỎ TÂM BẮN", 0, 100)
-        AddSlider(StackAimbot, "NO_RECOIL_100", "GIẢM GIẬT (0-50%)", 0, 50)
-        AddSlider(StackAimbot, "GIAM_RUNG_SCOPE", "GIẢM RUNG SCOPE", 0, 100)
         -- Giảm giật ngang (Horizontal Recoil)
         AddToggle(StackAimbot, "LessRecoil", "GIẢM GIẬT NGANG CỐ ĐỊNH (Horizontal ~70%)")
         AddToggle(StackAimbot, "CustomHRecoil", "▶ GIẢM GIẬT NGANG TÙY CHỈNH")
