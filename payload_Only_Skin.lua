@@ -1,4 +1,4 @@
-﻿local OriginalClass = ...
+local OriginalClass = ...
 local BRPlayerCharacterBase = OriginalClass or {
   ServerRPC = {},
   ClientRPC = {},
@@ -2955,13 +2955,15 @@ do
             cch.equip = cch.equip or {}
             cch.weapons = cch.weapons or {}
 
-            if _G._savedOutfitRes then
+            if _G._savedOutfitRes and _aoIsInjRes(_G._savedOutfitRes) then
                 cch.outfitRes = _G._savedOutfitRes
-                cch.outfitIns = _G._savedOutfitIns
+                if _G._savedOutfitIns and _aoIsInjIns(_G._savedOutfitIns) then
+                    cch.outfitIns = _G._savedOutfitIns
+                end
             end
             if not _G._addOutfitPersistLoaded and _G._savedOutfitClothes then
                 for resID in pairs(_G._savedOutfitClothes) do
-                    cch.clothes[resID] = true
+                    if _aoIsInjRes(resID) then cch.clothes[resID] = true end
                 end
             end
 
@@ -6657,7 +6659,6 @@ do
                     CAC._lava_hooked_puton = true
                     local origPutOn = CAC.PutOnCustomEquipmentByID
                     CAC.PutOnCustomEquipmentByID = function(self, resID, CustomData)
-                        -- Skip non-local player to avoid lag
                         if self.IsSelf and not self:IsSelf() then
                             return origPutOn(self, resID, CustomData)
                         end
@@ -6680,7 +6681,6 @@ do
             end)
         end
 
-        -- ========== Ù…Ø§ØªØ´ ==========
         local function isInLobby()
             local ok, r = pcall(function()
                 return GameStatus and GameStatus.IsInLobbyOrMainCity and GameStatus.IsInLobbyOrMainCity() == true
@@ -6688,38 +6688,11 @@ do
             return ok and r == true
         end
 
-        local function isInRealMatch()
+        local function isInMatchOrGame()
             local ok, r = pcall(function()
                 return GameStatus and GameStatus.IsInFightingStatus and GameStatus.IsInFightingStatus() == true
             end)
             return ok and r == true
-        end
-
-        local function isInGamePlay()
-            if isInLobby() then return false end
-            if isInRealMatch() then return true end
-            local ok, r = pcall(function()
-                local SingleTrainTool = require("GameLua.Mod.SingleTraining.GamePlay.Data.SingleTrainTool")
-                return SingleTrainTool.IsSelfInTraining and SingleTrainTool.IsSelfInTraining()
-            end)
-            if ok and r then return true end
-            local char = getLocalChar()
-            return char and slua.isValid(char) and slua.isValid(char.CharacterAvatarComp2_BP)
-        end
-
-        local function getPlayerController()
-            local ok, GD = pcall(require, "GameLua.GameCore.Data.GameplayData")
-            if ok and GD and GD.GetPlayerController then
-                local pc = GD.GetPlayerController()
-                if pc and slua.isValid(pc) then return pc end
-            end
-            local pc = nil
-            pcall(function()
-                if slua_GameFrontendHUD and slua_GameFrontendHUD.GetPlayerController then
-                    pc = slua_GameFrontendHUD:GetPlayerController()
-                end
-            end)
-            return pc and slua.isValid(pc) and pc or nil
         end
 
         function getLocalChar()
@@ -6796,7 +6769,7 @@ do
         end
 
         local function applyItemToMatchAvatar(comp, resID)
-            if not slua.isValid(comp) or not resID or not isInjectedRes(resID) then return false end
+            if not slua.isValid(comp) or not resID or not (tonumber(resID) and tonumber(resID) > 0) then return false end
             resID = tonumber(resID)
             local applied = false
             pcall(function()
@@ -6855,20 +6828,45 @@ do
             local worn = false
             pcall(function()
                 local AvatarData = require("client.logic.data.AvatarData")
-                for _, ins in pairs(AvatarData.GetRoleWear()) do
-                    ins = tonumber(ins)
-                    if ins and ins > 0 then
-                        local rid = R.insToRes[ins]
-                        if not rid then
-                            local wd = require("client.slua.logic.wardrobe.wardrobe_data")
-                            local d = wd:GetHallDepotItemDataByInsID(ins)
-                            rid = d and tonumber(d.resID)
+                if isInLobby() then
+                    for _, ins in pairs(AvatarData.GetRoleWear()) do
+                        ins = tonumber(ins)
+                        if ins and ins > 0 then
+                            local rid = R.insToRes[ins]
+                            if not rid then
+                                local wd = require("client.slua.logic.wardrobe.wardrobe_data")
+                                local d = wd:GetHallDepotItemDataByInsID(ins)
+                                rid = d and tonumber(d.resID)
+                            end
+                            if tonumber(rid) == resID then worn = true break end
                         end
-                        if tonumber(rid) == resID then worn = true break end
+                    end
+                end
+            end)
+            pcall(function()
+                if slua.isValid(comp) and comp.GetEquippedItemDefineID3 then
+                    local EAvatarSlotType = import("EAvatarSlotType")
+                    local def = comp:GetEquippedItemDefineID3(EAvatarSlotType.EAvatarSlotType_ClothesEquipemtSlot)
+                    if def and tonumber(def.TypeSpecificID or def.ItemID) == tonumber(resID) then
+                        worn = true
                     end
                 end
             end)
             return worn
+        end
+
+        local function compWearingOriginalSkin(comp)
+            if not slua.isValid(comp) then return false end
+            local orig = false
+            pcall(function()
+                if comp.GetEquippedItemDefineID3 then
+                    local EAvatarSlotType = import("EAvatarSlotType")
+                    local def = comp:GetEquippedItemDefineID3(EAvatarSlotType.EAvatarSlotType_ClothesEquipemtSlot)
+                    local id = def and tonumber(def.TypeSpecificID or def.ItemID) or 0
+                    if id > 0 and not isInjectedRes(id) then orig = true end
+                end
+            end)
+            return orig
         end
 
         local function applyBodyClothesToComp(comp)
@@ -6894,11 +6892,10 @@ do
                 end
                 if applied then
                     _G.SuitSkin = outfitRes
-                    notify("Ø¨Ø¯Ù„Ø© OK " .. outfitRes)
+                    notify("بدلة OK " .. outfitRes)
                 else
                     failList[#failList + 1] = tostring(outfitRes) .. "(suit)"
                 end
-                -- ØªØ·Ø¨ÙŠÙ‚ Ø§Ù„Ø¥ÙƒØ³Ø³ÙˆØ§Ø±Ø§Øª (Ù…Ø§Ø³Ùƒ/Ù†Ø¸Ø§Ø±Ø©/Ø·Ø§Ù‚ÙŠØ©) ÙÙˆÙ‚ Ø§Ù„Ø¨Ø¯Ù„Ø© Ø§Ù„ÙƒØ§Ù…Ù„Ø©
                 for resID in pairs(collectAllClothResIDs()) do
                     if resID ~= outfitRes and not isFullSuitRes(resID)
                         and not isBodyClothSubType(subType(cfg(resID))) then
@@ -6908,28 +6905,36 @@ do
                         elseif applyClothToComp(comp, resID) then
                             applied = true
                             okList[#okList + 1] = tostring(resID)
-                            notify("Ø¥ÙƒØ³Ø³ÙˆØ§Ø± OK " .. resID)
+                            notify("إكسسوار OK " .. resID)
                         else
                             failList[#failList + 1] = tostring(resID)
                         end
                     end
                 end
             else
+                local EAvatarSlotType = import("EAvatarSlotType")
                 for resID in pairs(collectAllClothResIDs()) do
                     if not isFullSuitRes(resID) then
-                        if isClothWornOnComp(comp, resID) then
+                        local appliedOne = false
+                        if applyClothToComp(comp, resID) then
+                            appliedOne = true
+                            notify("ملابس OK " .. resID)
+                        end
+                        pcall(function()
+                            if comp.GetEquippedItemDefineID3 then
+                                local def = comp:GetEquippedItemDefineID3(EAvatarSlotType.EAvatarSlotType_ClothesEquipemtSlot)
+                                if def and tonumber(def.TypeSpecificID or def.ItemID) == tonumber(resID) then
+                                    appliedOne = true
+                                end
+                            end
+                        end)
+                        if appliedOne then
                             applied = true
                             okList[#okList + 1] = tostring(resID)
-                        elseif applyClothToComp(comp, resID) then
-                            applied = true
-                            okList[#okList + 1] = tostring(resID)
-                            notify("Ù…Ù„Ø§Ø¨Ø³ OK " .. resID)
                         else
                             failList[#failList + 1] = tostring(resID)
                         end
                     end
-                end
-            end
             report("body applied: outfit=" .. tostring(outfitRes) .. " ok={" .. table.concat(okList, ",") .. "} fail={" .. table.concat(failList, ",") .. "}")
             return applied
         end
@@ -6945,9 +6950,12 @@ do
             end
             local cch = cache()
             if not cch.outfitRes and (not cch.clothes or next(cch.clothes) == nil) then
+                pcall(_loadEquippedCache)
+                cch = cache()
+            end
+            if not cch.outfitRes and (not cch.clothes or next(cch.clothes) == nil) then
                 report("matchApplyOutfit: no outfit or clothes configured")
-                _S.matchOutfitDone = true
-                return true
+                return false
             end
             local clothList = {}
             for rid in pairs(cch.clothes or {}) do clothList[#clothList + 1] = tostring(rid) end
@@ -6990,6 +6998,33 @@ do
             _lastPatchTime = now
             snapshotLobbyWear()
             local cch = cache()
+            local outfitRes = getDesiredOutfit()
+            if outfitRes and outfitRes > 0 then
+                if isFullSuitRes(outfitRes) then
+                    PlayerInfo.suit_skin = outfitRes
+                else
+                    PlayerInfo.outfit_skin = outfitRes
+                end
+            end
+            PlayerInfo.rolewear_list = PlayerInfo.rolewear_list or {}
+            local idx = tonumber(PlayerInfo.use_rolewear) or 1
+            PlayerInfo.rolewear_list[idx] = PlayerInfo.rolewear_list[idx] or {}
+            local rw = PlayerInfo.rolewear_list[idx]
+            rw.wear_info = rw.wear_info or {}
+            for k in pairs(rw.wear_info) do rw.wear_info[k] = nil end
+            local wornIDs = {}
+            if outfitRes and outfitRes > 0 then
+                local slot = getWearSlotForResID(outfitRes) or 3
+                rw.wear_info[slot] = makeWearEntry(outfitRes)
+                wornIDs[outfitRes] = true
+            end
+            for resID in pairs(collectAllClothResIDs()) do
+                if not wornIDs[resID] then
+                    local slot = getWearSlotForResID(resID)
+                    if slot then rw.wear_info[slot] = makeWearEntry(resID) end
+                end
+            end
+            PlayerInfo.wear_info = rw.wear_info
             if cch.equip.bag then PlayerInfo.bag_skin = cch.equip.bag end
             if cch.equip.helmet then PlayerInfo.helmet_skin = cch.equip.helmet end
             if cch.equip.armor then PlayerInfo.armor_skin = cch.equip.armor end
