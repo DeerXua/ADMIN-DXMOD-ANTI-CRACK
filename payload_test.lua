@@ -14044,12 +14044,6 @@ refreshItems()
                         end
                         return orig(resID, ...)
                     end
-                end
-            end)
-        end
-
-        local function hookAvatarValid()
-            pcall(function()
                 local CAC = require("GameLua.Mod.Library.GamePlay.Avatar.Component.CharacterAvatarComponent")
                 if not CAC._lava_hooked_check_valid then
                     CAC._lava_hooked_check_valid = true
@@ -14086,76 +14080,6 @@ refreshItems()
             end)
         end
 
-        -- ========== ماتش ==========
-        local function isInLobby()
-            local ok, r = pcall(function()
-                return GameStatus and GameStatus.IsInLobbyOrMainCity and GameStatus.IsInLobbyOrMainCity() == true
-            end)
-            return ok and r == true
-        end
-
-        local function isInRealMatch()
-            local ok, r = pcall(function()
-                return GameStatus and GameStatus.IsInFightingStatus and GameStatus.IsInFightingStatus() == true
-            end)
-            return ok and r == true
-        end
-
-        local function isInGamePlay()
-            if isInLobby() then return false end
-            if isInRealMatch() then return true end
-            local ok, r = pcall(function()
-                local SingleTrainTool = require("GameLua.Mod.SingleTraining.GamePlay.Data.SingleTrainTool")
-                return SingleTrainTool.IsSelfInTraining and SingleTrainTool.IsSelfInTraining()
-            end)
-            if ok and r then return true end
-            local char = getLocalChar()
-            return char and slua.isValid(char) and slua.isValid(char.CharacterAvatarComp2_BP)
-        end
-
-        local function getPlayerController()
-            local ok, GD = pcall(require, "GameLua.GameCore.Data.GameplayData")
-            if ok and GD and GD.GetPlayerController then
-                local pc = GD.GetPlayerController()
-                if pc and slua.isValid(pc) then return pc end
-            end
-            local pc = nil
-            pcall(function()
-                if slua_GameFrontendHUD and slua_GameFrontendHUD.GetPlayerController then
-                    pc = slua_GameFrontendHUD:GetPlayerController()
-                end
-            end)
-            return pc and slua.isValid(pc) and pc or nil
-        end
-
-        function getLocalChar()
-            local ok, GD = pcall(require, "GameLua.GameCore.Data.GameplayData")
-            if ok and GD and GD.GetPlayerCharacter then
-                local char = GD.GetPlayerCharacter()
-                if char and slua.isValid(char) then return char end
-            end
-            local pc = getPlayerController()
-            if pc then
-                local char = nil
-                pcall(function()
-                    if pc.GetPlayerCharacterSafety then char = pc:GetPlayerCharacterSafety() end
-                    if (not char or not slua.isValid(char)) and pc.GetPawn then char = pc:GetPawn() end
-                    if (not char or not slua.isValid(char)) and pc.K2_GetPawn then char = pc:K2_GetPawn() end
-                end)
-                if char and slua.isValid(char) then return char end
-            end
-            return nil
-        end
-
-        local function notify(msg)
-            if not DEBUG or isInMatchOrGame() then return end
-            msg = "[AddOutfit] " .. tostring(msg)
-            log(msg:gsub("^%[AddOutfit%] ", ""))
-            pcall(function()
-                if ShowNotice then ShowNotice(msg, false, 10) end
-            end)
-        end
-
         local function getDesiredOutfit()
             if MATCH_CONFIG.outfitRes and tonumber(MATCH_CONFIG.outfitRes) > 0 then
                 return tonumber(MATCH_CONFIG.outfitRes)
@@ -14164,6 +14088,9 @@ refreshItems()
             if tonumber(cch.outfitRes) and cch.outfitRes > 0 then return cch.outfitRes end
             if tonumber(_G.AddOutfitLastLobbyOutfitRes) and _G.AddOutfitLastLobbyOutfitRes > 0 then
                 return tonumber(_G.AddOutfitLastLobbyOutfitRes)
+            end
+            if tonumber(_G._savedOutfitRes) and _G._savedOutfitRes > 0 then
+                return tonumber(_G._savedOutfitRes)
             end
             return nil
         end
@@ -14202,7 +14129,7 @@ refreshItems()
         end
 
         local function applyItemToMatchAvatar(comp, resID)
-            if not slua.isValid(comp) or not resID or not isInjectedRes(resID) then return false end
+            if not slua.isValid(comp) or not resID or not (tonumber(resID) and tonumber(resID) > 0) then return false end
             resID = tonumber(resID)
             local applied = false
             pcall(function()
