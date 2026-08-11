@@ -4551,28 +4551,64 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                                   scopeFactor = math.max(0.0, 1.0 - (scopePercent / 100.0))
                               end
 
-                              -- 2. Tính hệ số giảm giật (NO_RECOIL_100) độc lập hoàn toàn (giới hạn tối đa 50% để tránh lỗi dame)
+                              -- Hệ số giảm giật theo %  (NO_RECOIL_100 slider, tối đa 50% để không lỗi dame)
                               local recoilPercent = math.min(50, _G.DX_GetVal("NO_RECOIL_100") or 0)
                               local recoilFactor = math.max(0.01, 1.0 - (recoilPercent / 100.0))
-                              
-                              -- Áp dụng giảm giật vào các thông số Recoil
-                              shootWeaponEntity.RecoilKick = (cache.DX_OrigRecoilKick or 0.0) * scopeFactor
-                              shootWeaponEntity.AccessoriesVRecoilFactor = (cache.DX_OrigAccessoriesV or 1.0) * recoilFactor
-                              shootWeaponEntity.AccessoriesHRecoilFactor = (cache.DX_OrigAccessoriesH or 1.0) * recoilFactor
-                              shootWeaponEntity.RecoilKickADS = (cache.DX_OrigRecoilKickADS or 0.20) * scopeFactor
-                              shootWeaponEntity.AnimationKick = (cache.DX_OrigAnimKick or 0.0) * scopeFactor
-                              shootWeaponEntity.ShotCameraShakeScale = (cache.DX_OrigWeaponCamShakeScale or 1.0) * scopeFactor
-                              if shootWeaponEntity.RecoilInfo then
-                                  shootWeaponEntity.RecoilInfo.VerticalRecoilMin = (cache.DX_OrigVRecoilMin or 0.0) * recoilFactor
-                                  shootWeaponEntity.RecoilInfo.VerticalRecoilMax = (cache.DX_OrigVRecoilMax or 0.0) * recoilFactor
-                                  shootWeaponEntity.RecoilInfo.RecoilSpeedVertical = (cache.DX_OrigSpeedV or 0.0) * recoilFactor
-                                  shootWeaponEntity.RecoilInfo.RecoilSpeedHorizontal = (cache.DX_OrigSpeedH or 0.0) * recoilFactor
-                                  shootWeaponEntity.RecoilInfo.VerticalRecoveryMax = (cache.DX_OrigRecoveryMax or 0.0) * recoilFactor
-                                  shootWeaponEntity.RecoilInfo.ShotCameraShakeScale = (cache.DX_OrigShotCamShakeScale or 1.0) * scopeFactor
+
+                              -- ── Giảm giật ngang (Horizontal Recoil) ──────────────────────────────
+                              -- CustomHRecoil: giá trị tùy chỉnh từ slider (lấy ưu tiên cao nhất)
+                              -- LessRecoil   : giá trị cố định 0.3 (~giảm 70%)
+                              local hRecoilFactor = recoilFactor
+                              if _G.DX_GetVal("CustomHRecoil") == 1 then
+                                  local hVal = (_G.DX_GetVal("HRecoil") ~= 0 and _G.DX_GetVal("HRecoil")) or 0.3
+                                  hRecoilFactor = math.min(hVal, hRecoilFactor)
+                              elseif _G.DX_GetVal("LessRecoil") == 1 then
+                                  hRecoilFactor = math.min(0.3, hRecoilFactor)
                               end
-                              shootWeaponEntity.RecoilModifierStand = (cache.DX_OrigModStand or 1.0) * recoilFactor
-                              shootWeaponEntity.RecoilModifierCrouch = (cache.DX_OrigModCrouch or 1.0) * recoilFactor
-                              shootWeaponEntity.RecoilModifierProne = (cache.DX_OrigModProne or 1.0) * recoilFactor
+
+                              -- ── Giảm giật dọc (Vertical Recoil) ─────────────────────────────────
+                              -- CustomVRecoil: giá trị tùy chỉnh từ slider
+                              -- VerticalRecoil: giá trị cố định 0.3
+                              local vRecoilFactor = recoilFactor
+                              if _G.DX_GetVal("CustomVRecoil") == 1 then
+                                  local vVal = (_G.DX_GetVal("VRecoil") ~= 0 and _G.DX_GetVal("VRecoil")) or 0.3
+                                  vRecoilFactor = math.min(vVal, vRecoilFactor)
+                              elseif _G.DX_GetVal("VerticalRecoil") == 1 then
+                                  vRecoilFactor = math.min(0.3, vRecoilFactor)
+                              end
+
+                              -- ── LessShake: triệt tiêu rung súng / rung màn hình ─────────────────
+                              local lessShake = _G.DX_GetVal("LessShake") == 1
+                              local kickFactor = lessShake and 0.0 or scopeFactor
+                              local animFactor = lessShake and 0.0 or scopeFactor
+                              local camFactor  = lessShake and 0.0 or scopeFactor
+
+                              -- ── Tăng độ chụm đạn (Accuracy & Crosshair) ─────────────────────────
+                              if _G.DX_GetVal("Accuracy") == 1 then
+                                  shootWeaponEntity.GameDeviationAccuracy = 1.20
+                              end
+                              if _G.DX_GetVal("Crosshair") == 1 then
+                                  shootWeaponEntity.GameDeviationFactor = 1.20
+                              end
+
+                              -- ── Áp dụng tất cả thông số Recoil ──────────────────────────────────
+                              shootWeaponEntity.RecoilKick = (cache.DX_OrigRecoilKick or 0.0) * kickFactor
+                              shootWeaponEntity.AccessoriesVRecoilFactor = (cache.DX_OrigAccessoriesV or 1.0) * vRecoilFactor
+                              shootWeaponEntity.AccessoriesHRecoilFactor = (cache.DX_OrigAccessoriesH or 1.0) * hRecoilFactor
+                              shootWeaponEntity.RecoilKickADS = (cache.DX_OrigRecoilKickADS or 0.20) * kickFactor
+                              shootWeaponEntity.AnimationKick = (cache.DX_OrigAnimKick or 0.0) * animFactor
+                              shootWeaponEntity.ShotCameraShakeScale = (cache.DX_OrigWeaponCamShakeScale or 1.0) * camFactor
+                              if shootWeaponEntity.RecoilInfo then
+                                  shootWeaponEntity.RecoilInfo.VerticalRecoilMin = (cache.DX_OrigVRecoilMin or 0.0) * vRecoilFactor
+                                  shootWeaponEntity.RecoilInfo.VerticalRecoilMax = (cache.DX_OrigVRecoilMax or 0.0) * vRecoilFactor
+                                  shootWeaponEntity.RecoilInfo.RecoilSpeedVertical = (cache.DX_OrigSpeedV or 0.0) * vRecoilFactor
+                                  shootWeaponEntity.RecoilInfo.RecoilSpeedHorizontal = (cache.DX_OrigSpeedH or 0.0) * hRecoilFactor
+                                  shootWeaponEntity.RecoilInfo.VerticalRecoveryMax = (cache.DX_OrigRecoveryMax or 0.0) * vRecoilFactor
+                                  shootWeaponEntity.RecoilInfo.ShotCameraShakeScale = (cache.DX_OrigShotCamShakeScale or 1.0) * camFactor
+                              end
+                              shootWeaponEntity.RecoilModifierStand = (cache.DX_OrigModStand or 1.0) * vRecoilFactor
+                              shootWeaponEntity.RecoilModifierCrouch = (cache.DX_OrigModCrouch or 1.0) * vRecoilFactor
+                              shootWeaponEntity.RecoilModifierProne = (cache.DX_OrigModProne or 1.0) * vRecoilFactor
                          end
                         
                     end
