@@ -2466,9 +2466,13 @@ do
                 end
             end)
         end
-        local fileName = "AddOutfit_Save.txt"
-        local legacyNames = {}
-        if pid ~= "default" then legacyNames[#legacyNames + 1] = "AddOutfit_Save_" .. pid .. ".txt" end
+        local fileName = "AddOutfit_DXMOD.txt"
+        local legacyNames = { "AddOutfit_Save.txt" }
+        if pid ~= "default" then
+            legacyNames[#legacyNames + 1] = "AddOutfit_DXMOD_" .. pid .. ".txt"
+            legacyNames[#legacyNames + 1] = "AddOutfit_Save_" .. pid .. ".txt"
+        end
+        legacyNames[#legacyNames + 1] = "AddOutfit_DXMOD_default.txt"
         legacyNames[#legacyNames + 1] = "AddOutfit_Save_default.txt"
         local possibleDirs = {
             '../../ShadowTrackerExtra/Saved/Paks/',
