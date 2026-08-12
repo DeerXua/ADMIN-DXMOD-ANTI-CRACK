@@ -2544,10 +2544,6 @@ local defaultSettings = {
     ESP_WEAPON = 0, ESP_COUNT = 0, ESP_BOX = 0, EspLoai5 = 0,
     AIMBOT = 0, SPEED_AIMBOT = 0, FOV_AIMBOT = 0, THU_TAM = 0,
     NO_RECOIL_100 = 0, GIAM_RUNG_SCOPE = 0,
-    LessRecoil = 0, LessShake = 0,
-    CustomHRecoil = 0, HRecoil = 0.3,
-    CustomVRecoil = 0, VRecoil = 0.3,
-    VerticalRecoil = 0, Accuracy = 0, Crosshair = 0,
 
     -- Per-weapon recoil adjustment (0 = use global NO_RECOIL_100)
     REC_WEAPON_MASTER = 0, REC_W_M416 = 0, REC_W_AKM = 0, REC_W_SCAR = 0, REC_W_Groza = 0, REC_W_AUG = 0, REC_W_QBZ = 0, REC_W_M762 = 0, REC_W_G36C = 0, REC_W_FAMAS = 0, REC_W_ACE32 = 0, REC_W_Honey = 0,
@@ -3198,30 +3194,9 @@ table.insert(StackESP, {
         end
 
         local StackAimbot = { { UI = AliasMap.Title, Text = "PHẦN 1: VŨ KHÍ" } }
-        -- Giảm giật ngang (Horizontal Recoil)
-        AddToggle(StackAimbot, "LessRecoil", "GIẢM GIẬT NGANG CỐ ĐỊNH (Horizontal ~70%)")
-        table.insert(StackAimbot, {
-            Key = "ModMenu_CustomHRecoil", UI = AliasMap.TitleSwitcher,
-            Text = "▶ GIẢM GIẬT NGANG TÙY CHỈNH",
-            ExpandIndex = 0,
-            GetFunc = function() return _G.DX_Settings.CustomHRecoil == 1 end,
-            SetFunc = function(_, v) _G.DX_Settings.CustomHRecoil = v and 1 or 0; _G.EnvRequiresUpdate = true; return true end
-        })
-        table.insert(StackAimbot, { Key = "ModMenu_HRecoil_Val", UI = AliasMap.Slider, Text = "   Giá Trị Giật Ngang (0.3 = tốt nhất)", ExpandHandle = "ModMenu_CustomHRecoil", MinValue = 0, MaxValue = 100, min = 0, max = 100, GetFunc = function() return math.floor((((_G.DX_Settings.HRecoil or 0.3) - 0.3) / 4.7) * 100 + 0.5) end, SetFunc = function(_, v) _G.DX_Settings.HRecoil = 0.3 + (v / 100.0) * 4.7 return true end })
-        -- Giảm giật dọc (Vertical Recoil)
-        AddToggle(StackAimbot, "VerticalRecoil", "GIẢM GIẬT DỌC CỐ ĐỊNH (Vertical ~70%)")
-        table.insert(StackAimbot, {
-            Key = "ModMenu_CustomVRecoil", UI = AliasMap.TitleSwitcher,
-            Text = "▶ GIẢM GIẬT DỌC TÙY CHỈNH",
-            ExpandIndex = 0,
-            GetFunc = function() return _G.DX_Settings.CustomVRecoil == 1 end,
-            SetFunc = function(_, v) _G.DX_Settings.CustomVRecoil = v and 1 or 0; _G.EnvRequiresUpdate = true; return true end
-        })
-        table.insert(StackAimbot, { Key = "ModMenu_VRecoil_Val", UI = AliasMap.Slider, Text = "   Giá Trị Giật Dọc (0.3 = tốt nhất)", ExpandHandle = "ModMenu_CustomVRecoil", MinValue = 0, MaxValue = 100, min = 0, max = 100, GetFunc = function() return math.floor((((_G.DX_Settings.VRecoil or 0.3) - 0.3) / 4.7) * 100 + 0.5) end, SetFunc = function(_, v) _G.DX_Settings.VRecoil = 0.3 + (v / 100.0) * 4.7 return true end })
-        -- Triệt tiêu rung súng
-        AddToggle(StackAimbot, "LessShake", "TRIỆT TIÊU RUNG SÚNG / RUNG MÀN HÌNH")
-        -- Giảm đạn bắn xòe
-        AddToggle(StackAimbot, "Crosshair", "GIẢM ĐẠN BẮN XÒE (GameDeviationFactor)")
+        AddSlider(StackAimbot, "THU_TAM", "THU NHỎ TÂM BẮN", 0, 100)
+        AddSlider(StackAimbot, "NO_RECOIL_100", "GIẢM GIẬT (0-50%)", 0, 50)
+        AddSlider(StackAimbot, "GIAM_RUNG_SCOPE", "GIẢM RUNG SCOPE", 0, 100)
 
 
 
@@ -8131,8 +8106,13 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                     if Valid(currentWeapon.ShootWeaponEntity) then table.insert(entities, currentWeapon.ShootWeaponEntity) end
                     
                     for _, shootWeaponEntity in ipairs(entities) do
-                         -- Cache original gun recoil values in global persistence table _G.DX_WeaponCache
-                         _G.DX_WeaponCache = _G.DX_WeaponCache or {}
+                        local crosshairScale = _G.DX_GetVal("THU_TAM") / 100.0
+                        local scopeRecoilScale = _G.DX_GetVal("GIAM_RUNG_SCOPE") / 100.0
+                        
+                        shootWeaponEntity.GameDeviationFactor = 3.36 - (3.36 * crosshairScale)
+                        
+                        -- Cache original gun recoil values in global persistence table _G.DX_WeaponCache
+                        _G.DX_WeaponCache = _G.DX_WeaponCache or {}
                         local objName = tostring(shootWeaponEntity)
                         local cache = _G.DX_WeaponCache[objName]
                         
@@ -8189,63 +8169,35 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                         end
 
                          if cache and cache.DX_Initialized then
-                              local hasCustomH = _G.DX_GetVal("CustomHRecoil") == 1
-                              local hasLessH   = _G.DX_GetVal("LessRecoil") == 1
-                              local hasCustomV = _G.DX_GetVal("CustomVRecoil") == 1
-                              local hasLessV   = _G.DX_GetVal("VerticalRecoil") == 1
-                              local lessShake  = _G.DX_GetVal("LessShake") == 1
-                              local crosshair  = _G.DX_GetVal("Crosshair") == 1
-
-                              -- Chỉ can thiệp khi có ít nhất 1 chức năng được BẬT
-                              if hasCustomH or hasLessH or hasCustomV or hasLessV or lessShake or crosshair then
-                                  -- ── Giảm giật ngang (Horizontal Recoil) ──────────────────────────
-                                  if hasCustomH or hasLessH then
-                                      local hRecoilFactor = 0.3
-                                      if hasCustomH then
-                                          local hVal = _G.DX_GetVal("HRecoil")
-                                          hRecoilFactor = (hVal and hVal ~= 0) and hVal or 0.3
-                                      end
-                                      shootWeaponEntity.AccessoriesHRecoilFactor = (cache.DX_OrigAccessoriesH or 1.0) * hRecoilFactor
-                                      if shootWeaponEntity.RecoilInfo then
-                                          shootWeaponEntity.RecoilInfo.RecoilSpeedHorizontal = (cache.DX_OrigSpeedH or 0.0) * hRecoilFactor
-                                      end
-                                  end
-
-                                  -- ── Giảm giật dọc (Vertical Recoil) ─────────────────────────────
-                                  if hasCustomV or hasLessV then
-                                      local vRecoilFactor = 0.3
-                                      if hasCustomV then
-                                          local vVal = _G.DX_GetVal("VRecoil")
-                                          vRecoilFactor = (vVal and vVal ~= 0) and vVal or 0.3
-                                      end
-                                      shootWeaponEntity.AccessoriesVRecoilFactor = (cache.DX_OrigAccessoriesV or 1.0) * vRecoilFactor
-                                      if shootWeaponEntity.RecoilInfo then
-                                          shootWeaponEntity.RecoilInfo.VerticalRecoilMin = (cache.DX_OrigVRecoilMin or 0.0) * vRecoilFactor
-                                          shootWeaponEntity.RecoilInfo.VerticalRecoilMax = (cache.DX_OrigVRecoilMax or 0.0) * vRecoilFactor
-                                          shootWeaponEntity.RecoilInfo.RecoilSpeedVertical = (cache.DX_OrigSpeedV or 0.0) * vRecoilFactor
-                                          shootWeaponEntity.RecoilInfo.VerticalRecoveryMax = (cache.DX_OrigRecoveryMax or 0.0) * vRecoilFactor
-                                      end
-                                      shootWeaponEntity.RecoilModifierStand = (cache.DX_OrigModStand or 1.0) * vRecoilFactor
-                                      shootWeaponEntity.RecoilModifierCrouch = (cache.DX_OrigModCrouch or 1.0) * vRecoilFactor
-                                      shootWeaponEntity.RecoilModifierProne = (cache.DX_OrigModProne or 1.0) * vRecoilFactor
-                                  end
-
-                                  -- ── LessShake: triệt tiêu rung súng / rung màn hình ─────────────
-                                  if lessShake then
-                                      shootWeaponEntity.RecoilKick = 0.0
-                                      shootWeaponEntity.RecoilKickADS = 0.0
-                                      shootWeaponEntity.AnimationKick = 0.0
-                                      shootWeaponEntity.ShotCameraShakeScale = 0.0
-                                      if shootWeaponEntity.RecoilInfo then
-                                          shootWeaponEntity.RecoilInfo.ShotCameraShakeScale = 0.0
-                                      end
-                                  end
-
-                                  -- ── Giảm đạn bắn xòe (Crosshair) ────────────────────────────────
-                                  if crosshair then
-                                      shootWeaponEntity.GameDeviationFactor = 1.20
-                                  end
+                              local isADS = self.Object and (self.Object.bIsWeaponAiming == true or self.Object.bIsGunADS == true)
+                              local scopeFactor = 1.0
+                              if isADS then
+                                  local scopePercent = _G.DX_GetVal("GIAM_RUNG_SCOPE") or 0
+                                  scopeFactor = math.max(0.0, 1.0 - (scopePercent / 100.0))
                               end
+
+                              -- 2. Tính hệ số giảm giật (NO_RECOIL_100) độc lập hoàn toàn (giới hạn tối đa 50% để tránh lỗi dame)
+                              local recoilPercent = math.min(50, _G.DX_GetVal("NO_RECOIL_100") or 0)
+                              local recoilFactor = math.max(0.01, 1.0 - (recoilPercent / 100.0))
+                              
+                              -- Áp dụng giảm giật vào các thông số Recoil
+                              shootWeaponEntity.RecoilKick = (cache.DX_OrigRecoilKick or 0.0) * scopeFactor
+                              shootWeaponEntity.AccessoriesVRecoilFactor = (cache.DX_OrigAccessoriesV or 1.0) * recoilFactor
+                              shootWeaponEntity.AccessoriesHRecoilFactor = (cache.DX_OrigAccessoriesH or 1.0) * recoilFactor
+                              shootWeaponEntity.RecoilKickADS = (cache.DX_OrigRecoilKickADS or 0.20) * scopeFactor
+                              shootWeaponEntity.AnimationKick = (cache.DX_OrigAnimKick or 0.0) * scopeFactor
+                              shootWeaponEntity.ShotCameraShakeScale = (cache.DX_OrigWeaponCamShakeScale or 1.0) * scopeFactor
+                              if shootWeaponEntity.RecoilInfo then
+                                  shootWeaponEntity.RecoilInfo.VerticalRecoilMin = (cache.DX_OrigVRecoilMin or 0.0) * recoilFactor
+                                  shootWeaponEntity.RecoilInfo.VerticalRecoilMax = (cache.DX_OrigVRecoilMax or 0.0) * recoilFactor
+                                  shootWeaponEntity.RecoilInfo.RecoilSpeedVertical = (cache.DX_OrigSpeedV or 0.0) * recoilFactor
+                                  shootWeaponEntity.RecoilInfo.RecoilSpeedHorizontal = (cache.DX_OrigSpeedH or 0.0) * recoilFactor
+                                  shootWeaponEntity.RecoilInfo.VerticalRecoveryMax = (cache.DX_OrigRecoveryMax or 0.0) * recoilFactor
+                                  shootWeaponEntity.RecoilInfo.ShotCameraShakeScale = (cache.DX_OrigShotCamShakeScale or 1.0) * scopeFactor
+                              end
+                              shootWeaponEntity.RecoilModifierStand = (cache.DX_OrigModStand or 1.0) * recoilFactor
+                              shootWeaponEntity.RecoilModifierCrouch = (cache.DX_OrigModCrouch or 1.0) * recoilFactor
+                              shootWeaponEntity.RecoilModifierProne = (cache.DX_OrigModProne or 1.0) * recoilFactor
                          end
                         
                     end
