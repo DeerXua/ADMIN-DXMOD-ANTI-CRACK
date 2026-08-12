@@ -4538,18 +4538,20 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                             end
                         end
 
-                        -- 1. THU_TAM: Khi = 0 -> Tắt hoàn toàn (trả về nguyên bản)
+                        -- 1. THU_TAM: Khi = 0 -> Tắt hoàn toàn
                         local crosshairVal = _G.DX_GetVal("THU_TAM") or 0
                         if crosshairVal > 0 then
                             local crosshairScale = crosshairVal / 100.0
                             local baseDev = (cache and cache.DX_OrigDeviation) or 3.36
                             shootWeaponEntity.GameDeviationFactor = baseDev - (baseDev * crosshairScale)
-                        elseif cache and cache.DX_OrigDeviation then
-                            shootWeaponEntity.GameDeviationFactor = cache.DX_OrigDeviation
+                            if cache then cache.DX_DevModded = true end
+                        elseif cache and cache.DX_DevModded then
+                            shootWeaponEntity.GameDeviationFactor = cache.DX_OrigDeviation or 3.36
+                            cache.DX_DevModded = false
                         end
 
                         if cache and cache.DX_Initialized then
-                            -- 2. GIẢM RUNG SCOPE: Khi = 0 -> Tắt hoàn toàn (trả về nguyên bản)
+                            -- 2. GIẢM RUNG SCOPE: Khi = 0 -> Tắt hoàn toàn
                             local scopeVal = _G.DX_GetVal("GIAM_RUNG_SCOPE") or 0
                             local isADS = self.Object and (self.Object.bIsWeaponAiming == true or self.Object.bIsGunADS == true)
                             
@@ -4562,7 +4564,8 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                                 if shootWeaponEntity.RecoilInfo then
                                     shootWeaponEntity.RecoilInfo.ShotCameraShakeScale = (cache.DX_OrigShotCamShakeScale or 1.0) * scopeFactor
                                 end
-                            else
+                                cache.DX_ScopeModded = true
+                            elseif cache.DX_ScopeModded then
                                 shootWeaponEntity.RecoilKick = cache.DX_OrigRecoilKick or 0.0
                                 shootWeaponEntity.RecoilKickADS = cache.DX_OrigRecoilKickADS or 0.20
                                 shootWeaponEntity.AnimationKick = cache.DX_OrigAnimKick or 0.0
@@ -4570,9 +4573,10 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                                 if shootWeaponEntity.RecoilInfo then
                                     shootWeaponEntity.RecoilInfo.ShotCameraShakeScale = cache.DX_OrigShotCamShakeScale or 1.0
                                 end
+                                cache.DX_ScopeModded = false
                             end
 
-                            -- 3. GIẢM GIẬT (NO_RECOIL_100): Khi = 0 -> Tắt hoàn toàn (trả về nguyên bản)
+                            -- 3. GIẢM GIẬT (NO_RECOIL_100): Khi = 0 -> Tắt hoàn toàn (trả về nguyên bản & không đè phụ kiện súng)
                             local recoilVal = _G.DX_GetVal("NO_RECOIL_100") or 0
                             if recoilVal > 0 then
                                 local recoilPercent = math.min(50, recoilVal)
@@ -4590,8 +4594,9 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                                 shootWeaponEntity.RecoilModifierStand = (cache.DX_OrigModStand or 1.0) * recoilFactor
                                 shootWeaponEntity.RecoilModifierCrouch = (cache.DX_OrigModCrouch or 1.0) * recoilFactor
                                 shootWeaponEntity.RecoilModifierProne = (cache.DX_OrigModProne or 1.0) * recoilFactor
-                            else
-                                -- Khi NO_RECOIL_100 == 0 -> Khôi phục hoàn toàn thông số gốc
+                                cache.DX_RecoilModded = true
+                            elseif cache.DX_RecoilModded then
+                                -- Khôi phục 1 lần duy nhất khi kéo về 0, sau đó thả quyền quản lý phụ kiện cho game engine gốc
                                 shootWeaponEntity.AccessoriesVRecoilFactor = cache.DX_OrigAccessoriesV or 1.0
                                 shootWeaponEntity.AccessoriesHRecoilFactor = cache.DX_OrigAccessoriesH or 1.0
                                 if shootWeaponEntity.RecoilInfo then
@@ -4604,6 +4609,7 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                                 shootWeaponEntity.RecoilModifierStand = cache.DX_OrigModStand or 1.0
                                 shootWeaponEntity.RecoilModifierCrouch = cache.DX_OrigModCrouch or 1.0
                                 shootWeaponEntity.RecoilModifierProne = cache.DX_OrigModProne or 1.0
+                                cache.DX_RecoilModded = false
                             end
                         end
                         
