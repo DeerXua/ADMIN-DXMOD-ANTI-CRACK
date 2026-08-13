@@ -14351,7 +14351,8 @@ refreshItems()
             end)
         end
 
-        local _aoAccSlotBySt = {}
+        _G.AddOutfitAoAccSlotBySt = _G.AddOutfitAoAccSlotBySt or {}
+        local _aoAccSlotBySt = _G.AddOutfitAoAccSlotBySt
         local _aoAccSlotTemplate = {}
         local function _aoAccClone(t)
             local c = {}
@@ -14395,7 +14396,7 @@ refreshItems()
                             matched = true
                         end
                     end
-                    if matched then
+if matched then
                         if targetSlot == 0 and targetSt and slotID then
                             _aoAccSlotBySt[targetSt] = slotID
                             if not _aoAccSlotTemplate[slotID] then
@@ -14409,13 +14410,14 @@ refreshItems()
                                 AvatarSynData.FakeItemID = 0
                             end
                             sd:Set(Index, AvatarSynData)
-                            ensureItemDownload(resID)
+ensureItemDownload(resID)
                             done = true
                         end
                     end
                 end
                 if not done and targetSlot == 0 and targetSt and _aoAccSlotBySt[targetSt] then
                     local slotID = _aoAccSlotBySt[targetSt]
+                    local created = false
                     pcall(function()
                         local entry = _aoAccSlotTemplate[slotID] and _aoAccClone(_aoAccSlotTemplate[slotID]) or { SlotID = slotID }
                         entry.SlotID = slotID
@@ -14426,9 +14428,22 @@ refreshItems()
                         if not okSet then
                             pcall(function() sd[newIdx] = entry end)
                         end
-                        report("accslot create: res=" .. tostring(resID) .. " st=" .. tostring(targetSt) .. " slot=" .. tostring(slotID))
-                        ensureItemDownload(resID)
-                        done = true
+                        local sd2 = getCompSlotSyncData(comp)
+                        if sd2 then
+                            for _, AvatarSynData in pairs(sd2) do
+                                if tonumber(AvatarSynData.ItemID or AvatarSynData.ItemId or 0) == resID then
+                                    created = true
+                                    break
+                                end
+                            end
+                        end
+                        if created then
+                            report("accslot create OK: res=" .. tostring(resID) .. " st=" .. tostring(targetSt) .. " slot=" .. tostring(slotID))
+                            ensureItemDownload(resID)
+                            done = true
+                        else
+                            report("accslot create FAIL: res=" .. tostring(resID) .. " st=" .. tostring(targetSt) .. " slot=" .. tostring(slotID))
+                        end
                     end)
                 end
             end)
