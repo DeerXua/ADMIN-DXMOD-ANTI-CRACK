@@ -14312,15 +14312,35 @@ refreshItems()
         end
 
         -- ===== PORT từ VIP v2: ghi thẳng SlotSyncData (bypass CheckItemValid/GetBPIDByResID) =====
+        local function getCompSlotSyncData(comp)
+            if not slua.isValid(comp) then return nil end
+            local ok, nd = pcall(function() return slua.IndexReference(comp, "NetAvatarData") end)
+            if not (ok and nd) then return nil end
+            local ok2, sd = pcall(function() return slua.IndexReference(nd, "SlotSyncData") end)
+            if not (ok2 and sd) then return nil end
+            return sd
+        end
+
+        local function ensureItemDownload(resID)
+            pcall(function()
+                resID = tonumber(resID)
+                if not resID or resID <= 0 then return end
+                local pm = require("client.slua.logic.download.puffer.puffer_manager")
+                local pc = require("client.slua.logic.download.puffer_const")
+                if not (pm and pc and pm.GetState and pm.Download and pc.ENUM_DownloadType and pc.ENUM_DownloadState) then return end
+                if pm.GetState(pc.ENUM_DownloadType.ODPTD, { resID }) ~= pc.ENUM_DownloadState.Done then
+                    pm.Download(pc.ENUM_DownloadType.ODPTD, { resID })
+                end
+            end)
+        end
+
         local function applyClothSlotSync(comp, resID)
             if not slua.isValid(comp) then return false end
             resID = tonumber(resID)
             if not resID or resID <= 0 then return false end
             local done = false
             pcall(function()
-                local nd = comp.NetAvatarData
-                if not nd then return end
-                local sd = nd.SlotSyncData
+                local sd = getCompSlotSyncData(comp)
                 if not sd then return end
                 local itemCfg = cfg(resID)
                 local targetSt = subType(itemCfg)
@@ -14332,41 +14352,28 @@ refreshItems()
                 elseif targetSt == _K.ST_UNDER_T then targetSlot = 5
                 elseif targetSt == _K.ST_UNDER_P then targetSlot = 6
                 end
-                local function slotMatch(entry)
-                    if not entry or type(entry) ~= "table" then return false end
-                    local sID = tonumber(entry.SlotID)
-                    if sID and targetSlot > 0 and sID == targetSlot then return true end
-                    local cur = tonumber(entry.ItemID or entry.ItemId or 0)
-                    if cur and cur > 0 then
-                        local curSt = subType(cfg(cur))
-                        if curSt and targetSt and curSt == targetSt then return true end
-                    end
-                    return false
-                end
-                local function writeEntry(entry)
-                    if not entry then return false end
-                    local cur = tonumber(entry.ItemID or entry.ItemId or 0)
-                    if cur == resID then return true end
-                    entry.ItemID = resID
-                    if type(entry) == "table" then entry.ItemId = resID end
-                    if entry.FakeItemID and tonumber(entry.FakeItemID) > 0 then entry.FakeItemID = 0 end
-                    return true
-                end
-                if type(sd) == "table" then
-                    for _, entry in pairs(sd) do
-                        if slotMatch(entry) then
-                            if writeEntry(entry) then done = true end
+                for Index, AvatarSynData in pairs(sd) do
+                    local slotID = tonumber(AvatarSynData.SlotID)
+                    local matched = false
+                    if slotID and targetSlot > 0 and slotID == targetSlot then
+                        matched = true
+                    else
+                        local cur = tonumber(AvatarSynData.ItemID or AvatarSynData.ItemId or 0)
+                        if cur and cur > 0 then
+                            local curSt = subType(cfg(cur))
+                            if curSt and targetSt and curSt == targetSt then matched = true end
                         end
                     end
-                elseif sd.Num and sd.Get and sd.Set then
-                    local n = tonumber(sd:Num()) or 0
-                    for i = 0, n - 1 do
-                        local entry = sd:Get(i)
-                        if slotMatch(entry) then
-                            if writeEntry(entry) then
-                                sd:Set(i, entry)
-                                done = true
+                    if matched then
+                        local cur = tonumber(AvatarSynData.ItemID or AvatarSynData.ItemId or 0)
+                        if cur ~= resID then
+                            AvatarSynData.ItemID = resID
+                            if AvatarSynData.FakeItemID and tonumber(AvatarSynData.FakeItemID) > 0 then
+                                AvatarSynData.FakeItemID = 0
                             end
+                            sd:Set(Index, AvatarSynData)
+                            ensureItemDownload(resID)
+                            done = true
                         end
                     end
                 end
@@ -14383,20 +14390,12 @@ refreshItems()
             if not resID then return false end
             local has = false
             pcall(function()
-                local nd = comp.NetAvatarData
-                local sd = nd and nd.SlotSyncData
-                local function checkEntry(entry)
-                    if not entry or type(entry) ~= "table" then return false end
-                    return tonumber(entry.ItemID or entry.ItemId or 0) == resID
-                end
-                if type(sd) == "table" then
-                    for _, entry in pairs(sd) do
-                        if checkEntry(entry) then has = true break end
-                    end
-                elseif sd and sd.Num and sd.Get then
-                    local n = tonumber(sd:Num()) or 0
-                    for i = 0, n - 1 do
-                        if checkEntry(sd:Get(i)) then has = true break end
+                local sd = getCompSlotSyncData(comp)
+                if not sd then return end
+                for _, AvatarSynData in pairs(sd) do
+                    if tonumber(AvatarSynData.ItemID or AvatarSynData.ItemId or 0) == resID then
+                        has = true
+                        return
                     end
                 end
             end)
@@ -14405,22 +14404,16 @@ refreshItems()
 
         local function reportSlotSync(comp)
             pcall(function()
-                local nd = comp.NetAvatarData
-                local sd = nd and nd.SlotSyncData
+                local sd = getCompSlotSyncData(comp)
                 if not sd then report("slotsync: nil") return end
                 local parts = {}
-                local function fmtEntry(entry)
-                    if not entry or type(entry) ~= "table" then return "?" end
-                    return "S" .. tostring(entry.SlotID or 0) .. "=" .. tostring(entry.ItemID or entry.ItemId or 0)
-                end
-                if type(sd) == "table" then
-                    for _, entry in pairs(sd) do parts[#parts + 1] = fmtEntry(entry) end
-                elseif sd.Num and sd.Get then
-                    local n = tonumber(sd:Num()) or 0
-                    for i = 0, n - 1 do parts[#parts + 1] = fmtEntry(sd:Get(i)) end
+                local seen = 0
+                for Index, AvatarSynData in pairs(sd) do
+                    seen = seen + 1
+                    parts[#parts + 1] = "S" .. tostring(AvatarSynData.SlotID or 0) .. "=" .. tostring(AvatarSynData.ItemID or AvatarSynData.ItemId or 0)
                 end
                 table.sort(parts)
-                report("slotsync dump: {" .. table.concat(parts, ",") .. "}")
+                report("slotsync dump(" .. tostring(seen) .. "): {" .. table.concat(parts, ",") .. "}")
             end)
         end
 
@@ -14476,32 +14469,25 @@ refreshItems()
             if not slua.isValid(comp) then return false end
             local orig = false
             pcall(function()
-                local nd = comp.NetAvatarData
-                local sd = nd and nd.SlotSyncData
-                local function checkItemID(id)
-                    id = tonumber(id or 0)
-                    if id <= 0 then return end
-                    if isInjectedRes(id) then return end
-                    local st = subType(cfg(id))
-                    if isBodyClothSubType(st) or st == _K.ST_TOP or st == _K.ST_PANTS or st == _K.ST_SHOES then
-                        orig = true
+                local sd = getCompSlotSyncData(comp)
+                if not sd then
+                    if comp.GetEquippedItemDefineID3 then
+                        local EAvatarSlotType = import("EAvatarSlotType")
+                        local def = comp:GetEquippedItemDefineID3(EAvatarSlotType.EAvatarSlotType_ClothesEquipemtSlot)
+                        local id = def and tonumber(def.TypeSpecificID or def.ItemID) or 0
+                        if id > 0 and not isInjectedRes(id) then orig = true end
                     end
+                    return
                 end
-                if type(sd) == "table" then
-                    for _, entry in pairs(sd) do
-                        if entry and type(entry) == "table" then checkItemID(entry.ItemID or entry.ItemId) end
+                for _, AvatarSynData in pairs(sd) do
+                    local id = tonumber(AvatarSynData.ItemID or AvatarSynData.ItemId or 0)
+                    if id > 0 and not isInjectedRes(id) then
+                        local st = subType(cfg(id))
+                        if isBodyClothSubType(st) or st == _K.ST_TOP or st == _K.ST_PANTS or st == _K.ST_SHOES then
+                            orig = true
+                            return
+                        end
                     end
-                elseif sd and sd.Num and sd.Get then
-                    local n = tonumber(sd:Num()) or 0
-                    for i = 0, n - 1 do
-                        local entry = sd:Get(i)
-                        if entry and type(entry) == "table" then checkItemID(entry.ItemID or entry.ItemId) end
-                    end
-                elseif comp.GetEquippedItemDefineID3 then
-                    local EAvatarSlotType = import("EAvatarSlotType")
-                    local def = comp:GetEquippedItemDefineID3(EAvatarSlotType.EAvatarSlotType_ClothesEquipemtSlot)
-                    local id = def and tonumber(def.TypeSpecificID or def.ItemID) or 0
-                    if id > 0 and not isInjectedRes(id) then orig = true end
                 end
             end)
             return orig
