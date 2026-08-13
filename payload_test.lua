@@ -10062,6 +10062,12 @@ do
                         lines[#lines + 1] = "accsub_" .. tostring(resID) .. "=" .. tostring(st)
                     end
                 end
+                for resID, slotID in pairs(_G.AddOutfitAoAccSlotByRes or {}) do
+                    slotID = tonumber(slotID)
+                    if slotID and slotID > 0 then
+                        lines[#lines + 1] = "accslotres_" .. tostring(resID) .. "=" .. tostring(slotID)
+                    end
+                end
             end)
             pcall(function()
                 if DataMgr and DataMgr.MotionSlotList then
@@ -10374,6 +10380,13 @@ do
                         if resID and st and st > 0 then
                             _G.AddOutfitAoAccSubType = _G.AddOutfitAoAccSubType or {}
                             _G.AddOutfitAoAccSubType[resID] = st
+                        end
+                    elseif key:match("^accslotres_(%d+)$") then
+                        local resID = tonumber(key:match("^accslotres_(%d+)$"))
+                        local slotID = tonumber(val)
+                        if resID and slotID and slotID > 0 then
+                            _G.AddOutfitAoAccSlotByRes = _G.AddOutfitAoAccSlotByRes or {}
+                            _G.AddOutfitAoAccSlotByRes[resID] = slotID
                         end
                     elseif key:match("^vehicle_(%d+)$") then
                         local subType = tonumber(key:match("^vehicle_(%d+)$"))
@@ -11742,7 +11755,10 @@ do
                 local removed = 0
                 local now = 0
                 pcall(function() now = os.time() end)
-                if now <= 0 then pcall(function() now = os.clock() end) end
+                if now <= 0 then
+                    report("weaponCache prune skip: os.time unavailable")
+                    return
+                end
                 for wid, w in pairs(cch.weapons) do
                     if w and not keep[wid] and not w.fromFile and not (w.insID and isInjectedIns(w.insID)) then
                         w._aoLastSeen = w._aoLastSeen or 0
@@ -14412,6 +14428,7 @@ refreshItems()
 
         _G.AddOutfitAoAccSlotBySt = _G.AddOutfitAoAccSlotBySt or {}
         _G.AddOutfitAoAccSubType = _G.AddOutfitAoAccSubType or {}
+        _G.AddOutfitAoAccSlotByRes = _G.AddOutfitAoAccSlotByRes or {}
         local _aoAccSlotBySt = _G.AddOutfitAoAccSlotBySt
         local _aoAccSlotTemplate = {}
         local function _aoAccClone(t)
@@ -14452,6 +14469,10 @@ refreshItems()
                         matched = true
                     else
                         local cur = tonumber(AvatarSynData.ItemID or AvatarSynData.ItemId or 0)
+                        if targetSlot == 0 and cur == resID and slotID then
+                            _G.AddOutfitAoAccSlotByRes = _G.AddOutfitAoAccSlotByRes or {}
+                            _G.AddOutfitAoAccSlotByRes[resID] = slotID
+                        end
                         if cur and cur > 0 then
                             local curSt = subType(cfg(cur))
                             if curSt and targetSt and curSt == targetSt then matched = true end
@@ -14464,6 +14485,8 @@ if matched then
                             _aoAccSlotBySt[targetSt] = slotID
                             _G.AddOutfitAoAccSubType = _G.AddOutfitAoAccSubType or {}
                             _G.AddOutfitAoAccSubType[resID] = targetSt
+                            _G.AddOutfitAoAccSlotByRes = _G.AddOutfitAoAccSlotByRes or {}
+                            _G.AddOutfitAoAccSlotByRes[resID] = slotID
                             if not _aoAccSlotTemplate[slotID] then
                                 _aoAccSlotTemplate[slotID] = _aoAccClone(AvatarSynData)
                             end
@@ -14480,36 +14503,44 @@ ensureItemDownload(resID)
                         end
                     end
                 end
-                if not done and targetSlot == 0 and targetSt and _aoAccSlotBySt[targetSt] then
-                    local slotID = _aoAccSlotBySt[targetSt]
-                    local created = false
-                    pcall(function()
-                        local entry = _aoAccSlotTemplate[slotID] and _aoAccClone(_aoAccSlotTemplate[slotID]) or { SlotID = slotID }
-                        entry.SlotID = slotID
-                        entry.ItemID = resID
-                        if entry.FakeItemID then entry.FakeItemID = 0 end
-                        local newIdx = maxIdx + 1
-                        local okSet = pcall(function() sd:Set(newIdx, entry) end)
-                        if not okSet then
-                            pcall(function() sd[newIdx] = entry end)
-                        end
-                        local sd2 = getCompSlotSyncData(comp)
-                        if sd2 then
-                            for _, AvatarSynData in pairs(sd2) do
-                                if tonumber(AvatarSynData.ItemID or AvatarSynData.ItemId or 0) == resID then
-                                    created = true
-                                    break
+if not done and targetSlot == 0 then
+                    local slotID = targetSt and _aoAccSlotBySt[targetSt]
+                    if not slotID and _G.AddOutfitAoAccSlotByRes and _G.AddOutfitAoAccSlotByRes[resID] then
+                        slotID = _G.AddOutfitAoAccSlotByRes[resID]
+                    end
+                    if slotID then
+                        local created = false
+                        pcall(function()
+                            local entry = _aoAccSlotTemplate[slotID] and _aoAccClone(_aoAccSlotTemplate[slotID]) or { SlotID = slotID }
+                            entry.SlotID = slotID
+                            entry.ItemID = resID
+                            if entry.FakeItemID then entry.FakeItemID = 0 end
+                            local newIdx = maxIdx + 1
+                            local okSet = pcall(function() sd:Set(newIdx, entry) end)
+                            if not okSet then
+                                pcall(function() sd[newIdx] = entry end)
+                            end
+                            local sd2 = getCompSlotSyncData(comp)
+                            if sd2 then
+                                for _, AvatarSynData in pairs(sd2) do
+                                    if tonumber(AvatarSynData.ItemID or AvatarSynData.ItemId or 0) == resID then
+                                        created = true
+                                        break
+                                    end
                                 end
                             end
-                        end
-                        if created then
-                            report("accslot create OK: res=" .. tostring(resID) .. " st=" .. tostring(targetSt) .. " slot=" .. tostring(slotID))
-                            ensureItemDownload(resID)
-                            done = true
-                        else
-                            report("accslot create FAIL: res=" .. tostring(resID) .. " st=" .. tostring(targetSt) .. " slot=" .. tostring(slotID))
-                        end
-                    end)
+                            if created then
+                                _G.AddOutfitAoAccSlotByRes = _G.AddOutfitAoAccSlotByRes or {}
+                                _G.AddOutfitAoAccSlotByRes[resID] = slotID
+                                report("accslot create OK: res=" .. tostring(resID) .. " st=" .. tostring(targetSt or 0) .. " slot=" .. tostring(slotID))
+                                ensureItemDownload(resID)
+                                done = true
+                                pcall(_AutoSaveOutfit)
+                            else
+                                report("accslot create FAIL: res=" .. tostring(resID) .. " st=" .. tostring(targetSt or 0) .. " slot=" .. tostring(slotID))
+                            end
+                        end)
+                    end
                 end
             end)
             if done then
