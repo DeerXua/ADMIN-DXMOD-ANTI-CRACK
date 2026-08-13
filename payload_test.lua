@@ -10417,7 +10417,10 @@ do
                     elseif k == "gliderIns" then cch.equip.gliderIns = v
                     elseif type(k) == "string" and k:match("^weapon_(.+)$") then
                         local wid = tonumber(k:match("^weapon_(.+)$"))
-                        if wid then cch.weapons[wid] = v end
+                        if wid then
+                            v.fromFile = true
+                            cch.weapons[wid] = v
+                        end
                     end
                 end
             end
@@ -11566,6 +11569,7 @@ do
             if resID == weaponID and not isInjectedRes(resID) then return end
             local cch = cache()
             cch.weapons[weaponID] = { resID = resID, insID = insID or 0 }
+            pcall(function() cch.weapons[weaponID]._aoLastSeen = os.clock() end)
             _G.AddOutfitLastAppliedSkin = {}
             _S.matchApplied = false
             invalidateSocialWearCache()
@@ -11645,6 +11649,7 @@ do
             if GameStatus and GameStatus.IsInLobbyOrMainCity
                 and not GameStatus.IsInLobbyOrMainCity() then return end  -- freeze cache in match
             local cch = cache()
+            local keep = {}
             pcall(function()
                 local fbd = require("client.slua.logic.wardrobe.fashionbag.fashionbag_data")
                 local bag = fbd.GetCurrentFashionBag and fbd:GetCurrentFashionBag()
@@ -11669,6 +11674,7 @@ do
                     end
                     if bag.weapon_skin_list then
                         for weaponID, entry in pairs(bag.weapon_skin_list) do
+                            keep[tonumber(weaponID)] = true
                             cacheWeaponSkinFromIns(weaponID, entry and (entry.skin_id or entry.skinId))
                         end
                     end
@@ -11678,6 +11684,7 @@ do
                 local Arm = require("client.logic.armory.logic_armory")
                 if Arm.rsp_list and Arm.rsp_list.install_list then
                     for weaponID, entry in pairs(Arm.rsp_list.install_list) do
+                        keep[tonumber(weaponID)] = true
                         cacheWeaponSkinFromIns(weaponID, entry and entry.skin_id)
                     end
                 end
@@ -11698,6 +11705,26 @@ do
                     if helmRid and isInjectedRes(helmRid) then cch.equip.helmet = helmRid end
                     local armorRid = ridFromIns(DataMgr.equipmentSkinInsIDTable[506])
                     if armorRid and isInjectedRes(armorRid) then cch.equip.armor = armorRid end
+                end
+            end)
+            pcall(function()
+                local removed = 0
+                local now = 0
+                pcall(function() now = os.clock() end)
+                for wid, w in pairs(cch.weapons) do
+                    if w and not keep[wid] then
+                        w._aoLastSeen = w._aoLastSeen or 0
+                        if now - w._aoLastSeen > 180 then
+                            cch.weapons[wid] = nil
+                            removed = removed + 1
+                        end
+                    end
+                end
+                if removed > 0 then
+                    local n = 0
+                    for _ in pairs(cch.weapons or {}) do n = n + 1 end
+                    _aoReport("weaponCache prune: removed=" .. removed .. " remaining=" .. n)
+                    pcall(_AutoSaveOutfit)
                 end
             end)
         end
