@@ -14351,6 +14351,16 @@ refreshItems()
             end)
         end
 
+        local _aoAccSlotBySt = {}
+        local _aoAccSlotTemplate = {}
+        local function _aoAccClone(t)
+            local c = {}
+            for k, v in pairs(t) do
+                if type(v) == "table" then c[k] = _aoAccClone(v) else c[k] = v end
+            end
+            return c
+        end
+
         local function applyClothSlotSync(comp, resID)
             if not slua.isValid(comp) then return false end
             resID = tonumber(resID)
@@ -14369,7 +14379,9 @@ refreshItems()
                 elseif targetSt == _K.ST_UNDER_T then targetSlot = 5
                 elseif targetSt == _K.ST_UNDER_P then targetSlot = 6
                 end
+                local maxIdx = 0
                 for Index, AvatarSynData in pairs(sd) do
+                    if type(Index) == "number" and Index > maxIdx then maxIdx = Index end
                     local slotID = tonumber(AvatarSynData.SlotID)
                     local matched = false
                     if slotID and targetSlot > 0 and slotID == targetSlot then
@@ -14379,9 +14391,17 @@ refreshItems()
                         if cur and cur > 0 then
                             local curSt = subType(cfg(cur))
                             if curSt and targetSt and curSt == targetSt then matched = true end
+                        elseif targetSlot == 0 and targetSt and _aoAccSlotBySt[targetSt] and slotID == _aoAccSlotBySt[targetSt] then
+                            matched = true
                         end
                     end
                     if matched then
+                        if targetSlot == 0 and targetSt and slotID then
+                            _aoAccSlotBySt[targetSt] = slotID
+                            if not _aoAccSlotTemplate[slotID] then
+                                _aoAccSlotTemplate[slotID] = _aoAccClone(AvatarSynData)
+                            end
+                        end
                         local cur = tonumber(AvatarSynData.ItemID or AvatarSynData.ItemId or 0)
                         if cur ~= resID then
                             AvatarSynData.ItemID = resID
@@ -14393,6 +14413,23 @@ refreshItems()
                             done = true
                         end
                     end
+                end
+                if not done and targetSlot == 0 and targetSt and _aoAccSlotBySt[targetSt] then
+                    local slotID = _aoAccSlotBySt[targetSt]
+                    pcall(function()
+                        local entry = _aoAccSlotTemplate[slotID] and _aoAccClone(_aoAccSlotTemplate[slotID]) or { SlotID = slotID }
+                        entry.SlotID = slotID
+                        entry.ItemID = resID
+                        if entry.FakeItemID then entry.FakeItemID = 0 end
+                        local newIdx = maxIdx + 1
+                        local okSet = pcall(function() sd:Set(newIdx, entry) end)
+                        if not okSet then
+                            pcall(function() sd[newIdx] = entry end)
+                        end
+                        report("accslot create: res=" .. tostring(resID) .. " st=" .. tostring(targetSt) .. " slot=" .. tostring(slotID))
+                        ensureItemDownload(resID)
+                        done = true
+                    end)
                 end
             end)
             if done then
