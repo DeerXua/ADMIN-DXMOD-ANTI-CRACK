@@ -9976,6 +9976,9 @@ do
     end
 
         local _AO_INS_BASE = 2000000000
+        local function _aoRReady()
+            return _G.AddOutfit_R ~= nil and next(_G.AddOutfit_R) ~= nil
+        end
         local function _aoIsInjIns(ins)
             ins = tonumber(ins)
             if not ins or ins <= 0 then return false end
@@ -10023,7 +10026,7 @@ do
             if cch.outfitIns and _aoIsInjIns(cch.outfitIns) then lines[#lines + 1] = "outfitIns=" .. tostring(cch.outfitIns) end
             local clothIds = {}
             for resID in pairs(cch.clothes or {}) do
-                if _aoIsInjRes(resID) then clothIds[#clothIds + 1] = tostring(resID) end
+                if _aoRReady() or _aoIsInjRes(resID) then clothIds[#clothIds + 1] = tostring(resID) end
             end
             if #clothIds > 0 then
                 lines[#lines + 1] = "clothes=" .. table.concat(clothIds, ",")
@@ -10384,7 +10387,7 @@ do
             cch.equip = cch.equip or {}
             cch.weapons = cch.weapons or {}
 
-            if _G._savedOutfitRes and _aoIsInjRes(_G._savedOutfitRes) then
+            if _G._savedOutfitRes and tonumber(_G._savedOutfitRes) > 0 then
                 cch.outfitRes = _G._savedOutfitRes
                 if _G._savedOutfitIns and _aoIsInjIns(_G._savedOutfitIns) then
                     cch.outfitIns = _G._savedOutfitIns
@@ -10392,9 +10395,13 @@ do
             end
             if not _aoCacheHasInjectedCloth() and _G._savedOutfitClothes then
                 for resID in pairs(_G._savedOutfitClothes) do
-                    if _aoIsInjRes(resID) then cch.clothes[resID] = true end
+                    resID = tonumber(resID)
+                    if resID and resID > 0 then cch.clothes[resID] = true end
                 end
             end
+            local _aoLoadedN = 0
+            for _ in pairs(cch.clothes or {}) do _aoLoadedN = _aoLoadedN + 1 end
+            _aoReport("loadSaved: outfit=" .. tostring(cch.outfitRes or 0) .. " clothes=" .. tostring(_aoLoadedN))
 
             if _G._savedOutfitEquip then
                 for k, v in pairs(_G._savedOutfitEquip) do
@@ -13052,7 +13059,8 @@ refreshItems()
             local cch = cache()
             if not _aoCacheHasInjectedCloth() and _G._savedOutfitClothes then
                 for resID in pairs(_G._savedOutfitClothes) do
-                    if isInjectedRes(resID) then
+                    resID = tonumber(resID)
+                    if resID and resID > 0 then
                         local st = subType(cfg(resID))
                         if st then
                             for oldRes in pairs(cch.clothes) do
@@ -13063,7 +13071,7 @@ refreshItems()
                     end
                 end
             end
-            if not _aoCacheHasInjectedCloth() and _G._savedOutfitRes and isInjectedRes(_G._savedOutfitRes)
+            if not _aoCacheHasInjectedCloth() and _G._savedOutfitRes
                 and (not cch.outfitRes or cch.outfitRes <= 0) then
                 cch.outfitRes = _G._savedOutfitRes
                 if _G._savedOutfitIns and isInjectedIns(_G._savedOutfitIns) then
