@@ -10001,6 +10001,15 @@ do
             return kept
         end
 
+        local function _aoCacheHasInjectedCloth()
+            local cch = _G.AddOutfitEquippedCache
+            if not cch or not cch.clothes then return false end
+            for resID in pairs(cch.clothes) do
+                if _aoIsInjRes(resID) then return true end
+            end
+            return false
+        end
+
         local function _saveEquippedCache()
             if _G.DX_GetVal("UNLOCK_SKIN_ALL") ~= 1 then return false end
             local wrote = false
@@ -10381,7 +10390,7 @@ do
                     cch.outfitIns = _G._savedOutfitIns
                 end
             end
-            if not _G._addOutfitPersistLoaded and _G._savedOutfitClothes then
+            if not _aoCacheHasInjectedCloth() and _G._savedOutfitClothes then
                 for resID in pairs(_G._savedOutfitClothes) do
                     if _aoIsInjRes(resID) then cch.clothes[resID] = true end
                 end
@@ -13037,11 +13046,11 @@ refreshItems()
             restorePersistedHallTheme()
             syncMatchConfigFromCache()
 
-            if not _G._addOutfitPersistLoaded then
+            if not _aoCacheHasInjectedCloth() then
                 snapshotLobbyWear()
             end
             local cch = cache()
-            if not _G._addOutfitPersistLoaded and _G._savedOutfitClothes then
+            if not _aoCacheHasInjectedCloth() and _G._savedOutfitClothes then
                 for resID in pairs(_G._savedOutfitClothes) do
                     if isInjectedRes(resID) then
                         local st = subType(cfg(resID))
@@ -13054,7 +13063,7 @@ refreshItems()
                     end
                 end
             end
-            if not _G._addOutfitPersistLoaded and _G._savedOutfitRes and isInjectedRes(_G._savedOutfitRes)
+            if not _aoCacheHasInjectedCloth() and _G._savedOutfitRes and isInjectedRes(_G._savedOutfitRes)
                 and (not cch.outfitRes or cch.outfitRes <= 0) then
                 cch.outfitRes = _G._savedOutfitRes
                 if _G._savedOutfitIns and isInjectedIns(_G._savedOutfitIns) then
@@ -13069,7 +13078,7 @@ refreshItems()
                 later(applyStep * 0.12, fn)
             end
 
-            if not _G._addOutfitPersistLoaded and _G._savedRoleWearList and #_G._savedRoleWearList > 0 then
+            if not _aoCacheHasInjectedCloth() and _G._savedRoleWearList and #_G._savedRoleWearList > 0 then
                 for _, insID in ipairs(_G._savedRoleWearList) do
                     local id = insID
                     scheduleApply(function() reapplyInjectedIns(id) end)
