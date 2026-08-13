@@ -10050,6 +10050,20 @@ do
                 end
             end
             pcall(function()
+                for st, slotID in pairs(_G.AddOutfitAoAccSlotBySt or {}) do
+                    slotID = tonumber(slotID)
+                    if slotID and slotID > 0 then
+                        lines[#lines + 1] = "accslot_" .. tostring(st) .. "=" .. tostring(slotID)
+                    end
+                end
+                for resID, st in pairs(_G.AddOutfitAoAccSubType or {}) do
+                    st = tonumber(st)
+                    if st and st > 0 then
+                        lines[#lines + 1] = "accsub_" .. tostring(resID) .. "=" .. tostring(st)
+                    end
+                end
+            end)
+            pcall(function()
                 if DataMgr and DataMgr.MotionSlotList then
                     local kept = _aoKeepList(DataMgr.MotionSlotList)
                     if #kept > 0 then lines[#lines + 1] = "motion=" .. table.concat(kept, ",") end
@@ -10346,6 +10360,20 @@ do
                             if wr and wr > 0 and wr ~= wid then
                                 _G._savedOutfitEquip["weapon_" .. wid] = { resID = wr, insID = tonumber(insID) or 0 }
                             end
+                        end
+                    elseif key:match("^accslot_(%d+)$") then
+                        local st = tonumber(key:match("^accslot_(%d+)$"))
+                        local slotID = tonumber(val)
+                        if st and slotID and slotID > 0 then
+                            _G.AddOutfitAoAccSlotBySt = _G.AddOutfitAoAccSlotBySt or {}
+                            _G.AddOutfitAoAccSlotBySt[st] = slotID
+                        end
+                    elseif key:match("^accsub_(%d+)$") then
+                        local resID = tonumber(key:match("^accsub_(%d+)$"))
+                        local st = tonumber(val)
+                        if resID and st and st > 0 then
+                            _G.AddOutfitAoAccSubType = _G.AddOutfitAoAccSubType or {}
+                            _G.AddOutfitAoAccSubType[resID] = st
                         end
                     elseif key:match("^vehicle_(%d+)$") then
                         local subType = tonumber(key:match("^vehicle_(%d+)$"))
@@ -11569,7 +11597,10 @@ do
             if resID == weaponID and not isInjectedRes(resID) then return end
             local cch = cache()
             cch.weapons[weaponID] = { resID = resID, insID = insID or 0 }
-            pcall(function() cch.weapons[weaponID]._aoLastSeen = os.clock() end)
+            local t = 0
+            pcall(function() t = os.time() end)
+            if t <= 0 then pcall(function() t = os.clock() end) end
+            cch.weapons[weaponID]._aoLastSeen = t
             _G.AddOutfitLastAppliedSkin = {}
             _S.matchApplied = false
             invalidateSocialWearCache()
@@ -11710,9 +11741,10 @@ do
             pcall(function()
                 local removed = 0
                 local now = 0
-                pcall(function() now = os.clock() end)
+                pcall(function() now = os.time() end)
+                if now <= 0 then pcall(function() now = os.clock() end) end
                 for wid, w in pairs(cch.weapons) do
-                    if w and not keep[wid] then
+                    if w and not keep[wid] and not w.fromFile and not (w.insID and isInjectedIns(w.insID)) then
                         w._aoLastSeen = w._aoLastSeen or 0
                         if now - w._aoLastSeen > 180 then
                             cch.weapons[wid] = nil
@@ -14379,6 +14411,7 @@ refreshItems()
         end
 
         _G.AddOutfitAoAccSlotBySt = _G.AddOutfitAoAccSlotBySt or {}
+        _G.AddOutfitAoAccSubType = _G.AddOutfitAoAccSubType or {}
         local _aoAccSlotBySt = _G.AddOutfitAoAccSlotBySt
         local _aoAccSlotTemplate = {}
         local function _aoAccClone(t)
@@ -14399,6 +14432,9 @@ refreshItems()
                 if not sd then return end
                 local itemCfg = cfg(resID)
                 local targetSt = subType(itemCfg)
+                if not targetSt and _G.AddOutfitAoAccSubType and _G.AddOutfitAoAccSubType[resID] then
+                    targetSt = _G.AddOutfitAoAccSubType[resID]
+                end
                 local targetSlot = 0
                 if isFullSuitRes(resID) then targetSlot = 5
                 elseif targetSt == _K.ST_TOP then targetSlot = 5
@@ -14426,6 +14462,8 @@ refreshItems()
 if matched then
                         if targetSlot == 0 and targetSt and slotID then
                             _aoAccSlotBySt[targetSt] = slotID
+                            _G.AddOutfitAoAccSubType = _G.AddOutfitAoAccSubType or {}
+                            _G.AddOutfitAoAccSubType[resID] = targetSt
                             if not _aoAccSlotTemplate[slotID] then
                                 _aoAccSlotTemplate[slotID] = _aoAccClone(AvatarSynData)
                             end
