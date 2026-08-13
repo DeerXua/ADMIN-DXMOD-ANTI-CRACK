@@ -14311,8 +14311,122 @@ refreshItems()
             return applied
         end
 
+        -- ===== PORT từ VIP v2: ghi thẳng SlotSyncData (bypass CheckItemValid/GetBPIDByResID) =====
+        local function applyClothSlotSync(comp, resID)
+            if not slua.isValid(comp) then return false end
+            resID = tonumber(resID)
+            if not resID or resID <= 0 then return false end
+            local done = false
+            pcall(function()
+                local nd = comp.NetAvatarData
+                if not nd then return end
+                local sd = nd.SlotSyncData
+                if not sd then return end
+                local itemCfg = cfg(resID)
+                local targetSt = subType(itemCfg)
+                local targetSlot = 0
+                if isFullSuitRes(resID) then targetSlot = 5
+                elseif targetSt == _K.ST_TOP then targetSlot = 5
+                elseif targetSt == _K.ST_PANTS then targetSlot = 6
+                elseif targetSt == _K.ST_SHOES then targetSlot = 7
+                elseif targetSt == _K.ST_UNDER_T then targetSlot = 5
+                elseif targetSt == _K.ST_UNDER_P then targetSlot = 6
+                end
+                local function slotMatch(entry)
+                    if not entry or type(entry) ~= "table" then return false end
+                    local sID = tonumber(entry.SlotID)
+                    if sID and targetSlot > 0 and sID == targetSlot then return true end
+                    local cur = tonumber(entry.ItemID or entry.ItemId or 0)
+                    if cur and cur > 0 then
+                        local curSt = subType(cfg(cur))
+                        if curSt and targetSt and curSt == targetSt then return true end
+                    end
+                    return false
+                end
+                local function writeEntry(entry)
+                    if not entry then return false end
+                    local cur = tonumber(entry.ItemID or entry.ItemId or 0)
+                    if cur == resID then return true end
+                    entry.ItemID = resID
+                    if type(entry) == "table" then entry.ItemId = resID end
+                    if entry.FakeItemID and tonumber(entry.FakeItemID) > 0 then entry.FakeItemID = 0 end
+                    return true
+                end
+                if type(sd) == "table" then
+                    for _, entry in pairs(sd) do
+                        if slotMatch(entry) then
+                            if writeEntry(entry) then done = true end
+                        end
+                    end
+                elseif sd.Num and sd.Get and sd.Set then
+                    local n = tonumber(sd:Num()) or 0
+                    for i = 0, n - 1 do
+                        local entry = sd:Get(i)
+                        if slotMatch(entry) then
+                            if writeEntry(entry) then
+                                sd:Set(i, entry)
+                                done = true
+                            end
+                        end
+                    end
+                end
+            end)
+            if done then
+                refreshMatchAvatar(comp)
+                return true
+            end
+            return false
+        end
+
+        local function compSlotHasResID(comp, resID)
+            resID = tonumber(resID)
+            if not resID then return false end
+            local has = false
+            pcall(function()
+                local nd = comp.NetAvatarData
+                local sd = nd and nd.SlotSyncData
+                local function checkEntry(entry)
+                    if not entry or type(entry) ~= "table" then return false end
+                    return tonumber(entry.ItemID or entry.ItemId or 0) == resID
+                end
+                if type(sd) == "table" then
+                    for _, entry in pairs(sd) do
+                        if checkEntry(entry) then has = true break end
+                    end
+                elseif sd and sd.Num and sd.Get then
+                    local n = tonumber(sd:Num()) or 0
+                    for i = 0, n - 1 do
+                        if checkEntry(sd:Get(i)) then has = true break end
+                    end
+                end
+            end)
+            return has
+        end
+
+        local function reportSlotSync(comp)
+            pcall(function()
+                local nd = comp.NetAvatarData
+                local sd = nd and nd.SlotSyncData
+                if not sd then report("slotsync: nil") return end
+                local parts = {}
+                local function fmtEntry(entry)
+                    if not entry or type(entry) ~= "table" then return "?" end
+                    return "S" .. tostring(entry.SlotID or 0) .. "=" .. tostring(entry.ItemID or entry.ItemId or 0)
+                end
+                if type(sd) == "table" then
+                    for _, entry in pairs(sd) do parts[#parts + 1] = fmtEntry(entry) end
+                elseif sd.Num and sd.Get then
+                    local n = tonumber(sd:Num()) or 0
+                    for i = 0, n - 1 do parts[#parts + 1] = fmtEntry(sd:Get(i)) end
+                end
+                table.sort(parts)
+                report("slotsync dump: {" .. table.concat(parts, ",") .. "}")
+            end)
+        end
+
         local function applyClothToComp(comp, resID)
             if not slua.isValid(comp) then return false end
+            if applyClothSlotSync(comp, resID) then return true end
             local ok = false
             pcall(function()
                 if comp.PutOnCustomEquipmentByID then
@@ -14362,7 +14476,28 @@ refreshItems()
             if not slua.isValid(comp) then return false end
             local orig = false
             pcall(function()
-                if comp.GetEquippedItemDefineID3 then
+                local nd = comp.NetAvatarData
+                local sd = nd and nd.SlotSyncData
+                local function checkItemID(id)
+                    id = tonumber(id or 0)
+                    if id <= 0 then return end
+                    if isInjectedRes(id) then return end
+                    local st = subType(cfg(id))
+                    if isBodyClothSubType(st) or st == _K.ST_TOP or st == _K.ST_PANTS or st == _K.ST_SHOES then
+                        orig = true
+                    end
+                end
+                if type(sd) == "table" then
+                    for _, entry in pairs(sd) do
+                        if entry and type(entry) == "table" then checkItemID(entry.ItemID or entry.ItemId) end
+                    end
+                elseif sd and sd.Num and sd.Get then
+                    local n = tonumber(sd:Num()) or 0
+                    for i = 0, n - 1 do
+                        local entry = sd:Get(i)
+                        if entry and type(entry) == "table" then checkItemID(entry.ItemID or entry.ItemId) end
+                    end
+                elseif comp.GetEquippedItemDefineID3 then
                     local EAvatarSlotType = import("EAvatarSlotType")
                     local def = comp:GetEquippedItemDefineID3(EAvatarSlotType.EAvatarSlotType_ClothesEquipemtSlot)
                     local id = def and tonumber(def.TypeSpecificID or def.ItemID) or 0
@@ -14383,17 +14518,8 @@ refreshItems()
             local failList = {}
 
             if outfitRes and isFullSuitRes(outfitRes) then
-                pcall(function()
-                    local r = comp:PutOnCustomEquipmentByID(outfitRes)
-                    if isApplySuccess(r) then applied = true end
-                end)
-                if not applied then
-                    pcall(function()
-                        local r = comp:HandleEquipItem(FItemDefineID(4, outfitRes), FAvatarCustomDefault())
-                        if isApplySuccess(r) then applied = true end
-                    end)
-                end
-                if applied then
+                if applyClothToComp(comp, outfitRes) then
+                    applied = true
                     _G.SuitSkin = outfitRes
                     notify("بدلة OK " .. outfitRes)
                 else
@@ -14425,7 +14551,9 @@ refreshItems()
                             notify("ملابس OK " .. resID)
                         end
                         pcall(function()
-                            if comp.GetEquippedItemDefineID3 then
+                            if compSlotHasResID(comp, resID) then
+                                appliedOne = true
+                            elseif comp.GetEquippedItemDefineID3 then
                                 local def = comp:GetEquippedItemDefineID3(EAvatarSlotType.EAvatarSlotType_ClothesEquipemtSlot)
                                 if def and tonumber(def.TypeSpecificID or def.ItemID) == tonumber(resID) then
                                     appliedOne = true
@@ -14446,6 +14574,7 @@ refreshItems()
                         report("body verify: clothesSlot=" .. tostring(def and tonumber(def.TypeSpecificID or def.ItemID) or 0))
                     end
                 end)
+                reportSlotSync(comp)
             end
             report("body applied: outfit=" .. tostring(outfitRes) .. " ok={" .. table.concat(okList, ",") .. "} fail={" .. table.concat(failList, ",") .. "}")
             return applied
