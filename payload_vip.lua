@@ -224,7 +224,24 @@ function PlayerMapMarker.CreateSkeletonLineWidget()
 end
 
 function PlayerMapMarker.UpdateSkeletonLines(KeyStr, Character, PC, distM, isBot, isHidden)
-    if _G.DX_GetVal("ESP_SKELETON") ~= 1 then return end
+    local isSkelOn = (_G.DX_GetVal("ESP_SKELETON") == 1 or _G.DX_GetVal("ESP2_MASTER") == 1)
+    if not isSkelOn then
+        local PlayerBones = PlayerMapMarker.SkeletonWidgets[KeyStr]
+        if PlayerBones then
+            for _, LineData in ipairs(PlayerBones) do
+                if LineData and LineData.Widget and slua.isValid(LineData.Widget) then
+                    pcall(function()
+                        if type(LineData.Widget.SetWidgetVisibility) == "function" then
+                            LineData.Widget:SetWidgetVisibility(UEnums.ESlateVisibility.Collapsed or 2)
+                        elseif type(LineData.Widget.SetVisibility) == "function" then
+                            LineData.Widget:SetVisibility(2)
+                        end
+                    end)
+                end
+            end
+        end
+        return
+    end
     local maxDistM = _G.DX_GetVal("ESP_SKELETON_DIST") or 340
     local PlayerBones = PlayerMapMarker.SkeletonWidgets[KeyStr]
 
@@ -405,7 +422,8 @@ function PlayerMapMarker.CreateSnapLine()
 end
 
 function PlayerMapMarker.UpdateSnapLine(KeyStr, PC, WorldLoc)
-    if _G.DX_GetVal("ESP2_SNAPLINE") ~= 1 then
+    local isSnapOn = (_G.DX_GetVal("ESP2_SNAPLINE") == 1 or _G.DX_GetVal("ESP2_MASTER") == 1)
+    if not isSnapOn then
         local lineData = PlayerMapMarker.SnapLineWidgets[KeyStr]
         if lineData and lineData.Widget and slua.isValid(lineData.Widget) then
             pcall(function() lineData.Widget:SetWidgetVisibility(UEnums.ESlateVisibility.Collapsed or 2) end)
@@ -3118,6 +3136,16 @@ for k, v in pairs(defaultSettings) do
     if _G.DX_Settings[k] == nil then
         _G.DX_Settings[k] = v
     end
+end
+
+_G.DX_GetVal = function(key)
+    if _G.DX_Settings then
+        local v = _G.DX_Settings[key]
+        if type(v) == "boolean" then return v and 1 or 0 end
+        if type(v) == "number" then return v end
+        if v ~= nil then return tonumber(v) or 1 end
+    end
+    return 0
 end
 
 _G.SaveModSettings = function()
@@ -5920,7 +5948,7 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                             end
 
                             -- 4. ESP SKELETON (KHUNG XƯƠNG KẺ ĐỊCH - UPDATE SKELETON LINES CHUẨN X3TEAM)
-                            if _G.DX_GetVal("ESP_SKELETON") == 1 then
+                            if _G.DX_GetVal("ESP_SKELETON") == 1 or _G.DX_GetVal("ESP2_MASTER") == 1 then
                                 local isBot = (enemy.bIsAI == true or enemy.bIsBot == true)
                                 local isHidden = true
                                 _G.AimTouchVisCache = _G.AimTouchVisCache or {}
@@ -5937,10 +5965,50 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                             end
 
                             -- 5. ESP SNAPLINE (ĐƯỜNG KẺ ĐỊNH VỊ 2D CANVAS)
-                            if _G.DX_GetVal("ESP2_SNAPLINE") == 1 then
+                            if _G.DX_GetVal("ESP2_SNAPLINE") == 1 or _G.DX_GetVal("ESP2_MASTER") == 1 then
                                 local eLoc = enemyLoc or (type(enemy.K2_GetActorLocation) == "function" and enemy:K2_GetActorLocation())
                                 if eLoc then
                                     PlayerMapMarker.UpdateSnapLine(enemyId, PlayerController, eLoc)
+                                end
+                            end
+
+                            -- 6. ESP V2 HUD MARKER (TÊN, TEAM ID, MÁU HP, KHOẢNG CÁCH, VŨ KHÍ)
+                            if _G.DX_GetVal("ESP2_MASTER") == 1 or _G.DX_GetVal("ESP2_NAME") == 1 or _G.DX_GetVal("ESP2_DIST") == 1 or _G.DX_GetVal("ESP2_HP") == 1 or _G.DX_GetVal("ESP2_TEAMID") == 1 or _G.DX_GetVal("ESP2_WEAPON") == 1 then
+                                if Valid(MyHUD) and distM <= 450 then
+                                    local esp2Text = ""
+                                    if (_G.DX_GetVal("ESP2_MASTER") == 1 or _G.DX_GetVal("ESP2_NAME") == 1) then
+                                        local pName = type(enemy.GetPlayerNameSafety) == "function" and enemy:GetPlayerNameSafety() or "Địch"
+                                        esp2Text = esp2Text .. pName .. " "
+                                    end
+                                    if (_G.DX_GetVal("ESP2_MASTER") == 1 or _G.DX_GetVal("ESP2_TEAMID") == 1) then
+                                        local tId = enemy.TeamID or (enemy.GetTeamID and enemy:GetTeamID()) or 0
+                                        esp2Text = esp2Text .. "[T" .. tostring(tId) .. "] "
+                                    end
+                                    if (_G.DX_GetVal("ESP2_MASTER") == 1 or _G.DX_GetVal("ESP2_DIST") == 1) then
+                                        esp2Text = esp2Text .. string.format("[%dm] ", math_floor(distM))
+                                    end
+                                    if (_G.DX_GetVal("ESP2_MASTER") == 1 or _G.DX_GetVal("ESP2_HP") == 1) then
+                                        local hp = enemy.Health or (enemy.GetHealth and enemy:GetHealth()) or 100
+                                        esp2Text = esp2Text .. string.format("HP:%d%% ", math_floor(hp))
+                                    end
+                                    if (_G.DX_GetVal("ESP2_MASTER") == 1 or _G.DX_GetVal("ESP2_WEAPON") == 1) then
+                                        if enemy.DX_CachedWeaponName then
+                                            esp2Text = esp2Text .. "<" .. enemy.DX_CachedWeaponName .. ">"
+                                        end
+                                    end
+                                    if esp2Text ~= "" then
+                                        local textColor = COLOR_GREEN
+                                        if _G.DX_GetVal("ESP2_TEAM") == 1 then
+                                            local tId = enemy.TeamID or (enemy.GetTeamID and enemy:GetTeamID()) or 1
+                                            local tColors = {
+                                                {R=255, G=50, B=50, A=255}, {R=50, G=255, B=50, A=255}, {R=50, G=100, B=255, A=255},
+                                                {R=255, G=255, B=50, A=255}, {R=255, G=50, B=255, A=255}, {R=50, G=255, B=255, A=255}
+                                            }
+                                            local cIdx = (tId % 6) + 1
+                                            textColor = tColors[cIdx] or COLOR_RED
+                                        end
+                                        MyHUD:AddDebugText(esp2Text, enemy, 0.2, {X=0, Y=0, Z=100}, {X=0, Y=0, Z=100}, textColor, true, false, true, nil, dynamicScale, true)
+                                    end
                                 end
                             end
 
