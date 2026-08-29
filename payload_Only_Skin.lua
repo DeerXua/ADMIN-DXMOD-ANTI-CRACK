@@ -3619,6 +3619,138 @@ local StackESPV2 = {}
             end
         })
 
+        
+        -- =========================================================================================
+        -- [TAB 6] MAGIC BULLET & BULLET TRACK
+        -- =========================================================================================
+        local StackMagic = { { UI = AliasMap.Title, Text = "MAGIC BULLET & BULLET TRACK" } }
+
+        -- Custom Magic Bullet Smart
+        table.insert(StackMagic, {
+            Key = "ModMenu_MagicSmart_Ex",
+            UI = AliasMap.TitleSwitcher,
+            Text = "▶ Custom Magic Bullet Smart v3.0",
+            ExpandIndex = 0,
+            GetFunc = function() return _G.DX_Settings.MagicBulletSmart == 1 end,
+            SetFunc = function(_, value)
+                _G.DX_Settings.MagicBulletSmart = value and 1 or 0
+                _G.EnvRequiresUpdate = true
+                _G.MagicUpdateVersion = (_G.MagicUpdateVersion or 1) + 1
+                return true
+            end
+        })
+        table.insert(StackMagic, {
+            Key = "ModMenu_MagicHead",
+            UI = AliasMap.Slider,
+            Text = "   Magic Đầu (0-300)",
+            ExpandHandle = "ModMenu_MagicSmart_Ex",
+            MinValue = 0, MaxValue = 300, Min = 0, Max = 300,
+            GetFunc = function() return _G.DX_Settings.MAGIC_HEAD or 100 end,
+            SetFunc = function(_, value) _G.DX_Settings.MAGIC_HEAD = math.floor(tonumber(value) or 100); _G.EnvRequiresUpdate = true; return true end
+        })
+        table.insert(StackMagic, {
+            Key = "ModMenu_MagicBody",
+            UI = AliasMap.Slider,
+            Text = "   Magic Thân (0-300)",
+            ExpandHandle = "ModMenu_MagicSmart_Ex",
+            MinValue = 0, MaxValue = 300, Min = 0, Max = 300,
+            GetFunc = function() return _G.DX_Settings.MAGIC_BODY or 100 end,
+            SetFunc = function(_, value) _G.DX_Settings.MAGIC_BODY = math.floor(tonumber(value) or 100); _G.EnvRequiresUpdate = true; return true end
+        })
+        table.insert(StackMagic, {
+            Key = "ModMenu_MagicLegs",
+            UI = AliasMap.Slider,
+            Text = "   Magic Chân (0-300)",
+            ExpandHandle = "ModMenu_MagicSmart_Ex",
+            MinValue = 0, MaxValue = 300, Min = 0, Max = 300,
+            GetFunc = function() return _G.DX_Settings.MAGIC_LEGS or 100 end,
+            SetFunc = function(_, value) _G.DX_Settings.MAGIC_LEGS = math.floor(tonumber(value) or 100); _G.EnvRequiresUpdate = true; return true end
+        })
+
+        -- Bullet Track (Đạn Đuổi)
+        table.insert(StackMagic, {
+            Key = "ModMenu_BulletTrack_Ex",
+            UI = AliasMap.TitleSwitcher,
+            Text = "▶ Bullet Track (Đạn Đuổi Mục Tiêu)",
+            ExpandIndex = 0,
+            GetFunc = function() return _G.DX_Settings.BulletTrack == 1 end,
+            SetFunc = function(_, value)
+                _G.DX_Settings.BulletTrack = value and 1 or 0
+                _G.EnvRequiresUpdate = true
+                _G.MagicUpdateVersion = (_G.MagicUpdateVersion or 1) + 1
+                return true
+            end
+        })
+        table.insert(StackMagic, {
+            Key = "ModMenu_HeadshotRate",
+            UI = AliasMap.Slider,
+            Text = "   Tỷ Lệ Trúng Đầu % (10-100)",
+            ExpandHandle = "ModMenu_BulletTrack_Ex",
+            MinValue = 10, MaxValue = 100, Min = 10, Max = 100,
+            GetFunc = function() return _G.DX_Settings.HeadshotRate or 80 end,
+            SetFunc = function(_, value) _G.DX_Settings.HeadshotRate = math.floor(tonumber(value) or 80); _G.EnvRequiresUpdate = true; return true end
+        })
+        table.insert(StackMagic, {
+            Key = "ModMenu_BulletTrackDist",
+            UI = AliasMap.Slider,
+            Text = "   Khoảng Cách Đạn Đuổi (50-800m)",
+            ExpandHandle = "ModMenu_BulletTrack_Ex",
+            MinValue = 50, MaxValue = 800, Min = 50, Max = 800,
+            GetFunc = function() return _G.DX_Settings.BulletTrackDist or 400 end,
+            SetFunc = function(_, value) _G.DX_Settings.BulletTrackDist = math.floor(tonumber(value) or 400); _G.EnvRequiresUpdate = true; return true end
+        })
+        table.insert(StackMagic, {
+            Key = "ModMenu_ShootThroughWall",
+            UI = AliasMap.Switcher,
+            Text = "   Bắn Xuyên Vật Cản / Tường Mỏng",
+            ExpandHandle = "ModMenu_BulletTrack_Ex",
+            GetFunc = function() return _G.DX_Settings.ShootThroughWall == 1 end,
+            SetFunc = function(_, value) _G.DX_Settings.ShootThroughWall = value and 1 or 0; _G.EnvRequiresUpdate = true; return true end
+        })
+
+        -- =========================================================================================
+        -- [TAB 7] GÓC NHÌN & MÔI TRƯỜNG
+        -- =========================================================================================
+        local StackEnv = { { UI = AliasMap.Title, Text = "GÓC NHÌN & MÔI TRƯỜNG" } }
+
+        -- Ipad View
+        table.insert(StackEnv, {
+            Key = "ModMenu_Ipad_Ex",
+            UI = AliasMap.TitleSwitcher,
+            Text = "▶ Góc Nhìn iPad View",
+            ExpandIndex = 0,
+            GetFunc = function() return _G.DX_Settings.IpadView == 1 end,
+            SetFunc = function(_, value)
+                _G.DX_Settings.IpadView = value and 1 or 0
+                _G.EnvRequiresUpdate = true
+                return true
+            end
+        })
+        table.insert(StackEnv, {
+            Key = "ModMenu_Ipad_FOV",
+            UI = AliasMap.Slider,
+            Text = "   Độ Rộng Góc Nhìn FOV (90-190)",
+            ExpandHandle = "ModMenu_Ipad_Ex",
+            MinValue = 1, MaxValue = 100, Min = 1, Max = 100,
+            GetFunc = function() return (_G.DX_Settings.IpadViewFOV or 120) - 90 end,
+            SetFunc = function(_, value)
+                _G.DX_Settings.IpadViewFOV = 90 + math.floor(tonumber(value) or 30)
+                _G.EnvRequiresUpdate = true
+                return true
+            end
+        })
+
+        -- Tối ưu đồ họa & môi trường
+        AddToggle(StackEnv, "NOGRASS", "Xóa Cỏ (No Grass)")
+        AddToggle(StackEnv, "NOTREES", "Xóa Cây (No Trees)")
+        AddToggle(StackEnv, "NOWATER", "Xóa Nước (No Water)")
+        AddToggle(StackEnv, "NOFOG", "Xóa Sương Mù (No Fog)")
+        AddToggle(StackEnv, "BLACK_SKY", "Trời Tối Đen (Black Sky)")
+        AddToggle(StackEnv, "GHOST_MODE", "👻 Ghost Mode (Tự động ẩn khi bị quét)")
+        AddToggle(StackEnv, "NO_LANDING_LAG", "🏃 Chống Khựng Khi Rơi (No Landing Lag)")
+        AddToggle(StackEnv, "AUTO_BUNNYHOP", "🐰 Bunny Hop (Nhảy Liên Tục)")
+        AddToggle(StackEnv, "UNLOCK_165FPS", "⚡ Mở Khóa 165Hz FPS & Đồ Họa Cực Cao (HDR/Ultra HD)")
+
         SettingPageDefine.ModMenu = {
             Key = "ModMenu", 
             loc = "DX-MODS", 
