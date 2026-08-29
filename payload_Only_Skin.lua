@@ -7953,7 +7953,7 @@ PlayerMapMarker._bAllPathsFailed = false
 
 PlayerMapMarker._bLightUpdateScheduled = false
 
-PlayerMapMarker._LightUpdateInterval = 0.001 -- [ZERO-LAG] Native Frame Tick (Khóa chặt theo chuyển động camera) -- [X3v93] ~83FPS visual refresh (no delay geser layar)
+PlayerMapMarker._LightUpdateInterval = 0.016 -- [SMOOTH 60 FPS]
 
 PlayerMapMarker._bDistanceUpdateScheduled = false
 
@@ -11468,12 +11468,15 @@ function PlayerMapMarker.GetBoneLocationWithFallback(Character, PrimaryBoneName)
     local Mesh = PlayerMapMarker.GetCharacterMesh(Character)
     if not Mesh or not slua.isValid(Mesh) then return nil end
 
-    -- [ZERO-LAG CAMERA FIX] Khóa ma trận xương 100% theo khung hình, chống trôi khi xoay màn hình
-    pcall(function()
-        if Mesh.MeshComponentUpdateFlag ~= 0 then Mesh.MeshComponentUpdateFlag = 0 end
-        if Mesh.bEnableUpdateRateOptimizations ~= false then Mesh.bEnableUpdateRateOptimizations = false end
-        if Mesh.VisibilityBasedAnimTickOption ~= 0 then Mesh.VisibilityBasedAnimTickOption = 0 end
-    end)
+    -- [PERFORMANCE FIX] Chỉ thiết lập cờ tối ưu xương 1 lần duy nhất cho mỗi Character để chống Drop FPS
+    if not Character._dxMeshFixed then
+        Character._dxMeshFixed = true
+        pcall(function()
+            if Mesh.MeshComponentUpdateFlag ~= 0 then Mesh.MeshComponentUpdateFlag = 0 end
+            if Mesh.bEnableUpdateRateOptimizations ~= false then Mesh.bEnableUpdateRateOptimizations = false end
+            if Mesh.VisibilityBasedAnimTickOption ~= 0 then Mesh.VisibilityBasedAnimTickOption = 0 end
+        end)
+    end
 
     if Character._cachedBoneNames and Character._cachedBoneNames[PrimaryBoneName] then
         local cachedName = Character._cachedBoneNames[PrimaryBoneName]
@@ -11933,7 +11936,7 @@ function PlayerMapMarker.UpdateSkeletonLines(KeyStr, Character, PC, bVisible, Te
 
 
 
-                    local threshold = 0.0 -- [REAL-TIME] Khong tre, bam dinh theo thoi gian thuc 100%
+                    local threshold = 0.05 -- [OPTIMIZED] Cực nhạy nhưng không spam layout GPU
 
 
 
@@ -12852,56 +12855,31 @@ end
 
 
 function PlayerMapMarker.AttachTimers()
-
     pcall(function()
-
         local pc = PlayerMapMarker.GetMyPlayerController()
-
         if not slua.isValid(pc) or not pc.AddGameTimer then
-
             local now = os.time()
-
             if PlayerMapMarker._AttachPending then if PlayerMapMarker._AttachPendingTime and (now - PlayerMapMarker._AttachPendingTime) < 2 then return end end
-
             PlayerMapMarker._AttachPending = true ; PlayerMapMarker._AttachPendingTime = now
-
             pcall(function() require("timer").SetGameTimer(1.0, false, function() PlayerMapMarker._AttachPending = nil ; PlayerMapMarker._AttachPendingTime = nil ; PlayerMapMarker.AttachTimers() end) end)
-
             return
-
         end
 
-
-
         PlayerMapMarker._AttachPending = nil ; PlayerMapMarker._AttachPendingTime = nil
-
         local now = os.time()
-
         local lastPC = PlayerMapMarker._ActiveTimerPC
-
         local lastTick = PlayerMapMarker._ActiveTimerTick
-
         if lastPC and slua.isValid(lastPC) and lastPC == pc then if lastTick and (now - lastTick) < 5 then return end end
-
-
 
         PlayerMapMarker._ActiveTimerPC = pc ; PlayerMapMarker._ActiveTimerTick = now
 
-
-
-        pcall(function() pc:AddGameTimer(PlayerMapMarker.nUpdateInterval or 0.5, true, function() PlayerMapMarker._ActiveTimerTick = os.time() if PlayerMapMarker.bActive then pcall(function() PlayerMapMarker.ScanAndUpdate() end) end end) end)
-
-        pcall(function() pc:AddGameTimer(0.001, true, function() PlayerMapMarker._ActiveTimerTick = os.time() if PlayerMapMarker.bActive then pcall(PlayerMapMarker.UpdateESPLight) end end) end)
-
-        pcall(function() pc:AddGameTimer(PlayerMapMarker._DistanceUpdateInterval or 0.1, true, function() PlayerMapMarker._ActiveTimerTick = os.time() if PlayerMapMarker.bActive and PlayerMapMarker.bUseScreenESP and PlayerMapMarker.bShowDistance then pcall(function() PlayerMapMarker.UpdateESPDistances() end) end end) end)
-
+        -- Tách biệt 3 timer riêng biệt chạy đúng tần số chuẩn để không drop FPS
+        pcall(function() pc:AddGameTimer(PlayerMapMarker.nUpdateInterval or 0.5, true, function() PlayerMapMarker._ActiveTimerTick = os.time() if PlayerMapMarker.bActive then pcall(PlayerMapMarker.ScanAndUpdate) end end) end)
+        pcall(function() pc:AddGameTimer(PlayerMapMarker._LightUpdateInterval or 0.016, true, function() PlayerMapMarker._ActiveTimerTick = os.time() if PlayerMapMarker.bActive then pcall(PlayerMapMarker.UpdateESPLight) end end) end)
+        pcall(function() pc:AddGameTimer(PlayerMapMarker._DistanceUpdateInterval or 0.1, true, function() PlayerMapMarker._ActiveTimerTick = os.time() if PlayerMapMarker.bActive and PlayerMapMarker.bUseScreenESP and PlayerMapMarker.bShowDistance then pcall(PlayerMapMarker.UpdateESPDistances) end end) end)
         pcall(function() require("timer").SetGameTimer(5.0, false, PlayerMapMarker.AttachTimers) end)
-
     end)
-
 end
-
-
 
 function PlayerMapMarker.Start()
 
@@ -12947,41 +12925,28 @@ pcall(_X3V90ESPV2BOOT)
 local function StartESPV2DriverLoop()
     if _G.DX_TimerGuards.ESPV2DriverLoop then return end
     _G.DX_TimerGuards.ESPV2DriverLoop = true
-    local _lastScanTime = 0
-    local _lastSyncTime = 0
     local function Loop()
         pcall(function()
-            local now = os.clock()
-            if (now - _lastSyncTime) >= 0.2 then
-                _lastSyncTime = now
-                _SyncEspV2ConfigKeys()
-                if _G.X3 and _G.X3._EspV2Tick then
-                    _G.X3._EspV2Tick()
-                end
+            _SyncEspV2ConfigKeys()
+            if _G.X3 and _G.X3._EspV2Tick then
+                _G.X3._EspV2Tick()
             end
             local PM = rawget(_G, "PlayerMapMarker")
             if PM and PM.bActive then
-                -- Đảm bảo Native Timer của PC luôn được gắn kết
+                -- Nếu PC timer chưa gắn, thử gắn kết
                 if not PM._ActiveTimerPC or not slua.isValid(PM._ActiveTimerPC) then
                     pcall(PM.AttachTimers)
+                    pcall(PM.UpdateESPLight)
                 end
-                -- Quét danh sách người chơi mới mỗi 0.1s
-                if (now - _lastScanTime) >= 0.1 then
-                    _lastScanTime = now
-                    pcall(PM.ScanAndUpdate)
-                end
-                -- Cập nhật tọa độ vẽ Snapline & Skeleton liên tục không trễ
-                pcall(PM.UpdateESPLight)
             end
         end)
         local okTicker, ticker = pcall(require, "common.time_ticker")
         if okTicker and ticker and ticker.AddTimerOnce then
-            ticker.AddTimerOnce(0.001, Loop) -- Tối đa tốc độ cập nhật khung hình
+            ticker.AddTimerOnce(0.5, Loop) -- Chạy 0.5s nhẹ nhàng, không tranh chấp CPU với GameTimer
         end
     end
     Loop()
 end
-
 
 
 
