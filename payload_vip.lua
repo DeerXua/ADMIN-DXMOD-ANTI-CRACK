@@ -2538,6 +2538,13 @@ _G.LastConfigSaveStr = ""
 local defaultSettings = {
     ESP_HITMARK_1 = 0, ESP_HITMARK_2 = 0, WALLHACK = 0, WHITE_BODY = 0,
     ESP_WEAPON = 0, ESP_COUNT = 0, ESP_BOX = 0, EspLoai5 = 0, ESP_SKELETON = 0,
+    ESP_SKELETON_THICK = 8,
+    ESP_SKELETON_OPACITY = 80,
+    ESP_SKELETON_DIST = 340,
+    ESP_SKELETON_PL_VIS = 3,
+    ESP_SKELETON_PL_COV = 1,
+    ESP_SKELETON_BOT_VIS = 4,
+    ESP_SKELETON_BOT_COV = 2,
     AIMBOT = 0, SPEED_AIMBOT = 0, FOV_AIMBOT = 0, THU_TAM = 0,
     NO_RECOIL_100 = 0, GIAM_RUNG_SCOPE = 0,
 
@@ -2926,6 +2933,90 @@ table.insert(StackESP, {
         AddToggle(StackESP, "ESP_HITMARK_2", "ESP THANH MÁU")
         AddToggle(StackESP, "ESP_COUNT", "ĐẾM SỐ LƯỢNG ĐỊCH")
         AddToggle(StackESP, "ESP_SKELETON", "ESP KHUNG XƯƠNG (Skeleton)")
+        table.insert(StackESP, {
+            Key = "ModMenu_Skeleton_Thick",
+            UI = AliasMap.Slider or "Slider",
+            Text = "   Skeleton: Độ dày nét (1-20)",
+            ExpandHandle = "ModMenu_ESP_Skeleton",
+            MinValue = 1, MaxValue = 20, Min = 1, Max = 20,
+            GetFunc = function() return _G.DX_Settings.ESP_SKELETON_THICK or 8 end,
+            SetFunc = function(_, value)
+                _G.DX_Settings.ESP_SKELETON_THICK = math.max(1, math.min(20, math.floor(tonumber(value) or 8)))
+                return true
+            end
+        })
+        table.insert(StackESP, {
+            Key = "ModMenu_Skeleton_Opacity",
+            UI = AliasMap.Slider or "Slider",
+            Text = "   Skeleton: Độ mờ % (10-100)",
+            ExpandHandle = "ModMenu_ESP_Skeleton",
+            MinValue = 10, MaxValue = 100, Min = 10, Max = 100,
+            GetFunc = function() return _G.DX_Settings.ESP_SKELETON_OPACITY or 80 end,
+            SetFunc = function(_, value)
+                _G.DX_Settings.ESP_SKELETON_OPACITY = math.max(10, math.min(100, math.floor(tonumber(value) or 80)))
+                return true
+            end
+        })
+        table.insert(StackESP, {
+            Key = "ModMenu_Skeleton_Dist",
+            UI = AliasMap.Slider or "Slider",
+            Text = "   Skeleton: Tầm xa tối đa m (50-340)",
+            ExpandHandle = "ModMenu_ESP_Skeleton",
+            MinValue = 50, MaxValue = 340, Min = 50, Max = 340,
+            GetFunc = function() return _G.DX_Settings.ESP_SKELETON_DIST or 340 end,
+            SetFunc = function(_, value)
+                _G.DX_Settings.ESP_SKELETON_DIST = math.max(50, math.min(340, math.floor(tonumber(value) or 340)))
+                return true
+            end
+        })
+        table.insert(StackESP, {
+            Key = "ModMenu_Skeleton_PlVis",
+            UI = AliasMap.Switcher,
+            Text = "   Skeleton Người (Nhìn thấy) [ PLAYER VISIBLE ]",
+            SwitcherText = { "ĐỎ", "VÀNG", "XANH LÁ", "CYAN", "TRẮNG" },
+            SwitcherValue = { 1, 2, 3, 4, 5 },
+            GetFunc = function() return _G.DX_Settings.ESP_SKELETON_PL_VIS or 3 end,
+            SetFunc = function(_, value)
+                _G.DX_Settings.ESP_SKELETON_PL_VIS = math.max(1, math.min(5, math.floor(tonumber(value) or 3)))
+                return true
+            end
+        })
+        table.insert(StackESP, {
+            Key = "ModMenu_Skeleton_PlCov",
+            UI = AliasMap.Switcher,
+            Text = "   Skeleton Người (Bị che) [ PLAYER COVER ]",
+            SwitcherText = { "ĐỎ", "VÀNG", "XANH LÁ", "CYAN", "TRẮNG" },
+            SwitcherValue = { 1, 2, 3, 4, 5 },
+            GetFunc = function() return _G.DX_Settings.ESP_SKELETON_PL_COV or 1 end,
+            SetFunc = function(_, value)
+                _G.DX_Settings.ESP_SKELETON_PL_COV = math.max(1, math.min(5, math.floor(tonumber(value) or 1)))
+                return true
+            end
+        })
+        table.insert(StackESP, {
+            Key = "ModMenu_Skeleton_BotVis",
+            UI = AliasMap.Switcher,
+            Text = "   Skeleton Bot (Nhìn thấy) [ BOT VISIBLE ]",
+            SwitcherText = { "ĐỎ", "VÀNG", "XANH LÁ", "CYAN", "TRẮNG" },
+            SwitcherValue = { 1, 2, 3, 4, 5 },
+            GetFunc = function() return _G.DX_Settings.ESP_SKELETON_BOT_VIS or 4 end,
+            SetFunc = function(_, value)
+                _G.DX_Settings.ESP_SKELETON_BOT_VIS = math.max(1, math.min(5, math.floor(tonumber(value) or 4)))
+                return true
+            end
+        })
+        table.insert(StackESP, {
+            Key = "ModMenu_Skeleton_BotCov",
+            UI = AliasMap.Switcher,
+            Text = "   Skeleton Bot (Bị che) [ BOT COVER ]",
+            SwitcherText = { "ĐỎ", "VÀNG", "XANH LÁ", "CYAN", "TRẮNG" },
+            SwitcherValue = { 1, 2, 3, 4, 5 },
+            GetFunc = function() return _G.DX_Settings.ESP_SKELETON_BOT_COV or 2 end,
+            SetFunc = function(_, value)
+                _G.DX_Settings.ESP_SKELETON_BOT_COV = math.max(1, math.min(5, math.floor(tonumber(value) or 2)))
+                return true
+            end
+        })
         -- ESP KHUNG BOX mapping to both ESP_BOX and EspLoai5
         table.insert(StackESP, {
             Key = "ModMenu_ESP5",
@@ -5241,30 +5332,62 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                                 end
                             end
 
-                            -- 4. ESP SKELETON (KHUNG XƯƠNG KẺ ĐỊCH)
-                            if _G.DX_GetVal("ESP_SKELETON") == 1 and distM <= 250 and Valid(MyHUD) then
+                            -- 4. ESP SKELETON (KHUNG XƯƠNG KẺ ĐỊCH NÂNG CAO)
+                            local maxSkelDist = _G.DX_GetVal("ESP_SKELETON_DIST") or 340
+                            if _G.DX_GetVal("ESP_SKELETON") == 1 and distM <= maxSkelDist and Valid(MyHUD) then
                                 local eMesh = enemy.Mesh or (type(enemy.getAvatarComponent2) == "function" and enemy:getAvatarComponent2()) or (type(enemy.GetMesh) == "function" and enemy:GetMesh())
                                 if Valid(eMesh) and type(eMesh.GetSocketLocation) == "function" then
                                     local aLoc = enemyLoc or (type(enemy.K2_GetActorLocation) == "function" and enemy:K2_GetActorLocation())
                                     if aLoc then
+                                        local isBot = (enemy.bIsAI == true or enemy.bIsBot == true)
+                                        local isHidden = true
+                                        _G.AimTouchVisCache = _G.AimTouchVisCache or {}
+                                        local cachedVis = _G.AimTouchVisCache[enemyId]
+                                        if cachedVis and (currentTickOS - cachedVis.time) < 0.4 then
+                                            isHidden = cachedVis.hidden
+                                        else
+                                            if Valid(PlayerController) then
+                                                pcall(function() if PlayerController:LineOfSightTo(enemy) then isHidden = false end end)
+                                            end
+                                        end
+
+                                        local colorIdx = 3
+                                        if isBot then
+                                            colorIdx = isHidden and (_G.DX_GetVal("ESP_SKELETON_BOT_COV") or 2) or (_G.DX_GetVal("ESP_SKELETON_BOT_VIS") or 4)
+                                        else
+                                            colorIdx = isHidden and (_G.DX_GetVal("ESP_SKELETON_PL_COV") or 1) or (_G.DX_GetVal("ESP_SKELETON_PL_VIS") or 3)
+                                        end
+
+                                        local SKEL_COLOR_MAP = {
+                                            [1] = {R=255, G=0, B=0},      -- Đỏ
+                                            [2] = {R=255, G=255, B=0},    -- Vàng
+                                            [3] = {R=0, G=255, B=0},      -- Xanh lá
+                                            [4] = {R=0, G=255, B=255},    -- Cyan
+                                            [5] = {R=255, G=255, B=255}   -- Trắng
+                                        }
+                                        local baseColor = SKEL_COLOR_MAP[colorIdx] or SKEL_COLOR_MAP[3]
+                                        local opacityPct = math.max(10, math.min(100, _G.DX_GetVal("ESP_SKELETON_OPACITY") or 80))
+                                        local alphaVal = math.floor((opacityPct / 100) * 255)
+                                        local finalSkelColor = {R=baseColor.R, G=baseColor.G, B=baseColor.B, A=alphaVal}
+
+                                        local skelThick = (_G.DX_GetVal("ESP_SKELETON_THICK") or 8) / 10.0
+                                        local sizeMult = math.max(0.5, math.min(2.0, skelThick))
+
                                         for _, bName in ipairs(GLOBAL_BONE_LIST) do
                                             if distM <= 50 or (bName == "head" or bName == "pelvis" or bName == "neck_01") then
                                                 local wLoc = eMesh:GetSocketLocation(bName)
                                                 if wLoc then
                                                     local offset = {X = wLoc.X - aLoc.X, Y = wLoc.Y - aLoc.Y, Z = wLoc.Z - aLoc.Z}
                                                     local mark = "▪"
-                                                    local fixedSize = 0.25
-                                                    local color = {R=0, G=255, B=255, A=255}
+                                                    local fixedSize = 0.25 * sizeMult
                                                     if bName == "head" then
                                                         mark = "●"
-                                                        fixedSize = 0.45
-                                                        color = {R=255, G=0, B=0, A=255}
+                                                        fixedSize = 0.45 * sizeMult
                                                     elseif bName == "pelvis" or bName == "neck_01" then
                                                         mark = "▪"
-                                                        fixedSize = 0.35
-                                                        color = {R=255, G=255, B=0, A=255}
+                                                        fixedSize = 0.35 * sizeMult
                                                     end
-                                                    MyHUD:AddDebugText(mark, enemy, 0.2, offset, offset, color, true, false, true, nil, fixedSize, true)
+                                                    MyHUD:AddDebugText(mark, enemy, 0.2, offset, offset, finalSkelColor, true, false, true, nil, fixedSize, true)
                                                 end
                                             end
                                         end
