@@ -125,10 +125,10 @@ local function DX_CreateSkeletonLineWidget()
     if not Valid(widget) then return nil end
     local slot = widget.Slot
     if not Valid(slot) then return nil end
+    local Vector2D = import("Vector2D") or FVector2D
+    local FAnchors = import("FAnchors")
     pcall(function()
-        local Vector2D = import("Vector2D") or FVector2D
-        local FAnchors = import("FAnchors")
-        if Vector2D then slot:SetAlignment(Vector2D(0.5, 0.5)) end
+        if Vector2D then slot:SetAlignment(Vector2D(0, 0.5)) end
         if FAnchors then slot:SetAnchors(FAnchors(0, 0, 0, 0)) end
     end)
     return {
@@ -136,7 +136,8 @@ local function DX_CreateSkeletonLineWidget()
         Slot = slot,
         lastFromX = -9999, lastFromY = -9999,
         lastToX = -9999, lastToY = -9999,
-        lastThick = -1
+        posVec = Vector2D and Vector2D(0, 0) or {X=0, Y=0},
+        sizeVec = Vector2D and Vector2D(0, 0) or {X=0, Y=0}
     }
 end
 
@@ -5561,32 +5562,37 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                                                     local fromX, fromY = lastCanvasX, lastCanvasY
                                                     local toX, toY = currentCanvasX, currentCanvasY
 
-                                                    if math.abs(fromX - LineData.lastFromX) > 0.2 or
-                                                       math.abs(fromY - LineData.lastFromY) > 0.2 or
-                                                       math.abs(toX - LineData.lastToX) > 0.2 or
-                                                       math.abs(toY - LineData.lastToY) > 0.2 or
-                                                       LineData.lastThick ~= thickness then
+                                                    if math.abs(fromX - LineData.lastFromX) > 0.15 or
+                                                       math.abs(fromY - LineData.lastFromY) > 0.15 or
+                                                       math.abs(toX - LineData.lastToX) > 0.15 or
+                                                       math.abs(toY - LineData.lastToY) > 0.15 then
 
                                                         LineData.lastFromX = fromX
                                                         LineData.lastFromY = fromY
                                                         LineData.lastToX = toX
                                                         LineData.lastToY = toY
-                                                        LineData.lastThick = thickness
 
-                                                        local midX = (fromX + toX) * 0.5
-                                                        local midY = (fromY + toY) * 0.5
                                                         local dx = toX - fromX
                                                         local dy = toY - fromY
                                                         local length = math_sqrt(dx * dx + dy * dy)
-                                                        local angleDeg = math.atan2(dy, dx) * (180 / math.pi)
+                                                        local angle_rad = (math.atan2 and math.atan2(dy, dx)) or math.atan(dy, dx)
+                                                        local angle = angle_rad * 57.29577951308232
 
                                                         pcall(function()
-                                                            if Vector2D then
-                                                                Slot:SetPosition(Vector2D(midX, midY))
-                                                                Slot:SetSize(Vector2D(length, thickness))
+                                                            if LineData.posVec then
+                                                                LineData.posVec.X = fromX
+                                                                LineData.posVec.Y = fromY - thickness / 2.0
+                                                                Slot:SetPosition(LineData.posVec)
                                                             end
-                                                            if Widget.SetRenderTransformAngle then
-                                                                Widget:SetRenderTransformAngle(angleDeg)
+                                                            if LineData.sizeVec then
+                                                                LineData.sizeVec.X = length
+                                                                LineData.sizeVec.Y = thickness
+                                                                Slot:SetSize(LineData.sizeVec)
+                                                            end
+                                                            if Widget.SetRenderAngle then
+                                                                Widget:SetRenderAngle(angle)
+                                                            elseif Widget.SetRenderTransformAngle then
+                                                                Widget:SetRenderTransformAngle(angle)
                                                             end
                                                         end)
                                                     end
