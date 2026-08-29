@@ -384,6 +384,118 @@ function PlayerMapMarker.UpdateSkeletonLines(KeyStr, Character, PC, distM, isBot
     end
 end
 
+PlayerMapMarker.SnapLineWidgets = {}
+
+function PlayerMapMarker.CreateSnapLine()
+    local rootCanvas = PlayerMapMarker.GetCanvasRootWidget()
+    if not slua.isValid(rootCanvas) then return nil end
+    local lineImageClass = import("Image")
+    if not lineImageClass then return nil end
+    local widget = nil
+    pcall(function() widget = Game:AddUIWidget(lineImageClass, rootCanvas) end)
+    if not slua.isValid(widget) then return nil end
+    local slot = widget.Slot
+    if not slua.isValid(slot) then return nil end
+    local FVec = import("Vector2D") or FVector2D
+    local FAnchors = import("FAnchors")
+    pcall(function()
+        if FVec then slot:SetAlignment(FVec(0, 0.5)) end
+        if FAnchors then slot:SetAnchors(FAnchors(0, 0, 0, 0)) end
+    end)
+    return { Widget = widget, Slot = slot }
+end
+
+function PlayerMapMarker.UpdateSnapLine(KeyStr, PC, WorldLoc)
+    if _G.DX_GetVal("ESP2_SNAPLINE") ~= 1 then
+        local lineData = PlayerMapMarker.SnapLineWidgets[KeyStr]
+        if lineData and lineData.Widget and slua.isValid(lineData.Widget) then
+            pcall(function() lineData.Widget:SetWidgetVisibility(UEnums.ESlateVisibility.Collapsed or 2) end)
+        end
+        return
+    end
+
+    local bOnScreen, toX, toY = PlayerMapMarker.ProjectWorldToCanvasLocalRaw(PC, WorldLoc)
+    local lineData = PlayerMapMarker.SnapLineWidgets[KeyStr]
+    if not bOnScreen then
+        if lineData and lineData.Widget and slua.isValid(lineData.Widget) then
+            pcall(function() lineData.Widget:SetWidgetVisibility(UEnums.ESlateVisibility.Collapsed or 2) end)
+        end
+        return
+    end
+
+    if not lineData or not lineData.Widget or not slua.isValid(lineData.Widget) then
+        lineData = PlayerMapMarker.CreateSnapLine()
+        if not lineData then return end
+        PlayerMapMarker.SnapLineWidgets[KeyStr] = lineData
+    end
+
+    local Widget = lineData.Widget
+    local Slot = lineData.Slot
+
+    local colorIdx = _G.DX_GetVal("ESP2_LINE_COLOR") or 1
+    local LINE_COLOR_MAP = {
+        [1] = {R=1.0, G=0.0, B=0.0},      -- Đỏ
+        [2] = {R=1.0, G=1.0, B=0.0},      -- Vàng
+        [3] = {R=0.0, G=1.0, B=0.0},      -- Xanh lá
+        [4] = {R=0.0, G=1.0, B=1.0},      -- Cyan
+        [5] = {R=1.0, G=1.0, B=1.0}       -- Trắng
+    }
+    local baseColor = LINE_COLOR_MAP[colorIdx] or LINE_COLOR_MAP[1]
+    local opacityPct = math.max(10, math.min(100, _G.DX_GetVal("ESP2_LINE_OPACITY") or 70))
+    local alphaVal = opacityPct / 100.0
+    local FLinearColor = import("LinearColor") or FLinearColor
+    local lineColor = FLinearColor and FLinearColor(baseColor.R, baseColor.G, baseColor.B, alphaVal) or {R=baseColor.R*255, G=baseColor.G*255, B=baseColor.B*255, A=alphaVal*255}
+
+    if Widget._cachedColor ~= lineColor then
+        pcall(function() if Widget.SetBrushColor then Widget:SetBrushColor(lineColor) end end)
+        Widget._cachedColor = lineColor
+    end
+
+    pcall(function()
+        if type(Widget.SetWidgetVisibility) == "function" then
+            Widget:SetWidgetVisibility(UEnums.ESlateVisibility.SelfHitTestInvisible or 0)
+        elseif type(Widget.SetVisibility) == "function" then
+            Widget:SetVisibility(0)
+        end
+    end)
+
+    local posYPct = (_G.DX_GetVal("ESP2_LINE_POSY") or 50) / 100.0
+    local fromX = 0
+    local fromY = 1080 * posYPct
+    pcall(function()
+        local WLL = import("WidgetLayoutLibrary") or WidgetLayoutLibrary
+        if WLL and WLL.GetViewportSize then
+            local FVec = import("Vector2D") or FVector2D
+            local vp = FVec and FVec(0,0) or {X=0,Y=0}
+            WLL.GetViewportSize(PC, vp)
+            if vp.X > 0 and vp.Y > 0 then
+                fromX = vp.X * 0.5
+                fromY = vp.Y * posYPct
+            end
+        end
+    end)
+
+    local dx = toX - fromX
+    local dy = toY - fromY
+    local length = math.sqrt(dx * dx + dy * dy)
+    local thickness = (_G.DX_GetVal("ESP2_LINE_THICK") or 2) * 0.5
+    local angle_rad = (math.atan2 and math.atan2(dy, dx)) or math.atan(dy, dx)
+    local angle = angle_rad * 57.29577951308232
+
+    pcall(function()
+        local FVec = import("Vector2D") or FVector2D
+        if FVec then
+            Slot:SetPosition(FVec(fromX, fromY - thickness / 2.0))
+            Slot:SetSize(FVec(length, thickness))
+        end
+        if Widget.SetRenderAngle then
+            Widget:SetRenderAngle(angle)
+        elseif Widget.SetRenderTransformAngle then
+            Widget:SetRenderTransformAngle(angle)
+        end
+    end)
+end
+
 local bWriteLog = true
 local printf = function(...)
     if bWriteLog then
@@ -2879,6 +2991,9 @@ local defaultSettings = {
     ESP_SKELETON_PL_COV = 1,
     ESP_SKELETON_BOT_VIS = 4,
     ESP_SKELETON_BOT_COV = 2,
+    ESP2_MASTER = 0, ESP2_COUNT = 0, ESP2_NAME = 0, ESP2_DIST = 0, ESP2_HP = 0,
+    ESP2_TEAM = 0, ESP2_TEAMID = 0, ESP2_WEAPON = 0, ESP2_SNAPLINE = 0,
+    ESP2_LineCfgOpen = 1, ESP2_LINE_THICK = 2, ESP2_LINE_OPACITY = 70, ESP2_LINE_COLOR = 1, ESP2_LINE_POSY = 50,
     AIMBOT = 0, SPEED_AIMBOT = 0, FOV_AIMBOT = 0, THU_TAM = 0,
     NO_RECOIL_100 = 0, GIAM_RUNG_SCOPE = 0,
 
@@ -3724,7 +3839,230 @@ table.insert(StackESP, {
         AddToggle(StackEnv, "GHOST_MODE", "👻 GHOST MODE (Tự động tắt khi bị quét)")
         AddToggle(StackEnv, "NO_LANDING_LAG", "🏃 CHỐNG KHỰNG KHI RƠI")
         AddToggle(StackEnv, "AUTO_BUNNYHOP", "🐰 BUNNY HOP (Nhảy liên tục)")
-        
+
+        local StackESPV2 = {
+            { UI = AliasMap.Title, Text = "ESP V2 VIP (CƠ CHẾ RENDER CANVAS 2D)" }
+        }
+
+        table.insert(StackESPV2, {
+            Key = "ModMenu_ESP2_Master",
+            UI = AliasMap.TitleSwitcher,
+            Text = "▶ Bật ESP V2 VIP (Khung RedBox & Marker)",
+            ExpandIndex = 0,
+            GetFunc = function() return _G.DX_Settings.ESP2_MASTER == 1 end,
+            SetFunc = function(_, v)
+                _G.DX_Settings.ESP2_MASTER = v and 1 or 0
+                _G.EnvRequiresUpdate = true
+                return true
+            end
+        })
+
+        table.insert(StackESPV2, {
+            Key = "ModMenu_ESP2_Count",
+            UI = AliasMap.Switcher,
+            Text = "   Đếm Số Lượng Địch (Khung Đỏ RedBox)",
+            ExpandHandle = "ModMenu_ESP2_Master",
+            GetFunc = function() return _G.DX_Settings.ESP2_COUNT == 1 end,
+            SetFunc = function(_, v) _G.DX_Settings.ESP2_COUNT = v and 1 or 0; return true end
+        })
+
+        table.insert(StackESPV2, {
+            Key = "ModMenu_ESP2_Name",
+            UI = AliasMap.Switcher,
+            Text = "   Tên Kẻ Địch (Hiển thị Tên Nhân Vật)",
+            ExpandHandle = "ModMenu_ESP2_Master",
+            GetFunc = function() return _G.DX_Settings.ESP2_NAME == 1 end,
+            SetFunc = function(_, v) _G.DX_Settings.ESP2_NAME = v and 1 or 0; return true end
+        })
+
+        table.insert(StackESPV2, {
+            Key = "ModMenu_ESP2_Dist",
+            UI = AliasMap.Switcher,
+            Text = "   Khoảng Cách Mét [Xm]",
+            ExpandHandle = "ModMenu_ESP2_Master",
+            GetFunc = function() return _G.DX_Settings.ESP2_DIST == 1 end,
+            SetFunc = function(_, v) _G.DX_Settings.ESP2_DIST = v and 1 or 0; return true end
+        })
+
+        table.insert(StackESPV2, {
+            Key = "ModMenu_ESP2_HP",
+            UI = AliasMap.Switcher,
+            Text = "   Thanh Máu Kẻ Địch (HP Bar)",
+            ExpandHandle = "ModMenu_ESP2_Master",
+            GetFunc = function() return _G.DX_Settings.ESP2_HP == 1 end,
+            SetFunc = function(_, v) _G.DX_Settings.ESP2_HP = v and 1 or 0; return true end
+        })
+
+        table.insert(StackESPV2, {
+            Key = "ModMenu_ESP2_Team",
+            UI = AliasMap.Switcher,
+            Text = "   Tô Màu Khung Theo Đội (Team Color Box)",
+            ExpandHandle = "ModMenu_ESP2_Master",
+            GetFunc = function() return _G.DX_Settings.ESP2_TEAM == 1 end,
+            SetFunc = function(_, v) _G.DX_Settings.ESP2_TEAM = v and 1 or 0; return true end
+        })
+
+        table.insert(StackESPV2, {
+            Key = "ModMenu_ESP2_TeamID",
+            UI = AliasMap.Switcher,
+            Text = "   Hiển Thị Team ID Kẻ Địch",
+            ExpandHandle = "ModMenu_ESP2_Master",
+            GetFunc = function() return _G.DX_Settings.ESP2_TEAMID == 1 end,
+            SetFunc = function(_, v) _G.DX_Settings.ESP2_TEAMID = v and 1 or 0; return true end
+        })
+
+        table.insert(StackESPV2, {
+            Key = "ModMenu_ESP2_Weapon",
+            UI = AliasMap.Switcher,
+            Text = "   Icon / Tên Vũ Khí Kẻ Địch đang cầm",
+            ExpandHandle = "ModMenu_ESP2_Master",
+            GetFunc = function() return _G.DX_Settings.ESP2_WEAPON == 1 end,
+            SetFunc = function(_, v) _G.DX_Settings.ESP2_WEAPON = v and 1 or 0; return true end
+        })
+
+        table.insert(StackESPV2, {
+            Key = "ModMenu_ESP2_Snapline",
+            UI = AliasMap.Switcher,
+            Text = "   Đường Kẻ Định Vị (Snapline 2D)",
+            ExpandHandle = "ModMenu_ESP2_Master",
+            GetFunc = function() return _G.DX_Settings.ESP2_SNAPLINE == 1 end,
+            SetFunc = function(_, v) _G.DX_Settings.ESP2_SNAPLINE = v and 1 or 0; return true end
+        })
+
+        table.insert(StackESPV2, {
+            Key = "ModMenu_ESP2_Skeleton",
+            UI = AliasMap.Switcher,
+            Text = "   ESP Khung Xương (Skeleton 2D Canvas)",
+            ExpandHandle = "ModMenu_ESP2_Master",
+            GetFunc = function() return _G.DX_Settings.ESP_SKELETON == 1 end,
+            SetFunc = function(_, v) _G.DX_Settings.ESP_SKELETON = v and 1 or 0; return true end
+        })
+
+        table.insert(StackESPV2, {
+            Key = "ModMenu_ESP2_LineCfg",
+            UI = AliasMap.TitleSwitcher,
+            Text = "▶ TÙY CHỈNH NÉT VẼ SNAPLINE & KHUNG XƯƠNG",
+            ExpandHandle = "ModMenu_ESP2_Master",
+            ExpandIndex = 0,
+            GetFunc = function() return _G.DX_Settings.ESP2_LineCfgOpen ~= 0 end,
+            SetFunc = function(_, v) _G.DX_Settings.ESP2_LineCfgOpen = v and 1 or 0; return true end
+        })
+
+        table.insert(StackESPV2, {
+            Key = "ModMenu_ESP2_LineThick",
+            UI = AliasMap.Slider,
+            Text = "   Snapline: Độ dày nét (1-10)",
+            ExpandHandle = "ModMenu_ESP2_LineCfg",
+            MinValue = 1, MaxValue = 10, Min = 1, Max = 10,
+            GetFunc = function() return _G.DX_Settings.ESP2_LINE_THICK or 2 end,
+            SetFunc = function(_, v) _G.DX_Settings.ESP2_LINE_THICK = math.max(1, math.min(10, math.floor(tonumber(v) or 2))); return true end
+        })
+
+        table.insert(StackESPV2, {
+            Key = "ModMenu_ESP2_LineOpacity",
+            UI = AliasMap.Slider,
+            Text = "   Snapline: Độ mờ % (10-100)",
+            ExpandHandle = "ModMenu_ESP2_LineCfg",
+            MinValue = 10, MaxValue = 100, Min = 10, Max = 100,
+            GetFunc = function() return _G.DX_Settings.ESP2_LINE_OPACITY or 70 end,
+            SetFunc = function(_, v) _G.DX_Settings.ESP2_LINE_OPACITY = math.max(10, math.min(100, math.floor(tonumber(v) or 70))); return true end
+        })
+
+        table.insert(StackESPV2, {
+            Key = "ModMenu_ESP2_LineColor",
+            UI = AliasMap.Switcher,
+            Text = "   Snapline: Màu sắc nét kẻ",
+            SwitcherText = { "ĐỎ", "VÀNG", "XANH LÁ", "CYAN", "TRẮNG" },
+            SwitcherValue = { 1, 2, 3, 4, 5 },
+            ExpandHandle = "ModMenu_ESP2_LineCfg",
+            GetFunc = function() return _G.DX_Settings.ESP2_LINE_COLOR or 1 end,
+            SetFunc = function(_, v) _G.DX_Settings.ESP2_LINE_COLOR = math.max(1, math.min(5, math.floor(tonumber(v) or 1))); return true end
+        })
+
+        table.insert(StackESPV2, {
+            Key = "ModMenu_ESP2_LinePosY",
+            UI = AliasMap.Slider,
+            Text = "   Snapline: Vị trí gốc vẽ Y % (0-100)",
+            ExpandHandle = "ModMenu_ESP2_LineCfg",
+            MinValue = 0, MaxValue = 100, Min = 0, Max = 100,
+            GetFunc = function() return _G.DX_Settings.ESP2_LINE_POSY or 50 end,
+            SetFunc = function(_, v) _G.DX_Settings.ESP2_LINE_POSY = math.max(0, math.min(100, math.floor(tonumber(v) or 50))); return true end
+        })
+
+        table.insert(StackESPV2, {
+            Key = "ModMenu_ESP2_SkelThick",
+            UI = AliasMap.Slider,
+            Text = "   Skeleton: Độ dày nét (1-20)",
+            ExpandHandle = "ModMenu_ESP2_LineCfg",
+            MinValue = 1, MaxValue = 20, Min = 1, Max = 20,
+            GetFunc = function() return _G.DX_Settings.ESP_SKELETON_THICK or 8 end,
+            SetFunc = function(_, v) _G.DX_Settings.ESP_SKELETON_THICK = math.max(1, math.min(20, math.floor(tonumber(v) or 8))); return true end
+        })
+
+        table.insert(StackESPV2, {
+            Key = "ModMenu_ESP2_SkelOpacity",
+            UI = AliasMap.Slider,
+            Text = "   Skeleton: Độ mờ % (10-100)",
+            ExpandHandle = "ModMenu_ESP2_LineCfg",
+            MinValue = 10, MaxValue = 100, Min = 10, Max = 100,
+            GetFunc = function() return _G.DX_Settings.ESP_SKELETON_OPACITY or 80 end,
+            SetFunc = function(_, v) _G.DX_Settings.ESP_SKELETON_OPACITY = math.max(10, math.min(100, math.floor(tonumber(v) or 80))); return true end
+        })
+
+        table.insert(StackESPV2, {
+            Key = "ModMenu_ESP2_SkelPlVis",
+            UI = AliasMap.Switcher,
+            Text = "   Skeleton Người (Nhìn thấy) [ VISIBLE ]",
+            SwitcherText = { "ĐỎ", "VÀNG", "XANH LÁ", "CYAN", "TRẮNG" },
+            SwitcherValue = { 1, 2, 3, 4, 5 },
+            ExpandHandle = "ModMenu_ESP2_LineCfg",
+            GetFunc = function() return _G.DX_Settings.ESP_SKELETON_PL_VIS or 3 end,
+            SetFunc = function(_, v) _G.DX_Settings.ESP_SKELETON_PL_VIS = math.max(1, math.min(5, math.floor(tonumber(v) or 3))); return true end
+        })
+
+        table.insert(StackESPV2, {
+            Key = "ModMenu_ESP2_SkelPlCov",
+            UI = AliasMap.Switcher,
+            Text = "   Skeleton Người (Bị che) [ COVER ]",
+            SwitcherText = { "ĐỎ", "VÀNG", "XANH LÁ", "CYAN", "TRẮNG" },
+            SwitcherValue = { 1, 2, 3, 4, 5 },
+            ExpandHandle = "ModMenu_ESP2_LineCfg",
+            GetFunc = function() return _G.DX_Settings.ESP_SKELETON_PL_COV or 1 end,
+            SetFunc = function(_, v) _G.DX_Settings.ESP_SKELETON_PL_COV = math.max(1, math.min(5, math.floor(tonumber(v) or 1))); return true end
+        })
+
+        table.insert(StackESPV2, {
+            Key = "ModMenu_ESP2_SkelBotVis",
+            UI = AliasMap.Switcher,
+            Text = "   Skeleton Bot (Nhìn thấy) [ VISIBLE ]",
+            SwitcherText = { "ĐỎ", "VÀNG", "XANH LÁ", "CYAN", "TRẮNG" },
+            SwitcherValue = { 1, 2, 3, 4, 5 },
+            ExpandHandle = "ModMenu_ESP2_LineCfg",
+            GetFunc = function() return _G.DX_Settings.ESP_SKELETON_BOT_VIS or 4 end,
+            SetFunc = function(_, v) _G.DX_Settings.ESP_SKELETON_BOT_VIS = math.max(1, math.min(5, math.floor(tonumber(v) or 4))); return true end
+        })
+
+        table.insert(StackESPV2, {
+            Key = "ModMenu_ESP2_SkelBotCov",
+            UI = AliasMap.Switcher,
+            Text = "   Skeleton Bot (Bị che) [ COVER ]",
+            SwitcherText = { "ĐỎ", "VÀNG", "XANH LÁ", "CYAN", "TRẮNG" },
+            SwitcherValue = { 1, 2, 3, 4, 5 },
+            ExpandHandle = "ModMenu_ESP2_LineCfg",
+            GetFunc = function() return _G.DX_Settings.ESP_SKELETON_BOT_COV or 2 end,
+            SetFunc = function(_, v) _G.DX_Settings.ESP_SKELETON_BOT_COV = math.max(1, math.min(5, math.floor(tonumber(v) or 2))); return true end
+        })
+
+        table.insert(StackESPV2, {
+            Key = "ModMenu_ESP2_SkelDist",
+            UI = AliasMap.Slider,
+            Text = "   Skeleton: Khoảng cách tối đa m (50-340)",
+            ExpandHandle = "ModMenu_ESP2_LineCfg",
+            MinValue = 50, MaxValue = 340, Min = 50, Max = 340,
+            GetFunc = function() return _G.DX_Settings.ESP_SKELETON_DIST or 340 end,
+            SetFunc = function(_, v) _G.DX_Settings.ESP_SKELETON_DIST = math.max(50, math.min(340, math.floor(tonumber(v) or 340))); return true end
+        })
+
         SettingPageDefine.ModMenu = {
             Key = "ModMenu", 
             loc = "DX-MODS", 
@@ -3734,7 +4072,8 @@ table.insert(StackESP, {
             Title = "DX-MODS",
             UIKey = "Setting_Page_Privacy", 
             Category = {
-                { Key = "ModMenu_Cat1", loc = "ESP", text = "ESP", Text = "ESP", title = "ESP", Title = "ESP", Stack = StackESP },
+                { Key = "ModMenu_Cat1", loc = "ESP V1", text = "ESP V1", Text = "ESP V1", title = "ESP V1", Title = "ESP V1", Stack = StackESP },
+                { Key = "ModMenu_Cat7", loc = "ESP V2 (CANVAS)", text = "ESP V2 (CANVAS)", Text = "ESP V2 (CANVAS)", title = "ESP V2 (CANVAS)", Title = "ESP V2 (CANVAS)", Stack = StackESPV2 },
                 { Key = "ModMenu_Cat6", loc = "ESP VẬT PHẨM", text = "ESP VẬT PHẨM", Text = "ESP VẬT PHẨM", title = "ESP VẬT PHẨM", Title = "ESP VẬT PHẨM", Stack = StackItemESP },
                 { Key = "ModMenu_Cat2", loc = "VŨ KHÍ", text = "VŨ KHÍ", Text = "VŨ KHÍ", title = "VŨ KHÍ", Title = "VŨ KHÍ", Stack = StackAimbot },
                 { Key = "ModMenu_Cat5", loc = "AIMTOUCH - CUSTOM", text = "AIMTOUCH - CUSTOM", Text = "AIMTOUCH - CUSTOM", title = "AIMTOUCH - CUSTOM", Title = "AIMTOUCH - CUSTOM", Stack = StackAimbotV2 },
@@ -5681,6 +6020,14 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                                 end
 
                                 PlayerMapMarker.UpdateSkeletonLines(enemyId, enemy, PlayerController, distM, isBot, isHidden)
+                            end
+
+                            -- 5. ESP SNAPLINE (ĐƯỜNG KẺ ĐỊNH VỊ 2D CANVAS)
+                            if _G.DX_GetVal("ESP2_SNAPLINE") == 1 then
+                                local eLoc = enemyLoc or (type(enemy.K2_GetActorLocation) == "function" and enemy:K2_GetActorLocation())
+                                if eLoc then
+                                    PlayerMapMarker.UpdateSnapLine(enemyId, PlayerController, eLoc)
+                                end
                             end
 
                             -- TỐI ƯU HÓA: Tích hợp Threat Assessment ESP trực tiếp vào vòng lặp chính
