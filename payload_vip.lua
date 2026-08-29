@@ -50,6 +50,76 @@ local GLOBAL_BONE_LIST = {
     "thigh_r", "calf_r", "foot_r"
 }
 
+local DX_SkeletonChains = {
+    {"neck_01", "lowerarm_r", "hand_r"},
+    {"neck_01", "lowerarm_l", "hand_l"},
+    {"head", "neck_01", "pelvis"},
+    {"pelvis", "calf_r", "foot_r"},
+    {"pelvis", "calf_l", "foot_l"}
+}
+
+local DX_SkeletonWidgets = {}
+
+local function DX_GetCanvasRootWidget()
+    local hud = rawget(_G, "slua_GameFrontendHUD") or rawget(_G, "GameFrontendHUD")
+    if not Valid(hud) then return nil end
+    local rootCanvas = hud.UIRoot or hud.MainCanvas or hud.CanvasPanel
+    if not Valid(rootCanvas) then
+        pcall(function() rootCanvas = hud:GetUIRoot() end)
+    end
+    return rootCanvas
+end
+
+local function DX_CreateSkeletonLineWidget()
+    local rootCanvas = DX_GetCanvasRootWidget()
+    if not Valid(rootCanvas) then return nil end
+    local lineImageClass = import("Image")
+    if not lineImageClass then return nil end
+    local widget = nil
+    pcall(function() widget = Game:AddUIWidget(lineImageClass, rootCanvas) end)
+    if not Valid(widget) then return nil end
+    local slot = widget.Slot
+    if not Valid(slot) then return nil end
+    pcall(function()
+        local Vector2D = import("Vector2D") or FVector2D
+        local FAnchors = import("FAnchors")
+        if Vector2D then slot:SetAlignment(Vector2D(0.5, 0.5)) end
+        if FAnchors then slot:SetAnchors(FAnchors(0, 0, 0, 0)) end
+    end)
+    return {
+        Widget = widget,
+        Slot = slot,
+        lastFromX = -9999, lastFromY = -9999,
+        lastToX = -9999, lastToY = -9999,
+        lastThick = -1
+    }
+end
+
+local function DX_ProjectWorldToCanvas(pc, worldLoc)
+    if not Valid(pc) or not worldLoc then return false, 0, 0 end
+    local bOnScreen = false
+    local screenPos = nil
+    pcall(function()
+        if pc.ProjectWorldLocationToScreen then
+            local res, pos = pc:ProjectWorldLocationToScreen(worldLoc, false)
+            if res and pos then bOnScreen = true; screenPos = pos end
+        end
+    end)
+    if not bOnScreen or not screenPos then
+        pcall(function()
+            local GameplayStatics = import("GameplayStatics")
+            if GameplayStatics and GameplayStatics.ProjectWorldToScreen then
+                local res, pos = GameplayStatics.ProjectWorldToScreen(pc, worldLoc)
+                if res and pos then bOnScreen = true; screenPos = pos end
+            end
+        end)
+    end
+    if bOnScreen and screenPos then
+        return true, screenPos.X, screenPos.Y
+    end
+    return false, 0, 0
+end
+
 local bWriteLog = true
 local printf = function(...)
     if bWriteLog then
