@@ -11448,70 +11448,42 @@ end
 
 
 function PlayerMapMarker.GetBoneLocationWithFallback(Character, PrimaryBoneName)
-
     if not IsValid(Character) or not PrimaryBoneName then return nil end
+    local Mesh = PlayerMapMarker.GetCharacterMesh(Character)
+    if not Mesh or not slua.isValid(Mesh) then return nil end
+
+    -- [REAL-TIME FIX] Ép UE4 luôn cập nhật ma trận xương theo thời gian thực (Full FPS)
+    pcall(function()
+        if Mesh.MeshComponentUpdateFlag ~= 0 then
+            Mesh.MeshComponentUpdateFlag = 0
+        end
+    end)
 
     if Character._cachedBoneNames and Character._cachedBoneNames[PrimaryBoneName] then
-
         local cachedName = Character._cachedBoneNames[PrimaryBoneName]
-
         local loc = nil
-
         pcall(function()
-
-            local Mesh = PlayerMapMarker.GetCharacterMesh(Character)
-
-            if Mesh and Game:IsValid(Mesh) then
-
-                if Mesh.GetSocketLocation then loc = Mesh:GetSocketLocation(cachedName)
-
-                elseif Mesh.GetBoneLocation then loc = Mesh:GetBoneLocation(cachedName) end
-
-            end
-
+            if Mesh.GetSocketLocation then loc = Mesh:GetSocketLocation(cachedName)
+            elseif Mesh.GetBoneLocation then loc = Mesh:GetBoneLocation(cachedName) end
         end)
-
         if loc then return loc end
-
     end
 
     local fallbacks = PlayerMapMarker.BoneNameFallbacks[PrimaryBoneName] or {PrimaryBoneName}
-
     for _, bname in ipairs(fallbacks) do
-
         local loc = nil
-
         pcall(function()
-
-            local Mesh = PlayerMapMarker.GetCharacterMesh(Character)
-
-            if Mesh and Game:IsValid(Mesh) then
-
-                if Mesh.GetSocketLocation then loc = Mesh:GetSocketLocation(bname)
-
-                elseif Mesh.GetBoneLocation then loc = Mesh:GetBoneLocation(bname) end
-
-            end
-
+            if Mesh.GetSocketLocation then loc = Mesh:GetSocketLocation(bname)
+            elseif Mesh.GetBoneLocation then loc = Mesh:GetBoneLocation(bname) end
         end)
-
         if loc then
-
             if not Character._cachedBoneNames then Character._cachedBoneNames = {} end
-
             Character._cachedBoneNames[PrimaryBoneName] = bname
-
             return loc
-
         end
-
     end
-
     return nil
-
 end
-
-
 
 function PlayerMapMarker.IsPlayerVisible(PC, Character)
 
@@ -11945,9 +11917,7 @@ function PlayerMapMarker.UpdateSkeletonLines(KeyStr, Character, PC, bVisible, Te
 
 
 
-                    local threshold = 0.15
-
-                    if dist > 8000 then threshold = 0.8 elseif dist > 4000 then threshold = 0.4 end
+                    local threshold = 0.0 -- [REAL-TIME] Khong tre, bam dinh theo thoi gian thuc 100%
 
 
 
@@ -12961,23 +12931,32 @@ pcall(_X3V90ESPV2BOOT)
 local function StartESPV2DriverLoop()
     if _G.DX_TimerGuards.ESPV2DriverLoop then return end
     _G.DX_TimerGuards.ESPV2DriverLoop = true
+    local _lastScanTime = 0
+    local _lastSyncTime = 0
     local function Loop()
         pcall(function()
-            _SyncEspV2ConfigKeys()
-            if _G.X3 and _G.X3._EspV2Tick then
-                _G.X3._EspV2Tick()
+            local now = os.clock()
+            if (now - _lastSyncTime) >= 0.2 then
+                _lastSyncTime = now
+                _SyncEspV2ConfigKeys()
+                if _G.X3 and _G.X3._EspV2Tick then
+                    _G.X3._EspV2Tick()
+                end
             end
             local PM = rawget(_G, "PlayerMapMarker")
             if PM and PM.bActive then
-                pcall(function()
-                    PM.ScanAndUpdate()
-                    PM.UpdateESPLight()
-                end)
+                -- Quét danh sách người chơi mới mỗi 0.1s để không nghẽn CPU
+                if (now - _lastScanTime) >= 0.1 then
+                    _lastScanTime = now
+                    pcall(PM.ScanAndUpdate)
+                end
+                -- Cập nhật tọa độ vẽ Snapline & Skeleton liên tục ở thời gian thực (Real-time 120 FPS)
+                pcall(PM.UpdateESPLight)
             end
         end)
         local okTicker, ticker = pcall(require, "common.time_ticker")
         if okTicker and ticker and ticker.AddTimerOnce then
-            ticker.AddTimerOnce(0.016, Loop) -- 60 FPS
+            ticker.AddTimerOnce(0.008, Loop) -- ~120 FPS siêu mượt thời gian thực
         end
     end
     Loop()
