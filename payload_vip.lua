@@ -50,15 +50,24 @@ local GLOBAL_BONE_LIST = {
     "thigh_r", "calf_r", "foot_r"
 }
 
-local DX_SkeletonChains = {
-    {"neck_01", "upperarm_r", "lowerarm_r", "hand_r"},
-    {"neck_01", "upperarm_l", "lowerarm_l", "hand_l"},
+local PlayerMapMarker = {}
+PlayerMapMarker.bUseSkeleton = true
+PlayerMapMarker.SkeletonThickness = 0.8
+PlayerMapMarker.SkeletonOpacity = 0.8
+PlayerMapMarker.SkeletonMaxDistance = 34000
+PlayerMapMarker.SkeletonWidgets = {}
+PlayerMapMarker._StaticBoneLocCache = {}
+PlayerMapMarker.ESPCanvas = nil
+
+PlayerMapMarker.SkeletonChains = {
+    {"neck_01", "lowerarm_r", "hand_r"},
+    {"neck_01", "lowerarm_l", "hand_l"},
     {"head", "neck_01", "pelvis"},
-    {"pelvis", "thigh_r", "calf_r", "foot_r"},
-    {"pelvis", "thigh_l", "calf_l", "foot_l"}
+    {"pelvis", "calf_r", "foot_r"},
+    {"pelvis", "calf_l", "foot_l"}
 }
 
-local DX_BoneFallbacks = {
+PlayerMapMarker.BoneNameFallbacks = {
     head = {"head", "head_01", "b_head"},
     neck_01 = {"neck_01", "neck_02", "neck", "b_neck"},
     pelvis = {"pelvis", "pelvis_01", "b_pelvis", "root"},
@@ -76,59 +85,131 @@ local DX_BoneFallbacks = {
     foot_l = {"foot_l", "b_LeftFoot", "foot_L"}
 }
 
-local function DX_GetBoneLoc(eMesh, bName)
-    if not Valid(eMesh) then return nil end
-    local fallbacks = DX_BoneFallbacks[bName] or {bName}
-    for _, name in ipairs(fallbacks) do
-        local loc = nil
-        pcall(function() loc = eMesh:GetSocketLocation(name) end)
-        if loc then return loc end
-    end
-    return nil
-end
-
-local DX_SkeletonWidgets = {}
-
-local function DX_GetCanvasRootWidget()
-    if _G.DX_CachedESPCanvas and Valid(_G.DX_CachedESPCanvas) then
-        return _G.DX_CachedESPCanvas
+function PlayerMapMarker.GetCanvasRootWidget()
+    if PlayerMapMarker.ESPCanvas and slua.isValid(PlayerMapMarker.ESPCanvas) then
+        return PlayerMapMarker.ESPCanvas
     end
     pcall(function()
         local InGameUITools = package.loaded["GameLua.Mod.BaseMod.Common.InGameUITools"] or (pcall(require, "GameLua.Mod.BaseMod.Common.InGameUITools") and require("GameLua.Mod.BaseMod.Common.InGameUITools"))
         if InGameUITools and InGameUITools.GetMainControlBaseUI then
             local UI = InGameUITools.GetMainControlBaseUI()
-            if Valid(UI) then
-                if Valid(UI.CanvasPanel_0) then _G.DX_CachedESPCanvas = UI.CanvasPanel_0
-                elseif Valid(UI.CanvasPanel_42) then _G.DX_CachedESPCanvas = UI.CanvasPanel_42
-                elseif Valid(UI.CanvasPanel_8) then _G.DX_CachedESPCanvas = UI.CanvasPanel_8 end
+            if UI and slua.isValid(UI) then
+                if UI.CanvasPanel_0 and slua.isValid(UI.CanvasPanel_0) then PlayerMapMarker.ESPCanvas = UI.CanvasPanel_0
+                elseif UI.CanvasPanel_42 and slua.isValid(UI.CanvasPanel_42) then PlayerMapMarker.ESPCanvas = UI.CanvasPanel_42
+                elseif UI.CanvasPanel_8 and slua.isValid(UI.CanvasPanel_8) then PlayerMapMarker.ESPCanvas = UI.CanvasPanel_8 end
             end
         end
     end)
-    if not _G.DX_CachedESPCanvas then
+    return PlayerMapMarker.ESPCanvas
+end
+
+function PlayerMapMarker.UpdateCanvasTransform(PC)
+    local rootCanvas = PlayerMapMarker.GetCanvasRootWidget()
+    if not rootCanvas or not slua.isValid(rootCanvas) then return end
+    local success = false
+    pcall(function()
+        local SBL = import("SlateBlueprintLibrary") or SlateBlueprintLibrary
+        if SBL and SBL.AbsoluteToLocal then
+            local cg = rootCanvas:GetCachedGeometry()
+            if cg then
+                local FVec = import("Vector2D") or FVector2D
+                local pt0 = SBL.AbsoluteToLocal(cg, FVec and FVec(0, 0) or {X=0, Y=0})
+                local pt1 = SBL.AbsoluteToLocal(cg, FVec and FVec(100, 100) or {X=100, Y=100})
+                if pt0 and pt1 then
+                    PlayerMapMarker._CanvasScaleX = (pt1.X - pt0.X) / 100
+                    PlayerMapMarker._CanvasScaleY = (pt1.Y - pt0.Y) / 100
+                    PlayerMapMarker._CanvasOffsetX = pt0.X
+                    PlayerMapMarker._CanvasOffsetY = pt0.Y
+                    success = true
+                end
+            end
+        end
+    end)
+
+    if not success then
         pcall(function()
-            local hud = rawget(_G, "slua_GameFrontendHUD") or rawget(_G, "GameFrontendHUD")
-            if Valid(hud) then
-                _G.DX_CachedESPCanvas = hud.UIRoot or hud.MainCanvas or hud.CanvasPanel
+            local WLL = import("WidgetLayoutLibrary") or WidgetLayoutLibrary
+            if WLL and WLL.ScreenToWidgetLocal then
+                local cg = rootCanvas:GetCachedGeometry()
+                if cg then
+                    local FVec = import("Vector2D") or FVector2D
+                    local pt0 = FVec and FVec(0, 0) or {X=0, Y=0}
+                    local pt1 = FVec and FVec(0, 0) or {X=0, Y=0}
+                    WLL.ScreenToWidgetLocal(PC, cg, FVec and FVec(0, 0) or {X=0, Y=0}, pt0)
+                    WLL.ScreenToWidgetLocal(PC, cg, FVec and FVec(100, 100) or {X=100, Y=100}, pt1)
+                    PlayerMapMarker._CanvasScaleX = (pt1.X - pt0.X) / 100
+                    PlayerMapMarker._CanvasScaleY = (pt1.Y - pt0.Y) / 100
+                    PlayerMapMarker._CanvasOffsetX = pt0.X
+                    PlayerMapMarker._CanvasOffsetY = pt0.Y
+                    success = true
+                end
             end
         end)
     end
-    return _G.DX_CachedESPCanvas
+
+    if not success then
+        local scale = 1.0
+        pcall(function()
+            local WLL = import("WidgetLayoutLibrary") or WidgetLayoutLibrary
+            if WLL and WLL.GetViewportScale then scale = WLL.GetViewportScale(PC) or 1.0 end
+        end)
+        PlayerMapMarker._CanvasScaleX = 1.0 / scale
+        PlayerMapMarker._CanvasScaleY = 1.0 / scale
+        PlayerMapMarker._CanvasOffsetX = 0
+        PlayerMapMarker._CanvasOffsetY = 0
+    end
 end
 
-local function DX_CreateSkeletonLineWidget()
-    local rootCanvas = DX_GetCanvasRootWidget()
-    if not Valid(rootCanvas) then return nil end
+function PlayerMapMarker.ProjectWorldToCanvasLocalRaw(PC, WorldLoc)
+    if not slua.isValid(PC) or not WorldLoc then return false, 0, 0 end
+    if not PlayerMapMarker._tempScreenPixelPos then
+        local FVec = import("Vector2D") or FVector2D
+        PlayerMapMarker._tempScreenPixelPos = FVec and FVec(0, 0) or {X=0, Y=0}
+    end
+    local tempPos = PlayerMapMarker._tempScreenPixelPos
+    local bOK = false
+    pcall(function()
+        local res = PC:ProjectWorldLocationToScreen(WorldLoc, tempPos, true)
+        if res == true or res == 1 then bOK = true end
+    end)
+    if not bOK or (tempPos.X == 0 and tempPos.Y == 0) then return false, 0, 0 end
+    local scaleX = PlayerMapMarker._CanvasScaleX or 1.0
+    local scaleY = PlayerMapMarker._CanvasScaleY or 1.0
+    local offsetX = PlayerMapMarker._CanvasOffsetX or 0
+    local offsetY = PlayerMapMarker._CanvasOffsetY or 0
+    return true, tempPos.X * scaleX + offsetX, tempPos.Y * scaleY + offsetY
+end
+
+function PlayerMapMarker.GetBoneLocationWithFallback(Character, PrimaryBoneName)
+    if not slua.isValid(Character) or not PrimaryBoneName then return nil end
+    local eMesh = Character.Mesh or (type(Character.getAvatarComponent2) == "function" and Character:getAvatarComponent2()) or (type(Character.GetMesh) == "function" and Character:GetMesh())
+    if not slua.isValid(eMesh) then return nil end
+    local fallbacks = PlayerMapMarker.BoneNameFallbacks[PrimaryBoneName] or {PrimaryBoneName}
+    for _, bname in ipairs(fallbacks) do
+        local loc = nil
+        pcall(function()
+            if eMesh.GetSocketLocation then loc = eMesh:GetSocketLocation(bname)
+            elseif eMesh.GetBoneLocation then loc = eMesh:GetBoneLocation(bname) end
+        end)
+        if loc then return loc end
+    end
+    return nil
+end
+
+function PlayerMapMarker.CreateSkeletonLineWidget()
+    local rootCanvas = PlayerMapMarker.GetCanvasRootWidget()
+    if not slua.isValid(rootCanvas) then return nil end
     local lineImageClass = import("Image")
     if not lineImageClass then return nil end
     local widget = nil
     pcall(function() widget = Game:AddUIWidget(lineImageClass, rootCanvas) end)
-    if not Valid(widget) then return nil end
+    if not slua.isValid(widget) then return nil end
     local slot = widget.Slot
-    if not Valid(slot) then return nil end
-    local Vector2D = import("Vector2D") or FVector2D
+    if not slua.isValid(slot) then return nil end
+    local FVec = import("Vector2D") or FVector2D
     local FAnchors = import("FAnchors")
     pcall(function()
-        if Vector2D then slot:SetAlignment(Vector2D(0, 0.5)) end
+        if FVec then slot:SetAlignment(FVec(0, 0.5)) end
         if FAnchors then slot:SetAnchors(FAnchors(0, 0, 0, 0)) end
     end)
     return {
@@ -136,32 +217,171 @@ local function DX_CreateSkeletonLineWidget()
         Slot = slot,
         lastFromX = -9999, lastFromY = -9999,
         lastToX = -9999, lastToY = -9999,
-        posVec = Vector2D and Vector2D(0, 0) or {X=0, Y=0},
-        sizeVec = Vector2D and Vector2D(0, 0) or {X=0, Y=0}
+        posVec = FVec and FVec(0, 0) or {X=0, Y=0},
+        sizeVec = FVec and FVec(0, 0) or {X=0, Y=0}
     }
 end
 
-local function DX_ProjectWorldToCanvas(pc, worldLoc)
-    if not Valid(pc) or not worldLoc then return false, 0, 0 end
-    local screenPos = FVector2D and FVector2D(0, 0) or {X=0, Y=0}
-    local bOK = false
-    pcall(function()
-        if pc.ProjectWorldLocationToWidgetPosition then
-            bOK = pc:ProjectWorldLocationToWidgetPosition(worldLoc, screenPos, false)
+function PlayerMapMarker.UpdateSkeletonLines(KeyStr, Character, PC, distM, isBot, isHidden)
+    if _G.DX_GetVal("ESP_SKELETON") ~= 1 then return end
+    local maxDistM = _G.DX_GetVal("ESP_SKELETON_DIST") or 340
+    local PlayerBones = PlayerMapMarker.SkeletonWidgets[KeyStr]
+
+    if distM > maxDistM or not slua.isValid(Character) or not slua.isValid(PC) then
+        if PlayerBones then
+            for _, LineData in ipairs(PlayerBones) do
+                if LineData and LineData.Widget and slua.isValid(LineData.Widget) then
+                    pcall(function()
+                        if type(LineData.Widget.SetWidgetVisibility) == "function" then
+                            LineData.Widget:SetWidgetVisibility(UEnums.ESlateVisibility.Collapsed or 2)
+                        elseif type(LineData.Widget.SetVisibility) == "function" then
+                            LineData.Widget:SetVisibility(2)
+                        end
+                    end)
+                end
+            end
         end
-    end)
-    if bOK and screenPos and (screenPos.X ~= 0 or screenPos.Y ~= 0) then
-        return true, screenPos.X, screenPos.Y
+        return
     end
-    pcall(function()
-        if pc.ProjectWorldLocationToScreen then
-            bOK = pc:ProjectWorldLocationToScreen(worldLoc, screenPos, false)
+
+    if not PlayerBones then
+        PlayerBones = {}
+        PlayerMapMarker.SkeletonWidgets[KeyStr] = PlayerBones
+    end
+
+    local colorIdx = 3
+    if isBot then
+        colorIdx = isHidden and (_G.DX_GetVal("ESP_SKELETON_BOT_COV") or 2) or (_G.DX_GetVal("ESP_SKELETON_BOT_VIS") or 4)
+    else
+        colorIdx = isHidden and (_G.DX_GetVal("ESP_SKELETON_PL_COV") or 1) or (_G.DX_GetVal("ESP_SKELETON_PL_VIS") or 3)
+    end
+
+    local SKEL_COLOR_MAP = {
+        [1] = {R=1.0, G=0.0, B=0.0},      -- Đỏ
+        [2] = {R=1.0, G=1.0, B=0.0},      -- Vàng
+        [3] = {R=0.0, G=1.0, B=0.0},      -- Xanh lá
+        [4] = {R=0.0, G=1.0, B=1.0},      -- Cyan
+        [5] = {R=1.0, G=1.0, B=1.0}       -- Trắng
+    }
+    local baseColor = SKEL_COLOR_MAP[colorIdx] or SKEL_COLOR_MAP[3]
+    local opacityPct = math.max(10, math.min(100, _G.DX_GetVal("ESP_SKELETON_OPACITY") or 80))
+    local alphaVal = opacityPct / 100.0
+    local FLinearColor = import("LinearColor") or FLinearColor
+    local lineColor = FLinearColor and FLinearColor(baseColor.R, baseColor.G, baseColor.B, alphaVal) or {R=baseColor.R*255, G=baseColor.G*255, B=baseColor.B*255, A=alphaVal*255}
+
+    local skelThick = (_G.DX_GetVal("ESP_SKELETON_THICK") or 8) * 0.25
+    local thickness = math.max(1.0, math.min(6.0, skelThick))
+
+    PlayerMapMarker.UpdateCanvasTransform(PC)
+
+    local lineIndex = 0
+    local cache = PlayerMapMarker._StaticBoneLocCache
+    for k in pairs(cache) do cache[k] = nil end
+
+    for _, chain in ipairs(PlayerMapMarker.SkeletonChains) do
+        local lastCanvasX, lastCanvasY = nil, nil
+        for _, boneName in ipairs(chain) do
+            local boneWorldLoc = cache[boneName]
+            if boneWorldLoc == nil then
+                boneWorldLoc = PlayerMapMarker.GetBoneLocationWithFallback(Character, boneName) or false
+                cache[boneName] = boneWorldLoc
+            end
+            if boneWorldLoc == false then boneWorldLoc = nil end
+
+            local currentCanvasX, currentCanvasY = nil, nil
+            if boneWorldLoc then
+                local bOnScreen, cX, cY = PlayerMapMarker.ProjectWorldToCanvasLocalRaw(PC, boneWorldLoc)
+                if bOnScreen then
+                    currentCanvasX = cX
+                    currentCanvasY = cY
+                end
+            end
+
+            if lastCanvasX and currentCanvasX then
+                lineIndex = lineIndex + 1
+                local LineData = PlayerBones[lineIndex]
+                if not LineData or not LineData.Widget or not slua.isValid(LineData.Widget) then
+                    LineData = PlayerMapMarker.CreateSkeletonLineWidget()
+                    if LineData then PlayerBones[lineIndex] = LineData end
+                end
+
+                if LineData and LineData.Widget and LineData.Slot then
+                    local Widget = LineData.Widget
+                    local Slot = LineData.Slot
+
+                    if Widget._cachedColor ~= lineColor then
+                        pcall(function()
+                            if Widget.SetBrushColor then Widget:SetBrushColor(lineColor) end
+                        end)
+                        Widget._cachedColor = lineColor
+                    end
+
+                    pcall(function()
+                        if type(Widget.SetWidgetVisibility) == "function" then
+                            Widget:SetWidgetVisibility(UEnums.ESlateVisibility.SelfHitTestInvisible or 0)
+                        elseif type(Widget.SetVisibility) == "function" then
+                            Widget:SetVisibility(0)
+                        end
+                    end)
+
+                    local fromX = lastCanvasX
+                    local fromY = lastCanvasY
+                    local toX = currentCanvasX
+                    local toY = currentCanvasY
+
+                    if math.abs(fromX - LineData.lastFromX) > 0.15 or
+                       math.abs(fromY - LineData.lastFromY) > 0.15 or
+                       math.abs(toX - LineData.lastToX) > 0.15 or
+                       math.abs(toY - LineData.lastToY) > 0.15 then
+
+                        LineData.lastFromX = fromX
+                        LineData.lastFromY = fromY
+                        LineData.lastToX = toX
+                        LineData.lastToY = toY
+
+                        local dx = toX - fromX
+                        local dy = toY - fromY
+                        local length = math.sqrt(dx * dx + dy * dy)
+                        local angle_rad = (math.atan2 and math.atan2(dy, dx)) or math.atan(dy, dx)
+                        local angle = angle_rad * 57.29577951308232
+
+                        pcall(function()
+                            if LineData.posVec then
+                                LineData.posVec.X = fromX
+                                LineData.posVec.Y = fromY - thickness / 2.0
+                                Slot:SetPosition(LineData.posVec)
+                            end
+                            if LineData.sizeVec then
+                                LineData.sizeVec.X = length
+                                LineData.sizeVec.Y = thickness
+                                Slot:SetSize(LineData.sizeVec)
+                            end
+                            if Widget.SetRenderAngle then
+                                Widget:SetRenderAngle(angle)
+                            elseif Widget.SetRenderTransformAngle then
+                                Widget:SetRenderTransformAngle(angle)
+                            end
+                        end)
+                    end
+                end
+            end
+            lastCanvasX = currentCanvasX
+            lastCanvasY = currentCanvasY
         end
-    end)
-    if bOK and screenPos and (screenPos.X ~= 0 or screenPos.Y ~= 0) then
-        return true, screenPos.X, screenPos.Y
     end
-    return false, 0, 0
+
+    for idx = lineIndex + 1, #PlayerBones do
+        local LineData = PlayerBones[idx]
+        if LineData and LineData.Widget and slua.isValid(LineData.Widget) then
+            pcall(function()
+                if type(LineData.Widget.SetWidgetVisibility) == "function" then
+                    LineData.Widget:SetWidgetVisibility(UEnums.ESlateVisibility.Collapsed or 2)
+                elseif type(LineData.Widget.SetVisibility) == "function" then
+                    LineData.Widget:SetVisibility(2)
+                end
+            end)
+        end
+    end
 end
 
 local bWriteLog = true
@@ -5446,193 +5666,21 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                                 end
                             end
 
-                            -- 4. ESP SKELETON (KHUNG XƯƠNG KẺ ĐỊCH - BỘ KẾT NỐI KHỚP XƯƠNG DÂY 2D & CHẤM HUD)
-                            local maxSkelDist = _G.DX_GetVal("ESP_SKELETON_DIST") or 340
-                            local eStrKey = enemyId
-                            if _G.DX_GetVal("ESP_SKELETON") == 1 and distM <= maxSkelDist then
-                                local eMesh = enemy.Mesh or (type(enemy.getAvatarComponent2) == "function" and enemy:getAvatarComponent2()) or (type(enemy.GetMesh) == "function" and enemy:GetMesh())
-                                if Valid(eMesh) then
-                                    local aLoc = enemyLoc or (type(enemy.K2_GetActorLocation) == "function" and enemy:K2_GetActorLocation())
-                                    local isBot = (enemy.bIsAI == true or enemy.bIsBot == true)
-                                    local isHidden = true
-                                    _G.AimTouchVisCache = _G.AimTouchVisCache or {}
-                                    local cachedVis = _G.AimTouchVisCache[enemyId]
-                                    if cachedVis and (currentTickOS - cachedVis.time) < 0.4 then
-                                        isHidden = cachedVis.hidden
-                                    else
-                                        if Valid(PlayerController) then
-                                            pcall(function() if PlayerController:LineOfSightTo(enemy) then isHidden = false end end)
-                                        end
-                                    end
-
-                                    local colorIdx = 3
-                                    if isBot then
-                                        colorIdx = isHidden and (_G.DX_GetVal("ESP_SKELETON_BOT_COV") or 2) or (_G.DX_GetVal("ESP_SKELETON_BOT_VIS") or 4)
-                                    else
-                                        colorIdx = isHidden and (_G.DX_GetVal("ESP_SKELETON_PL_COV") or 1) or (_G.DX_GetVal("ESP_SKELETON_PL_VIS") or 3)
-                                    end
-
-                                    local SKEL_COLOR_MAP = {
-                                        [1] = {R=1.0, G=0.0, B=0.0},      -- Đỏ
-                                        [2] = {R=1.0, G=1.0, B=0.0},      -- Vàng
-                                        [3] = {R=0.0, G=1.0, B=0.0},      -- Xanh lá
-                                        [4] = {R=0.0, G=1.0, B=1.0},      -- Cyan
-                                        [5] = {R=1.0, G=1.0, B=1.0}       -- Trắng
-                                    }
-                                    local baseColor = SKEL_COLOR_MAP[colorIdx] or SKEL_COLOR_MAP[3]
-                                    local opacityPct = math.max(10, math.min(100, _G.DX_GetVal("ESP_SKELETON_OPACITY") or 80))
-                                    local alphaVal = opacityPct / 100.0
-                                    local FLinearColor = import("LinearColor") or FLinearColor
-                                    local lineLinearColor = FLinearColor and FLinearColor(baseColor.R, baseColor.G, baseColor.B, alphaVal) or {R=baseColor.R*255, G=baseColor.G*255, B=baseColor.B*255, A=alphaVal*255}
-                                    local hudColor = {R=math.floor(baseColor.R*255), G=math.floor(baseColor.G*255), B=math.floor(baseColor.B*255), A=math.floor(alphaVal*255)}
-
-                                    local skelThick = (_G.DX_GetVal("ESP_SKELETON_THICK") or 8) * 0.25
-                                    local thickness = math.max(1.0, math.min(6.0, skelThick))
-                                    local sizeMult = math.max(0.5, math.min(2.0, skelThick))
-
-                                    -- 1. Vẽ các điểm khớp xương 3D HUD Text (Chấm ● & ▪)
-                                    if Valid(MyHUD) and aLoc then
-                                        for _, bName in ipairs(GLOBAL_BONE_LIST) do
-                                            if distM <= 50 or (bName == "head" or bName == "pelvis" or bName == "neck_01") then
-                                                local wLoc = DX_GetBoneLoc(eMesh, bName)
-                                                if wLoc then
-                                                    local offset = {X = wLoc.X - aLoc.X, Y = wLoc.Y - aLoc.Y, Z = wLoc.Z - aLoc.Z}
-                                                    local mark = "▪"
-                                                    local fixedSize = 0.25 * sizeMult
-                                                    if bName == "head" then
-                                                        mark = "●"
-                                                        fixedSize = 0.45 * sizeMult
-                                                    elseif bName == "pelvis" or bName == "neck_01" then
-                                                        mark = "▪"
-                                                        fixedSize = 0.35 * sizeMult
-                                                    end
-                                                    MyHUD:AddDebugText(mark, enemy, 0.2, offset, offset, hudColor, true, false, true, nil, fixedSize, true)
-                                                end
-                                            end
-                                        end
-                                    end
-
-                                    -- 2. Vẽ nét nối 2D Canvas Lines (Dây nối giữa các khớp xương)
-                                    if not DX_SkeletonWidgets[eStrKey] then DX_SkeletonWidgets[eStrKey] = {} end
-                                    local playerBones = DX_SkeletonWidgets[eStrKey]
-                                    local lineIndex = 0
-                                    local Vector2D = import("Vector2D") or FVector2D
-                                    local boneLocCache = {}
-
-                                    for _, chain in ipairs(DX_SkeletonChains) do
-                                        local lastCanvasX, lastCanvasY = nil, nil
-                                        for _, boneName in ipairs(chain) do
-                                            local boneWorldLoc = boneLocCache[boneName]
-                                            if boneWorldLoc == nil then
-                                                boneWorldLoc = DX_GetBoneLoc(eMesh, boneName)
-                                                boneLocCache[boneName] = boneWorldLoc or false
-                                            end
-                                            if boneWorldLoc == false then boneWorldLoc = nil end
-
-                                            local currentCanvasX, currentCanvasY = nil, nil
-                                            if boneWorldLoc then
-                                                local bOnScreen, cX, cY = DX_ProjectWorldToCanvas(PlayerController, boneWorldLoc)
-                                                if bOnScreen then
-                                                    currentCanvasX = cX
-                                                    currentCanvasY = cY
-                                                end
-                                            end
-
-                                            if lastCanvasX and currentCanvasX then
-                                                lineIndex = lineIndex + 1
-                                                local LineData = playerBones[lineIndex]
-                                                if not LineData or not LineData.Widget or not Valid(LineData.Widget) then
-                                                    LineData = DX_CreateSkeletonLineWidget()
-                                                    if LineData then playerBones[lineIndex] = LineData end
-                                                end
-
-                                                if LineData and LineData.Widget and LineData.Slot then
-                                                    local Widget = LineData.Widget
-                                                    local Slot = LineData.Slot
-
-                                                    pcall(function()
-                                                        if Widget.SetBrushColor then Widget:SetBrushColor(lineLinearColor) end
-                                                        if type(Widget.SetWidgetVisibility) == "function" then
-                                                            Widget:SetWidgetVisibility(0)
-                                                        elseif type(Widget.SetVisibility) == "function" then
-                                                            Widget:SetVisibility(0)
-                                                        end
-                                                    end)
-
-                                                    local fromX, fromY = lastCanvasX, lastCanvasY
-                                                    local toX, toY = currentCanvasX, currentCanvasY
-
-                                                    if math.abs(fromX - LineData.lastFromX) > 0.15 or
-                                                       math.abs(fromY - LineData.lastFromY) > 0.15 or
-                                                       math.abs(toX - LineData.lastToX) > 0.15 or
-                                                       math.abs(toY - LineData.lastToY) > 0.15 then
-
-                                                        LineData.lastFromX = fromX
-                                                        LineData.lastFromY = fromY
-                                                        LineData.lastToX = toX
-                                                        LineData.lastToY = toY
-
-                                                        local dx = toX - fromX
-                                                        local dy = toY - fromY
-                                                        local length = math_sqrt(dx * dx + dy * dy)
-                                                        local angle_rad = (math.atan2 and math.atan2(dy, dx)) or math.atan(dy, dx)
-                                                        local angle = angle_rad * 57.29577951308232
-
-                                                        pcall(function()
-                                                            if LineData.posVec then
-                                                                LineData.posVec.X = fromX
-                                                                LineData.posVec.Y = fromY - thickness / 2.0
-                                                                Slot:SetPosition(LineData.posVec)
-                                                            end
-                                                            if LineData.sizeVec then
-                                                                LineData.sizeVec.X = length
-                                                                LineData.sizeVec.Y = thickness
-                                                                Slot:SetSize(LineData.sizeVec)
-                                                            end
-                                                            if Widget.SetRenderAngle then
-                                                                Widget:SetRenderAngle(angle)
-                                                            elseif Widget.SetRenderTransformAngle then
-                                                                Widget:SetRenderTransformAngle(angle)
-                                                            end
-                                                        end)
-                                                    end
-                                                end
-                                            end
-
-                                            lastCanvasX = currentCanvasX
-                                            lastCanvasY = currentCanvasY
-                                        end
-                                    end
-
-                                    -- Ẩn các đoạn widget line dư
-                                    for idx = lineIndex + 1, #playerBones do
-                                        local LineData = playerBones[idx]
-                                        if LineData and LineData.Widget and Valid(LineData.Widget) then
-                                            pcall(function()
-                                                if type(LineData.Widget.SetWidgetVisibility) == "function" then
-                                                    LineData.Widget:SetWidgetVisibility(2)
-                                                elseif type(LineData.Widget.SetVisibility) == "function" then
-                                                    LineData.Widget:SetVisibility(2)
-                                                end
-                                            end)
-                                        end
+                            -- 4. ESP SKELETON (KHUNG XƯƠNG KẺ ĐỊCH - UPDATE SKELETON LINES CHUẨN X3TEAM)
+                            if _G.DX_GetVal("ESP_SKELETON") == 1 then
+                                local isBot = (enemy.bIsAI == true or enemy.bIsBot == true)
+                                local isHidden = true
+                                _G.AimTouchVisCache = _G.AimTouchVisCache or {}
+                                local cachedVis = _G.AimTouchVisCache[enemyId]
+                                if cachedVis and (currentTickOS - cachedVis.time) < 0.4 then
+                                    isHidden = cachedVis.hidden
+                                else
+                                    if Valid(PlayerController) then
+                                        pcall(function() if PlayerController:LineOfSightTo(enemy) then isHidden = false end end)
                                     end
                                 end
-                            else
-                                -- Dọn dẹp/Ẩn các line widget của kẻ địch khi tắt hoặc vượt tầm xa
-                                if DX_SkeletonWidgets[eStrKey] then
-                                    for idx, LineData in ipairs(DX_SkeletonWidgets[eStrKey]) do
-                                        if LineData and LineData.Widget and Valid(LineData.Widget) then
-                                            pcall(function()
-                                                if type(LineData.Widget.SetWidgetVisibility) == "function" then
-                                                    LineData.Widget:SetWidgetVisibility(2)
-                                                elseif type(LineData.Widget.SetVisibility) == "function" then
-                                                    LineData.Widget:SetVisibility(2)
-                                                end
-                                            end)
-                                        end
-                                    end
-                                end
+
+                                PlayerMapMarker.UpdateSkeletonLines(enemyId, enemy, PlayerController, distM, isBot, isHidden)
                             end
 
                             -- TỐI ƯU HÓA: Tích hợp Threat Assessment ESP trực tiếp vào vòng lặp chính
