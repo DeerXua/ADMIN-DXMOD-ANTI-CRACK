@@ -5273,6 +5273,25 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
                 local globalVisColor, globalPlayerOccludedColor, globalAiOccludedColor, globalColorHash
                 if isWallhackGlobalOn then
+                    -- [WOW / CHẾ ĐỘ SÁNG TẠO FIX] Liên tục duy trì 7 CVar chiều sâu để chống bị map WOW ghi đè làm mất VisCheck 2 màu
+                    pcall(function()
+                        local curOS = os_clock()
+                        if not self._lastWHCvarTime or (curOS - self._lastWHCvarTime) > 1.5 then
+                            self._lastWHCvarTime = curOS
+                            local KSL = rawget(_G, "KismetSystemLibrary") or (import and import("KismetSystemLibrary"))
+                            local pc = PlayerController or (self.GetPlayerController and self:GetPlayerController())
+                            if Valid(KSL) and Valid(pc) then
+                                KSL.ExecuteConsoleCommand(pc, "r.EnableDrawDyeingColor 1")
+                                KSL.ExecuteConsoleCommand(pc, "r.SupportDyeingColorDistanceFade 1")
+                                KSL.ExecuteConsoleCommand(pc, "r.SupportDyeingColorMeshProxy 1")
+                                KSL.ExecuteConsoleCommand(pc, "r.EnablePrimitiveHighlight 1")
+                                KSL.ExecuteConsoleCommand(pc, "r.CustomDepth 3")
+                                KSL.ExecuteConsoleCommand(pc, "r.DeviceLevelUseHighLightMode 1")
+                                KSL.ExecuteConsoleCommand(pc, "r.Highlight.Enable 1")
+                            end
+                        end
+                    end)
+
                     globalVisColor = GetCurrentWallVisibleColor()
                     globalPlayerOccludedColor = GetCurrentWallOccludedColor(false)
                     globalAiOccludedColor = GetCurrentWallOccludedColor(true)
@@ -5282,7 +5301,15 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                 end
 
                 for _, enemy in pairs(allPlayers) do
-                    if Valid(enemy) and enemy ~= LocalPlayer and enemy.TeamID ~= myTeamID then
+                    local isFFAorWOW = (myTeamID == nil or myTeamID == 0 or myTeamID == -1)
+                    local isEnemyTarget = false
+                    if isFFAorWOW then
+                        if Valid(enemy) and enemy ~= LocalPlayer then isEnemyTarget = true end
+                    else
+                        if Valid(enemy) and enemy ~= LocalPlayer and enemy.TeamID ~= myTeamID then isEnemyTarget = true end
+                    end
+
+                    if isEnemyTarget then
                         local isEnemyDead = false
                         local isEnemyKnocked = false
                         local currentHp, maxHp = 100, 100
@@ -5414,7 +5441,14 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                                 local visColor = globalVisColor
                                 local occludedColor = enemy.DX_IsAICached and globalAiOccludedColor or globalPlayerOccludedColor
                                 local auraHash = (enemy.DX_IsAICached and "ai_" or "player_") .. globalColorHash
-                                if isMeshChanged or enemy.LastAuraHash ~= auraHash or not enemy.WallhackApplied then
+                                local bNeedReapply = isMeshChanged or enemy.LastAuraHash ~= auraHash or not enemy.WallhackApplied
+                                if not bNeedReapply and Valid(enemy.Mesh) then
+                                    -- [WOW RESPAWN FIX] Tự động kích hoạt lại khi địch hồi sinh trong trận đấu WOW
+                                    if enemy.Mesh.bRenderCustomDepth == false or enemy.Mesh.bDrawDyeing == false then
+                                        bNeedReapply = true
+                                    end
+                                end
+                                if bNeedReapply then
                                     pcall(function()
                                         if enemy.LastAuraMeshes then
                                             for _, mesh in ipairs(enemy.LastAuraMeshes) do
