@@ -42,6 +42,14 @@ local KismetMathLibrary = import("KismetMathLibrary")
 local GameplayStatics = import("GameplayStatics")
 local InGameMarkTools = require("GameLua.Mod.BaseMod.Common.InGameMarkTools")
 
+local GLOBAL_BONE_LIST = {
+    "head", "neck_01", "pelvis",
+    "upperarm_r", "lowerarm_r", "hand_r",
+    "upperarm_l", "lowerarm_l", "hand_l",
+    "thigh_l", "calf_l", "foot_l",
+    "thigh_r", "calf_r", "foot_r"
+}
+
 local bWriteLog = true
 local printf = function(...)
     if bWriteLog then
@@ -2529,7 +2537,7 @@ _G.LastConfigSaveStr = ""
 
 local defaultSettings = {
     ESP_HITMARK_1 = 0, ESP_HITMARK_2 = 0, WALLHACK = 0, WHITE_BODY = 0,
-    ESP_WEAPON = 0, ESP_COUNT = 0, ESP_BOX = 0, EspLoai5 = 0,
+    ESP_WEAPON = 0, ESP_COUNT = 0, ESP_BOX = 0, EspLoai5 = 0, ESP_SKELETON = 0,
     AIMBOT = 0, SPEED_AIMBOT = 0, FOV_AIMBOT = 0, THU_TAM = 0,
     NO_RECOIL_100 = 0, GIAM_RUNG_SCOPE = 0,
 
@@ -2917,6 +2925,7 @@ table.insert(StackESP, {
         AddToggle(StackESP, "ESP_HITMARK_1", "ESP ĐỊNH VỊ")
         AddToggle(StackESP, "ESP_HITMARK_2", "ESP THANH MÁU")
         AddToggle(StackESP, "ESP_COUNT", "ĐẾM SỐ LƯỢNG ĐỊCH")
+        AddToggle(StackESP, "ESP_SKELETON", "ESP KHUNG XƯƠNG (Skeleton)")
         -- ESP KHUNG BOX mapping to both ESP_BOX and EspLoai5
         table.insert(StackESP, {
             Key = "ModMenu_ESP5",
@@ -5229,6 +5238,37 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                                         textColor = flashOn and {R=255, G=0, B=0, A=255} or {R=80, G=0, B=0, A=255}
                                     end
                                     MyHUD:AddDebugText(enemy.DX_CachedStanceText, enemy, 0.5, {X=0, Y=0, Z=-110}, {X=0, Y=0, Z=-110}, textColor, true, false, true, nil, dynamicScale, true)
+                                end
+                            end
+
+                            -- 4. ESP SKELETON (KHUNG XƯƠNG KẺ ĐỊCH)
+                            if _G.DX_GetVal("ESP_SKELETON") == 1 and distM <= 250 and Valid(MyHUD) then
+                                local eMesh = enemy.Mesh or (type(enemy.getAvatarComponent2) == "function" and enemy:getAvatarComponent2()) or (type(enemy.GetMesh) == "function" and enemy:GetMesh())
+                                if Valid(eMesh) and type(eMesh.GetSocketLocation) == "function" then
+                                    local aLoc = enemyLoc or (type(enemy.K2_GetActorLocation) == "function" and enemy:K2_GetActorLocation())
+                                    if aLoc then
+                                        for _, bName in ipairs(GLOBAL_BONE_LIST) do
+                                            if distM <= 50 or (bName == "head" or bName == "pelvis" or bName == "neck_01") then
+                                                local wLoc = eMesh:GetSocketLocation(bName)
+                                                if wLoc then
+                                                    local offset = {X = wLoc.X - aLoc.X, Y = wLoc.Y - aLoc.Y, Z = wLoc.Z - aLoc.Z}
+                                                    local mark = "▪"
+                                                    local fixedSize = 0.25
+                                                    local color = {R=0, G=255, B=255, A=255}
+                                                    if bName == "head" then
+                                                        mark = "●"
+                                                        fixedSize = 0.45
+                                                        color = {R=255, G=0, B=0, A=255}
+                                                    elseif bName == "pelvis" or bName == "neck_01" then
+                                                        mark = "▪"
+                                                        fixedSize = 0.35
+                                                        color = {R=255, G=255, B=0, A=255}
+                                                    end
+                                                    MyHUD:AddDebugText(mark, enemy, 0.2, offset, offset, color, true, false, true, nil, fixedSize, true)
+                                                end
+                                            end
+                                        end
+                                    end
                                 end
                             end
 
