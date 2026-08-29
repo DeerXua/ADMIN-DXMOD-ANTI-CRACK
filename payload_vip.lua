@@ -56,6 +56,7 @@ PlayerMapMarker.SkeletonThickness = 0.8
 PlayerMapMarker.SkeletonOpacity = 0.8
 PlayerMapMarker.SkeletonMaxDistance = 34000
 PlayerMapMarker.SkeletonWidgets = {}
+PlayerMapMarker.SnapLineWidgets = {}
 PlayerMapMarker._StaticBoneLocCache = {}
 PlayerMapMarker.ESPCanvas = nil
 
@@ -383,8 +384,6 @@ function PlayerMapMarker.UpdateSkeletonLines(KeyStr, Character, PC, distM, isBot
         end
     end
 end
-
-PlayerMapMarker.SnapLineWidgets = {}
 
 function PlayerMapMarker.CreateSnapLine()
     local rootCanvas = PlayerMapMarker.GetCanvasRootWidget()
@@ -3381,91 +3380,6 @@ table.insert(StackESP, {
         AddToggle(StackESP, "ESP_HITMARK_1", "ESP ĐỊNH VỊ")
         AddToggle(StackESP, "ESP_HITMARK_2", "ESP THANH MÁU")
         AddToggle(StackESP, "ESP_COUNT", "ĐẾM SỐ LƯỢNG ĐỊCH")
-        AddToggle(StackESP, "ESP_SKELETON", "ESP KHUNG XƯƠNG (Skeleton)")
-        table.insert(StackESP, {
-            Key = "ModMenu_Skeleton_Thick",
-            UI = AliasMap.Slider or "Slider",
-            Text = "   Skeleton: Độ dày nét (1-20)",
-            ExpandHandle = "ModMenu_ESP_Skeleton",
-            MinValue = 1, MaxValue = 20, Min = 1, Max = 20,
-            GetFunc = function() return _G.DX_Settings.ESP_SKELETON_THICK or 8 end,
-            SetFunc = function(_, value)
-                _G.DX_Settings.ESP_SKELETON_THICK = math.max(1, math.min(20, math.floor(tonumber(value) or 8)))
-                return true
-            end
-        })
-        table.insert(StackESP, {
-            Key = "ModMenu_Skeleton_Opacity",
-            UI = AliasMap.Slider or "Slider",
-            Text = "   Skeleton: Độ mờ % (10-100)",
-            ExpandHandle = "ModMenu_ESP_Skeleton",
-            MinValue = 10, MaxValue = 100, Min = 10, Max = 100,
-            GetFunc = function() return _G.DX_Settings.ESP_SKELETON_OPACITY or 80 end,
-            SetFunc = function(_, value)
-                _G.DX_Settings.ESP_SKELETON_OPACITY = math.max(10, math.min(100, math.floor(tonumber(value) or 80)))
-                return true
-            end
-        })
-        table.insert(StackESP, {
-            Key = "ModMenu_Skeleton_Dist",
-            UI = AliasMap.Slider or "Slider",
-            Text = "   Skeleton: Tầm xa tối đa m (50-340)",
-            ExpandHandle = "ModMenu_ESP_Skeleton",
-            MinValue = 50, MaxValue = 340, Min = 50, Max = 340,
-            GetFunc = function() return _G.DX_Settings.ESP_SKELETON_DIST or 340 end,
-            SetFunc = function(_, value)
-                _G.DX_Settings.ESP_SKELETON_DIST = math.max(50, math.min(340, math.floor(tonumber(value) or 340)))
-                return true
-            end
-        })
-        table.insert(StackESP, {
-            Key = "ModMenu_Skeleton_PlVis",
-            UI = AliasMap.Switcher,
-            Text = "   Skeleton Người (Nhìn thấy) [ PLAYER VISIBLE ]",
-            SwitcherText = { "ĐỎ", "VÀNG", "XANH LÁ", "CYAN", "TRẮNG" },
-            SwitcherValue = { 1, 2, 3, 4, 5 },
-            GetFunc = function() return _G.DX_Settings.ESP_SKELETON_PL_VIS or 3 end,
-            SetFunc = function(_, value)
-                _G.DX_Settings.ESP_SKELETON_PL_VIS = math.max(1, math.min(5, math.floor(tonumber(value) or 3)))
-                return true
-            end
-        })
-        table.insert(StackESP, {
-            Key = "ModMenu_Skeleton_PlCov",
-            UI = AliasMap.Switcher,
-            Text = "   Skeleton Người (Bị che) [ PLAYER COVER ]",
-            SwitcherText = { "ĐỎ", "VÀNG", "XANH LÁ", "CYAN", "TRẮNG" },
-            SwitcherValue = { 1, 2, 3, 4, 5 },
-            GetFunc = function() return _G.DX_Settings.ESP_SKELETON_PL_COV or 1 end,
-            SetFunc = function(_, value)
-                _G.DX_Settings.ESP_SKELETON_PL_COV = math.max(1, math.min(5, math.floor(tonumber(value) or 1)))
-                return true
-            end
-        })
-        table.insert(StackESP, {
-            Key = "ModMenu_Skeleton_BotVis",
-            UI = AliasMap.Switcher,
-            Text = "   Skeleton Bot (Nhìn thấy) [ BOT VISIBLE ]",
-            SwitcherText = { "ĐỎ", "VÀNG", "XANH LÁ", "CYAN", "TRẮNG" },
-            SwitcherValue = { 1, 2, 3, 4, 5 },
-            GetFunc = function() return _G.DX_Settings.ESP_SKELETON_BOT_VIS or 4 end,
-            SetFunc = function(_, value)
-                _G.DX_Settings.ESP_SKELETON_BOT_VIS = math.max(1, math.min(5, math.floor(tonumber(value) or 4)))
-                return true
-            end
-        })
-        table.insert(StackESP, {
-            Key = "ModMenu_Skeleton_BotCov",
-            UI = AliasMap.Switcher,
-            Text = "   Skeleton Bot (Bị che) [ BOT COVER ]",
-            SwitcherText = { "ĐỎ", "VÀNG", "XANH LÁ", "CYAN", "TRẮNG" },
-            SwitcherValue = { 1, 2, 3, 4, 5 },
-            GetFunc = function() return _G.DX_Settings.ESP_SKELETON_BOT_COV or 2 end,
-            SetFunc = function(_, value)
-                _G.DX_Settings.ESP_SKELETON_BOT_COV = math.max(1, math.min(5, math.floor(tonumber(value) or 2)))
-                return true
-            end
-        })
         -- ESP KHUNG BOX mapping to both ESP_BOX and EspLoai5
         table.insert(StackESP, {
             Key = "ModMenu_ESP5",
