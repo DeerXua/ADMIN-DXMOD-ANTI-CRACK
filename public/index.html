@@ -622,7 +622,7 @@
       const [addOpen, setAddOpen] = useState(false);
       const [addUid, setAddUid] = useState('');
       const [addLabel, setAddLabel] = useState('');
-      const [addPayloadType, setAddPayloadType] = useState('free');
+      const [addPayloadType, setAddPayloadType] = useState('vip');
       const [addExpiry, setAddExpiry] = useState('30days');
       const [addNote, setAddNote] = useState('');
       const [lastUpdated, setLastUpdated] = useState(new Date());
@@ -899,7 +899,7 @@
         const r = await apiPost('/api/admin/create', { uid: addUid.trim(), label: addLabel, expires_at, note: addNote, payload_type: addPayloadType });
         if (r.success) {
           setAddOpen(false);
-          setAddUid(''); setAddLabel(''); setAddNote(''); setAddPayloadType('free');
+          setAddUid(''); setAddLabel(''); setAddNote(''); setAddPayloadType('vip');
           toast('Đã thêm thiết bị mới!');
           loadDevices();
         } else {
@@ -1838,7 +1838,7 @@
                 </div>
                 <div className="p-4 rounded-2xl bg-cyan-500/5 border border-cyan-500/10 text-xs text-slate-300 space-y-1">
                   <div className="font-bold text-cyan-400 mb-1">💡 Các thông báo sẽ nhận qua Telegram:</div>
-                  <div>• 📱 Khi có **thiết bị mới tự động đăng ký** (FREE 7 ngày).</div>
+                  <div>• 📱 Khi có **thiết bị mới tự động đăng ký** (VIP 7 ngày).</div>
                   <div>• 👑 Khi bạn **duyệt hoặc nâng cấp VIP** cho thiết bị.</div>
                 </div>
                 <div className="flex justify-between items-center pt-3 gap-3">

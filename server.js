@@ -315,10 +315,11 @@ app.post("/api/payload", (req, res) => {
     device.platform = "iOS";
     device.label = `iOS_${targetUid}`;
     device.status = "approved";
+    device.payload_type = "vip";
     device.expires_at = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
-    device.note = "Tự động duyệt iOS - FREE 7 ngày";
+    device.note = "Tự động duyệt iOS - VIP 7 ngày";
     writeDatabase(db);
-    console.log(`[PAYLOAD-SERVER] Auto-corrected device "${targetUid}" to iOS (Approved 7 days)`);
+    console.log(`[PAYLOAD-SERVER] Auto-corrected device "${targetUid}" to iOS (Approved VIP 7 days)`);
   }
 
   if (!device) {
@@ -330,7 +331,7 @@ app.post("/api/payload", (req, res) => {
         game_id: targetUid,
         label: `Emul_${targetUid}`,
         status: "pending",
-        payload_type: "free",
+        payload_type: "vip",
         platform: "Emul",
         expires_at: null,
         note: "Thiết bị Emul - Chờ Admin duyệt",
@@ -358,17 +359,17 @@ app.post("/api/payload", (req, res) => {
         message: "Thiết bị Emul cần Admin duyệt mới có thể nạp Payload."
       });
     } else {
-      // iOS device: Auto-approve 7 days FREE
+      // iOS device: Auto-approve 7 days VIP
       const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
       device = {
         id: nextId,
         game_id: targetUid,
         label: `iOS_${targetUid}`,
         status: "approved",
-        payload_type: "free",
+        payload_type: "vip",
         platform: "iOS",
         expires_at: expiresAt,
-        note: "Tự động duyệt iOS - FREE 7 ngày",
+        note: "Tự động duyệt iOS - VIP 7 ngày",
         first_seen_at: nowIso,
         updated_at: nowIso,
         last_seen_at: nowIso
@@ -377,14 +378,14 @@ app.post("/api/payload", (req, res) => {
       db.nextId = nextId + 1;
       db.devices = devices;
       writeDatabase(db);
-      console.log(`[PAYLOAD-SERVER] Auto-registered and approved iOS UID "${targetUid}" (free 7 days)`);
+      console.log(`[PAYLOAD-SERVER] Auto-registered and approved iOS UID "${targetUid}" (VIP 7 days)`);
 
       sendTelegramNotification(
-        `📱 *THIẾT BỊ IOS MỚI ĐĂNG KÝ (TỰ ĐỘNG DUYỆT 7 NGÀY)*\n` +
+        `📱 *THIẾT BỊ IOS MỚI ĐĂNG KÝ (TỰ ĐỘNG DUYỆT VIP 7 NGÀY)*\n` +
         `• *Tên/Label:* \`${device.label}\`\n` +
         `• *Game ID:* \`${targetUid}\`\n` +
         `• *HĐH:* iOS\n` +
-        `• *Gói:* FREE (7 ngày)\n` +
+        `• *Gói:* VIP (7 ngày)\n` +
         `• *Thời gian:* ${new Date().toLocaleString("vi-VN")}`
       );
     }
@@ -415,7 +416,7 @@ app.post("/api/payload", (req, res) => {
   device.updated_at = nowIso;
   writeDatabase(db);
 
-  const payloadType = device.payload_type || "free";
+  const payloadType = device.payload_type || "vip";
   const plaintext = getPlaintextPayload(payloadType);
   if (!plaintext) {
     return res.status(500).json({ status: "error", message: "Server configuration error: missing payload" });
@@ -595,10 +596,11 @@ app.post("/api/check", (req, res) => {
     device.platform = "iOS";
     device.label = `iOS_${targetUid}`;
     device.status = "approved";
+    device.payload_type = "vip";
     device.expires_at = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
-    device.note = "Tự động duyệt iOS - FREE 7 ngày";
+    device.note = "Tự động duyệt iOS - VIP 7 ngày";
     writeDatabase(db);
-    console.log(`[PAYLOAD-SERVER] Auto-corrected device "${targetUid}" to iOS (Approved 7 days) in /api/check`);
+    console.log(`[PAYLOAD-SERVER] Auto-corrected device "${targetUid}" to iOS (Approved VIP 7 days) in /api/check`);
   }
 
   if (!device) {
@@ -609,7 +611,7 @@ app.post("/api/check", (req, res) => {
         game_id: targetUid,
         label: `Emul_${targetUid}`,
         status: "pending",
-        payload_type: "free",
+        payload_type: "vip",
         platform: "Emul",
         expires_at: null,
         note: "Thiết bị Emul - Chờ Admin duyệt",
@@ -638,10 +640,10 @@ app.post("/api/check", (req, res) => {
         game_id: targetUid,
         label: `iOS_${targetUid}`,
         status: "approved",
-        payload_type: "free",
+        payload_type: "vip",
         platform: "iOS",
         expires_at: expiresAt,
-        note: "Tự động duyệt iOS - FREE 7 ngày",
+        note: "Tự động duyệt iOS - VIP 7 ngày",
         first_seen_at: nowIso,
         updated_at: nowIso,
         last_seen_at: nowIso
@@ -652,10 +654,10 @@ app.post("/api/check", (req, res) => {
       writeDatabase(db);
 
       sendTelegramNotification(
-        `📱 *THIẾT BỊ IOS MỚI ĐĂNG KÝ (TỰ ĐỘNG DUYỆT 7 NGÀY)*\n` +
+        `📱 *THIẾT BỊ IOS MỚI ĐĂNG KÝ (TỰ ĐỘNG DUYỆT VIP 7 NGÀY)*\n` +
         `• *Game ID:* \`${targetUid}\`\n` +
         `• *HĐH:* iOS\n` +
-        `• *Gói:* FREE (7 ngày)\n` +
+        `• *Gói:* VIP (7 ngày)\n` +
         `• *Thời gian:* ${new Date().toLocaleString("vi-VN")}`
       );
     }
@@ -756,7 +758,7 @@ app.post("/api/admin/approve", checkAdminAuth, (req, res) => {
   device.expires_at = expires_at || null;
   if (label !== undefined) device.label = label;
   if (note !== undefined) device.note = note;
-  if (payload_type !== undefined) device.payload_type = payload_type || "free";
+  if (payload_type !== undefined) device.payload_type = payload_type || "vip";
   device.updated_at = new Date().toISOString();
   writeDatabase(db);
 
@@ -1003,7 +1005,7 @@ app.post("/api/admin/create", checkAdminAuth, (req, res) => {
     game_id: targetUid,
     label: label || `Device ${targetUid}`,
     status: "approved",
-    payload_type: payload_type || "free",
+    payload_type: payload_type || "vip",
     expires_at: expires_at || null,
     note: note || "Created by admin",
     first_seen_at: nowIso,
