@@ -15054,22 +15054,78 @@ local function LogToCrashlog(msg)
     end)
 end
 
--- Tune Garbage Collector nhẹ nhàng chống giật lag / khựng frame
+-- ============================================================================
+-- [DX-MOD RAM & CACHE CLEANER V5.0 - X3TEAM STYLE]
+-- 1. GC Tuning: setpause=100 (giữ RAM Lua < 100MB), setstepmul=500
+-- 2. Frame-Aware In-Match GC: Dọn rác từng bước (step 300) trong trận khi FPS > 40
+-- 3. Active Cache Purger: Xóa bảng cache rác (DX_Active_Marks_Cache, AimTouchVisCache, bone cache)
+-- 4. Phase Transition Cleaner: Tự động dọn rác khi chuyển sảnh <-> trận
+-- ============================================================================
+
+-- Tune Garbage Collector cho bộ nhớ Lua siêu nhỏ gọn (< 100MB)
 pcall(function()
-    collectgarbage("setpause", 200)
+    collectgarbage("setpause", 100)
     collectgarbage("setstepmul", 500)
+    collectgarbage("collect")
 end)
 
--- Hàm dọn RAM tự động mượt mà (Tuyệt đối không gọi collectgarbage trong trận đấu)
+-- Hàm xóa sạch các mảng/bảng cache tạm thời trong Lua
+local function PurgeDXCaches(reason)
+    local freedEntries = 0
+    pcall(function()
+        if type(_G.DX_Active_Marks_Cache) == "table" then
+            for k in pairs(_G.DX_Active_Marks_Cache) do
+                _G.DX_Active_Marks_Cache[k] = nil
+                freedEntries = freedEntries + 1
+            end
+        end
+    end)
+    pcall(function()
+        if type(_G.AimTouchVisCache) == "table" then
+            for k in pairs(_G.AimTouchVisCache) do
+                _G.AimTouchVisCache[k] = nil
+                freedEntries = freedEntries + 1
+            end
+        end
+    end)
+    pcall(function()
+        if type(_G.ThreatESP_FireCache) == "table" then
+            for k in pairs(_G.ThreatESP_FireCache) do
+                _G.ThreatESP_FireCache[k] = nil
+                freedEntries = freedEntries + 1
+            end
+        end
+    end)
+    pcall(function()
+        if _G.X3 and type(_G.X3.MagicBulletCache) == "table" then
+            _G.X3.MagicBulletCache.ValidTargets = {}
+        end
+    end)
+    
+    local beforeKB = collectgarbage("count")
+    collectgarbage("step", 500)
+    local afterKB = collectgarbage("count")
+    
+    local msg = string.format("[RAM & CACHE CLEANER] %s | Đã dọn %d entri cache | Lua Mem: %.2f MB -> %.2f MB", 
+        tostring(reason or "Purge"), freedEntries, beforeKB / 1024.0, afterKB / 1024.0)
+    print(msg)
+    if WriteReportToPaksFile then pcall(WriteReportToPaksFile, msg) end
+end
+
+-- Hệ thống dọn RAM & Cache tự động thông minh
 local function StartRAMCleaner()
     if _G._RAMCleanerRunning then return end
     _G._RAMCleanerRunning = true
 
     pcall(function()
         if WriteReportToPaksFile then
-            WriteReportToPaksFile("[RAM CLEANER] Hệ thống dọn RAM siêu mượt đã kích hoạt (Chỉ dọn rác ở Sảnh 60s/lần)")
+            WriteReportToPaksFile("[RAM CLEANER] Kích hoạt hệ thống dọn RAM & Cache đa tầng x3team (Frame-Aware)")
         end
     end)
+
+    local lastPhase = nil
+    local lastInMatchGCTime = os.time()
+    local lastCachePurgeTime = os.time()
 
     local function RunRAMCleanerCycle()
         pcall(function()
@@ -15080,26 +15136,59 @@ local function StartRAMCleaner()
                 end
             end)
 
-            -- Tuyệt đối CHỈ dọn rác khi đứng ở SẢNH và bộ nhớ Lua > 400 MB
+            local currentPhase = inLobby and "lobby" or "match"
+            local now = os.time()
+
+            -- 1. CHUYỂN PHASE (SẢNH <-> TRẬN) -> DỌN RÁC & PURGE CACHE TỨC THÌ
+            if lastPhase and lastPhase ~= currentPhase then
+                lastPhase = currentPhase
+                PurgeDXCaches("Chuyển phase: " .. currentPhase)
+            else
+                lastPhase = currentPhase
+            end
+
+            -- 2. ĐANG Ở SẢNH -> DỌN RÁC ĐỊNH KỲ 30S/LẦN
             if inLobby then
                 local beforeKB = collectgarbage("count")
-                if beforeKB > 400 * 1024 then
-                    collectgarbage("step", 2000)
-                    local afterKB = collectgarbage("count")
-                    local freedKB = beforeKB - afterKB
-                    if freedKB > 100.0 then
-                        local logMsg = string.format("[RAM Cleaner] Dọn rác ở Sảnh - Giải phóng: %.2f KB", freedKB)
-                        print(logMsg)
-                        if WriteReportToPaksFile then WriteReportToPaksFile(logMsg) end
+                collectgarbage("step", 1500)
+                local afterKB = collectgarbage("count")
+                local freedKB = beforeKB - afterKB
+                if freedKB > 50.0 then
+                    local logMsg = string.format("[RAM Cleaner] Dọn rác Sảnh - Giải phóng: %.2f KB (Lua Mem: %.2f MB)", freedKB, afterKB / 1024.0)
+                    print(logMsg)
+                    if WriteReportToPaksFile then WriteReportToPaksFile(logMsg) end
+                end
+            else
+                -- 3. ĐANG TRONG TRẬN -> DỌN RÁC NHẸ KHI FRAME KHỎE (FPS > 40, dt < 0.025s)
+                if (now - lastInMatchGCTime) >= 60 then
+                    lastInMatchGCTime = now
+                    local dt = tonumber(_G.X3 and _G.X3.FrameDT) or 0
+                    -- dt == 0 hoặc dt < 0.025s tức là game đang chạy mượt (> 40 FPS)
+                    if dt == 0 or dt < 0.025 then
+                        local beforeKB = collectgarbage("count")
+                        collectgarbage("step", 300)
+                        local afterKB = collectgarbage("count")
+                        local freedKB = beforeKB - afterKB
+                        if freedKB > 20.0 then
+                            local logMsg = string.format("[RAM Cleaner] Dọn nhẹ Trong Trận (Frame khỏe) - Giải phóng: %.2f KB", freedKB)
+                            print(logMsg)
+                            if WriteReportToPaksFile then WriteReportToPaksFile(logMsg) end
+                        end
                     end
+                end
+
+                -- Purge cache rác định kỳ 5 phút 1 lần trong trận
+                if (now - lastCachePurgeTime) >= 300 then
+                    lastCachePurgeTime = now
+                    PurgeDXCaches("Purge định kỳ 5 phút trong trận")
                 end
             end
         end)
-        
-        -- Trong trận đấu tuyệt đối KHÔNG đụng đến collectgarbage, lặp lại sau mỗi 60 giây ở sảnh
+
+        -- Lặp lại chu kỳ dọn rác mỗi 30 giây
         local ok, ticker = pcall(require, "common.time_ticker")
         if ok and ticker and ticker.AddTimerOnce then
-            ticker.AddTimerOnce(60.0, RunRAMCleanerCycle)
+            ticker.AddTimerOnce(30.0, RunRAMCleanerCycle)
         else
             _G._RAMCleanerRunning = false
         end
@@ -15108,6 +15197,7 @@ local function StartRAMCleaner()
     RunRAMCleanerCycle()
 end
 
+_G.PurgeDXCaches = PurgeDXCaches
 _G.StartRAMCleaner = StartRAMCleaner
 pcall(StartRAMCleaner)
 
