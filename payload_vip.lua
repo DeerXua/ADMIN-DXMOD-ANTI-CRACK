@@ -230,7 +230,7 @@ local function DXLogReporter(kind, uid, name, extra)
     
     local mainGameID, mainPlayerName = GetMainGamePlayerInfo()
     local myInfoStr = string.format("[ID GAME CHÍNH: %s | TÊN: %s]", mainGameID, mainPlayerName)
-    local alertMsg = "🚨 BỊ REPORT / INSPECTOR 🚨 > Nạn nhân: " .. myInfoStr .. " | Loại: " .. tostring(kind) .. " | Kẻ tố cáo/Inspector: UID=" .. tostring(uid or "?") .. " Name=" .. tostring(name or "?") .. (extra and (" | " .. tostring(extra)) or "") .. " ⚠️"
+    local alertMsg = "[BI REPORT / INSPECTOR] > Nạn nhân: " .. myInfoStr .. " | Loại: " .. tostring(kind) .. " | Kẻ tố cáo/Inspector: UID=" .. tostring(uid or "?") .. " Name=" .. tostring(name or "?") .. (extra and (" | " .. tostring(extra)) or "")
     DXFw(alertMsg)
 
     -- In-Game Toast / Tip Alert khi bị Report hoặc Inspector soi
@@ -243,7 +243,7 @@ local function DXLogReporter(kind, uid, name, extra)
                 if G and G.GetPlayerController then pc = G:GetPlayerController() end
             end
             if pc and slua.isValid(pc) then
-                local toastMsg = string.format("🚨 [CẢNH BÁO REPORT] %s: %s (UID: %s)", tostring(kind), tostring(name or "Chưa rõ"), tostring(uid or "?"))
+                local toastMsg = string.format("[CANH BAO REPORT] %s: %s (UID: %s)", tostring(kind), tostring(name or "Chưa rõ"), tostring(uid or "?"))
                 if pc.BroadcastUIMessage then
                     pc:BroadcastUIMessage("UIMsg_CanSelfRescue", 0, toastMsg, "")
                 end
@@ -2980,8 +2980,8 @@ table.insert(StackESP, {
         })
 
            AddToggle(StackESP, "THREAT_ESP", "ESP HIỂM HỌA (Cảnh báo địch ngắm)")
-           AddToggle(StackESP, "SPECTATOR_ALERT", "👁️ CẢNH BÁO SPECTATOR (Đếm số người xem)")
-           AddToggle(StackESP, "REPORTER_ALERT", "🚨 CẢNH BÁO REPORT (Thông báo khi bị soi / report)")
+           AddToggle(StackESP, "SPECTATOR_ALERT", "CANH BAO SPECTATOR (Đếm số người xem)")
+           AddToggle(StackESP, "REPORTER_ALERT", "CANH BAO REPORT (Thông báo khi bị soi / report)")
 
         -- Bomb Warning & Vehicle ESP Controls
         table.insert(StackESP, {
@@ -3671,9 +3671,9 @@ table.insert(StackESP, {
         AddToggle(StackEnv, "NOWATER", "XÓA NƯỚC")
         AddToggle(StackEnv, "NOFOG", "XÓA SƯƠNG MÙ")
         AddToggle(StackEnv, "BLACK_SKY", "TRỜI TỐI")
-        AddToggle(StackEnv, "GHOST_MODE", "👻 GHOST MODE (Tự động tắt khi bị quét)")
-        AddToggle(StackEnv, "NO_LANDING_LAG", "🏃 CHỐNG KHỰNG KHI RƠI")
-        AddToggle(StackEnv, "AUTO_BUNNYHOP", "🐰 BUNNY HOP (Nhảy liên tục)")
+        AddToggle(StackEnv, "GHOST_MODE", "GHOST MODE (Tự động tắt khi bị quét)")
+        AddToggle(StackEnv, "NO_LANDING_LAG", "CHỐNG KHỰNG KHI RƠI")
+        AddToggle(StackEnv, "AUTO_BUNNYHOP", "BUNNY HOP (Nhảy liên tục)")
 
         SettingPageDefine.ModMenu = {
             Key = "ModMenu", 
@@ -12625,7 +12625,7 @@ function PlayerMapMarker.UpdateSpectatorAlert(PC)
     
     local specCount = ProbeSpectatorCount(PC)
     if specCount > 0 then
-        local msg = string.format("👁️ CẢNH BÁO SPECTATOR: %d người đang theo dõi bạn!", specCount)
+        local msg = string.format("[SPECTATOR ALERT] %d người đang theo dõi bạn!", specCount)
         pcall(function()
             if PC and slua.isValid(PC) and PC.BroadcastUIMessage then
                 PC:BroadcastUIMessage("UIMsg_CanSelfRescue", 0, msg, "")
