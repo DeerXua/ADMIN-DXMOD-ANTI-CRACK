@@ -12636,13 +12636,15 @@ function PlayerMapMarker.UpdateSpectatorAlert(PC)
 end
 
 -- ============================================================================
--- MODULE DỰ ĐOÁN BO (NEXT SAFE ZONE PREDICTOR)
+-- MODULE DỰ ĐOÁN BO (NEXT SAFE ZONE PREDICTOR - ROBUST DRIVER)
 -- ============================================================================
 _G.DX_ZonePredictMark = _G.DX_ZonePredictMark or nil
 _G.DX_LastZoneCheckTime = _G.DX_LastZoneCheckTime or 0
+_G.DX_Settings.ZONE_PREDICTOR = _G.DX_Settings.ZONE_PREDICTOR or 1 -- Mặc định bật sẵn
 
 local function UpdateZonePredictor()
-    if _G.DX_GetVal and _G.DX_GetVal("ZONE_PREDICTOR") == 0 then
+    local isEnable = (_G.DX_GetVal and _G.DX_GetVal("ZONE_PREDICTOR") == 1) or (_G.DX_Settings.ZONE_PREDICTOR == 1)
+    if not isEnable then
         if _G.DX_ZonePredictMark then
             pcall(function()
                 if InGameMarkTools then
@@ -12659,7 +12661,7 @@ local function UpdateZonePredictor()
     end
 
     local now = os.clock()
-    if (now - _G.DX_LastZoneCheckTime) < 2.0 then return end
+    if (now - _G.DX_LastZoneCheckTime) < 1.5 then return end
     _G.DX_LastZoneCheckTime = now
 
     pcall(function()
@@ -12671,34 +12673,33 @@ local function UpdateZonePredictor()
         end
 
         local nextCirclePos = nil
-        local radius = 0
 
-        -- Cách 1: Qua SkillPropFeature (NextWhiteCirclePos)
-        if uGameState and slua.isValid(uGameState) and uGameState.SkillPropFeature and type(uGameState.SkillPropFeature.GetNextWhiteCirclePos) == "function" then
-            pcall(function() nextCirclePos = uGameState.SkillPropFeature:GetNextWhiteCirclePos() end)
-        end
-
-        -- Cách 2: Qua NextSafetyZoneCenter hoặc CurSafetyZone
-        if not nextCirclePos and uGameState and slua.isValid(uGameState) then
+        -- 1. Qua SkillPropFeature (GetNextWhiteCirclePos)
+        if uGameState and slua.isValid(uGameState) and uGameState.SkillPropFeature then
             pcall(function()
-                if uGameState.NextSafetyZoneCenter then
-                    nextCirclePos = uGameState.NextSafetyZoneCenter
-                    radius = uGameState.NextSafetyZoneRadius or 0
-                elseif uGameState.CurSafetyZone then
-                    nextCirclePos = uGameState.CurSafetyZone
-                elseif uGameState.SafetyZoneCenter then
-                    nextCirclePos = uGameState.SafetyZoneCenter
-                    radius = uGameState.SafetyZoneRadius or 0
+                if type(uGameState.SkillPropFeature.GetNextWhiteCirclePos) == "function" then
+                    nextCirclePos = uGameState.SkillPropFeature:GetNextWhiteCirclePos()
                 end
             end)
         end
 
-        -- Cách 3: Qua CGameMode CircleMgr
+        -- 2. Qua NextSafetyZoneCenter / SafetyZoneCenter / CurSafetyZone
+        if not nextCirclePos and uGameState and slua.isValid(uGameState) then
+            pcall(function()
+                nextCirclePos = uGameState.NextSafetyZoneCenter or uGameState.SafetyZoneCenter or uGameState.CurSafetyZone or uGameState.WhiteCircle
+            end)
+        end
+
+        -- 3. Qua CGameMode / CGameState CircleMgr
         if not nextCirclePos then
             pcall(function()
                 local CG = rawget(_G, "CGameMode") or rawget(_G, "CGameState")
-                if CG and CG.CircleMgr and type(CG.CircleMgr.GetCurrentWhiteCircle) == "function" then
-                    nextCirclePos = CG.CircleMgr:GetCurrentWhiteCircle()
+                if CG and CG.CircleMgr then
+                    if type(CG.CircleMgr.GetCurrentWhiteCircle) == "function" then
+                        nextCirclePos = CG.CircleMgr:GetCurrentWhiteCircle()
+                    elseif CG.CircleMgr.WhiteCircle then
+                        nextCirclePos = CG.CircleMgr.WhiteCircle
+                    end
                 end
             end)
         end
@@ -12710,29 +12711,53 @@ local function UpdateZonePredictor()
 
             local targetVec = FVector(posX, posY, posZ)
 
+            -- Đánh dấu ghim lên Mini-Map & Big-Map
             if InGameMarkTools and type(InGameMarkTools.ClientAddMapMark) == "function" then
-                if not _G.DX_ZonePredictMark then
-                    _G.DX_ZonePredictMark = InGameMarkTools.ClientAddMapMark(10001, targetVec, posZ * 2, "BO TIEP THEO", 2)
-                end
+                pcall(function()
+                    if not _G.DX_ZonePredictMark then
+                        _G.DX_ZonePredictMark = InGameMarkTools.ClientAddMapMark(9999, targetVec, 0, "BO TIEP THEO", 4)
+                        if not _G.DX_ZonePredictMark then
+                            _G.DX_ZonePredictMark = InGameMarkTools.ClientAddMapMark(10001, targetVec, 0, "BO TIEP THEO", 2)
+                        end
+                    end
+                end)
             end
 
+            -- Phát thông báo khoảng cách tới tâm bo tiếp theo
             local pc = GameplayData and GameplayData.GetPlayerController and GameplayData.GetPlayerController()
-            if pc and slua.isValid(pc) and pc.Pawn and slua.isValid(pc.Pawn) then
-                local myLoc = pc.Pawn:K2_GetActorLocation()
-                if myLoc then
-                    local dx = posX - myLoc.X
-                    local dy = posY - myLoc.Y
-                    local distM = math.floor(math.sqrt(dx * dx + dy * dy) / 100.0)
-                    local toast = string.format("[DU DOAN BO] Tam bo tiep theo: %dm", distM)
-                    if pc.BroadcastUIMessage then
-                        pc:BroadcastUIMessage("UIMsg_CanSelfRescue", 0, toast, "")
+            if not (pc and slua.isValid(pc)) then
+                local G = rawget(_G, "Game")
+                if G and G.GetPlayerController then pc = G:GetPlayerController() end
+            end
+
+            if pc and slua.isValid(pc) then
+                local myPawn = pc.Pawn or (pc.GetPawn and pc:GetPawn())
+                if myPawn and slua.isValid(myPawn) and type(myPawn.K2_GetActorLocation) == "function" then
+                    local myLoc = myPawn:K2_GetActorLocation()
+                    if myLoc then
+                        local dx = posX - myLoc.X
+                        local dy = posY - myLoc.Y
+                        local distM = math.floor(math.sqrt(dx * dx + dy * dy) / 100.0)
+                        local toast = string.format("[DU DOAN BO] Tam bo tiep theo: %dm", distM)
+                        if pc.BroadcastUIMessage then
+                            pc:BroadcastUIMessage("UIMsg_CanSelfRescue", 0, toast, "")
+                        end
                     end
                 end
             end
         end
     end)
 end
+
 _G.UpdateZonePredictor = UpdateZonePredictor
+
+-- Ticker độc lập chạy liên tục 2.0 giây một lần
+pcall(function()
+    local ok, ticker = pcall(require, "common.time_ticker")
+    if ok and ticker and ticker.AddTimerLoop then
+        ticker.AddTimerLoop(2.0, function() pcall(UpdateZonePredictor) end)
+    end
+end)
 
 function PlayerMapMarker.UpdateESPLight()
 
