@@ -230,7 +230,29 @@ local function DXLogReporter(kind, uid, name, extra)
     
     local mainGameID, mainPlayerName = GetMainGamePlayerInfo()
     local myInfoStr = string.format("[ID GAME CHÍNH: %s | TÊN: %s]", mainGameID, mainPlayerName)
-    DXFw("🚨 BỊ REPORT / INSPECTOR 🚨 > Nạn nhân: " .. myInfoStr .. " | Loại: " .. tostring(kind) .. " | Kẻ tố cáo/Inspector: UID=" .. tostring(uid or "?") .. " Name=" .. tostring(name or "?") .. (extra and (" | " .. tostring(extra)) or "") .. " ⚠️")
+    local alertMsg = "🚨 BỊ REPORT / INSPECTOR 🚨 > Nạn nhân: " .. myInfoStr .. " | Loại: " .. tostring(kind) .. " | Kẻ tố cáo/Inspector: UID=" .. tostring(uid or "?") .. " Name=" .. tostring(name or "?") .. (extra and (" | " .. tostring(extra)) or "") .. " ⚠️"
+    DXFw(alertMsg)
+
+    -- In-Game Toast / Tip Alert khi bị Report hoặc Inspector soi
+    if _G.DX_GetVal and _G.DX_GetVal("REPORTER_ALERT") ~= 0 then
+        pcall(function()
+            local GameplayData = require("GameLua.GameCore.Data.GameplayData")
+            local pc = GameplayData and GameplayData.GetPlayerController and GameplayData.GetPlayerController()
+            if not (pc and slua.isValid(pc)) then
+                local G = rawget(_G, "Game")
+                if G and G.GetPlayerController then pc = G:GetPlayerController() end
+            end
+            if pc and slua.isValid(pc) then
+                local toastMsg = string.format("🚨 [CẢNH BÁO REPORT] %s: %s (UID: %s)", tostring(kind), tostring(name or "Chưa rõ"), tostring(uid or "?"))
+                if pc.BroadcastUIMessage then
+                    pc:BroadcastUIMessage("UIMsg_CanSelfRescue", 0, toastMsg, "")
+                end
+                if pc.DisplayGameTipWithMsgID then
+                    pc:DisplayGameTipWithMsgID(48532)
+                end
+            end
+        end)
+    end
 end
 _G.DX.DXLogReporter = DXLogReporter
 
@@ -2957,8 +2979,9 @@ table.insert(StackESP, {
             end
         })
 
--- ESP HIỂM HỌA (Nút bình thường)
            AddToggle(StackESP, "THREAT_ESP", "ESP HIỂM HỌA (Cảnh báo địch ngắm)")
+           AddToggle(StackESP, "SPECTATOR_ALERT", "👁️ CẢNH BÁO SPECTATOR (Đếm số người xem)")
+           AddToggle(StackESP, "REPORTER_ALERT", "🚨 CẢNH BÁO REPORT (Thông báo khi bị soi / report)")
 
         -- Bomb Warning & Vehicle ESP Controls
         table.insert(StackESP, {
@@ -12560,9 +12583,64 @@ end
 
 
 
+local function ProbeSpectatorCount(PC)
+    local count = 0
+    pcall(function()
+        local GameplayData = require("GameLua.GameCore.Data.GameplayData")
+        local gs = GameplayData and GameplayData.GetGameState and GameplayData.GetGameState()
+        local pc = PC or (GameplayData and GameplayData.GetPlayerController and GameplayData.GetPlayerController())
+        
+        if gs and slua.isValid(gs) then
+            for _, f in ipairs({ "SpectatorCount", "SpectatorNum", "WatcherNum", "WatcherCount", "ObserveNum", "BeWatchNum", "ViewerCount" }) do
+                if gs[f] and type(gs[f]) == "number" and gs[f] > 0 then
+                    count = math.max(count, math.floor(gs[f]))
+                end
+            end
+        end
+        if pc and slua.isValid(pc) then
+            for _, f in ipairs({ "SpectatorCount", "WatcherNum", "BeWatchNum", "BeSpectateNum" }) do
+                if pc[f] and type(pc[f]) == "number" and pc[f] > 0 then
+                    count = math.max(count, math.floor(pc[f]))
+                end
+            end
+            if pc.PlayerState and slua.isValid(pc.PlayerState) then
+                local ps = pc.PlayerState
+                for _, f in ipairs({ "SpectatorCount", "WatcherNum", "BeWatchNum", "BeSpectateNum" }) do
+                    if ps[f] and type(ps[f]) == "number" and ps[f] > 0 then
+                        count = math.max(count, math.floor(ps[f]))
+                    end
+                end
+            end
+        end
+    end)
+    return count
+end
+
+function PlayerMapMarker.UpdateSpectatorAlert(PC)
+    if _G.DX_GetVal and _G.DX_GetVal("SPECTATOR_ALERT") == 0 then return end
+    
+    local now = os.clock()
+    if PlayerMapMarker._lastSpecCheck and (now - PlayerMapMarker._lastSpecCheck) < 1.5 then return end
+    PlayerMapMarker._lastSpecCheck = now
+    
+    local specCount = ProbeSpectatorCount(PC)
+    if specCount > 0 then
+        local msg = string.format("👁️ CẢNH BÁO SPECTATOR: %d người đang theo dõi bạn!", specCount)
+        pcall(function()
+            if PC and slua.isValid(PC) and PC.BroadcastUIMessage then
+                PC:BroadcastUIMessage("UIMsg_CanSelfRescue", 0, msg, "")
+            end
+        end)
+    end
+end
+
 function PlayerMapMarker.UpdateESPLight()
 
     if RedBoxOverlay and RedBoxOverlay.bActive then RedBoxOverlay.UpdatePosition() end
+
+    local PC = PlayerMapMarker.GetMyPlayerController()
+
+    if IsValid(PC) then PlayerMapMarker.UpdateSpectatorAlert(PC) end
 
     if not PlayerMapMarker.bUseScreenESP then return end
 
