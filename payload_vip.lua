@@ -4886,6 +4886,24 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                     if Valid(FPPCamera) then
                         if FPPCamera.FieldOfView ~= targetScope then FPPCamera.FieldOfView = targetScope end
                     end
+                    local pc = GameplayData and GameplayData.GetPlayerController and GameplayData.GetPlayerController()
+                    if not (pc and slua.isValid(pc)) then
+                        local G = rawget(_G, "Game")
+                        if G and G.GetPlayerController then pc = G:GetPlayerController() end
+                    end
+                    if pc and slua.isValid(pc) then
+                        local cm = pc.PlayerCameraManager
+                        if cm and slua.isValid(cm) then
+                            pcall(function()
+                                if cm.DefaultFOV ~= targetScope then cm.DefaultFOV = targetScope end
+                                if cm.LockedFOV ~= targetScope then cm.LockedFOV = targetScope end
+                                if cm.CameraCache and cm.CameraCache.POV then
+                                    cm.CameraCache.POV.FOV = targetScope
+                                end
+                                if type(cm.SetFOV) == "function" then cm:SetFOV(targetScope) end
+                            end)
+                        end
+                    end
                 end)
             end
         end
