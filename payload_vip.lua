@@ -5387,8 +5387,29 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                                    .. tostring((_G.DX_Settings and _G.DX_Settings.WALL_OCCLUDED_AI_COLOR) or 7)
                 end
 
+                local isCreativeMode = false
+                pcall(function()
+                    local CGS = rawget(_G, "CGameState")
+                    if CGS and slua.isValid(CGS) then
+                        if type(CGS.IsCreativeMode) == "function" and CGS:IsCreativeMode() then isCreativeMode = true end
+                        if CGS.bIsCreativeWoW then isCreativeMode = true end
+                    end
+                    if not isCreativeMode then
+                        local uGameState = GameplayData and GameplayData.GetGameState and GameplayData.GetGameState()
+                        if uGameState and slua.isValid(uGameState) then
+                            if type(uGameState.IsCreativeMode) == "function" and uGameState:IsCreativeMode() then isCreativeMode = true end
+                            if uGameState.bIsCreativeWoW then isCreativeMode = true end
+                        end
+                    end
+                    if not isCreativeMode then
+                        if rawget(_G, "CreativeModeGameSubsystem") or rawget(_G, "CreativeModeGameMode") or package.loaded["GameLua.Mod.CreativeBase.Gameplay.Subsystem.GameType.CreativeModeGameSubsystem"] then
+                            isCreativeMode = true
+                        end
+                    end
+                end)
+
                 for _, enemy in pairs(allPlayers) do
-                    local isFFAorWOW = (myTeamID == nil or myTeamID == 0 or myTeamID == -1)
+                    local isFFAorWOW = isCreativeMode or (myTeamID == nil or myTeamID == 0 or myTeamID == -1)
                     local isEnemyTarget = false
                     if isFFAorWOW then
                         if Valid(enemy) and enemy ~= LocalPlayer then isEnemyTarget = true end
@@ -5414,7 +5435,7 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                         end
 
                         local eMesh = enemy.Mesh
-                        if not isSpectating and (enemy.bHidden or (Valid(eMesh) and eMesh.bHidden)) then 
+                        if not isSpectating and not isCreativeMode and (enemy.bHidden or (Valid(eMesh) and eMesh.bHidden)) then 
                             isEnemyDead = true 
                         end
 
@@ -5880,8 +5901,11 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                                 end)
                             end
 
-                            -- TỐI ƯU HÓA: Giới hạn hitbox mod dưới 200m và áp dụng phân bổ tải (tối đa 1 mod/tick)
+                            -- TỐI ƯU HÓA: Giới hạn hitbox mod dưới 200m
                             local enemyMesh = eMesh or (enemy.getAvatarComponent2 and enemy:getAvatarComponent2())
+                            if not Valid(enemyMesh) and type(enemy.GetAvatarMeshBySlot) == "function" then
+                                enemyMesh = enemy:GetAvatarMeshBySlot(0)
+                            end
                             if Valid(enemyMesh) and distM <= 200 then
                                 local desiredScaleActive = true
 
@@ -5891,9 +5915,9 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                                     enemyMesh.bIsTDHitboxModded = false
                                 end
                                 
-                                -- Bộ đếm kiểm tra Time-Slicing
+                                -- Bộ đếm kiểm tra Time-Slicing (tối đa 5 mod/tick để WOW/TDM spawn không bị nghẽn)
                                 if not enemyMesh.bIsTDHitboxModded then
-                                    if (_G.DX_HitboxModsThisFrame or 0) >= 1 then
+                                    if (_G.DX_HitboxModsThisFrame or 0) >= 5 then
                                         -- Đã đủ hạn ngạch mod của frame này, hoãn sang tick sau
                                         goto skip_hitbox
                                     end
