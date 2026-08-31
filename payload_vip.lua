@@ -2578,7 +2578,7 @@ local defaultSettings = {
     IpadView = 0,
     IpadViewFOV = 120,
     ScopeView = 0,
-    ScopeViewFOV = 90,
+    ScopeViewFOV = 110,
     NOGRASS = 0, NOTREES = 0, NOWATER = 0, NOFOG = 0,
     BLACK_SKY = 0,
     FAKE_HWID = 1,  -- Luôn bật, không hiển thị trong menu
@@ -3691,15 +3691,15 @@ table.insert(StackESP, {
         table.insert(StackEnv, {
             Key = "ModMenu_ScopeView_FOV",
             UI = AliasMap.Slider,
-            Text = "   Góc Nhìn Scope FOV",
+            Text = "   Góc Nhìn Scope FOV (60-160)",
             ExpandHandle = "ModMenu_ScopeView_Ex",
             MinValue = 1,
             MaxValue = 100,
             Min = 1,
             Max = 100,
-            GetFunc = function() return (_G.DX_Settings.ScopeViewFOV or 90) - 40 end,
+            GetFunc = function() return (_G.DX_Settings.ScopeViewFOV or 110) - 60 end,
             SetFunc = function(_, value)
-                _G.DX_Settings.ScopeViewFOV = 40 + math.floor(tonumber(value) or 50)
+                _G.DX_Settings.ScopeViewFOV = 60 + math.floor(tonumber(value) or 50)
                 _G.EnvRequiresUpdate = true
                 return true
             end
@@ -4859,6 +4859,49 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
             self.DX_ForceFOV = true
         end
 
+        -- Hook CDataTable WeaponScopeFov và PlayerCameraManager một lần duy nhất chống giật
+        pcall(function()
+            local CDT = package.loaded["CDataTable"] or _G.CDataTable
+            if CDT and not CDT._DX_ScopeHooked then
+                local origGet = CDT.GetTableData
+                CDT.GetTableData = function(tableName, key)
+                    local res = origGet(tableName, key)
+                    if tableName == "WeaponScopeFov" and _G.DX_GetVal and _G.DX_GetVal("ScopeView") == 1 then
+                        if type(res) == "table" then
+                            local copy = {}
+                            for k, v in pairs(res) do copy[k] = v end
+                            copy.ScopeFov_f = _G.DX_GetVal("ScopeViewFOV") or 110
+                            return copy
+                        end
+                    end
+                    return res
+                end
+                CDT._DX_ScopeHooked = true
+            end
+        end)
+
+        local pc = GameplayData and GameplayData.GetPlayerController and GameplayData.GetPlayerController()
+        if not (pc and slua.isValid(pc)) then
+            local G = rawget(_G, "Game")
+            if G and G.GetPlayerController then pc = G:GetPlayerController() end
+        end
+        if pc and slua.isValid(pc) then
+            local cm = pc.PlayerCameraManager
+            if cm and slua.isValid(cm) and not cm._DX_FOVHooked then
+                local origGetFOV = cm.GetFOVAngle
+                cm.GetFOVAngle = function(m)
+                    if _G.DX_GetVal and _G.DX_GetVal("ScopeView") == 1 and (self.Object.bIsGunADS or (type(self.Object.IsGunADS) == "function" and self.Object:IsGunADS())) then
+                        return _G.DX_GetVal("ScopeViewFOV") or 110
+                    elseif _G.DX_GetVal and _G.DX_GetVal("IpadView") == 1 and not (self.Object.bIsGunADS or (type(self.Object.IsGunADS) == "function" and self.Object:IsGunADS())) then
+                        return _G.DX_GetVal("IpadViewFOV") or 120
+                    end
+                    if origGetFOV then return origGetFOV(m) end
+                    return 90
+                end
+                cm._DX_FOVHooked = true
+            end
+        end
+
         -- Áp dụng FOV (Nếu bật IpadView thì luôn ưu tiên duy trì góc nhìn IpadView khi trượt / đi ván trượt)
         if not isAiming or isSpecialState then
             if _G.DX_GetVal("IpadView") == 1 then
@@ -4881,7 +4924,7 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
         else
             if _G.DX_GetVal("ScopeView") == 1 then
                 pcall(function()
-                    local targetScope = _G.DX_GetVal("ScopeViewFOV") or 90
+                    local targetScope = _G.DX_GetVal("ScopeViewFOV") or 110
                     local TPPCamera = self.Object.ThirdPersonCameraComponent
                     if Valid(TPPCamera) then
                         if TPPCamera.FieldOfView ~= targetScope then TPPCamera.FieldOfView = targetScope end
@@ -4896,12 +4939,9 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                             if FPPComp.ScopeFov ~= targetScope then FPPComp.ScopeFov = targetScope end
                             if FPPComp.CurScopeFov ~= targetScope then FPPComp.CurScopeFov = targetScope end
                             if FPPComp.TargetScopeFov ~= targetScope then FPPComp.TargetScopeFov = targetScope end
+                            if FPPComp.FixedFov ~= targetScope then FPPComp.FixedFov = targetScope end
+                            if FPPComp.DefaultFov ~= targetScope then FPPComp.DefaultFov = targetScope end
                         end)
-                    end
-                    local pc = GameplayData and GameplayData.GetPlayerController and GameplayData.GetPlayerController()
-                    if not (pc and slua.isValid(pc)) then
-                        local G = rawget(_G, "Game")
-                        if G and G.GetPlayerController then pc = G:GetPlayerController() end
                     end
                     if pc and slua.isValid(pc) then
                         local cm = pc.PlayerCameraManager
@@ -4909,11 +4949,15 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                             pcall(function()
                                 if cm.DefaultFOV ~= targetScope then cm.DefaultFOV = targetScope end
                                 if cm.LockedFOV ~= targetScope then cm.LockedFOV = targetScope end
+                                cm.bUseClientFov = true
                                 if cm.CameraCache and cm.CameraCache.POV then
                                     cm.CameraCache.POV.FOV = targetScope
                                 end
                                 if cm.LastFrameCameraCache and cm.LastFrameCameraCache.POV then
                                     cm.LastFrameCameraCache.POV.FOV = targetScope
+                                end
+                                if cm.ViewTarget and cm.ViewTarget.POV then
+                                    cm.ViewTarget.POV.FOV = targetScope
                                 end
                                 if type(cm.SetFOV) == "function" then cm:SetFOV(targetScope) end
                             end)
