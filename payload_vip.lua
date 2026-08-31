@@ -4902,7 +4902,7 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
             end
         end
 
-        -- Áp dụng FOV (Nếu bật IpadView thì luôn ưu tiên duy trì góc nhìn IpadView khi trượt / đi ván trượt)
+        -- Áp dụng FOV & SpringArm Length
         if not isAiming or isSpecialState then
             if _G.DX_GetVal("IpadView") == 1 then
                 pcall(function()
@@ -4910,6 +4910,13 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                     local TPPCamera = self.Object.ThirdPersonCameraComponent
                     if Valid(TPPCamera) then
                         if TPPCamera.FieldOfView ~= targetTPP then TPPCamera.FieldOfView = targetTPP end
+                    end
+                    local springArm = (type(self.Object.GetThirdPersonSpringArm) == "function" and self.Object:GetThirdPersonSpringArm())
+                                      or (pc and type(pc.GetTargetedSpringArm) == "function" and pc:GetTargetedSpringArm())
+                                      or self.Object.CustomSpringArm or self.Object.ThirdPersonSpringArmComponent or self.Object.SpringArmComponent
+                    if Valid(springArm) and springArm.TargetArmLength then
+                        local baseArm = 250 + ((targetTPP - 90) * 3.0)
+                        if springArm.TargetArmLength ~= baseArm then springArm.TargetArmLength = baseArm end
                     end
                 end)
             else
@@ -4932,6 +4939,13 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                     local FPPCamera = self.Object.FirstPersonCameraComponent
                     if Valid(FPPCamera) then
                         if FPPCamera.FieldOfView ~= targetScope then FPPCamera.FieldOfView = targetScope end
+                    end
+                    local springArm = (type(self.Object.GetThirdPersonSpringArm) == "function" and self.Object:GetThirdPersonSpringArm())
+                                      or (pc and type(pc.GetTargetedSpringArm) == "function" and pc:GetTargetedSpringArm())
+                                      or self.Object.CustomSpringArm or self.Object.ScopingSpringArm or self.Object.ThirdPersonSpringArmComponent or self.Object.SpringArmComponent
+                    if Valid(springArm) and springArm.TargetArmLength then
+                        local scopeArm = 180 + ((targetScope - 60) * 2.5)
+                        if springArm.TargetArmLength ~= scopeArm then springArm.TargetArmLength = scopeArm end
                     end
                     local FPPComp = self.Object.FPPComponent
                     if Valid(FPPComp) then
