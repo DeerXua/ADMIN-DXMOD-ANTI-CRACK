@@ -220,6 +220,9 @@ _G.DX = _G.DX or {}
 _G.DX.DXFw = DXFw
 pcall(function() WriteReportToPaksFile("=== DX-MODS REPORT LOG SYSTEM INITIALIZED ===") end)
 
+_G.DX_Settings = _G.DX_Settings or {}
+_G.DX_Settings.REPORTER_ALERT = _G.DX_Settings.REPORTER_ALERT or 1 -- Mặc định BẬT SẴN
+
 local function DXLogReporter(kind, uid, name, extra)
     _G.DX._ReporterLog = _G.DX._ReporterLog or {}
     local key = tostring(kind) .. "|" .. tostring(uid or name or "?")
@@ -233,8 +236,13 @@ local function DXLogReporter(kind, uid, name, extra)
     local alertMsg = "[BI REPORT / INSPECTOR] > Nạn nhân: " .. myInfoStr .. " | Loại: " .. tostring(kind) .. " | Kẻ tố cáo/Inspector: UID=" .. tostring(uid or "?") .. " Name=" .. tostring(name or "?") .. (extra and (" | " .. tostring(extra)) or "")
     DXFw(alertMsg)
 
-    -- In-Game Toast / Tip Alert khi bị Report hoặc Inspector soi
-    if _G.DX_GetVal and _G.DX_GetVal("REPORTER_ALERT") ~= 0 then
+    -- In-Game Toast / Tip Alert nổi trên màn hình khi bị Report hoặc Inspector soi
+    local isEnable = (_G.DX_GetVal and _G.DX_GetVal("REPORTER_ALERT") == 1) or (_G.DX_Settings.REPORTER_ALERT == 1)
+    if isEnable then
+        local toastMsg = string.format("[CANH BAO REPORT] %s: %s (UID: %s)", tostring(kind), tostring(name or "Chưa rõ"), tostring(uid or "?"))
+        _G.DX_LastReportAlertText = toastMsg
+        _G.DX_LastReportAlertTime = os.clock()
+
         pcall(function()
             local GameplayData = require("GameLua.GameCore.Data.GameplayData")
             local pc = GameplayData and GameplayData.GetPlayerController and GameplayData.GetPlayerController()
@@ -243,9 +251,9 @@ local function DXLogReporter(kind, uid, name, extra)
                 if G and G.GetPlayerController then pc = G:GetPlayerController() end
             end
             if pc and slua.isValid(pc) then
-                local toastMsg = string.format("[CANH BAO REPORT] %s: %s (UID: %s)", tostring(kind), tostring(name or "Chưa rõ"), tostring(uid or "?"))
                 if pc.BroadcastUIMessage then
                     pc:BroadcastUIMessage("UIMsg_CanSelfRescue", 0, toastMsg, "")
+                    pc:BroadcastUIMessage("UIMsg_FPPModeChange", 0, toastMsg, "")
                 end
                 if pc.DisplayGameTipWithMsgID then
                     pc:DisplayGameTipWithMsgID(48532)
