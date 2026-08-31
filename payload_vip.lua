@@ -2577,6 +2577,8 @@ local defaultSettings = {
     MAGIC_DIST = 100,
     IpadView = 0,
     IpadViewFOV = 120,
+    ScopeView = 0,
+    ScopeViewFOV = 90,
     NOGRASS = 0, NOTREES = 0, NOWATER = 0, NOFOG = 0,
     BLACK_SKY = 0,
     FAKE_HWID = 1,  -- Luôn bật, không hiển thị trong menu
@@ -3670,6 +3672,34 @@ table.insert(StackESP, {
             GetFunc = function() return (_G.DX_Settings.IpadViewFOV or 120) - 90 end,
             SetFunc = function(_, value)
                 _G.DX_Settings.IpadViewFOV = 90 + math.floor(tonumber(value) or 30)
+                _G.EnvRequiresUpdate = true
+                return true
+            end
+        })
+        table.insert(StackEnv, {
+            Key = "ModMenu_ScopeView_Ex",
+            UI = AliasMap.TitleSwitcher,
+            Text = "▶ Scope View (Góc Nhìn Scope)",
+            ExpandIndex = 0,
+            GetFunc = function() return _G.DX_Settings.ScopeView == 1 end,
+            SetFunc = function(_, value)
+                _G.DX_Settings.ScopeView = value and 1 or 0
+                _G.EnvRequiresUpdate = true
+                return true
+            end
+        })
+        table.insert(StackEnv, {
+            Key = "ModMenu_ScopeView_FOV",
+            UI = AliasMap.Slider,
+            Text = "   Góc Nhìn Scope FOV",
+            ExpandHandle = "ModMenu_ScopeView_Ex",
+            MinValue = 1,
+            MaxValue = 100,
+            Min = 1,
+            Max = 100,
+            GetFunc = function() return (_G.DX_Settings.ScopeViewFOV or 90) - 40 end,
+            SetFunc = function(_, value)
+                _G.DX_Settings.ScopeViewFOV = 40 + math.floor(tonumber(value) or 50)
                 _G.EnvRequiresUpdate = true
                 return true
             end
@@ -4844,6 +4874,20 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                 end)
             end
             self.DX_ForceFOV = false
+        else
+            if _G.DX_GetVal("ScopeView") == 1 then
+                pcall(function()
+                    local targetScope = _G.DX_GetVal("ScopeViewFOV") or 90
+                    local TPPCamera = self.Object.ThirdPersonCameraComponent
+                    if Valid(TPPCamera) then
+                        if TPPCamera.FieldOfView ~= targetScope then TPPCamera.FieldOfView = targetScope end
+                    end
+                    local FPPCamera = self.Object.FirstPersonCameraComponent
+                    if Valid(FPPCamera) then
+                        if FPPCamera.FieldOfView ~= targetScope then FPPCamera.FieldOfView = targetScope end
+                    end
+                end)
+            end
         end
 
         local currentTickOS = os_clock()
