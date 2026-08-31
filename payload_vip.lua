@@ -4859,71 +4859,21 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
             self.DX_ForceFOV = true
         end
 
-        -- Hook CDataTable WeaponScopeFov và PlayerCameraManager một lần duy nhất chống giật
-        pcall(function()
-            local CDT = package.loaded["CDataTable"] or _G.CDataTable
-            if CDT and not CDT._DX_ScopeHooked then
-                local origGet = CDT.GetTableData
-                CDT.GetTableData = function(tableName, key)
-                    local res = origGet(tableName, key)
-                    if tableName == "WeaponScopeFov" and _G.DX_GetVal and _G.DX_GetVal("ScopeView") == 1 then
-                        if type(res) == "table" then
-                            local copy = {}
-                            for k, v in pairs(res) do copy[k] = v end
-                            copy.ScopeFov_f = _G.DX_GetVal("ScopeViewFOV") or 110
-                            return copy
-                        end
-                    end
-                    return res
-                end
-                CDT._DX_ScopeHooked = true
-            end
-        end)
-
-        local pc = GameplayData and GameplayData.GetPlayerController and GameplayData.GetPlayerController()
-        if not (pc and slua.isValid(pc)) then
-            local G = rawget(_G, "Game")
-            if G and G.GetPlayerController then pc = G:GetPlayerController() end
-        end
-        if pc and slua.isValid(pc) then
-            local cm = pc.PlayerCameraManager
-            if cm and slua.isValid(cm) and not cm._DX_FOVHooked then
-                local origGetFOV = cm.GetFOVAngle
-                cm.GetFOVAngle = function(m)
-                    if _G.DX_GetVal and _G.DX_GetVal("ScopeView") == 1 and (self.Object.bIsGunADS or (type(self.Object.IsGunADS) == "function" and self.Object:IsGunADS())) then
-                        return _G.DX_GetVal("ScopeViewFOV") or 110
-                    elseif _G.DX_GetVal and _G.DX_GetVal("IpadView") == 1 and not (self.Object.bIsGunADS or (type(self.Object.IsGunADS) == "function" and self.Object:IsGunADS())) then
-                        return _G.DX_GetVal("IpadViewFOV") or 120
-                    end
-                    if origGetFOV then return origGetFOV(m) end
-                    return 90
-                end
-                cm._DX_FOVHooked = true
-            end
-        end
-
-        -- Áp dụng FOV & SpringArm Length
+        -- Áp dụng Góc nhìn FOV (IpadView khi chạy thường, ScopeView khi mở ngắm)
         if not isAiming or isSpecialState then
             if _G.DX_GetVal("IpadView") == 1 then
                 pcall(function()
                     local targetTPP = _G.DX_GetVal("IpadViewFOV") or 120
                     local TPPCamera = self.Object.ThirdPersonCameraComponent
-                    if Valid(TPPCamera) then
-                        if TPPCamera.FieldOfView ~= targetTPP then TPPCamera.FieldOfView = targetTPP end
-                    end
-                    local springArm = (type(self.Object.GetThirdPersonSpringArm) == "function" and self.Object:GetThirdPersonSpringArm())
-                                      or (pc and type(pc.GetTargetedSpringArm) == "function" and pc:GetTargetedSpringArm())
-                                      or self.Object.CustomSpringArm or self.Object.ThirdPersonSpringArmComponent or self.Object.SpringArmComponent
-                    if Valid(springArm) and springArm.TargetArmLength then
-                        local baseArm = 250 + ((targetTPP - 90) * 3.0)
-                        if springArm.TargetArmLength ~= baseArm then springArm.TargetArmLength = baseArm end
+                    if Valid(TPPCamera) and TPPCamera.FieldOfView ~= targetTPP then
+                        TPPCamera.FieldOfView = targetTPP
                     end
                 end)
             else
                 pcall(function()
                     local TPPCamera = self.Object.ThirdPersonCameraComponent
-                    if Valid(TPPCamera) then
-                        if TPPCamera.FieldOfView ~= 90 then TPPCamera.FieldOfView = 90 end
+                    if Valid(TPPCamera) and TPPCamera.FieldOfView ~= 90 then
+                        TPPCamera.FieldOfView = 90
                     end
                 end)
             end
@@ -4933,66 +4883,36 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                 pcall(function()
                     local targetScope = _G.DX_GetVal("ScopeViewFOV") or 110
                     local TPPCamera = self.Object.ThirdPersonCameraComponent
-                    if Valid(TPPCamera) then
-                        if TPPCamera.FieldOfView ~= targetScope then TPPCamera.FieldOfView = targetScope end
+                    if Valid(TPPCamera) and TPPCamera.FieldOfView ~= targetScope then
+                        TPPCamera.FieldOfView = targetScope
                     end
                     local FPPCamera = self.Object.FirstPersonCameraComponent
-                    if Valid(FPPCamera) then
-                        if FPPCamera.FieldOfView ~= targetScope then FPPCamera.FieldOfView = targetScope end
-                    end
-                    local springArm = (type(self.Object.GetThirdPersonSpringArm) == "function" and self.Object:GetThirdPersonSpringArm())
-                                      or (pc and type(pc.GetTargetedSpringArm) == "function" and pc:GetTargetedSpringArm())
-                                      or self.Object.CustomSpringArm or self.Object.ScopingSpringArm or self.Object.ThirdPersonSpringArmComponent or self.Object.SpringArmComponent
-                    if Valid(springArm) and springArm.TargetArmLength then
-                        local scopeArm = 180 + ((targetScope - 60) * 2.5)
-                        if springArm.TargetArmLength ~= scopeArm then springArm.TargetArmLength = scopeArm end
+                    if Valid(FPPCamera) and FPPCamera.FieldOfView ~= targetScope then
+                        FPPCamera.FieldOfView = targetScope
                     end
                     local FPPComp = self.Object.FPPComponent
                     if Valid(FPPComp) then
-                        pcall(function()
-                            if FPPComp.ScopeFov ~= targetScope then FPPComp.ScopeFov = targetScope end
-                            if FPPComp.CurScopeFov ~= targetScope then FPPComp.CurScopeFov = targetScope end
-                            if FPPComp.TargetScopeFov ~= targetScope then FPPComp.TargetScopeFov = targetScope end
-                            if FPPComp.FixedFov ~= targetScope then FPPComp.FixedFov = targetScope end
-                            if FPPComp.DefaultFov ~= targetScope then FPPComp.DefaultFov = targetScope end
-                        end)
+                        if FPPComp.ScopeFov ~= targetScope then FPPComp.ScopeFov = targetScope end
+                        if FPPComp.CurScopeFov ~= targetScope then FPPComp.CurScopeFov = targetScope end
+                        if FPPComp.TargetScopeFov ~= targetScope then FPPComp.TargetScopeFov = targetScope end
                     end
-                    if pc and slua.isValid(pc) then
-                        local cm = pc.PlayerCameraManager
-                        if cm and slua.isValid(cm) then
-                            pcall(function()
-                                if cm.DefaultFOV ~= targetScope then cm.DefaultFOV = targetScope end
-                                if cm.LockedFOV ~= targetScope then cm.LockedFOV = targetScope end
-                                cm.bUseClientFov = true
-                                if cm.CameraCache and cm.CameraCache.POV then
-                                    cm.CameraCache.POV.FOV = targetScope
-                                end
-                                if cm.LastFrameCameraCache and cm.LastFrameCameraCache.POV then
-                                    cm.LastFrameCameraCache.POV.FOV = targetScope
-                                end
-                                if cm.ViewTarget and cm.ViewTarget.POV then
-                                    cm.ViewTarget.POV.FOV = targetScope
-                                end
-                                if type(cm.SetFOV) == "function" then cm:SetFOV(targetScope) end
-                            end)
-                        end
-                    end
-                    pcall(function()
-                        local UAETableMgr = package.loaded["UAETableManager"] or import("UAETableManager")
-                        if UAETableMgr and UAETableMgr.GetDataTableStatic then
-                            local UAETable = UAETableMgr.GetDataTableStatic("WeaponScopeFov")
-                            if UAETable and slua.isValid(UAETable) then
-                                local curWep = self.Object.GetCurrentWeapon and self.Object:GetCurrentWeapon()
-                                local wepId = curWep and (curWep.WeaponID or curWep.WeaponId or (curWep.GetWeaponID and curWep:GetWeaponID()))
-                                if wepId then
-                                    for _, scId in ipairs({0, 101, 102, 103, 104, 105, 106, 107, 108, 109, 201, 202, 203, 204, 205, 206}) do
-                                        local k = tostring(scId) .. "_" .. tostring(wepId)
-                                        UAETable:SetTableData_Float(k, "ScopeFov_f", targetScope)
-                                    end
+                    local UAETableMgr = package.loaded["UAETableManager"] or import("UAETableManager")
+                    if UAETableMgr and UAETableMgr.GetDataTableStatic then
+                        local UAETable = UAETableMgr.GetDataTableStatic("WeaponScopeFov")
+                        if UAETable and slua.isValid(UAETable) then
+                            local curWep = self.Object.GetCurrentWeapon and self.Object:GetCurrentWeapon()
+                            local wepId = curWep and (curWep.WeaponID or curWep.WeaponId or (curWep.DefineID and curWep.DefineID.TypeSpecificID) or (curWep.GetWeaponID and curWep:GetWeaponID()))
+                            local scopeIds = {0, 101, 102, 103, 104, 105, 106, 107, 108, 109, 201, 202, 203, 204, 205, 206}
+                            if wepId then
+                                for _, scId in ipairs(scopeIds) do
+                                    UAETable:SetTableData_Float(tostring(scId) .. "_" .. tostring(wepId), "ScopeFov_f", targetScope)
                                 end
                             end
+                            for _, scId in ipairs(scopeIds) do
+                                UAETable:SetTableData_Float(tostring(scId), "ScopeFov_f", targetScope)
+                            end
                         end
-                    end)
+                    end
                 end)
             end
         end
