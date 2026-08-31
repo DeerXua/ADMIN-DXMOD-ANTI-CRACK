@@ -4802,7 +4802,11 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
             end
         end)
 
-        local isAiming = self.Object.bIsWeaponAiming or false
+        local isAiming = self.Object.bIsGunADS 
+                         or (type(self.Object.IsGunADS) == "function" and self.Object:IsGunADS())
+                         or self.Object.bIsWeaponAiming 
+                         or (self.Object.FPPComponent and self.Object.FPPComponent.bIsScoping)
+                         or false
 
         -- Kiểm tra các trạng thái đặc biệt: Trượt TDM, Ván trượt bay (Hoverboard), Xe cộ, Cưỡi thú/Đu dây
         local isSpecialState = false
@@ -4886,6 +4890,14 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                     if Valid(FPPCamera) then
                         if FPPCamera.FieldOfView ~= targetScope then FPPCamera.FieldOfView = targetScope end
                     end
+                    local FPPComp = self.Object.FPPComponent
+                    if Valid(FPPComp) then
+                        pcall(function()
+                            if FPPComp.ScopeFov ~= targetScope then FPPComp.ScopeFov = targetScope end
+                            if FPPComp.CurScopeFov ~= targetScope then FPPComp.CurScopeFov = targetScope end
+                            if FPPComp.TargetScopeFov ~= targetScope then FPPComp.TargetScopeFov = targetScope end
+                        end)
+                    end
                     local pc = GameplayData and GameplayData.GetPlayerController and GameplayData.GetPlayerController()
                     if not (pc and slua.isValid(pc)) then
                         local G = rawget(_G, "Game")
@@ -4900,10 +4912,29 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                                 if cm.CameraCache and cm.CameraCache.POV then
                                     cm.CameraCache.POV.FOV = targetScope
                                 end
+                                if cm.LastFrameCameraCache and cm.LastFrameCameraCache.POV then
+                                    cm.LastFrameCameraCache.POV.FOV = targetScope
+                                end
                                 if type(cm.SetFOV) == "function" then cm:SetFOV(targetScope) end
                             end)
                         end
                     end
+                    pcall(function()
+                        local UAETableMgr = package.loaded["UAETableManager"] or import("UAETableManager")
+                        if UAETableMgr and UAETableMgr.GetDataTableStatic then
+                            local UAETable = UAETableMgr.GetDataTableStatic("WeaponScopeFov")
+                            if UAETable and slua.isValid(UAETable) then
+                                local curWep = self.Object.GetCurrentWeapon and self.Object:GetCurrentWeapon()
+                                local wepId = curWep and (curWep.WeaponID or curWep.WeaponId or (curWep.GetWeaponID and curWep:GetWeaponID()))
+                                if wepId then
+                                    for _, scId in ipairs({0, 101, 102, 103, 104, 105, 106, 107, 108, 109, 201, 202, 203, 204, 205, 206}) do
+                                        local k = tostring(scId) .. "_" .. tostring(wepId)
+                                        UAETable:SetTableData_Float(k, "ScopeFov_f", targetScope)
+                                    end
+                                end
+                            end
+                        end
+                    end)
                 end)
             end
         end
