@@ -5299,50 +5299,54 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
                 if not _G.DX_Active_Marks_Cache then _G.DX_Active_Marks_Cache = {} end
 
-                for cacheKey, cacheData in pairs(_G.DX_Active_Marks_Cache) do
-                    local shouldRemoveHit1 = false
-                    local shouldRemoveHit2 = false
-                    local shouldRemoveSpecHp = false
-                    
-                    if not Valid(cacheData.actor) then 
-                        shouldRemoveHit1 = true; shouldRemoveHit2 = true; shouldRemoveSpecHp = true
-                    else
+                local currentTickOS = os_clock()
+                if not _G.DX_LastMarksCleanTime or (currentTickOS - _G.DX_LastMarksCleanTime) >= 1.0 then
+                    _G.DX_LastMarksCleanTime = currentTickOS
+                    for cacheKey, cacheData in pairs(_G.DX_Active_Marks_Cache) do
+                        local shouldRemoveHit1 = false
+                        local shouldRemoveHit2 = false
+                        local shouldRemoveSpecHp = false
+                        
+                        if not Valid(cacheData.actor) then 
+                            shouldRemoveHit1 = true; shouldRemoveHit2 = true; shouldRemoveSpecHp = true
+                        else
+                            pcall(function()
+                                local enemyActor = cacheData.actor
+                                local isDead = false
+                                local isKnock = false
+                                
+                                if type(enemyActor.IsNearDeath) == "function" then isKnock = enemyActor:IsNearDeath()
+                                elseif enemyActor.bIsNearDeath ~= nil then isKnock = enemyActor.bIsNearDeath end
+                                
+                                if type(enemyActor.IsDead) == "function" and enemyActor:IsDead() then isDead = true
+                                elseif enemyActor.bIsDead == true or enemyActor.bIsDeadFlag == true then isDead = true end
+                                
+                                if enemyActor.bHidden or (enemyActor.Mesh and enemyActor.Mesh.bHidden) or isDead or isKnock then 
+                                    shouldRemoveHit1 = true; shouldRemoveHit2 = true; shouldRemoveSpecHp = true
+                                end
+                            end)
+                        end
+
+                        if not espHit1 then shouldRemoveHit1 = true end
+                        if not espHit2 then shouldRemoveHit2 = true end
                         pcall(function()
-                            local enemyActor = cacheData.actor
-                            local isDead = false
-                            local isKnock = false
-                            
-                            if type(enemyActor.IsNearDeath) == "function" then isKnock = enemyActor:IsNearDeath()
-                            elseif enemyActor.bIsNearDeath ~= nil then isKnock = enemyActor.bIsNearDeath end
-                            
-                            if type(enemyActor.IsDead) == "function" and enemyActor:IsDead() then isDead = true
-                            elseif enemyActor.bIsDead == true or enemyActor.bIsDeadFlag == true then isDead = true end
-                            
-                            if enemyActor.bHidden or (enemyActor.Mesh and enemyActor.Mesh.bHidden) or isDead or isKnock then 
-                                shouldRemoveHit1 = true; shouldRemoveHit2 = true; shouldRemoveSpecHp = true
+                            if InGameMarkTools then
+                                if shouldRemoveHit1 and cacheData.distMark then 
+                                    if InGameMarkTools.ClientRemoveMapMark then InGameMarkTools.ClientRemoveMapMark(cacheData.distMark)
+                                    elseif InGameMarkTools.HideMapMark then InGameMarkTools.HideMapMark(cacheData.distMark) end
+                                    cacheData.distMark = nil
+                                end
+                                if shouldRemoveHit2 and cacheData.hpMark then 
+                                    if InGameMarkTools.ClientRemoveMapMark then InGameMarkTools.ClientRemoveMapMark(cacheData.hpMark)
+                                    elseif InGameMarkTools.HideMapMark then InGameMarkTools.HideMapMark(cacheData.hpMark) end
+                                    cacheData.hpMark = nil
+                                end
                             end
                         end)
-                    end
-
-                    if not espHit1 then shouldRemoveHit1 = true end
-                    if not espHit2 then shouldRemoveHit2 = true end
-                    pcall(function()
-                        if InGameMarkTools then
-                            if shouldRemoveHit1 and cacheData.distMark then 
-                                if InGameMarkTools.ClientRemoveMapMark then InGameMarkTools.ClientRemoveMapMark(cacheData.distMark)
-                                elseif InGameMarkTools.HideMapMark then InGameMarkTools.HideMapMark(cacheData.distMark) end
-                                cacheData.distMark = nil
-                            end
-                            if shouldRemoveHit2 and cacheData.hpMark then 
-                                if InGameMarkTools.ClientRemoveMapMark then InGameMarkTools.ClientRemoveMapMark(cacheData.hpMark)
-                                elseif InGameMarkTools.HideMapMark then InGameMarkTools.HideMapMark(cacheData.hpMark) end
-                                cacheData.hpMark = nil
-                            end
+                        
+                        if not cacheData.hpMark and not cacheData.distMark then
+                            _G.DX_Active_Marks_Cache[cacheKey] = nil
                         end
-                    end)
-                    
-                    if not cacheData.hpMark and not cacheData.distMark then
-                        _G.DX_Active_Marks_Cache[cacheKey] = nil
                     end
                 end
 
@@ -5404,31 +5408,37 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                 end
 
                 for _, enemy in pairs(allPlayers) do
-                    local isTeammate = false
-                    if not Valid(enemy) or enemy == LocalPlayer then
-                        isTeammate = true
-                    else
-                        -- 1. Native Character method: IsSameTeam (Chuẩn nhất mọi chế độ Classic/Ranked/TDM/WOW)
-                        if type(LocalPlayer.IsSameTeam) == "function" then
-                            local ok, isSame = pcall(function() return LocalPlayer:IsSameTeam(enemy) end)
-                            if ok and isSame == true then
-                                isTeammate = true
+                    local isTeammate = enemy.DX_CachedIsTeammate
+                    local lastTeamCheck = enemy.DX_LastTeamCheckTime or 0
+                    if isTeammate == nil or (currentTickOS - lastTeamCheck) >= 3.0 then
+                        enemy.DX_LastTeamCheckTime = currentTickOS
+                        isTeammate = false
+                        if not Valid(enemy) or enemy == LocalPlayer then
+                            isTeammate = true
+                        else
+                            -- 1. Native Character method: IsSameTeam (Chuẩn nhất mọi chế độ Classic/Ranked/TDM/WOW)
+                            if type(LocalPlayer.IsSameTeam) == "function" then
+                                local ok, isSame = pcall(function() return LocalPlayer:IsSameTeam(enemy) end)
+                                if ok and isSame == true then
+                                    isTeammate = true
+                                end
+                            end
+                            -- 2. Native PlayerController method: IsTeamMate
+                            if not isTeammate and Valid(PlayerController) and type(PlayerController.IsTeamMate) == "function" then
+                                local ok, isTeam = pcall(function() return PlayerController:IsTeamMate(enemy) end)
+                                if ok and isTeam == true then
+                                    isTeammate = true
+                                end
+                            end
+                            -- 3. TeamID check
+                            if not isTeammate and myTeamID and myTeamID > 0 then
+                                local eTeamID = enemy.TeamID or (type(enemy.GetTeamID) == "function" and enemy:GetTeamID())
+                                if eTeamID and eTeamID > 0 and eTeamID == myTeamID then
+                                    isTeammate = true
+                                end
                             end
                         end
-                        -- 2. Native PlayerController method: IsTeamMate
-                        if not isTeammate and Valid(PlayerController) and type(PlayerController.IsTeamMate) == "function" then
-                            local ok, isTeam = pcall(function() return PlayerController:IsTeamMate(enemy) end)
-                            if ok and isTeam == true then
-                                isTeammate = true
-                            end
-                        end
-                        -- 3. TeamID check
-                        if not isTeammate and myTeamID and myTeamID > 0 then
-                            local eTeamID = enemy.TeamID or (type(enemy.GetTeamID) == "function" and enemy:GetTeamID())
-                            if eTeamID and eTeamID > 0 and eTeamID == myTeamID then
-                                isTeammate = true
-                            end
-                        end
+                        enemy.DX_CachedIsTeammate = isTeammate
                     end
 
                     local isEnemyTarget = not isTeammate
@@ -5531,27 +5541,13 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                             end
 
                             if not enemy.DX_NextMeshUpdateTime or currentTickOS > enemy.DX_NextMeshUpdateTime then
-                                enemy.DX_NextMeshUpdateTime = currentTickOS + 1.5 + (math_random() * 1.0)
-                                local meshes = enemy.DX_CachedMeshes or {}
+                                enemy.DX_NextMeshUpdateTime = currentTickOS + 3.0 + (math_random() * 2.0)
+                                local meshes = {}
                                 local existing = {}
-                                for _, m in ipairs(meshes) do existing[m] = true end
-                                if Valid(enemy.Mesh) and not existing[enemy.Mesh] then
+                                if Valid(enemy.Mesh) then
                                     table.insert(meshes, enemy.Mesh)
                                     existing[enemy.Mesh] = true
                                 end
-                                -- Thêm tất cả mesh từ AvatarComponent (Quần áo, mũ, giáp trong WOW)
-                                pcall(function()
-                                    local avatar = enemy.AvatarComponent or (type(enemy.getAvatarComponent2) == "function" and enemy:getAvatarComponent2())
-                                    if Valid(avatar) and type(avatar.GetMeshCompBySlotID) == "function" then
-                                        for slot = 0, 30 do
-                                            local slotMesh = avatar:GetMeshCompBySlotID(slot)
-                                            if Valid(slotMesh) and not existing[slotMesh] then
-                                                table.insert(meshes, slotMesh)
-                                                existing[slotMesh] = true
-                                            end
-                                        end
-                                    end
-                                end)
                                 if GlobalSkelClass then
                                     pcall(function()
                                         local childs = enemy:GetComponentsByClass(GlobalSkelClass)
@@ -6059,7 +6055,6 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                                         pcall(function() 
                                             if enemyMesh.SetPhysicsAsset then enemyMesh:SetPhysicsAsset(PhysicsAsset) end
                                             enemyMesh.PhysicsAssetOverride = PhysicsAsset
-                                            if enemyMesh.RecreatePhysicsState then enemyMesh:RecreatePhysicsState() end 
                                         end)
                                     end)
                                     enemyMesh.bIsTDHitboxModded = true
