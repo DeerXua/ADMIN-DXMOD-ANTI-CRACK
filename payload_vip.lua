@@ -5387,35 +5387,35 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                                    .. tostring((_G.DX_Settings and _G.DX_Settings.WALL_OCCLUDED_AI_COLOR) or 7)
                 end
 
-                local isCreativeMode = false
-                pcall(function()
-                    local CGS = rawget(_G, "CGameState")
-                    if CGS and slua.isValid(CGS) then
-                        if type(CGS.IsCreativeMode) == "function" and CGS:IsCreativeMode() then isCreativeMode = true end
-                        if CGS.bIsCreativeWoW then isCreativeMode = true end
-                    end
-                    if not isCreativeMode then
-                        local uGameState = GameplayData and GameplayData.GetGameState and GameplayData.GetGameState()
-                        if uGameState and slua.isValid(uGameState) then
-                            if type(uGameState.IsCreativeMode) == "function" and uGameState:IsCreativeMode() then isCreativeMode = true end
-                            if uGameState.bIsCreativeWoW then isCreativeMode = true end
-                        end
-                    end
-                    if not isCreativeMode then
-                        if rawget(_G, "CreativeModeGameSubsystem") or rawget(_G, "CreativeModeGameMode") or package.loaded["GameLua.Mod.CreativeBase.Gameplay.Subsystem.GameType.CreativeModeGameSubsystem"] then
-                            isCreativeMode = true
-                        end
-                    end
-                end)
-
                 for _, enemy in pairs(allPlayers) do
-                    local isFFAorWOW = isCreativeMode or (myTeamID == nil or myTeamID == 0 or myTeamID == -1)
-                    local isEnemyTarget = false
-                    if isFFAorWOW then
-                        if Valid(enemy) and enemy ~= LocalPlayer then isEnemyTarget = true end
+                    local isTeammate = false
+                    if not Valid(enemy) or enemy == LocalPlayer then
+                        isTeammate = true
                     else
-                        if Valid(enemy) and enemy ~= LocalPlayer and enemy.TeamID ~= myTeamID then isEnemyTarget = true end
+                        -- 1. Native Character method: IsSameTeam (Chuẩn nhất mọi chế độ Classic/Ranked/TDM/WOW)
+                        if type(LocalPlayer.IsSameTeam) == "function" then
+                            local ok, isSame = pcall(function() return LocalPlayer:IsSameTeam(enemy) end)
+                            if ok and isSame == true then
+                                isTeammate = true
+                            end
+                        end
+                        -- 2. Native PlayerController method: IsTeamMate
+                        if not isTeammate and Valid(PlayerController) and type(PlayerController.IsTeamMate) == "function" then
+                            local ok, isTeam = pcall(function() return PlayerController:IsTeamMate(enemy) end)
+                            if ok and isTeam == true then
+                                isTeammate = true
+                            end
+                        end
+                        -- 3. TeamID check
+                        if not isTeammate and myTeamID and myTeamID > 0 then
+                            local eTeamID = enemy.TeamID or (type(enemy.GetTeamID) == "function" and enemy:GetTeamID())
+                            if eTeamID and eTeamID > 0 and eTeamID == myTeamID then
+                                isTeammate = true
+                            end
+                        end
                     end
+
+                    local isEnemyTarget = not isTeammate
 
                     if isEnemyTarget then
                         local isEnemyDead = false
@@ -6074,6 +6074,36 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                             end
                         end
                         ::continue::
+                    else
+                        -- ĐỒNG MINH: Xóa sạch hoàn toàn Wallhack/Aura/Marks nếu từng bị dính
+                        if enemy and enemy.WallhackApplied then
+                            pcall(function()
+                                for _, comp in ipairs(enemy.LastAuraMeshes or enemy.DX_CachedMeshes or {}) do
+                                    if Valid(comp) then ResetMeshAuraComponent(comp) end
+                                end
+                            end)
+                            enemy.WallhackApplied = false
+                            enemy.LastAuraHash = nil
+                            enemy.LastAuraMeshes = nil
+                        end
+                        if enemy and (enemy.NativeHPBarMark or enemy.NativeDistMark or enemy.SpectatorHPBarMark) then
+                            pcall(function()
+                                if InGameMarkTools then
+                                    if enemy.NativeHPBarMark then InGameMarkTools.ClientRemoveMapMark(enemy.NativeHPBarMark) end
+                                    if enemy.NativeDistMark then InGameMarkTools.ClientRemoveMapMark(enemy.NativeDistMark) end
+                                    if enemy.SpectatorHPBarMark then InGameMarkTools.ClientRemoveMapMark(enemy.SpectatorHPBarMark) end
+                                    if InGameMarkTools.ScreenMarkManager and InGameMarkTools.ScreenMarkManager.RemoveMarkByActor then
+                                        InGameMarkTools.ScreenMarkManager:RemoveMarkByActor(9999, enemy)
+                                        InGameMarkTools.ScreenMarkManager:RemoveMarkByActor(1006, enemy)
+                                    end
+                                end
+                            end)
+                            enemy.NativeHPBarMark = nil; enemy.NativeDistMark = nil; enemy.SpectatorHPBarMark = nil
+                            enemy.bHasTDNativeHPBar = false; enemy.bHasTDNativeHitmark = false; enemy.bHasTDSpectatorHPBar = false
+                        end
+                        if enemy and enemy.Replay_SetVisiableOfFrameUI then
+                            pcall(function() enemy:Replay_SetVisiableOfFrameUI(false) end)
+                        end
                     end
                 end
 
