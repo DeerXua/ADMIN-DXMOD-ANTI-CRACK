@@ -3899,7 +3899,7 @@ local function ApplyAuraToMeshComponent(mesh, visibleColor, occludedColor)
         mesh:SetDyeingColorMinMaxDistance(0.0, 99999.0)
         mesh:SetDrawHighlight(true)
         mesh:SetRenderCustomDepth(true)
-        mesh:SetCustomDepthStencilValue(255)
+        mesh:SetCustomDepthStencilValue(0)
     end)
 end
 
@@ -5360,21 +5360,37 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
                 local globalVisColor, globalPlayerOccludedColor, globalAiOccludedColor, globalColorHash
                 if isWallhackGlobalOn then
-                    -- [WOW / CHẾ ĐỘ SÁNG TẠO FIX] Liên tục duy trì 7 CVar chiều sâu để chống bị map WOW ghi đè làm mất VisCheck 2 màu
+                    -- [WOW / CHẾ ĐỘ SÁNG TẠO FIX] Liên tục duy trì các CVar chiều sâu để chống bị map WOW ghi đè làm mất VisCheck 2 màu
                     pcall(function()
                         local curOS = os_clock()
                         if not self._lastWHCvarTime or (curOS - self._lastWHCvarTime) > 1.5 then
                             self._lastWHCvarTime = curOS
                             local KSL = rawget(_G, "KismetSystemLibrary") or (import and import("KismetSystemLibrary"))
                             local pc = PlayerController or (self.GetPlayerController and self:GetPlayerController())
-                            if Valid(KSL) and Valid(pc) then
-                                KSL.ExecuteConsoleCommand(pc, "r.EnableDrawDyeingColor 1")
-                                KSL.ExecuteConsoleCommand(pc, "r.SupportDyeingColorDistanceFade 1")
-                                KSL.ExecuteConsoleCommand(pc, "r.SupportDyeingColorMeshProxy 1")
-                                KSL.ExecuteConsoleCommand(pc, "r.EnablePrimitiveHighlight 1")
-                                KSL.ExecuteConsoleCommand(pc, "r.CustomDepth 3")
-                                KSL.ExecuteConsoleCommand(pc, "r.DeviceLevelUseHighLightMode 1")
-                                KSL.ExecuteConsoleCommand(pc, "r.Highlight.Enable 1")
+                            
+                            local STGI = import and import("STExtraGameInstance")
+                            local gi = (STGI and STGI.GetInstance and STGI.GetInstance()) or (slua_GameFrontendHUD and slua_GameFrontendHUD:GetGameInstance())
+                            
+                            local function ApplyCmd(cmd, val)
+                                if Valid(KSL) and Valid(pc) then
+                                    KSL.ExecuteConsoleCommand(pc, cmd .. " " .. tostring(val))
+                                end
+                                if Valid(gi) and gi.ExecuteCMD then
+                                    gi:ExecuteCMD(cmd, tostring(val))
+                                end
+                            end
+
+                            ApplyCmd("r.EnableDrawDyeingColor", "1")
+                            ApplyCmd("r.SupportDyeingColorDistanceFade", "1")
+                            ApplyCmd("r.SupportDyeingColorMeshProxy", "1")
+                            ApplyCmd("r.EnablePrimitiveHighlight", "1")
+                            ApplyCmd("r.CustomDepth", "3")
+                            ApplyCmd("r.DeviceLevelUseHighLightMode", "1")
+                            ApplyCmd("r.Highlight.Enable", "1")
+                            
+                            local CGS = rawget(_G, "CGameState")
+                            if CGS and slua.isValid(CGS) and CGS.DrawDyeingCount then
+                                CGS.DrawDyeingCount = 9999
                             end
                         end
                     end)
@@ -5523,6 +5539,19 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                                     table.insert(meshes, enemy.Mesh)
                                     existing[enemy.Mesh] = true
                                 end
+                                -- Thêm tất cả mesh từ AvatarComponent (Quần áo, mũ, giáp trong WOW)
+                                pcall(function()
+                                    local avatar = enemy.AvatarComponent or (type(enemy.getAvatarComponent2) == "function" and enemy:getAvatarComponent2())
+                                    if Valid(avatar) and type(avatar.GetMeshCompBySlotID) == "function" then
+                                        for slot = 0, 30 do
+                                            local slotMesh = avatar:GetMeshCompBySlotID(slot)
+                                            if Valid(slotMesh) and not existing[slotMesh] then
+                                                table.insert(meshes, slotMesh)
+                                                existing[slotMesh] = true
+                                            end
+                                        end
+                                    end
+                                end)
                                 if GlobalSkelClass then
                                     pcall(function()
                                         local childs = enemy:GetComponentsByClass(GlobalSkelClass)
