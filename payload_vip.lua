@@ -5371,10 +5371,10 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
                 local globalVisColor, globalPlayerOccludedColor, globalAiOccludedColor, globalColorHash
                 if isWallhackGlobalOn then
-                    -- [WOW / CHẾ ĐỘ SÁNG TẠO FIX] Liên tục duy trì các CVar chiều sâu để chống bị map WOW ghi đè làm mất VisCheck 2 màu
+                    -- [WOW / CHẾ ĐỘ SÁNG TẠO FIX] Duy trì định kỳ các CVar chiều sâu để chống bị map WOW ghi đè
                     pcall(function()
                         local curOS = os_clock()
-                        if not self._lastWHCvarTime or (curOS - self._lastWHCvarTime) > 1.5 then
+                        if not self._lastWHCvarTime or (curOS - self._lastWHCvarTime) > 10.0 then
                             self._lastWHCvarTime = curOS
                             local KSL = rawget(_G, "KismetSystemLibrary") or (import and import("KismetSystemLibrary"))
                             local pc = PlayerController or (self.GetPlayerController and self:GetPlayerController())
@@ -5581,20 +5581,9 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                                 local visColor = globalVisColor
                                 local occludedColor = enemy.DX_IsAICached and globalAiOccludedColor or globalPlayerOccludedColor
                                 local auraHash = (enemy.DX_IsAICached and "ai_" or "player_") .. globalColorHash
-                                local bNeedReapply = isMeshChanged or enemy.LastAuraHash ~= auraHash or not enemy.WallhackApplied
-                                if not bNeedReapply and Valid(enemy.Mesh) then
-                                    -- [WOW RESPAWN FIX] Tự động kích hoạt lại khi địch hồi sinh trong trận đấu WOW
-                                    if enemy.Mesh.bRenderCustomDepth == false or enemy.Mesh.bDrawDyeing == false then
-                                        bNeedReapply = true
-                                    end
-                                end
+                                local bNeedReapply = not enemy.WallhackApplied or isMeshChanged or enemy.LastAuraHash ~= auraHash
                                 if bNeedReapply then
                                     pcall(function()
-                                        if enemy.LastAuraMeshes then
-                                            for _, mesh in ipairs(enemy.LastAuraMeshes) do
-                                                if Valid(mesh) then ResetMeshAuraComponent(mesh) end
-                                            end
-                                        end
                                         for _, mesh in ipairs(meshes) do
                                             if Valid(mesh) then
                                                 ApplyAuraToMeshComponent(mesh, visColor, occludedColor)
@@ -5604,7 +5593,7 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                                     end)
                                     enemy.WallhackApplied = true
                                     enemy.LastAuraHash = auraHash
-                                    enemy.LastAuraMeshes = {table.unpack(meshes)}
+                                    enemy.LastAuraMeshes = meshes
                                 end
                             else
                                 if enemy.WallhackApplied then
