@@ -3914,13 +3914,20 @@ local function ResetMeshAuraComponent(mesh)
     end)
 end
 
+local Game_Util = package.loaded["GameLua.GameCore.Common.Game"]
 local function Valid(obj)
     if not obj then return false end
     if slua and type(slua.isValid) == "function" then
-        return slua.isValid(obj)
+        if not slua.isValid(obj) then return false end
+    elseif type(slua_isValid) == "function" then
+        if not slua_isValid(obj) then return false end
     end
-    if type(slua_isValid) == "function" then
-        return slua_isValid(obj)
+    if not Game_Util and package.loaded["GameLua.GameCore.Common.Game"] then
+        Game_Util = package.loaded["GameLua.GameCore.Common.Game"]
+    end
+    if Game_Util and type(Game_Util.IsValid) == "function" then
+        local ok, isV = pcall(function() return Game_Util:IsValid(obj) end)
+        if ok and isV ~= nil then return isV end
     end
     return true
 end
@@ -5940,14 +5947,7 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                                     enemyMesh.bIsTDHitboxModded = false
                                 end
                                 
-                                -- Bộ đếm kiểm tra Time-Slicing (tối đa 5 mod/tick để WOW/TDM spawn không bị nghẽn)
                                 if not enemyMesh.bIsTDHitboxModded then
-                                    if (_G.DX_HitboxModsThisFrame or 0) >= 5 then
-                                        -- Đã đủ hạn ngạch mod của frame này, hoãn sang tick sau
-                                        goto skip_hitbox
-                                    end
-                                    _G.DX_HitboxModsThisFrame = (_G.DX_HitboxModsThisFrame or 0) + 1
-                                    
                                     pcall(function()
                                         local PhysicsAsset = enemyMesh.PhysicsAssetOverride
                                         if not Valid(PhysicsAsset) and enemyMesh.SkeletalMesh then PhysicsAsset = enemyMesh.SkeletalMesh.PhysicsAsset end
@@ -5965,97 +5965,77 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
 
                                             if not _G.DX_ModdedPhysAssets then _G.DX_ModdedPhysAssets = {} end
                                             
-                                            local SkeletalBodySetups = PhysicsAsset.SkeletalBodySetups
-                                            for i = 1, 50 do 
-                                                local BodySetup = nil
-                                                pcall(function() BodySetup = type(SkeletalBodySetups.Get) == "function" and SkeletalBodySetups:Get(i-1) or SkeletalBodySetups[i] end)
-                                                if not BodySetup then break end
-                                                
-                                                if Valid(BodySetup) then
-                                                    local LowerBoneName = string_lower(tostring(BodySetup.BoneName))
-                                                    local MatchedBoneKey = nil
-                                                    for k, _ in pairs(BoneScaleMap) do
-                                                        if string_find(LowerBoneName, k, 1, true) then MatchedBoneKey = k break end
-                                                    end
+                                            -- CHỐNG CRASH: Chỉ mod asset gốc 1 lần duy nhất trên mỗi model PhysicsAsset
+                                            if _G.DX_ModdedPhysAssets[PhysAssetName] ~= _G.MagicUpdateVersion then
+                                                local SkeletalBodySetups = PhysicsAsset.SkeletalBodySetups
+                                                for i = 1, 50 do 
+                                                    local BodySetup = nil
+                                                    pcall(function() BodySetup = type(SkeletalBodySetups.Get) == "function" and SkeletalBodySetups:Get(i-1) or SkeletalBodySetups[i] end)
+                                                    if not BodySetup then break end
                                                     
-                                                    if MatchedBoneKey then
-                                                        local TargetScale = 1.0
-                                                        if desiredScaleActive then
-                                                            TargetScale = BoneScaleMap[MatchedBoneKey] or 1.0
-                                                        else
-                                                            TargetScale = 1.0
-                                                        end
-                                                        local AggGeom = BodySetup.AggGeom
-                                                        
-                                                        local BoxElems = AggGeom and AggGeom.BoxElems or BodySetup.BoxElems
-                                                        local SphereElems = AggGeom and AggGeom.SphereElems or BodySetup.SphereElems
-                                                        local SphylElems = AggGeom and AggGeom.SphylElems or BodySetup.SphylElems
-
-                                                        local BoxElem, SphereElem, SphylElem = nil, nil, nil
-                                                        if BoxElems then pcall(function() BoxElem = type(BoxElems.Get) == "function" and BoxElems:Get(0) or BoxElems[1] end) end
-                                                        if SphereElems then pcall(function() SphereElem = type(SphereElems.Get) == "function" and SphereElems:Get(0) or SphereElems[1] end) end
-                                                        if SphylElems then pcall(function() SphylElem = type(SphylElems.Get) == "function" and SphylElems:Get(0) or SphylElems[1] end) end
-
-                                                        if not OrigHitboxData[MatchedBoneKey] then
-                                                            OrigHitboxData[MatchedBoneKey] = { Box = nil, Sphere = nil, Sphyl = nil }
-                                                            if BoxElem then OrigHitboxData[MatchedBoneKey].Box = { X = BoxElem.X, Y = BoxElem.Y, Z = BoxElem.Z } end
-                                                            if SphereElem then OrigHitboxData[MatchedBoneKey].Sphere = { Radius = SphereElem.Radius } end
-                                                            if SphylElem then OrigHitboxData[MatchedBoneKey].Sphyl = { Radius = SphylElem.Radius, Length = SphylElem.Length } end
-                                                        end
-
-                                                        local OrigElemData = OrigHitboxData[MatchedBoneKey]
-
-                                                        if OrigElemData.Box and BoxElem then
-                                                            BoxElem.X = OrigElemData.Box.X * TargetScale
-                                                            BoxElem.Y = OrigElemData.Box.Y * TargetScale
-                                                            BoxElem.Z = OrigElemData.Box.Z * TargetScale
-                                                            pcall(function() 
-                                                                if type(BoxElems.Set) == "function" then BoxElems:Set(0, BoxElem) else BoxElems[1] = BoxElem end 
-                                                            end)
-                                                            if AggGeom then 
-                                                                AggGeom.BoxElems = BoxElems
-                                                                BodySetup.AggGeom = AggGeom 
-                                                            else 
-                                                                BodySetup.BoxElems = BoxElems 
-                                                            end
-                                                        end
-
-                                                        if OrigElemData.Sphere and SphereElem then
-                                                            SphereElem.Radius = OrigElemData.Sphere.Radius * TargetScale
-                                                            pcall(function() 
-                                                                if type(SphereElems.Set) == "function" then SphereElems:Set(0, SphereElem) else SphereElems[1] = SphereElem end 
-                                                            end)
-                                                            if AggGeom then 
-                                                                AggGeom.SphereElems = SphereElems
-                                                                BodySetup.AggGeom = AggGeom 
-                                                            else 
-                                                                BodySetup.SphereElems = SphereElems 
-                                                            end
+                                                    if Valid(BodySetup) then
+                                                        local LowerBoneName = string_lower(tostring(BodySetup.BoneName))
+                                                        local MatchedBoneKey = nil
+                                                        for k, _ in pairs(BoneScaleMap) do
+                                                            if string_find(LowerBoneName, k, 1, true) then MatchedBoneKey = k break end
                                                         end
                                                         
-                                                        if OrigElemData.Sphyl and SphylElem then
-                                                            SphylElem.Radius = OrigElemData.Sphyl.Radius * TargetScale
-                                                            SphylElem.Length = OrigElemData.Sphyl.Length * TargetScale
-                                                            pcall(function() 
-                                                                if type(SphylElems.Set) == "function" and SphylElems.Set then SphylElems:Set(0, SphylElem) else SphylElems[1] = SphylElem end 
-                                                            end)
-                                                            if AggGeom then 
-                                                                AggGeom.SphylElems = SphylElems
-                                                                BodySetup.AggGeom = AggGeom 
-                                                            else 
-                                                                BodySetup.SphylElems = SphylElems 
+                                                        if MatchedBoneKey then
+                                                            local TargetScale = 1.0
+                                                            if desiredScaleActive then
+                                                                TargetScale = BoneScaleMap[MatchedBoneKey] or 1.0
+                                                            else
+                                                                TargetScale = 1.0
+                                                            end
+                                                            local AggGeom = BodySetup.AggGeom
+                                                            
+                                                            local BoxElems = AggGeom and AggGeom.BoxElems or BodySetup.BoxElems
+                                                            local SphereElems = AggGeom and AggGeom.SphereElems or BodySetup.SphereElems
+                                                            local SphylElems = AggGeom and AggGeom.SphylElems or BodySetup.SphylElems
+
+                                                            local BoxElem, SphereElem, SphylElem = nil, nil, nil
+                                                            if BoxElems then pcall(function() BoxElem = type(BoxElems.Get) == "function" and BoxElems:Get(0) or BoxElems[1] end) end
+                                                            if SphereElems then pcall(function() SphereElem = type(SphereElems.Get) == "function" and SphereElems:Get(0) or SphereElems[1] end) end
+                                                            if SphylElems then pcall(function() SphylElem = type(SphylElems.Get) == "function" and SphylElems:Get(0) or SphylElems[1] end) end
+
+                                                            if not OrigHitboxData[MatchedBoneKey] then
+                                                                OrigHitboxData[MatchedBoneKey] = { Box = nil, Sphere = nil, Sphyl = nil }
+                                                                if BoxElem then OrigHitboxData[MatchedBoneKey].Box = { X = BoxElem.X, Y = BoxElem.Y, Z = BoxElem.Z } end
+                                                                if SphereElem then OrigHitboxData[MatchedBoneKey].Sphere = { Radius = SphereElem.Radius } end
+                                                                if SphylElem then OrigHitboxData[MatchedBoneKey].Sphyl = { Radius = SphylElem.Radius, Length = SphylElem.Length } end
+                                                            end
+
+                                                            local OrigElemData = OrigHitboxData[MatchedBoneKey]
+
+                                                            if OrigElemData.Box and BoxElem then
+                                                                BoxElem.X = OrigElemData.Box.X * TargetScale
+                                                                BoxElem.Y = OrigElemData.Box.Y * TargetScale
+                                                                BoxElem.Z = OrigElemData.Box.Z * TargetScale
+                                                                pcall(function() 
+                                                                    if type(BoxElems.Set) == "function" then BoxElems:Set(0, BoxElem) else BoxElems[1] = BoxElem end 
+                                                                end)
+                                                            end
+
+                                                            if OrigElemData.Sphere and SphereElem then
+                                                                SphereElem.Radius = OrigElemData.Sphere.Radius * TargetScale
+                                                                pcall(function() 
+                                                                    if type(SphereElems.Set) == "function" then SphereElems:Set(0, SphereElem) else SphereElems[1] = SphereElem end 
+                                                                end)
+                                                            end
+                                                            
+                                                            if OrigElemData.Sphyl and SphylElem then
+                                                                SphylElem.Radius = OrigElemData.Sphyl.Radius * TargetScale
+                                                                SphylElem.Length = OrigElemData.Sphyl.Length * TargetScale
+                                                                pcall(function() 
+                                                                    if type(SphylElems.Set) == "function" and SphylElems.Set then SphylElems:Set(0, SphylElem) else SphylElems[1] = SphylElem end 
+                                                                end)
                                                             end
                                                         end
                                                     end
                                                 end
+                                                _G.DX_ModdedPhysAssets[PhysAssetName] = _G.MagicUpdateVersion
                                             end
-                                            _G.DX_ModdedPhysAssets[PhysAssetName] = _G.MagicUpdateVersion
                                         end
-                                        
-                                        pcall(function() 
-                                            if enemyMesh.SetPhysicsAsset then enemyMesh:SetPhysicsAsset(PhysicsAsset) end
-                                            enemyMesh.PhysicsAssetOverride = PhysicsAsset
-                                        end)
                                     end)
                                     enemyMesh.bIsTDHitboxModded = true
                                     enemyMesh.LastHitboxUpdateVersion = _G.MagicUpdateVersion
