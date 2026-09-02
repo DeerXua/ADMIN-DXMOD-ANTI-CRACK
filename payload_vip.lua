@@ -4969,6 +4969,42 @@ do
     end
 end
 
+local function RestoreOriginalWeaponScopeFovTable()
+    pcall(function()
+        local UAETableMgr = package.loaded["UAETableManager"] or import("UAETableManager")
+        if not (UAETableMgr and UAETableMgr.GetDataTableStatic) then return end
+        local UAETable = UAETableMgr.GetDataTableStatic("WeaponScopeFov")
+        if not (UAETable and slua_isValid(UAETable)) then return end
+
+        local defaultScopeFovs = {
+            [0] = 75.0,        -- No scope / Iron sight
+            [203001] = 70.0,   -- Red Dot
+            [203002] = 70.0,   -- Holographic
+            [203003] = 55.0,   -- 2X
+            [203014] = 40.0,   -- 3X
+            [203004] = 26.5,   -- 4X
+            [203015] = 18.0,   -- 6X
+            [203005] = 11.0,   -- 8X
+            [203018] = 70.0    -- Canted Sight
+        }
+
+        local commonWepIds = {
+            101001, 101002, 101003, 101004, 101005, 101006, 101007, 101008, 101009, 101010, 101011, 101012, 101013,
+            102001, 102002, 102003, 102004, 102005, 102007, 102008,
+            103001, 103002, 103003, 103004, 103005, 103006, 103007, 103008, 103009, 103010, 103011, 103012,
+            104001, 104002, 104003, 104004,
+            105001, 105002, 105003
+        }
+
+        for scId, defFov in pairs(defaultScopeFovs) do
+            UAETable:SetTableData_Float(tostring(scId), "ScopeFov_f", defFov)
+            for _, wId in ipairs(commonWepIds) do
+                UAETable:SetTableData_Float(tostring(scId) .. "_" .. tostring(wId), "ScopeFov_f", defFov)
+            end
+        end
+    end)
+end
+
 -- =========================== PHẦN 29: BRPLAYERCHARACTERBASE METHODS ===========================
 function BRPlayerCharacterBase:UpdateCameraViewAndFOV(isSpecialState)
     pcall(function()
@@ -5022,16 +5058,22 @@ function BRPlayerCharacterBase:UpdateCameraViewAndFOV(isSpecialState)
 
         local TPPCamera = obj.ThirdPersonCameraComponent
         local FPPCamera = obj.FirstPersonCameraComponent
-        local FPPComp = obj.FPPComponent
         local springArm = (type(obj.GetThirdPersonSpringArm) == "function" and obj:GetThirdPersonSpringArm())
                           or (pc and type(pc.GetTargetedSpringArm) == "function" and pc:GetTargetedSpringArm())
                           or obj.CustomSpringArm or obj.ScopingSpringArm or obj.ThirdPersonSpringArmComponent or obj.SpringArmComponent or obj.SpringArmComp
 
+        -- Đảm bảo khôi phục bảng WeaponScopeFov về nguyên bản để độ nhạy Gyroscope luôn 100% chuẩn gốc
+        if not self.DX_ScopeTableRestoredOnce or self.DX_ScopeTableOverridden then
+            RestoreOriginalWeaponScopeFovTable()
+            self.DX_ScopeTableRestoredOnce = true
+            self.DX_ScopeTableOverridden = nil
+        end
+
         if isScoping and isScopeViewOn then
-            -- [TRƯỜNG HỢP 1]: Đang mở ngắm VÀ BẬT ScopeView
+            -- [TRƯỜNG HỢP 1]: Đang mở ngắm VÀ BẬT ScopeView (Góc nhìn ngắm rộng giống iPad, tùy chỉnh qua thanh trượt, giữ nguyên độ nhạy Gyro)
             local targetScope = tonumber(_G.DX_Settings.ScopeViewFOV) or tonumber(_G.DX_GetVal("ScopeViewFOV")) or 110
 
-            -- 1.1 Khóa FOV trên PlayerCameraManager
+            -- 1.1 Cập nhật PlayerCameraManager nếu cần
             if pc and slua_isValid(pc) then
                 local cm = pc.PlayerCameraManager
                 if cm and slua_isValid(cm) then
@@ -5040,109 +5082,34 @@ function BRPlayerCharacterBase:UpdateCameraViewAndFOV(isSpecialState)
                 end
             end
 
-            -- 1.2 Cập nhật Camera Components của nhân vật
-            if slua_isValid(TPPCamera) and TPPCamera.FieldOfView ~= targetScope then
-                TPPCamera.FieldOfView = targetScope
+            -- 1.2 Duy trì Camera ở góc nhìn thứ 3 (Third Person) để tạo view rộng giống iPad
+            if slua_isValid(TPPCamera) then
+                if type(TPPCamera.SetActive) == "function" then TPPCamera:SetActive(true) end
+                if TPPCamera.FieldOfView ~= targetScope then
+                    TPPCamera.FieldOfView = targetScope
+                end
             end
             if slua_isValid(FPPCamera) and FPPCamera.FieldOfView ~= targetScope then
                 FPPCamera.FieldOfView = targetScope
             end
 
-            -- 1.3 Cập nhật ScopeFov trên FPPComponent và Weapon Entity
-            if slua_isValid(FPPComp) and FPPComp.ScopeFov and FPPComp.ScopeFov ~= targetScope then
-                FPPComp.ScopeFov = targetScope
+            -- 1.3 Giữ nhân vật luôn hiển thị đầy đủ (không bị giấu thân khi ngắm)
+            if slua_isValid(obj.Mesh) then
+                if type(obj.Mesh.SetOwnerNoSee) == "function" then obj.Mesh:SetOwnerNoSee(false) end
+                if type(obj.Mesh.SetVisibility) == "function" then obj.Mesh:SetVisibility(true) end
             end
 
-            local curWep = (type(obj.GetCurrentWeapon) == "function" and obj:GetCurrentWeapon())
-                           or (type(obj.GetCurrentShootWeapon) == "function" and obj:GetCurrentShootWeapon())
-                           or (obj.WeaponManagerComponent and obj.WeaponManagerComponent.CurrentWeaponReplicated)
-
-            if curWep then
-                pcall(function()
-                    if curWep.ScopeFov then curWep.ScopeFov = targetScope end
-                    if curWep.CurScopeFov then curWep.CurScopeFov = targetScope end
-                    if curWep.CurWeaponFov then curWep.CurWeaponFov = targetScope end
-                    
-                    local entities = {}
-                    if Valid(curWep.ShootWeaponEntityComp) then table.insert(entities, curWep.ShootWeaponEntityComp) end
-                    if Valid(curWep.ShootWeaponEntity_GEN_VARIABLE) then table.insert(entities, curWep.ShootWeaponEntity_GEN_VARIABLE) end
-                    if Valid(curWep.ShootWeaponEntity) then table.insert(entities, curWep.ShootWeaponEntity) end
-                    for _, ent in ipairs(entities) do
-                        if ent.CurScopeFov then ent.CurScopeFov = targetScope end
-                        if ent.ScopeFov then ent.ScopeFov = targetScope end
-                    end
-                end)
-            end
-
-            -- 1.4 Cập nhật DataTable WeaponScopeFov cho TẤT CẢ các loại ống ngắm (Red Dot, Holo, 2x, 3x, 4x, 6x, 8x, Canted...)
-            local UAETableMgr = package.loaded["UAETableManager"] or import("UAETableManager")
-            if UAETableMgr and UAETableMgr.GetDataTableStatic then
-                local UAETable = UAETableMgr.GetDataTableStatic("WeaponScopeFov")
-                if UAETable and slua_isValid(UAETable) then
-                    local wepId = curWep and (curWep.WeaponID or curWep.WeaponId or (curWep.DefineID and curWep.DefineID.TypeSpecificID) or (curWep.GetWeaponID and curWep:GetWeaponID()))
-                    
-                    local wepList = {}
-                    if wepId then table.insert(wepList, wepId) end
-                    if obj.WeaponManagerComponent then
-                        local wm = obj.WeaponManagerComponent
-                        if wm.PrimaryShootWeapon and wm.PrimaryShootWeapon.WeaponID then table.insert(wepList, wm.PrimaryShootWeapon.WeaponID) end
-                        if wm.SecondaryShootWeapon and wm.SecondaryShootWeapon.WeaponID then table.insert(wepList, wm.SecondaryShootWeapon.WeaponID) end
-                    end
-
-                    -- Bảng toàn bộ Attachment ID của tất cả ống ngắm trong PUBG Mobile
-                    local allScopeIds = {
-                        0, -- Thước ngắm cơ (No Scope / Iron Sight)
-                        203001, -- Red Dot Sight
-                        203002, -- Holographic Sight
-                        203003, -- 2X Scope
-                        203004, -- 4X Scope (ACOG)
-                        203005, -- 8X Scope (CQBSS)
-                        203006, 203007, 203008, 203009, 203010, 203011, 203012, 203013,
-                        203014, -- 3X Scope
-                        203015, -- 6X Scope
-                        203016, 203017,
-                        203018, -- Canted Sight (Thước ngắm phụ / nghiêng)
-                        203019, 203020,
-                        201001, 201002, 201003, 201004, 201005, 201006, 201007, 201008, 201009, 201010,
-                        201011, 201012, 201013, 201014, 201015, 201016, 201017, 201018, 201019, 201020,
-                        2201001, 2201002, 2201003, 2201004, 2201005, 2201006, 2201009,
-                        1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
-                        101, 102, 103, 104, 105, 106, 107, 108, 109, 201, 202, 203, 204, 205, 206
-                    }
-
-                    -- Tìm attachment ID thực tế đang gắn trên súng nếu có
-                    if curWep then
-                        pcall(function()
-                            local atts = curWep.AttachmentIDList or curWep.AttachedAttachmentList or curWep.AttachmentComponents
-                            if atts then
-                                for _, a in pairs(atts) do
-                                    local aid = tonumber(a) or (type(a) == "table" and (a.AttachmentID or (a.DefineID and a.DefineID.TypeSpecificID)))
-                                    if aid and aid > 0 then
-                                        table.insert(allScopeIds, aid)
-                                    end
-                                end
-                            end
-                        end)
-                    end
-
-                    for _, wId in ipairs(wepList) do
-                        for _, scId in ipairs(allScopeIds) do
-                            local rowKey = tostring(scId) .. "_" .. tostring(wId)
-                            pcall(function() UAETable:ConditionAddEmptyRow(rowKey) end)
-                            UAETable:SetTableData_Float(rowKey, "ScopeFov_f", targetScope)
-                        end
-                    end
-
-                    for _, scId in ipairs(allScopeIds) do
-                        local rowKey = tostring(scId)
-                        pcall(function() UAETable:ConditionAddEmptyRow(rowKey) end)
-                        UAETable:SetTableData_Float(rowKey, "ScopeFov_f", targetScope)
-                    end
+            -- 1.4 Kéo xa khoảng cách camera SpringArm theo thanh chỉnh FOV để tầm nhìn rộng thoáng như iPad View
+            if slua_isValid(springArm) then
+                springArm.bForceUseTargetArmLength = true
+                local targetArm = 250 + ((targetScope - 90) * 3.0)
+                if springArm.TargetArmLength ~= targetArm then
+                    springArm.TargetArmLength = targetArm
                 end
             end
 
+            self.DX_ScopeViewActive = true
             self.DX_ScopeFOVLocked = true
-            self.DX_ScopeTableOverridden = true
         else
             -- [TRƯỜNG HỢP 2]: Không mở ngắm HOẶC mở ngắm nhưng ScopeView TẮT
             if self.DX_ScopeFOVLocked then
@@ -5156,31 +5123,11 @@ function BRPlayerCharacterBase:UpdateCameraViewAndFOV(isSpecialState)
                 self.DX_ScopeFOVLocked = false
             end
 
-            -- Khôi phục lại bảng WeaponScopeFov khi tắt ScopeView
-            if self.DX_ScopeTableOverridden and not isScopeViewOn then
-                pcall(function()
-                    local UAETableMgr = package.loaded["UAETableManager"] or import("UAETableManager")
-                    if UAETableMgr and UAETableMgr.GetDataTableStatic then
-                        local UAETable = UAETableMgr.GetDataTableStatic("WeaponScopeFov")
-                        if UAETable and slua_isValid(UAETable) then
-                            local defaultScopeFovs = {
-                                [0] = 75.0,
-                                [203001] = 70.0, [203002] = 70.0, [203003] = 55.0,
-                                [203014] = 40.0, [203004] = 26.5, [203015] = 18.0,
-                                [203005] = 11.0, [203018] = 70.0
-                            }
-                            local curWep = obj.GetCurrentWeapon and obj:GetCurrentWeapon()
-                            local wepId = curWep and (curWep.WeaponID or curWep.WeaponId or (curWep.DefineID and curWep.DefineID.TypeSpecificID) or (curWep.GetWeaponID and curWep:GetWeaponID()))
-                            for scId, defFov in pairs(defaultScopeFovs) do
-                                UAETable:SetTableData_Float(tostring(scId), "ScopeFov_f", defFov)
-                                if wepId then
-                                    UAETable:SetTableData_Float(tostring(scId) .. "_" .. tostring(wepId), "ScopeFov_f", defFov)
-                                end
-                            end
-                        end
-                    end
-                end)
-                self.DX_ScopeTableOverridden = false
+            if self.DX_ScopeViewActive then
+                if slua_isValid(springArm) then
+                    springArm.bForceUseTargetArmLength = false
+                end
+                self.DX_ScopeViewActive = false
             end
 
             if not isScoping then
@@ -5205,10 +5152,12 @@ function BRPlayerCharacterBase:UpdateCameraViewAndFOV(isSpecialState)
                     end
                 end
             else
-                -- 2.2 Khi ĐANG mở ngắm nhưng ScopeView TẮT:
-                -- Để game tự do zoom ống ngắm mặc định mà không bị IpadView đè góc nhìn
+                -- 2.2 Khi ĐANG mở ngắm nhưng ScopeView TẮT: Trả về góc ngắm chuẩn mặc định của game
                 if slua_isValid(TPPCamera) and TPPCamera.FieldOfView ~= 90 then
                     TPPCamera.FieldOfView = 90
+                end
+                if slua_isValid(springArm) then
+                    springArm.bForceUseTargetArmLength = false
                 end
             end
         end
@@ -5223,6 +5172,7 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
     -- Clear physics asset modification cache for the new match to force re-applying Magic Bullet
     _G.DX_ModdedPhysAssets = {}
     _G.MagicUpdateVersion = (_G.MagicUpdateVersion or 1) + 1
+    pcall(RestoreOriginalWeaponScopeFovTable)
     
     local function Valid(obj) return slua_isValid(obj) end
 
