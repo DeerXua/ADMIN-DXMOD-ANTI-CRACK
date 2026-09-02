@@ -3731,10 +3731,13 @@ table.insert(StackESP, {
             UI = AliasMap.TitleSwitcher,
             Text = "▶ Scope View (Góc Nhìn Scope)",
             ExpandIndex = 0,
-            GetFunc = function() return _G.DX_Settings.ScopeView == 1 end,
+            GetFunc = function() return (_G.DX_Settings.ScopeView == 1 or _G.DX_Settings.ScopeView == true) end,
             SetFunc = function(_, value)
-                _G.DX_Settings.ScopeView = value and 1 or 0
+                local on = (value == 1 or value == true)
+                _G.DX_Settings.ScopeView = on and 1 or 0
+                if _G.X3 and _G.X3.LexusConfig then _G.X3.LexusConfig.ScopeView = on end
                 _G.EnvRequiresUpdate = true
+                if _G.SaveModSettings then pcall(_G.SaveModSettings) end
                 return true
             end
         })
@@ -3749,8 +3752,13 @@ table.insert(StackESP, {
             Max = 100,
             GetFunc = function() return (_G.DX_Settings.ScopeViewFOV or 110) - 60 end,
             SetFunc = function(_, value)
-                _G.DX_Settings.ScopeViewFOV = 60 + math.floor(tonumber(value) or 50)
+                local val = 60 + math.floor(tonumber(value) or 50)
+                _G.DX_Settings.ScopeViewFOV = val
+                if _G.X3 and _G.X3.LexusState and _G.X3.LexusState.CustomTextData then
+                    _G.X3.LexusState.CustomTextData.ScopeViewFOV = val
+                end
                 _G.EnvRequiresUpdate = true
+                if _G.SaveModSettings then pcall(_G.SaveModSettings) end
                 return true
             end
         })
@@ -4968,12 +4976,13 @@ function BRPlayerCharacterBase:UpdateCameraViewAndFOV(isSpecialState)
 
         local obj = self.Object
 
-        -- 1. Xác định chính xác trạng thái mở ngắm (ADS / Scoping):
-        -- TUYỆT ĐỐI KHÔNG dùng bIsWeaponAiming (bIsWeaponAiming là ngắm vai / ngắm tâm trắng khi cầm súng bắn hip-fire).
+        -- 1. Xác định trạng thái ngắm (ADS / Scope / Weapon Aiming):
         local isScoping = false
         if obj.bIsGunADS == true then
             isScoping = true
         elseif type(obj.IsGunADS) == "function" and obj:IsGunADS() then
+            isScoping = true
+        elseif obj.bIsWeaponAiming == true then
             isScoping = true
         elseif obj.HasState and EPawnState and EPawnState.GunADS and obj:HasState(EPawnState.GunADS) then
             isScoping = true
@@ -5002,8 +5011,8 @@ function BRPlayerCharacterBase:UpdateCameraViewAndFOV(isSpecialState)
             isScoping = false
         end
 
-        local isScopeViewOn = (_G.DX_GetVal("ScopeView") == 1)
-        local isIpadViewOn = (_G.DX_GetVal("IpadView") == 1)
+        local isScopeViewOn = (_G.DX_Settings.ScopeView == 1 or _G.DX_Settings.ScopeView == true or _G.DX_GetVal("ScopeView") == 1 or _G.DX_GetVal("ScopeView") == true)
+        local isIpadViewOn = (_G.DX_Settings.IpadView == 1 or _G.DX_Settings.IpadView == true or _G.DX_GetVal("IpadView") == 1 or _G.DX_GetVal("IpadView") == true)
 
         local pc = (GameplayData and GameplayData.GetPlayerController and GameplayData.GetPlayerController())
         if not (pc and slua_isValid(pc)) then
@@ -5020,24 +5029,14 @@ function BRPlayerCharacterBase:UpdateCameraViewAndFOV(isSpecialState)
 
         if isScoping and isScopeViewOn then
             -- [TRƯỜNG HỢP 1]: Đang mở ngắm VÀ BẬT ScopeView
-            local targetScope = _G.DX_GetVal("ScopeViewFOV") or 110
+            local targetScope = tonumber(_G.DX_Settings.ScopeViewFOV) or tonumber(_G.DX_GetVal("ScopeViewFOV")) or 110
 
-            -- 1.1 Khóa FOV trên PlayerCameraManager (render viewport thực tế trong UE4)
+            -- 1.1 Khóa FOV trên PlayerCameraManager
             if pc and slua_isValid(pc) then
                 local cm = pc.PlayerCameraManager
                 if cm and slua_isValid(cm) then
                     if type(cm.SetFOV) == "function" then cm:SetFOV(targetScope) end
                     cm.LockedFOV = targetScope
-                    cm.DefaultFOV = targetScope
-                    if cm.CameraCache and cm.CameraCache.POV then
-                        cm.CameraCache.POV.FOV = targetScope
-                    end
-                    if cm.LastFrameCameraCache and cm.LastFrameCameraCache.POV then
-                        cm.LastFrameCameraCache.POV.FOV = targetScope
-                    end
-                    if cm.ViewTarget and cm.ViewTarget.POV then
-                        cm.ViewTarget.POV.FOV = targetScope
-                    end
                 end
             end
 
@@ -5049,24 +5048,12 @@ function BRPlayerCharacterBase:UpdateCameraViewAndFOV(isSpecialState)
                 FPPCamera.FieldOfView = targetScope
             end
 
-            -- 1.3 Cập nhật FPPComponent (quản lý scope zoom phía client)
-            if slua_isValid(FPPComp) then
-                if FPPComp.ScopeFov ~= targetScope then FPPComp.ScopeFov = targetScope end
-                if FPPComp.CurScopeFov ~= targetScope then FPPComp.CurScopeFov = targetScope end
-                if FPPComp.TargetScopeFov ~= targetScope then FPPComp.TargetScopeFov = targetScope end
-                if FPPComp.DefaultFov ~= targetScope then FPPComp.DefaultFov = targetScope end
-                if FPPComp.FixedFov ~= targetScope then FPPComp.FixedFov = targetScope end
+            -- 1.3 Cập nhật ScopeFov trên FPPComponent (chỉ ScopeFov cấu hình)
+            if slua_isValid(FPPComp) and FPPComp.ScopeFov and FPPComp.ScopeFov ~= targetScope then
+                FPPComp.ScopeFov = targetScope
             end
 
-            -- 1.4 Điều chỉnh khoảng cách SpringArm khi ngắm góc rộng
-            if slua_isValid(springArm) and springArm.TargetArmLength then
-                local scopeArm = 180 + ((targetScope - 60) * 1.5)
-                if springArm.TargetArmLength ~= scopeArm then
-                    springArm.TargetArmLength = scopeArm
-                end
-            end
-
-            -- 1.5 Cập nhật DataTable WeaponScopeFov
+            -- 1.4 Cập nhật DataTable WeaponScopeFov
             local UAETableMgr = package.loaded["UAETableManager"] or import("UAETableManager")
             if UAETableMgr and UAETableMgr.GetDataTableStatic then
                 local UAETable = UAETableMgr.GetDataTableStatic("WeaponScopeFov")
@@ -5088,14 +5075,12 @@ function BRPlayerCharacterBase:UpdateCameraViewAndFOV(isSpecialState)
             self.DX_ScopeFOVLocked = true
         else
             -- [TRƯỜNG HỢP 2]: Không mở ngắm HOẶC mở ngắm nhưng ScopeView TẮT
-            -- Nếu trước đó vừa bị lock bởi ScopeView thì phải unlock PlayerCameraManager ngay lập tức
             if self.DX_ScopeFOVLocked then
                 if pc and slua_isValid(pc) then
                     local cm = pc.PlayerCameraManager
                     if cm and slua.isValid(cm) then
                         if type(cm.UnlockFOV) == "function" then cm:UnlockFOV() end
                         cm.LockedFOV = 0.0
-                        cm.DefaultFOV = 90.0
                     end
                 end
                 self.DX_ScopeFOVLocked = false
@@ -5104,7 +5089,7 @@ function BRPlayerCharacterBase:UpdateCameraViewAndFOV(isSpecialState)
             if not isScoping then
                 -- 2.1 Khi KHÔNG mở ngắm (đi bộ / chạy / bắn hip-fire): Áp dụng IpadView
                 if isIpadViewOn then
-                    local targetTPP = _G.DX_GetVal("IpadViewFOV") or 120
+                    local targetTPP = tonumber(_G.DX_Settings.IpadViewFOV) or tonumber(_G.DX_GetVal("IpadViewFOV")) or 120
                     if slua_isValid(TPPCamera) and TPPCamera.FieldOfView ~= targetTPP then
                         TPPCamera.FieldOfView = targetTPP
                     end
@@ -5124,7 +5109,7 @@ function BRPlayerCharacterBase:UpdateCameraViewAndFOV(isSpecialState)
                 end
             else
                 -- 2.2 Khi ĐANG mở ngắm nhưng ScopeView TẮT:
-                -- Để game tự do zoom ống ngắm mặc định (Red Dot, X2, X3, X4, X6, X8) mà không bị IpadView đè góc nhìn
+                -- Để game tự do zoom ống ngắm mặc định mà không bị IpadView đè góc nhìn
                 if slua_isValid(TPPCamera) and TPPCamera.FieldOfView ~= 90 then
                     TPPCamera.FieldOfView = 90
                 end
