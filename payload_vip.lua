@@ -2704,6 +2704,10 @@ local defaultSettings = {
     EspV2_SkelBotVis = 4,      -- Màu skeleton bot - nhìn thấy
     EspV2_SkelBotCov = 2,      -- Màu skeleton bot - bị che
     EspV2_SkelDist = 340,      -- Khoảng cách tối đa skeleton (m)
+
+    -- === ANTI-RECORD / STREAMER MODE ===
+    ANTI_RECORD = 0,           -- Ẩn ESP khi quay video / stream
+    ANTI_RECORD_AUTO = 1,      -- Tự động ẩn khi phát hiện quay/chụp màn hình
 }
 
 _G.DX_Settings = _G.DX_Settings or {}
@@ -2968,6 +2972,33 @@ table.insert(StackESP, {
         return true
     end
 })
+
+        -- 🎬 TÍNH NĂNG ẨN ESP KHI QUAY VIDEO (Anti-Record / Streamer Mode)
+        table.insert(StackESP, {
+            Key = "ModMenu_AntiRecord_Master",
+            UI = AliasMap.TitleSwitcher or "TitleSwitcher",
+            Text = "🎬 ẨN ESP KHI QUAY VIDEO (Anti-Record)",
+            ExpandIndex = 0,
+            GetFunc = function() return _G.DX_Settings.ANTI_RECORD == 1 end,
+            SetFunc = function(_, value)
+                _G.DX_Settings.ANTI_RECORD = value and 1 or 0
+                _G.EnvRequiresUpdate = true
+                _G.MagicUpdateVersion = (_G.MagicUpdateVersion or 1) + 1
+                return true
+            end
+        })
+        table.insert(StackESP, {
+            Key = "ModMenu_AntiRecord_Auto",
+            UI = AliasMap.Switcher,
+            Text = "   Tự Động Ẩn Khi Bắt Đầu Quay Màn Hình",
+            ExpandHandle = "ModMenu_AntiRecord_Master",
+            GetFunc = function() return _G.DX_Settings.ANTI_RECORD_AUTO == 1 end,
+            SetFunc = function(_, value)
+                _G.DX_Settings.ANTI_RECORD_AUTO = value and 1 or 0
+                return true
+            end
+        })
+
         AddToggle(StackESP, "WHITE_BODY", "NGƯỜI MÀU TRẮNG")
         AddToggle(StackESP, "ESP_WEAPON", "ESP ĐỘNG TÁC NHÂN VẬT")
         AddToggle(StackESP, "ESP_HITMARK_1", "ESP ĐỊNH VỊ")
@@ -4844,12 +4875,17 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
             isAiming = false
         end
 
-        local isWallhackGlobalOn = (_G.DX_GetVal("WALLHACK") == 1)
-        local isWhiteBodyOn = (_G.DX_GetVal("WHITE_BODY") == 1)            
-        local espHit1 = (_G.DX_GetVal("ESP_HITMARK_1") == 1)
-        local espHit2 = (_G.DX_GetVal("ESP_HITMARK_2") == 1)
-        local espWeaponStance = (_G.DX_GetVal("ESP_WEAPON") == 1)
-        local espCount = (_G.DX_GetVal("ESP_COUNT") == 1)
+        local isAntiRecordActive = false
+        if (_G.DX_GetVal("ANTI_RECORD") == 1) or (_G.DX_IsScreenRecording == true) then
+            isAntiRecordActive = true
+        end
+
+        local isWallhackGlobalOn = not isAntiRecordActive and (_G.DX_GetVal("WALLHACK") == 1)
+        local isWhiteBodyOn = not isAntiRecordActive and (_G.DX_GetVal("WHITE_BODY") == 1)            
+        local espHit1 = not isAntiRecordActive and (_G.DX_GetVal("ESP_HITMARK_1") == 1)
+        local espHit2 = not isAntiRecordActive and (_G.DX_GetVal("ESP_HITMARK_2") == 1)
+        local espWeaponStance = not isAntiRecordActive and (_G.DX_GetVal("ESP_WEAPON") == 1)
+        local espCount = not isAntiRecordActive and (_G.DX_GetVal("ESP_COUNT") == 1)
 
         local magicHead = 1.0 + (_G.DX_GetVal("MAGIC_HEAD") / 100.0)
         local magicBody = 1.0 + (_G.DX_GetVal("MAGIC_BODY") / 100.0)
@@ -5218,6 +5254,23 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                                 if enemyHpWidget.UIRoot.CanvasPanel_HPBarWidgets.SetRenderScale then
                                     enemyHpWidget.UIRoot.CanvasPanel_HPBarWidgets:SetRenderScale(FVector2D(1.0, 1.0))
                                 end
+                            end
+                        end
+                    end
+                end)
+                pcall(function()
+                    if not _G.DX_ScreenCaptureRegistered then
+                        local UPhotoAlbumHelper = package.loaded["PhotoAlbumHelper"] or (import and import("PhotoAlbumHelper"))
+                        if UPhotoAlbumHelper and UPhotoAlbumHelper.GetInstance then
+                            local helper = UPhotoAlbumHelper.GetInstance()
+                            if helper and helper.ScreenCapturedCompleteCallback then
+                                helper.ScreenCapturedCompleteCallback:Add(function(retCode, retJson)
+                                    if _G.DX_GetVal("ANTI_RECORD_AUTO") == 1 then
+                                        _G.DX_IsScreenRecording = true
+                                        _G.DX_ScreenRecordStartTime = os_clock()
+                                    end
+                                end)
+                                _G.DX_ScreenCaptureRegistered = true
                             end
                         end
                     end
@@ -5774,7 +5827,7 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                             end
 
                             -- TỐI ƯU HÓA: Tích hợp Threat Assessment ESP trực tiếp vào vòng lặp chính
-                            if _G.DX_GetVal("THREAT_ESP") == 1 and distM <= 800 and not isEnemyKnocked then
+                            if not isAntiRecordActive and _G.DX_GetVal("THREAT_ESP") == 1 and distM <= 800 and not isEnemyKnocked then
                                 local isVisible = true
                                 _G.AimTouchVisCache = _G.AimTouchVisCache or {}
                                 local cached = _G.AimTouchVisCache[enemyId]
@@ -5866,7 +5919,7 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                             end
 
                             -- [MỚI] LOGIC ESP KHUNG BOX
-                            local showFrameUI = (_G.DX_GetVal("ESP_BOX") == 1 or _G.DX_GetVal("EspLoai5") == 1)
+                            local showFrameUI = not isAntiRecordActive and (_G.DX_GetVal("ESP_BOX") == 1 or _G.DX_GetVal("EspLoai5") == 1)
                             if showFrameUI then
                                 local show = true
                                 if enemy.HealthStatus and SecurityCommonUtils and SecurityCommonUtils.IsHealthStatusAlive then 
@@ -6119,7 +6172,7 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                 -- ==========================================================
                 -- [LOGIC ESP BOM VVIP 7.0] - Gốc & Hoàn Hảo (Chuẩn Code Đầu)
                 -- ==========================================================
-                if _G.DX_GetVal("EspBomMaster") == 1 and (_G.DX_GetVal("EspItemBom") == 1 or _G.DX_GetVal("EspActiveBom") == 1) then
+                if not isAntiRecordActive and _G.DX_GetVal("EspBomMaster") == 1 and (_G.DX_GetVal("EspItemBom") == 1 or _G.DX_GetVal("EspActiveBom") == 1) then
                     pcall(function()
                         if Valid(MyHUD) then
                             if not _G.CachedGameplayStatics then _G.CachedGameplayStatics = import("GameplayStatics") end
@@ -6376,7 +6429,7 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                 -- ==========================================================
                 -- [LOGIC ESP XE - VEHICLE ESP VVIP]
                 -- ==========================================================
-                if _G.DX_GetVal("EspVehicle") == 1 then
+                if not isAntiRecordActive and _G.DX_GetVal("EspVehicle") == 1 then
                     pcall(function()
                         if Valid(MyHUD) then
                             if not _G.CachedGameplayStatics then _G.CachedGameplayStatics = import("GameplayStatics") end
@@ -6491,7 +6544,7 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                 -- ==========================================================
                 -- [LOGIC ESP VẬT PHẨM - ITEM ESP VVIP]
                 -- ==========================================================
-                if _G.DX_GetVal("EspItemMaster") == 1 then
+                if not isAntiRecordActive and _G.DX_GetVal("EspItemMaster") == 1 then
                     pcall(function()
                         if Valid(MyHUD) then
                             if not _G.CachedGameplayStatics then _G.CachedGameplayStatics = import("GameplayStatics") end
