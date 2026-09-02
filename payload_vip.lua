@@ -2562,6 +2562,7 @@ local defaultSettings = {
     ESP_WEAPON = 0, ESP_COUNT = 0, ESP_BOX = 0, EspLoai5 = 0,
     AIMBOT = 0, SPEED_AIMBOT = 0, FOV_AIMBOT = 0, THU_TAM = 0,
     NO_RECOIL_100 = 0, GIAM_RUNG_SCOPE = 0,
+    AimMortar = 0, MortarFOV = 40, MortarMaxRange = 600,
 
     -- Per-weapon recoil adjustment (0 = use global NO_RECOIL_100)
     REC_WEAPON_MASTER = 0, REC_W_M416 = 0, REC_W_AKM = 0, REC_W_SCAR = 0, REC_W_Groza = 0, REC_W_AUG = 0, REC_W_QBZ = 0, REC_W_M762 = 0, REC_W_G36C = 0, REC_W_FAMAS = 0, REC_W_ACE32 = 0, REC_W_Honey = 0,
@@ -2704,10 +2705,6 @@ local defaultSettings = {
     EspV2_SkelBotVis = 4,      -- Màu skeleton bot - nhìn thấy
     EspV2_SkelBotCov = 2,      -- Màu skeleton bot - bị che
     EspV2_SkelDist = 340,      -- Khoảng cách tối đa skeleton (m)
-
-    -- === ANTI-RECORD / STREAMER MODE ===
-    ANTI_RECORD = 0,           -- Ẩn ESP khi quay video / stream
-    ANTI_RECORD_AUTO = 1,      -- Tự động ẩn khi phát hiện quay/chụp màn hình
 }
 
 _G.DX_Settings = _G.DX_Settings or {}
@@ -2972,33 +2969,6 @@ table.insert(StackESP, {
         return true
     end
 })
-
-        -- 🎬 TÍNH NĂNG ẨN ESP KHI QUAY VIDEO (Anti-Record / Streamer Mode)
-        table.insert(StackESP, {
-            Key = "ModMenu_AntiRecord_Master",
-            UI = AliasMap.TitleSwitcher or "TitleSwitcher",
-            Text = "🎬 ẨN ESP KHI QUAY VIDEO (Anti-Record)",
-            ExpandIndex = 0,
-            GetFunc = function() return _G.DX_Settings.ANTI_RECORD == 1 end,
-            SetFunc = function(_, value)
-                _G.DX_Settings.ANTI_RECORD = value and 1 or 0
-                _G.EnvRequiresUpdate = true
-                _G.MagicUpdateVersion = (_G.MagicUpdateVersion or 1) + 1
-                return true
-            end
-        })
-        table.insert(StackESP, {
-            Key = "ModMenu_AntiRecord_Auto",
-            UI = AliasMap.Switcher,
-            Text = "   Tự Động Ẩn Khi Bắt Đầu Quay Màn Hình",
-            ExpandHandle = "ModMenu_AntiRecord_Master",
-            GetFunc = function() return _G.DX_Settings.ANTI_RECORD_AUTO == 1 end,
-            SetFunc = function(_, value)
-                _G.DX_Settings.ANTI_RECORD_AUTO = value and 1 or 0
-                return true
-            end
-        })
-
         AddToggle(StackESP, "WHITE_BODY", "NGƯỜI MÀU TRẮNG")
         AddToggle(StackESP, "ESP_WEAPON", "ESP ĐỘNG TÁC NHÂN VẬT")
         AddToggle(StackESP, "ESP_HITMARK_1", "ESP ĐỊNH VỊ")
@@ -3273,6 +3243,55 @@ table.insert(StackESP, {
         AddSlider(StackAimbot, "THU_TAM", "THU NHỎ TÂM BẮN", 0, 100)
         AddSlider(StackAimbot, "NO_RECOIL_100", "GIẢM GIẬT (0-50%)", 0, 50)
         AddSlider(StackAimbot, "GIAM_RUNG_SCOPE", "GIẢM RUNG SCOPE", 0, 100)
+
+        -- [X3TEAM PORT] AIM MORTAR BALLISTIC (TỰ ĐỘNG CÂN CHỈNH GÓC BẮN CỐI)
+        table.insert(StackAimbot, {
+            Key = "ModMenu_AimMortar_Ex",
+            UI = AliasMap.TitleSwitcher,
+            Text = "▶ Tự Động Cân Chỉnh Góc Bắn Cối (Mortar Aim)",
+            ExpandIndex = 0,
+            GetFunc = function() return (_G.DX_Settings.AimMortar == 1 or _G.DX_Settings.AimMortar == true) end,
+            SetFunc = function(_, v)
+                local on = (v == 1 or v == true)
+                _G.DX_Settings.AimMortar = on and 1 or 0
+                if _G.X3 and _G.X3.LexusConfig then _G.X3.LexusConfig.AimMortar = on end
+                _G.EnvRequiresUpdate = true
+                if _G.SaveModSettings then pcall(_G.SaveModSettings) end
+                return true
+            end
+        })
+        table.insert(StackAimbot, {
+            Key = "ModMenu_MortarFOV",
+            UI = AliasMap.Slider,
+            Text = "   Góc Quét FOV Cối (5-90)",
+            ExpandHandle = "ModMenu_AimMortar_Ex",
+            MinValue = 5, MaxValue = 90, Min = 5, Max = 90,
+            GetFunc = function() return _G.DX_Settings.MortarFOV or 40 end,
+            SetFunc = function(_, v)
+                local val = math.max(5, math.min(90, math.floor(tonumber(v) or 40)))
+                _G.DX_Settings.MortarFOV = val
+                if _G.X3 and _G.X3.LexusState and _G.X3.LexusState.CustomTextData then
+                    _G.X3.LexusState.CustomTextData.MortarFOV = val
+                end
+                return true
+            end
+        })
+        table.insert(StackAimbot, {
+            Key = "ModMenu_MortarMaxRange",
+            UI = AliasMap.Slider,
+            Text = "   Khoảng Cách Tối Đa (100-1000m)",
+            ExpandHandle = "ModMenu_AimMortar_Ex",
+            MinValue = 100, MaxValue = 1000, Min = 100, Max = 1000,
+            GetFunc = function() return _G.DX_Settings.MortarMaxRange or 600 end,
+            SetFunc = function(_, v)
+                local val = math.max(100, math.min(1000, math.floor(tonumber(v) or 600)))
+                _G.DX_Settings.MortarMaxRange = val
+                if _G.X3 and _G.X3.LexusState and _G.X3.LexusState.CustomTextData then
+                    _G.X3.LexusState.CustomTextData.MortarMaxRange = val
+                end
+                return true
+            end
+        })
 
 
 
@@ -4688,6 +4707,260 @@ local function UpdateGhostMode()
     end
 end
 
+-- ==============================================================================
+-- [X3v94] PHẦN 28C: AIM MORTAR BALLISTIC (TỰ ĐỘNG CÂN CHỈNH GÓC BẮN CỐI)
+-- ==============================================================================
+do
+    local MCFG = { BaseGravity = 980.0, SwipeBreakAngle = 3.5, PitchWeight = 0.3 }
+    local _mLocked, _mLastRot, _mActive = nil, nil, false
+    local _FRot = nil
+    local function ROT(p, y, r)
+        if not _FRot then _FRot = rawget(_G, "FRotator") or (import and (import("Rotator") or import("/Script/CoreUObject.Rotator"))) end
+        if _FRot then return _FRot(p, y, r) end
+        return { Pitch = p, Yaw = y, Roll = r }
+    end
+    local function MValid(o)
+        if not o then return false end
+        local ok, v = pcall(slua.isValid, o)
+        return ok and v or false
+    end
+    local function mNorm(a)
+        while a > 180.0 do a = a - 360.0 end
+        while a < -180.0 do a = a + 360.0 end
+        return a
+    end
+    local function mAtan2(y, x)
+        if math.atan2 then return math.atan2(y, x) end
+        if x > 0 then return math.atan(y / x)
+        elseif x < 0 and y >= 0 then return math.atan(y / x) + math.pi
+        elseif x < 0 and y < 0 then return math.atan(y / x) - math.pi
+        elseif x == 0 and y > 0 then return math.pi / 2
+        elseif x == 0 and y < 0 then return -math.pi / 2 end
+        return 0
+    end
+    local function mSolvePitch(horizontal, vertical, velocity, gravity)
+        local v2 = velocity * velocity
+        local v4 = v2 * v2
+        local disc = v4 - gravity * gravity * horizontal * horizontal - 2.0 * gravity * vertical * v2
+        if disc < 0 then return 45.0 end
+        local root = math.sqrt(disc)
+        local denom = gravity * horizontal
+        local ang = denom == 0 and 90.0 or math.atan((v2 + root) / denom) * (180.0 / math.pi)
+        if ang < 45.0 then ang = 45.0 end
+        if ang > 88.0 then ang = 88.0 end
+        return ang
+    end
+    local function mReverseMapPitch(bp)
+        local v = (bp - 45.0) * 2.0930232558139537 - 60.0
+        if v < -60.0 then v = -60.0 end
+        if v > 30.0 then v = 30.0 end
+        return v
+    end
+    local function mIsWeapon(w)
+        if not MValid(w) then return false end
+        local state = nil
+        pcall(function() state = w.MortarState end)
+        if state ~= nil and tonumber(state) ~= 2 then return false end
+        local name = ""
+        pcall(function() name = string.lower(tostring(w)) end)
+        return string.find(name, "mortar", 1, true) ~= nil or tonumber(state) == 2
+    end
+    local function mBallistics(w)
+        local state, velocity, gscale = nil, nil, nil
+        pcall(function() state = w and w.MortarAimState end)
+        pcall(function()
+            if w and type(w.GetBulletFireSpeedFromEntity) == "function" then
+                velocity = tonumber(w:GetBulletFireSpeedFromEntity())
+            end
+        end)
+        if not velocity or velocity <= 0 then velocity = (state == 1) and 12520.0 or 9070.0 end
+        pcall(function()
+            local ent = w and w.ShootWeaponEntity
+            if MValid(ent) and ent.LaunchGravityScale then gscale = tonumber(ent.LaunchGravityScale) end
+        end)
+        if not gscale or gscale <= 0 then gscale = (state == 1) and 4.0 or 2.8 end
+        return velocity, MCFG.BaseGravity * gscale
+    end
+    local function mFindTarget(player, controller, camera, fovDeg, maxRange)
+        local camLoc, camRot = nil, nil
+        pcall(function()
+            camLoc = camera:GetCameraLocation()
+            camRot = camera:GetCameraRotation()
+        end)
+        if not (camLoc and camRot) then return nil end
+        local bestScore, bestT = fovDeg, nil
+        local chars = {}
+        pcall(function()
+            local GD = package.loaded["GameLua.GameCore.Data.GameplayData"] or select(2, pcall(require, "GameLua.GameCore.Data.GameplayData"))
+            if GD and GD.GetAllPlayerCharacters then chars = GD.GetAllPlayerCharacters() or {} end
+        end)
+        if #chars == 0 then
+            pcall(function()
+                local GM = rawget(_G, "Game")
+                if GM and GM.GetAllPlayerPawns then chars = GM:GetAllPlayerPawns() or {} end
+            end)
+        end
+        local myTeam = nil
+        pcall(function()
+            if type(player.GetTeamID) == "function" then myTeam = player:GetTeamID() else myTeam = player.TeamID end
+        end)
+        for _, actor in pairs(chars) do
+            if MValid(actor) and actor ~= player then
+                local dead = false
+                pcall(function()
+                    dead = actor.bDead == true or actor.bIsDead == true or actor.bIsDeadFlag == true
+                        or (actor.HealthStatus ~= nil and actor.HealthStatus == 2)
+                        or (actor.Health ~= nil and actor.Health <= 0)
+                end)
+                if not dead then
+                    local eTeam = nil
+                    pcall(function()
+                        if type(actor.GetTeamID) == "function" then eTeam = actor:GetTeamID() else eTeam = actor.TeamID end
+                    end)
+                    if myTeam == nil or eTeam == nil or eTeam ~= myTeam then
+                        local loc = nil
+                        pcall(function() if type(actor.K2_GetActorLocation) == "function" then loc = actor:K2_GetActorLocation() end end)
+                        if loc and loc.X then
+                            local dx = loc.X - camLoc.X
+                            local dy = loc.Y - camLoc.Y
+                            local dz = (loc.Z or 0) - camLoc.Z
+                            local horizontal = math.sqrt(dx * dx + dy * dy)
+                            local distance = horizontal / 100.0
+                            if distance <= maxRange then
+                                local yaw = mAtan2(dy, dx) * (180.0 / math.pi)
+                                local pitch = mAtan2(dz, horizontal) * (180.0 / math.pi)
+                                local yd = math.abs(mNorm(yaw - camRot.Yaw))
+                                local pd = math.abs(mNorm(pitch - camRot.Pitch))
+                                if yd <= fovDeg then
+                                    local score = math.sqrt(yd * yd + (pd * MCFG.PitchWeight) ^ 2)
+                                    if score < bestScore then bestScore = score bestT = actor end
+                                end
+                            end
+                        end
+                    end
+                end
+            end
+        end
+        return bestT
+    end
+
+    _G.X3 = _G.X3 or {}
+    function _G.X3._MortarTick(lp)
+        pcall(function()
+            local isEnabled = (_G.DX_Settings.AimMortar == 1 or _G.DX_Settings.AimMortar == true)
+                or (_G.X3.LexusConfig and _G.X3.LexusConfig.AimMortar == true)
+            if not isEnabled then
+                if _mActive then _mActive = false _mLocked = nil _mLastRot = nil end
+                return
+            end
+            local CT = (_G.X3.LexusState and _G.X3.LexusState.CustomTextData) or _G.DX_Settings or {}
+            local fovDeg = tonumber(CT.MortarFOV) or tonumber(_G.DX_Settings.MortarFOV) or 40
+            local maxRange = tonumber(CT.MortarMaxRange) or tonumber(_G.DX_Settings.MortarMaxRange) or 600
+            local player, controller = nil, nil
+            pcall(function()
+                local GD = package.loaded["GameLua.GameCore.Data.GameplayData"] or select(2, pcall(require, "GameLua.GameCore.Data.GameplayData"))
+                if GD then
+                    controller = GD.GetPlayerController and GD.GetPlayerController() or nil
+                    if MValid(controller) and controller.GetPlayerCharacterSafety then
+                        player = controller:GetPlayerCharacterSafety()
+                    end
+                    if not MValid(player) and GD.GetPlayerCharacter then player = GD.GetPlayerCharacter() end
+                end
+            end)
+            if not MValid(player) then player = lp end
+            if not (MValid(player) and MValid(controller)) then return end
+            local camera = nil
+            pcall(function() camera = controller.PlayerCameraManager end)
+            if not MValid(camera) then return end
+            local camRot = nil
+            pcall(function() camRot = camera:GetCameraRotation() end)
+            if not camRot then return end
+
+            local weapon = nil
+            pcall(function()
+                weapon = player.CurrentWeapon
+                if not weapon and type(player.GetCurrentWeapon) == "function" then weapon = player:GetCurrentWeapon() end
+                if not weapon and player.WeaponManagerComponent then weapon = player.WeaponManagerComponent.CurrentWeaponReplicated end
+                if not weapon and type(player.GetCurrentShootWeapon) == "function" then weapon = player:GetCurrentShootWeapon() end
+            end)
+            if not mIsWeapon(weapon) then
+                if _mActive then _mActive = false _mLocked = nil _mLastRot = nil end
+                return
+            end
+            _mActive = true
+
+            if _mLocked and _mLastRot then
+                local yd = math.abs(mNorm(camRot.Yaw - _mLastRot.Yaw))
+                local pd = math.abs(mNorm(camRot.Pitch - _mLastRot.Pitch))
+                if yd > MCFG.SwipeBreakAngle or pd > MCFG.SwipeBreakAngle then
+                    _mLocked, _mLastRot = nil, nil
+                end
+            end
+            if MValid(_mLocked) then
+                local dead = false
+                pcall(function()
+                    dead = _mLocked.bDead == true or _mLocked.bIsDead == true
+                        or (_mLocked.HealthStatus ~= nil and _mLocked.HealthStatus == 2)
+                        or (_mLocked.Health ~= nil and _mLocked.Health <= 0)
+                end)
+                if dead then _mLocked = nil end
+            else
+                _mLocked = nil
+            end
+            if MValid(_mLocked) then
+                local p0, t0 = nil, nil
+                pcall(function()
+                    p0 = player:K2_GetActorLocation()
+                    t0 = _mLocked:K2_GetActorLocation()
+                end)
+                if p0 and t0 then
+                    local dx, dy = t0.X - p0.X, t0.Y - p0.Y
+                    if math.sqrt(dx * dx + dy * dy) / 100.0 > maxRange then _mLocked = nil end
+                else
+                    _mLocked = nil
+                end
+            end
+            if not MValid(_mLocked) then _mLocked = mFindTarget(player, controller, camera, fovDeg, maxRange) end
+            if not MValid(_mLocked) then _mLastRot = nil return end
+
+            local origin, target = nil, nil
+            pcall(function()
+                origin = player:K2_GetActorLocation()
+                target = _mLocked:K2_GetActorLocation()
+            end)
+            if not (origin and target) then _mLocked = nil return end
+            local dx, dy, dz = target.X - origin.X, target.Y - origin.Y, (target.Z or 0) - origin.Z
+            local horizontal = math.sqrt(dx * dx + dy * dy)
+            local velocity, gravity = mBallistics(weapon)
+            local bpitch = mSolvePitch(horizontal, dz, velocity, gravity)
+            local pitch = mReverseMapPitch(bpitch)
+            local yaw = mAtan2(dy, dx) * (180.0 / math.pi)
+            local rot = ROT(pitch, yaw, 0)
+            -- Silent Aim nếu Magic Bullet hoặc BulletTrack bật
+            local _mSilent = (_G.DX_Settings.MAGIC_BULLET == 1) or (_G.X3 and _G.X3.LexusConfig and _G.X3.LexusConfig.BulletTrack == true)
+            pcall(function()
+                if MValid(camera) then
+                    camera.bLimitViewPitch = false
+                    camera.bLimitViewYaw = false
+                    camera.ViewPitchMin = -89.9
+                    camera.ViewPitchMax = 89.9
+                end
+                if _mSilent then
+                    player.BaseAimRotation = rot
+                    pcall(function() player.ReplicatedAimRotation = rot end)
+                else
+                    if type(player.K2_SetActorRotation) == "function" then
+                        player:K2_SetActorRotation(ROT(0, yaw, 0), false)
+                    end
+                    player.BaseAimRotation = rot
+                    controller.ControlRotation = rot
+                    _mLastRot = rot
+                end
+            end)
+        end)
+    end
+end
+
 -- =========================== PHẦN 29: BRPLAYERCHARACTERBASE METHODS ===========================
 function BRPlayerCharacterBase:StartAdvancedSystems()
     if not Client then return end
@@ -4726,6 +4999,9 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
         end
         if cache_AimTouchEnable == 1 and _G.AimTouch then
             _G.AimTouch()
+        end
+        if (_G.DX_Settings.AimMortar == 1 or _G.DX_Settings.AimMortar == true or (_G.X3 and _G.X3.LexusConfig and _G.X3.LexusConfig.AimMortar)) and _G.X3 and _G.X3._MortarTick then
+            pcall(_G.X3._MortarTick, LocalPlayer)
         end
         
         -- Bunny Hop (Nhảy liên tục không khựng khi giữ nút nhảy, không nhảy đè khi đang trượt TDM)
@@ -4875,17 +5151,12 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
             isAiming = false
         end
 
-        local isAntiRecordActive = false
-        if (_G.DX_GetVal("ANTI_RECORD") == 1) or (_G.DX_IsScreenRecording == true) then
-            isAntiRecordActive = true
-        end
-
-        local isWallhackGlobalOn = not isAntiRecordActive and (_G.DX_GetVal("WALLHACK") == 1)
-        local isWhiteBodyOn = not isAntiRecordActive and (_G.DX_GetVal("WHITE_BODY") == 1)            
-        local espHit1 = not isAntiRecordActive and (_G.DX_GetVal("ESP_HITMARK_1") == 1)
-        local espHit2 = not isAntiRecordActive and (_G.DX_GetVal("ESP_HITMARK_2") == 1)
-        local espWeaponStance = not isAntiRecordActive and (_G.DX_GetVal("ESP_WEAPON") == 1)
-        local espCount = not isAntiRecordActive and (_G.DX_GetVal("ESP_COUNT") == 1)
+        local isWallhackGlobalOn = (_G.DX_GetVal("WALLHACK") == 1)
+        local isWhiteBodyOn = (_G.DX_GetVal("WHITE_BODY") == 1)            
+        local espHit1 = (_G.DX_GetVal("ESP_HITMARK_1") == 1)
+        local espHit2 = (_G.DX_GetVal("ESP_HITMARK_2") == 1)
+        local espWeaponStance = (_G.DX_GetVal("ESP_WEAPON") == 1)
+        local espCount = (_G.DX_GetVal("ESP_COUNT") == 1)
 
         local magicHead = 1.0 + (_G.DX_GetVal("MAGIC_HEAD") / 100.0)
         local magicBody = 1.0 + (_G.DX_GetVal("MAGIC_BODY") / 100.0)
@@ -5254,23 +5525,6 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                                 if enemyHpWidget.UIRoot.CanvasPanel_HPBarWidgets.SetRenderScale then
                                     enemyHpWidget.UIRoot.CanvasPanel_HPBarWidgets:SetRenderScale(FVector2D(1.0, 1.0))
                                 end
-                            end
-                        end
-                    end
-                end)
-                pcall(function()
-                    if not _G.DX_ScreenCaptureRegistered then
-                        local UPhotoAlbumHelper = package.loaded["PhotoAlbumHelper"] or (import and import("PhotoAlbumHelper"))
-                        if UPhotoAlbumHelper and UPhotoAlbumHelper.GetInstance then
-                            local helper = UPhotoAlbumHelper.GetInstance()
-                            if helper and helper.ScreenCapturedCompleteCallback then
-                                helper.ScreenCapturedCompleteCallback:Add(function(retCode, retJson)
-                                    if _G.DX_GetVal("ANTI_RECORD_AUTO") == 1 then
-                                        _G.DX_IsScreenRecording = true
-                                        _G.DX_ScreenRecordStartTime = os_clock()
-                                    end
-                                end)
-                                _G.DX_ScreenCaptureRegistered = true
                             end
                         end
                     end
@@ -5827,7 +6081,7 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                             end
 
                             -- TỐI ƯU HÓA: Tích hợp Threat Assessment ESP trực tiếp vào vòng lặp chính
-                            if not isAntiRecordActive and _G.DX_GetVal("THREAT_ESP") == 1 and distM <= 800 and not isEnemyKnocked then
+                            if _G.DX_GetVal("THREAT_ESP") == 1 and distM <= 800 and not isEnemyKnocked then
                                 local isVisible = true
                                 _G.AimTouchVisCache = _G.AimTouchVisCache or {}
                                 local cached = _G.AimTouchVisCache[enemyId]
@@ -5919,7 +6173,7 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                             end
 
                             -- [MỚI] LOGIC ESP KHUNG BOX
-                            local showFrameUI = not isAntiRecordActive and (_G.DX_GetVal("ESP_BOX") == 1 or _G.DX_GetVal("EspLoai5") == 1)
+                            local showFrameUI = (_G.DX_GetVal("ESP_BOX") == 1 or _G.DX_GetVal("EspLoai5") == 1)
                             if showFrameUI then
                                 local show = true
                                 if enemy.HealthStatus and SecurityCommonUtils and SecurityCommonUtils.IsHealthStatusAlive then 
@@ -6172,7 +6426,7 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                 -- ==========================================================
                 -- [LOGIC ESP BOM VVIP 7.0] - Gốc & Hoàn Hảo (Chuẩn Code Đầu)
                 -- ==========================================================
-                if not isAntiRecordActive and _G.DX_GetVal("EspBomMaster") == 1 and (_G.DX_GetVal("EspItemBom") == 1 or _G.DX_GetVal("EspActiveBom") == 1) then
+                if _G.DX_GetVal("EspBomMaster") == 1 and (_G.DX_GetVal("EspItemBom") == 1 or _G.DX_GetVal("EspActiveBom") == 1) then
                     pcall(function()
                         if Valid(MyHUD) then
                             if not _G.CachedGameplayStatics then _G.CachedGameplayStatics = import("GameplayStatics") end
@@ -6429,7 +6683,7 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                 -- ==========================================================
                 -- [LOGIC ESP XE - VEHICLE ESP VVIP]
                 -- ==========================================================
-                if not isAntiRecordActive and _G.DX_GetVal("EspVehicle") == 1 then
+                if _G.DX_GetVal("EspVehicle") == 1 then
                     pcall(function()
                         if Valid(MyHUD) then
                             if not _G.CachedGameplayStatics then _G.CachedGameplayStatics = import("GameplayStatics") end
@@ -6544,7 +6798,7 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                 -- ==========================================================
                 -- [LOGIC ESP VẬT PHẨM - ITEM ESP VVIP]
                 -- ==========================================================
-                if not isAntiRecordActive and _G.DX_GetVal("EspItemMaster") == 1 then
+                if _G.DX_GetVal("EspItemMaster") == 1 then
                     pcall(function()
                         if Valid(MyHUD) then
                             if not _G.CachedGameplayStatics then _G.CachedGameplayStatics = import("GameplayStatics") end
@@ -7265,6 +7519,19 @@ local function _SyncEspV2ConfigKeys()
     S.Esp9_SkelPlCov = S.EspV2_SkelPlCov or S.Esp9_SkelPlCov or 1
     S.Esp9_SkelBotVis = S.EspV2_SkelBotVis or S.Esp9_SkelBotVis or 4
     S.Esp9_SkelBotCov = S.EspV2_SkelBotCov or S.Esp9_SkelBotCov or 2
+
+    -- Sync Aim Mortar
+    local isMortarOn = (S.AimMortar == 1 or S.AimMortar == true)
+    S.AimMortar = isMortarOn and 1 or 0
+    S.MortarFOV = S.MortarFOV or 40
+    S.MortarMaxRange = S.MortarMaxRange or 600
+    if _G.X3 and _G.X3.LexusConfig then
+        _G.X3.LexusConfig.AimMortar = isMortarOn
+    end
+    if _G.X3 and _G.X3.LexusState and _G.X3.LexusState.CustomTextData then
+        _G.X3.LexusState.CustomTextData.MortarFOV = S.MortarFOV
+        _G.X3.LexusState.CustomTextData.MortarMaxRange = S.MortarMaxRange
+    end
 end
 
 _SyncEspV2ConfigKeys()
@@ -13397,6 +13664,28 @@ local function StartESPV2DriverLoop()
     Loop()
 end
 
+-- Driver Loop cho Aim Mortar (30Hz)
+local function StartMortarDriverLoop()
+    if _G.DX_TimerGuards.MortarDriverLoop then return end
+    _G.DX_TimerGuards.MortarDriverLoop = true
+    local function MortarLoop()
+        pcall(function()
+            if (_G.DX_Settings.AimMortar == 1 or _G.DX_Settings.AimMortar == true or (_G.X3 and _G.X3.LexusConfig and _G.X3.LexusConfig.AimMortar)) and _G.X3 and _G.X3._MortarTick then
+                local GameplayData = package.loaded["GameLua.GameCore.Data.GameplayData"] or require("GameLua.GameCore.Data.GameplayData")
+                local lp = GameplayData and GameplayData.GetPlayerCharacter and GameplayData.GetPlayerCharacter()
+                if lp and slua.isValid(lp) then
+                    _G.X3._MortarTick(lp)
+                end
+            end
+        end)
+        local okTicker, ticker = pcall(require, "common.time_ticker")
+        if okTicker and ticker and ticker.AddTimerOnce then
+            ticker.AddTimerOnce(0.033, MortarLoop)
+        end
+    end
+    MortarLoop()
+end
+
 -- =========================== PHẦN 31: INIT ALL MOD SYSTEMS ===========================
 local function InitAllModSystems()
     pcall(function()
@@ -13405,6 +13694,7 @@ local function InitAllModSystems()
         StartPeriodicRehook()
         DisableHiggsBoson()
         StartESPV2DriverLoop()
+        StartMortarDriverLoop()
         if StartDXCheckLoop then
             StartDXCheckLoop()
         end
