@@ -5048,31 +5048,101 @@ function BRPlayerCharacterBase:UpdateCameraViewAndFOV(isSpecialState)
                 FPPCamera.FieldOfView = targetScope
             end
 
-            -- 1.3 Cập nhật ScopeFov trên FPPComponent (chỉ ScopeFov cấu hình)
+            -- 1.3 Cập nhật ScopeFov trên FPPComponent và Weapon Entity
             if slua_isValid(FPPComp) and FPPComp.ScopeFov and FPPComp.ScopeFov ~= targetScope then
                 FPPComp.ScopeFov = targetScope
             end
 
-            -- 1.4 Cập nhật DataTable WeaponScopeFov
+            local curWep = (type(obj.GetCurrentWeapon) == "function" and obj:GetCurrentWeapon())
+                           or (type(obj.GetCurrentShootWeapon) == "function" and obj:GetCurrentShootWeapon())
+                           or (obj.WeaponManagerComponent and obj.WeaponManagerComponent.CurrentWeaponReplicated)
+
+            if curWep then
+                pcall(function()
+                    if curWep.ScopeFov then curWep.ScopeFov = targetScope end
+                    if curWep.CurScopeFov then curWep.CurScopeFov = targetScope end
+                    if curWep.CurWeaponFov then curWep.CurWeaponFov = targetScope end
+                    
+                    local entities = {}
+                    if Valid(curWep.ShootWeaponEntityComp) then table.insert(entities, curWep.ShootWeaponEntityComp) end
+                    if Valid(curWep.ShootWeaponEntity_GEN_VARIABLE) then table.insert(entities, curWep.ShootWeaponEntity_GEN_VARIABLE) end
+                    if Valid(curWep.ShootWeaponEntity) then table.insert(entities, curWep.ShootWeaponEntity) end
+                    for _, ent in ipairs(entities) do
+                        if ent.CurScopeFov then ent.CurScopeFov = targetScope end
+                        if ent.ScopeFov then ent.ScopeFov = targetScope end
+                    end
+                end)
+            end
+
+            -- 1.4 Cập nhật DataTable WeaponScopeFov cho TẤT CẢ các loại ống ngắm (Red Dot, Holo, 2x, 3x, 4x, 6x, 8x, Canted...)
             local UAETableMgr = package.loaded["UAETableManager"] or import("UAETableManager")
             if UAETableMgr and UAETableMgr.GetDataTableStatic then
                 local UAETable = UAETableMgr.GetDataTableStatic("WeaponScopeFov")
                 if UAETable and slua_isValid(UAETable) then
-                    local curWep = obj.GetCurrentWeapon and obj:GetCurrentWeapon()
                     local wepId = curWep and (curWep.WeaponID or curWep.WeaponId or (curWep.DefineID and curWep.DefineID.TypeSpecificID) or (curWep.GetWeaponID and curWep:GetWeaponID()))
-                    local scopeIds = {0, 101, 102, 103, 104, 105, 106, 107, 108, 109, 201, 202, 203, 204, 205, 206}
-                    if wepId then
-                        for _, scId in ipairs(scopeIds) do
-                            UAETable:SetTableData_Float(tostring(scId) .. "_" .. tostring(wepId), "ScopeFov_f", targetScope)
+                    
+                    local wepList = {}
+                    if wepId then table.insert(wepList, wepId) end
+                    if obj.WeaponManagerComponent then
+                        local wm = obj.WeaponManagerComponent
+                        if wm.PrimaryShootWeapon and wm.PrimaryShootWeapon.WeaponID then table.insert(wepList, wm.PrimaryShootWeapon.WeaponID) end
+                        if wm.SecondaryShootWeapon and wm.SecondaryShootWeapon.WeaponID then table.insert(wepList, wm.SecondaryShootWeapon.WeaponID) end
+                    end
+
+                    -- Bảng toàn bộ Attachment ID của tất cả ống ngắm trong PUBG Mobile
+                    local allScopeIds = {
+                        0, -- Thước ngắm cơ (No Scope / Iron Sight)
+                        203001, -- Red Dot Sight
+                        203002, -- Holographic Sight
+                        203003, -- 2X Scope
+                        203004, -- 4X Scope (ACOG)
+                        203005, -- 8X Scope (CQBSS)
+                        203006, 203007, 203008, 203009, 203010, 203011, 203012, 203013,
+                        203014, -- 3X Scope
+                        203015, -- 6X Scope
+                        203016, 203017,
+                        203018, -- Canted Sight (Thước ngắm phụ / nghiêng)
+                        203019, 203020,
+                        201001, 201002, 201003, 201004, 201005, 201006, 201007, 201008, 201009, 201010,
+                        201011, 201012, 201013, 201014, 201015, 201016, 201017, 201018, 201019, 201020,
+                        2201001, 2201002, 2201003, 2201004, 2201005, 2201006, 2201009,
+                        1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
+                        101, 102, 103, 104, 105, 106, 107, 108, 109, 201, 202, 203, 204, 205, 206
+                    }
+
+                    -- Tìm attachment ID thực tế đang gắn trên súng nếu có
+                    if curWep then
+                        pcall(function()
+                            local atts = curWep.AttachmentIDList or curWep.AttachedAttachmentList or curWep.AttachmentComponents
+                            if atts then
+                                for _, a in pairs(atts) do
+                                    local aid = tonumber(a) or (type(a) == "table" and (a.AttachmentID or (a.DefineID and a.DefineID.TypeSpecificID)))
+                                    if aid and aid > 0 then
+                                        table.insert(allScopeIds, aid)
+                                    end
+                                end
+                            end
+                        end)
+                    end
+
+                    for _, wId in ipairs(wepList) do
+                        for _, scId in ipairs(allScopeIds) do
+                            local rowKey = tostring(scId) .. "_" .. tostring(wId)
+                            pcall(function() UAETable:ConditionAddEmptyRow(rowKey) end)
+                            UAETable:SetTableData_Float(rowKey, "ScopeFov_f", targetScope)
                         end
                     end
-                    for _, scId in ipairs(scopeIds) do
-                        UAETable:SetTableData_Float(tostring(scId), "ScopeFov_f", targetScope)
+
+                    for _, scId in ipairs(allScopeIds) do
+                        local rowKey = tostring(scId)
+                        pcall(function() UAETable:ConditionAddEmptyRow(rowKey) end)
+                        UAETable:SetTableData_Float(rowKey, "ScopeFov_f", targetScope)
                     end
                 end
             end
 
             self.DX_ScopeFOVLocked = true
+            self.DX_ScopeTableOverridden = true
         else
             -- [TRƯỜNG HỢP 2]: Không mở ngắm HOẶC mở ngắm nhưng ScopeView TẮT
             if self.DX_ScopeFOVLocked then
@@ -5084,6 +5154,33 @@ function BRPlayerCharacterBase:UpdateCameraViewAndFOV(isSpecialState)
                     end
                 end
                 self.DX_ScopeFOVLocked = false
+            end
+
+            -- Khôi phục lại bảng WeaponScopeFov khi tắt ScopeView
+            if self.DX_ScopeTableOverridden and not isScopeViewOn then
+                pcall(function()
+                    local UAETableMgr = package.loaded["UAETableManager"] or import("UAETableManager")
+                    if UAETableMgr and UAETableMgr.GetDataTableStatic then
+                        local UAETable = UAETableMgr.GetDataTableStatic("WeaponScopeFov")
+                        if UAETable and slua_isValid(UAETable) then
+                            local defaultScopeFovs = {
+                                [0] = 75.0,
+                                [203001] = 70.0, [203002] = 70.0, [203003] = 55.0,
+                                [203014] = 40.0, [203004] = 26.5, [203015] = 18.0,
+                                [203005] = 11.0, [203018] = 70.0
+                            }
+                            local curWep = obj.GetCurrentWeapon and obj:GetCurrentWeapon()
+                            local wepId = curWep and (curWep.WeaponID or curWep.WeaponId or (curWep.DefineID and curWep.DefineID.TypeSpecificID) or (curWep.GetWeaponID and curWep:GetWeaponID()))
+                            for scId, defFov in pairs(defaultScopeFovs) do
+                                UAETable:SetTableData_Float(tostring(scId), "ScopeFov_f", defFov)
+                                if wepId then
+                                    UAETable:SetTableData_Float(tostring(scId) .. "_" .. tostring(wepId), "ScopeFov_f", defFov)
+                                end
+                            end
+                        end
+                    end
+                end)
+                self.DX_ScopeTableOverridden = false
             end
 
             if not isScoping then
