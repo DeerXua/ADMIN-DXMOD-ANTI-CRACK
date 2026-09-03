@@ -5119,6 +5119,7 @@ function BRPlayerCharacterBase:UpdateCameraViewAndFOV(isSpecialState)
                     if cm and slua.isValid(cm) then
                         if type(cm.UnlockFOV) == "function" then cm:UnlockFOV() end
                         cm.LockedFOV = 0.0
+                        cm.DefaultFOV = 90.0
                     end
                 end
                 self.DX_ScopeFOVLocked = false
@@ -5151,6 +5152,9 @@ function BRPlayerCharacterBase:UpdateCameraViewAndFOV(isSpecialState)
                         if slua_isValid(TPPCamera) and TPPCamera.FieldOfView ~= 90 then
                             TPPCamera.FieldOfView = 90
                         end
+                        if slua_isValid(FPPCamera) and FPPCamera.FieldOfView ~= 90 then
+                            FPPCamera.FieldOfView = 90
+                        end
                         if slua_isValid(springArm) then
                             springArm.bForceUseTargetArmLength = false
                             local defaultArm = (obj.TPPSpringArmParam and obj.TPPSpringArmParam.TargetArmALength) or 250
@@ -5162,10 +5166,20 @@ function BRPlayerCharacterBase:UpdateCameraViewAndFOV(isSpecialState)
                     end
                 end
             else
-                -- 2.2 Khi ĐANG mở ngắm nhưng ScopeView TẮT: Để game tự ngắm zoom chuẩn (không đè FOV 90)
+                -- 2.2 Khi ĐANG mở ngắm nhưng ScopeView TẮT: Trả camera FOV về 90 1 lần để game tự zoom ngắm chuẩn
                 if self.DX_IpadViewActive or self.DX_ScopeViewActive then
+                    if slua_isValid(TPPCamera) and TPPCamera.FieldOfView ~= 90 then
+                        TPPCamera.FieldOfView = 90
+                    end
+                    if slua_isValid(FPPCamera) and FPPCamera.FieldOfView ~= 90 then
+                        FPPCamera.FieldOfView = 90
+                    end
                     if slua_isValid(springArm) then
                         springArm.bForceUseTargetArmLength = false
+                        local defaultArm = (obj.TPPSpringArmParam and obj.TPPSpringArmParam.TargetArmALength) or 250
+                        if springArm.TargetArmLength and springArm.TargetArmLength ~= defaultArm then
+                            springArm.TargetArmLength = defaultArm
+                        end
                     end
                     self.DX_IpadViewActive = false
                     self.DX_ScopeViewActive = false
