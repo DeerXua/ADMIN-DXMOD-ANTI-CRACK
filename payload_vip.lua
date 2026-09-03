@@ -3042,7 +3042,7 @@ table.insert(StackESP, {
             ExpandIndex = 0,
             GetFunc = function() return _G.DX_Settings.EspVehicle == 1 end,
             SetFunc = function(_, value)
-                _G.DX_Settings.EspVehicle = value and 1 or 0
+                _G.DX_Settings.EspVehicle = (value == 1 or value == true) and 1 or 0
                 _G.EnvRequiresUpdate = true
                 _G.MagicUpdateVersion = (_G.MagicUpdateVersion or 1) + 1
                 return true
@@ -3703,9 +3703,10 @@ table.insert(StackESP, {
             UI = AliasMap.TitleSwitcher,
             Text = "▶ Ipad View",
             ExpandIndex = 0,
-            GetFunc = function() return _G.DX_Settings.IpadView == 1 end,
+            GetFunc = function() return (_G.DX_Settings.IpadView == 1 or _G.DX_Settings.IpadView == true) end,
             SetFunc = function(_, value)
-                _G.DX_Settings.IpadView = value and 1 or 0
+                local on = (value == 1 or value == true)
+                _G.DX_Settings.IpadView = on and 1 or 0
                 _G.EnvRequiresUpdate = true
                 return true
             end
@@ -5138,23 +5139,36 @@ function BRPlayerCharacterBase:UpdateCameraViewAndFOV(isSpecialState)
                         TPPCamera.FieldOfView = targetTPP
                     end
                     if slua_isValid(springArm) and springArm.TargetArmLength then
+                        springArm.bForceUseTargetArmLength = true
                         local baseArm = 250 + ((targetTPP - 90) * 3.0)
                         if springArm.TargetArmLength ~= baseArm then
                             springArm.TargetArmLength = baseArm
                         end
                     end
+                    self.DX_IpadViewActive = true
                 else
-                    if slua_isValid(TPPCamera) and TPPCamera.FieldOfView ~= 90 then
-                        TPPCamera.FieldOfView = 90
-                    end
-                    if slua_isValid(springArm) and springArm.TargetArmLength and springArm.TargetArmLength ~= 250 then
-                        springArm.TargetArmLength = 250
+                    if self.DX_IpadViewActive then
+                        if slua_isValid(TPPCamera) and TPPCamera.FieldOfView ~= 90 then
+                            TPPCamera.FieldOfView = 90
+                        end
+                        if slua_isValid(springArm) then
+                            springArm.bForceUseTargetArmLength = false
+                            local defaultArm = (obj.TPPSpringArmParam and obj.TPPSpringArmParam.TargetArmALength) or 250
+                            if springArm.TargetArmLength and springArm.TargetArmLength ~= defaultArm then
+                                springArm.TargetArmLength = defaultArm
+                            end
+                        end
+                        self.DX_IpadViewActive = false
                     end
                 end
             else
-                -- 2.2 Khi ĐANG mở ngắm nhưng ScopeView TẮT: Trả về góc ngắm chuẩn mặc định của game
-                if slua_isValid(TPPCamera) and TPPCamera.FieldOfView ~= 90 then
-                    TPPCamera.FieldOfView = 90
+                -- 2.2 Khi ĐANG mở ngắm nhưng ScopeView TẮT: Để game tự ngắm zoom chuẩn (không đè FOV 90)
+                if self.DX_IpadViewActive or self.DX_ScopeViewActive then
+                    if slua_isValid(springArm) then
+                        springArm.bForceUseTargetArmLength = false
+                    end
+                    self.DX_IpadViewActive = false
+                    self.DX_ScopeViewActive = false
                 end
                 if slua_isValid(springArm) then
                     springArm.bForceUseTargetArmLength = false
