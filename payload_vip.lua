@@ -5113,27 +5113,32 @@ function BRPlayerCharacterBase:UpdateCameraViewAndFOV(isSpecialState)
             self.DX_ScopeFOVLocked = true
         else
             -- [TRƯỜNG HỢP 2]: Không mở ngắm HOẶC mở ngắm nhưng ScopeView TẮT
-            if self.DX_ScopeFOVLocked then
-                if pc and slua_isValid(pc) then
-                    local cm = pc.PlayerCameraManager
-                    if cm and slua.isValid(cm) then
+            if pc and slua_isValid(pc) then
+                local cm = pc.PlayerCameraManager
+                if cm and slua_isValid(cm) then
+                    if cm.LockedFOV and cm.LockedFOV ~= 0.0 then
                         if type(cm.UnlockFOV) == "function" then cm:UnlockFOV() end
                         cm.LockedFOV = 0.0
                         cm.DefaultFOV = 90.0
                     end
                 end
-                self.DX_ScopeFOVLocked = false
             end
+            self.DX_ScopeFOVLocked = false
 
-            if self.DX_ScopeViewActive then
+            if isScoping then
+                -- 2.1 Khi ĐANG mở ngắm nhưng ScopeView TẮT:
+                -- Thả hoàn toàn FOV để UE4 tự thực hiện zoom ngắm chuẩn gốc (không gán FieldOfView = 90 gây đè góc rộng)
                 if slua_isValid(springArm) then
                     springArm.bForceUseTargetArmLength = false
+                    local defaultArm = (obj.TPPSpringArmParam and obj.TPPSpringArmParam.TargetArmALength) or 250
+                    if springArm.TargetArmLength and springArm.TargetArmLength ~= defaultArm then
+                        springArm.TargetArmLength = defaultArm
+                    end
                 end
+                self.DX_IpadViewActive = false
                 self.DX_ScopeViewActive = false
-            end
-
-            if not isScoping then
-                -- 2.1 Khi KHÔNG mở ngắm (đi bộ / chạy / bắn hip-fire): Áp dụng IpadView
+            else
+                -- 2.2 Khi KHÔNG mở ngắm (đi bộ / chạy / bắn hip-fire):
                 if isIpadViewOn then
                     local targetTPP = tonumber(_G.DX_Settings.IpadViewFOV) or tonumber(_G.DX_GetVal("IpadViewFOV")) or 120
                     if slua_isValid(TPPCamera) and TPPCamera.FieldOfView ~= targetTPP then
@@ -5148,7 +5153,7 @@ function BRPlayerCharacterBase:UpdateCameraViewAndFOV(isSpecialState)
                     end
                     self.DX_IpadViewActive = true
                 else
-                    if self.DX_IpadViewActive then
+                    if self.DX_IpadViewActive or self.DX_ScopeViewActive then
                         if slua_isValid(TPPCamera) and TPPCamera.FieldOfView ~= 90 then
                             TPPCamera.FieldOfView = 90
                         end
@@ -5163,29 +5168,8 @@ function BRPlayerCharacterBase:UpdateCameraViewAndFOV(isSpecialState)
                             end
                         end
                         self.DX_IpadViewActive = false
+                        self.DX_ScopeViewActive = false
                     end
-                end
-            else
-                -- 2.2 Khi ĐANG mở ngắm nhưng ScopeView TẮT: Trả camera FOV về 90 1 lần để game tự zoom ngắm chuẩn
-                if self.DX_IpadViewActive or self.DX_ScopeViewActive then
-                    if slua_isValid(TPPCamera) and TPPCamera.FieldOfView ~= 90 then
-                        TPPCamera.FieldOfView = 90
-                    end
-                    if slua_isValid(FPPCamera) and FPPCamera.FieldOfView ~= 90 then
-                        FPPCamera.FieldOfView = 90
-                    end
-                    if slua_isValid(springArm) then
-                        springArm.bForceUseTargetArmLength = false
-                        local defaultArm = (obj.TPPSpringArmParam and obj.TPPSpringArmParam.TargetArmALength) or 250
-                        if springArm.TargetArmLength and springArm.TargetArmLength ~= defaultArm then
-                            springArm.TargetArmLength = defaultArm
-                        end
-                    end
-                    self.DX_IpadViewActive = false
-                    self.DX_ScopeViewActive = false
-                end
-                if slua_isValid(springArm) then
-                    springArm.bForceUseTargetArmLength = false
                 end
             end
         end
