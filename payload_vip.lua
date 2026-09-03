@@ -3042,7 +3042,7 @@ table.insert(StackESP, {
             ExpandIndex = 0,
             GetFunc = function() return _G.DX_Settings.EspVehicle == 1 end,
             SetFunc = function(_, value)
-                _G.DX_Settings.EspVehicle = (value == 1 or value == true) and 1 or 0
+                _G.DX_Settings.EspVehicle = value and 1 or 0
                 _G.EnvRequiresUpdate = true
                 _G.MagicUpdateVersion = (_G.MagicUpdateVersion or 1) + 1
                 return true
@@ -3703,10 +3703,9 @@ table.insert(StackESP, {
             UI = AliasMap.TitleSwitcher,
             Text = "▶ Ipad View",
             ExpandIndex = 0,
-            GetFunc = function() return (_G.DX_Settings.IpadView == 1 or _G.DX_Settings.IpadView == true) end,
+            GetFunc = function() return _G.DX_Settings.IpadView == 1 end,
             SetFunc = function(_, value)
-                local on = (value == 1 or value == true)
-                _G.DX_Settings.IpadView = on and 1 or 0
+                _G.DX_Settings.IpadView = value and 1 or 0
                 _G.EnvRequiresUpdate = true
                 return true
             end
@@ -3732,13 +3731,10 @@ table.insert(StackESP, {
             UI = AliasMap.TitleSwitcher,
             Text = "▶ Scope View (Góc Nhìn Scope)",
             ExpandIndex = 0,
-            GetFunc = function() return (_G.DX_Settings.ScopeView == 1 or _G.DX_Settings.ScopeView == true) end,
+            GetFunc = function() return _G.DX_Settings.ScopeView == 1 end,
             SetFunc = function(_, value)
-                local on = (value == 1 or value == true)
-                _G.DX_Settings.ScopeView = on and 1 or 0
-                if _G.X3 and _G.X3.LexusConfig then _G.X3.LexusConfig.ScopeView = on end
+                _G.DX_Settings.ScopeView = value and 1 or 0
                 _G.EnvRequiresUpdate = true
-                if _G.SaveModSettings then pcall(_G.SaveModSettings) end
                 return true
             end
         })
@@ -3753,13 +3749,8 @@ table.insert(StackESP, {
             Max = 100,
             GetFunc = function() return (_G.DX_Settings.ScopeViewFOV or 110) - 60 end,
             SetFunc = function(_, value)
-                local val = 60 + math.floor(tonumber(value) or 50)
-                _G.DX_Settings.ScopeViewFOV = val
-                if _G.X3 and _G.X3.LexusState and _G.X3.LexusState.CustomTextData then
-                    _G.X3.LexusState.CustomTextData.ScopeViewFOV = val
-                end
+                _G.DX_Settings.ScopeViewFOV = 60 + math.floor(tonumber(value) or 50)
                 _G.EnvRequiresUpdate = true
-                if _G.SaveModSettings then pcall(_G.SaveModSettings) end
                 return true
             end
         })
@@ -4970,212 +4961,7 @@ do
     end
 end
 
-local function RestoreOriginalWeaponScopeFovTable()
-    pcall(function()
-        local UAETableMgr = package.loaded["UAETableManager"] or import("UAETableManager")
-        if not (UAETableMgr and UAETableMgr.GetDataTableStatic) then return end
-        local UAETable = UAETableMgr.GetDataTableStatic("WeaponScopeFov")
-        if not (UAETable and slua_isValid(UAETable)) then return end
-
-        local defaultScopeFovs = {
-            [0] = 75.0,        -- No scope / Iron sight
-            [203001] = 70.0,   -- Red Dot
-            [203002] = 70.0,   -- Holographic
-            [203003] = 55.0,   -- 2X
-            [203014] = 40.0,   -- 3X
-            [203004] = 26.5,   -- 4X
-            [203015] = 18.0,   -- 6X
-            [203005] = 11.0,   -- 8X
-            [203018] = 70.0    -- Canted Sight
-        }
-
-        local commonWepIds = {
-            101001, 101002, 101003, 101004, 101005, 101006, 101007, 101008, 101009, 101010, 101011, 101012, 101013,
-            102001, 102002, 102003, 102004, 102005, 102007, 102008,
-            103001, 103002, 103003, 103004, 103005, 103006, 103007, 103008, 103009, 103010, 103011, 103012,
-            104001, 104002, 104003, 104004,
-            105001, 105002, 105003
-        }
-
-        for scId, defFov in pairs(defaultScopeFovs) do
-            UAETable:SetTableData_Float(tostring(scId), "ScopeFov_f", defFov)
-            for _, wId in ipairs(commonWepIds) do
-                UAETable:SetTableData_Float(tostring(scId) .. "_" .. tostring(wId), "ScopeFov_f", defFov)
-            end
-        end
-    end)
-end
-
 -- =========================== PHẦN 29: BRPLAYERCHARACTERBASE METHODS ===========================
-function BRPlayerCharacterBase:UpdateCameraViewAndFOV(isSpecialState)
-    pcall(function()
-        if not slua_isValid(self.Object) then return end
-
-        local obj = self.Object
-
-        -- 1. Xác định trạng thái ngắm (ADS / Scope / Weapon Aiming):
-        local isScoping = false
-        if obj.bIsGunADS == true then
-            isScoping = true
-        elseif type(obj.IsGunADS) == "function" and obj:IsGunADS() then
-            isScoping = true
-        elseif obj.bIsWeaponAiming == true then
-            isScoping = true
-        elseif obj.HasState and EPawnState and EPawnState.GunADS and obj:HasState(EPawnState.GunADS) then
-            isScoping = true
-        elseif obj.FPPComponent and obj.FPPComponent.bIsScoping then
-            isScoping = true
-        elseif obj.bIsScoping == true then
-            isScoping = true
-        elseif obj.WeaponManagerComponent and obj.WeaponManagerComponent.bIsScoping then
-            isScoping = true
-        elseif obj.bIsHoldingSight == true then
-            isScoping = true
-        end
-
-        if isSpecialState == nil then
-            if obj.bIsSliding or (type(obj.IsSliding) == "function" and obj:IsSliding()) then
-                isSpecialState = true
-            elseif (type(obj.IsAttachedToAnyVehicle) == "function" and obj:IsAttachedToAnyVehicle())
-               or (type(obj.GetCurrentVehicle) == "function" and slua_isValid(obj:GetCurrentVehicle()))
-               or obj.bIsDriving or obj.bIsPassenger or obj.VehicleCar
-               or (type(obj.GetAttachParentActor) == "function" and slua_isValid(obj:GetAttachParentActor())) then
-                isSpecialState = true
-            end
-        end
-
-        if isSpecialState then
-            isScoping = false
-        end
-
-        local isScopeViewOn = (_G.DX_Settings.ScopeView == 1 or _G.DX_Settings.ScopeView == true or _G.DX_GetVal("ScopeView") == 1 or _G.DX_GetVal("ScopeView") == true)
-        local isIpadViewOn = (_G.DX_Settings.IpadView == 1 or _G.DX_Settings.IpadView == true or _G.DX_GetVal("IpadView") == 1 or _G.DX_GetVal("IpadView") == true)
-
-        local pc = (GameplayData and GameplayData.GetPlayerController and GameplayData.GetPlayerController())
-        if not (pc and slua_isValid(pc)) then
-            local G = rawget(_G, "Game")
-            if G and G.GetPlayerController then pc = G:GetPlayerController() end
-        end
-
-        local TPPCamera = obj.ThirdPersonCameraComponent
-        local FPPCamera = obj.FirstPersonCameraComponent
-        local springArm = (type(obj.GetThirdPersonSpringArm) == "function" and obj:GetThirdPersonSpringArm())
-                          or (pc and type(pc.GetTargetedSpringArm) == "function" and pc:GetTargetedSpringArm())
-                          or obj.CustomSpringArm or obj.ScopingSpringArm or obj.ThirdPersonSpringArmComponent or obj.SpringArmComponent or obj.SpringArmComp
-
-        -- Đảm bảo khôi phục bảng WeaponScopeFov về nguyên bản để độ nhạy Gyroscope luôn 100% chuẩn gốc
-        if not self.DX_ScopeTableRestoredOnce or self.DX_ScopeTableOverridden then
-            RestoreOriginalWeaponScopeFovTable()
-            self.DX_ScopeTableRestoredOnce = true
-            self.DX_ScopeTableOverridden = nil
-        end
-
-        if isScoping and isScopeViewOn then
-            -- [TRƯỜNG HỢP 1]: Đang mở ngắm VÀ BẬT ScopeView (Góc nhìn ngắm rộng giống iPad, tùy chỉnh qua thanh trượt, giữ nguyên độ nhạy Gyro)
-            local targetScope = tonumber(_G.DX_Settings.ScopeViewFOV) or tonumber(_G.DX_GetVal("ScopeViewFOV")) or 110
-
-            -- 1.1 Cập nhật PlayerCameraManager nếu cần
-            if pc and slua_isValid(pc) then
-                local cm = pc.PlayerCameraManager
-                if cm and slua_isValid(cm) then
-                    if type(cm.SetFOV) == "function" then cm:SetFOV(targetScope) end
-                    cm.LockedFOV = targetScope
-                end
-            end
-
-            -- 1.2 Duy trì Camera ở góc nhìn thứ 3 (Third Person) để tạo view rộng giống iPad
-            if slua_isValid(TPPCamera) then
-                if type(TPPCamera.SetActive) == "function" then TPPCamera:SetActive(true) end
-                if TPPCamera.FieldOfView ~= targetScope then
-                    TPPCamera.FieldOfView = targetScope
-                end
-            end
-            if slua_isValid(FPPCamera) and FPPCamera.FieldOfView ~= targetScope then
-                FPPCamera.FieldOfView = targetScope
-            end
-
-            -- 1.3 Giữ nhân vật luôn hiển thị đầy đủ (không bị giấu thân khi ngắm)
-            if slua_isValid(obj.Mesh) then
-                if type(obj.Mesh.SetOwnerNoSee) == "function" then obj.Mesh:SetOwnerNoSee(false) end
-                if type(obj.Mesh.SetVisibility) == "function" then obj.Mesh:SetVisibility(true) end
-            end
-
-            -- 1.4 Kéo xa khoảng cách camera SpringArm theo thanh chỉnh FOV để tầm nhìn rộng thoáng như iPad View
-            if slua_isValid(springArm) then
-                springArm.bForceUseTargetArmLength = true
-                local targetArm = 250 + ((targetScope - 90) * 3.0)
-                if springArm.TargetArmLength ~= targetArm then
-                    springArm.TargetArmLength = targetArm
-                end
-            end
-
-            self.DX_ScopeViewActive = true
-            self.DX_ScopeFOVLocked = true
-        else
-            -- [TRƯỜNG HỢP 2]: Không mở ngắm HOẶC mở ngắm nhưng ScopeView TẮT
-            if pc and slua_isValid(pc) then
-                local cm = pc.PlayerCameraManager
-                if cm and slua_isValid(cm) then
-                    if cm.LockedFOV and cm.LockedFOV ~= 0.0 then
-                        if type(cm.UnlockFOV) == "function" then cm:UnlockFOV() end
-                        cm.LockedFOV = 0.0
-                        cm.DefaultFOV = 90.0
-                    end
-                end
-            end
-            self.DX_ScopeFOVLocked = false
-
-            if isScoping then
-                -- 2.1 Khi ĐANG mở ngắm nhưng ScopeView TẮT:
-                -- Thả hoàn toàn FOV để UE4 tự thực hiện zoom ngắm chuẩn gốc (không gán FieldOfView = 90 gây đè góc rộng)
-                if slua_isValid(springArm) then
-                    springArm.bForceUseTargetArmLength = false
-                    local defaultArm = (obj.TPPSpringArmParam and obj.TPPSpringArmParam.TargetArmALength) or 250
-                    if springArm.TargetArmLength and springArm.TargetArmLength ~= defaultArm then
-                        springArm.TargetArmLength = defaultArm
-                    end
-                end
-                self.DX_IpadViewActive = false
-                self.DX_ScopeViewActive = false
-            else
-                -- 2.2 Khi KHÔNG mở ngắm (đi bộ / chạy / bắn hip-fire):
-                if isIpadViewOn then
-                    local targetTPP = tonumber(_G.DX_Settings.IpadViewFOV) or tonumber(_G.DX_GetVal("IpadViewFOV")) or 120
-                    if slua_isValid(TPPCamera) and TPPCamera.FieldOfView ~= targetTPP then
-                        TPPCamera.FieldOfView = targetTPP
-                    end
-                    if slua_isValid(springArm) and springArm.TargetArmLength then
-                        springArm.bForceUseTargetArmLength = true
-                        local baseArm = 250 + ((targetTPP - 90) * 3.0)
-                        if springArm.TargetArmLength ~= baseArm then
-                            springArm.TargetArmLength = baseArm
-                        end
-                    end
-                    self.DX_IpadViewActive = true
-                else
-                    if self.DX_IpadViewActive or self.DX_ScopeViewActive then
-                        if slua_isValid(TPPCamera) and TPPCamera.FieldOfView ~= 90 then
-                            TPPCamera.FieldOfView = 90
-                        end
-                        if slua_isValid(FPPCamera) and FPPCamera.FieldOfView ~= 90 then
-                            FPPCamera.FieldOfView = 90
-                        end
-                        if slua_isValid(springArm) then
-                            springArm.bForceUseTargetArmLength = false
-                            local defaultArm = (obj.TPPSpringArmParam and obj.TPPSpringArmParam.TargetArmALength) or 250
-                            if springArm.TargetArmLength and springArm.TargetArmLength ~= defaultArm then
-                                springArm.TargetArmLength = defaultArm
-                            end
-                        end
-                        self.DX_IpadViewActive = false
-                        self.DX_ScopeViewActive = false
-                    end
-                end
-            end
-        end
-    end)
-end
-
 function BRPlayerCharacterBase:StartAdvancedSystems()
     if not Client then return end
     if self.bAdvancedSystemsStarted then return end
@@ -5184,7 +4970,6 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
     -- Clear physics asset modification cache for the new match to force re-applying Magic Bullet
     _G.DX_ModdedPhysAssets = {}
     _G.MagicUpdateVersion = (_G.MagicUpdateVersion or 1) + 1
-    pcall(RestoreOriginalWeaponScopeFovTable)
     
     local function Valid(obj) return slua_isValid(obj) end
 
@@ -5217,11 +5002,6 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
         end
         if (_G.DX_Settings.AimMortar == 1 or _G.DX_Settings.AimMortar == true or (_G.X3 and _G.X3.LexusConfig and _G.X3.LexusConfig.AimMortar)) and _G.X3 and _G.X3._MortarTick then
             pcall(_G.X3._MortarTick, LocalPlayer)
-        end
-
-        -- Cập nhật FOV góc nhìn theo chu kỳ 60 FPS (chuyển đổi tức thì khi bật/nhả ngắm)
-        if self.UpdateCameraViewAndFOV then
-            self:UpdateCameraViewAndFOV()
         end
         
         -- Bunny Hop (Nhảy liên tục không khựng khi giữ nút nhảy, không nhảy đè khi đang trượt TDM)
@@ -5388,9 +5168,67 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
             ["foot_l"] = magicLegs, ["foot_r"] = magicLegs    
         }
         
+        if self.DX_LastAimState ~= isAiming then
+            self.DX_LastAimState = isAiming
+            self.DX_ForceFOV = true
+        end
+
         -- Áp dụng Góc nhìn FOV (IpadView khi chạy thường, ScopeView khi mở ngắm)
-        if self.UpdateCameraViewAndFOV then
-            self:UpdateCameraViewAndFOV(isSpecialState)
+        if not isAiming or isSpecialState then
+            if _G.DX_GetVal("IpadView") == 1 then
+                pcall(function()
+                    local targetTPP = _G.DX_GetVal("IpadViewFOV") or 120
+                    local TPPCamera = self.Object.ThirdPersonCameraComponent
+                    if Valid(TPPCamera) and TPPCamera.FieldOfView ~= targetTPP then
+                        TPPCamera.FieldOfView = targetTPP
+                    end
+                end)
+            else
+                pcall(function()
+                    local TPPCamera = self.Object.ThirdPersonCameraComponent
+                    if Valid(TPPCamera) and TPPCamera.FieldOfView ~= 90 then
+                        TPPCamera.FieldOfView = 90
+                    end
+                end)
+            end
+            self.DX_ForceFOV = false
+        else
+            if _G.DX_GetVal("ScopeView") == 1 then
+                pcall(function()
+                    local targetScope = _G.DX_GetVal("ScopeViewFOV") or 110
+                    local TPPCamera = self.Object.ThirdPersonCameraComponent
+                    if Valid(TPPCamera) and TPPCamera.FieldOfView ~= targetScope then
+                        TPPCamera.FieldOfView = targetScope
+                    end
+                    local FPPCamera = self.Object.FirstPersonCameraComponent
+                    if Valid(FPPCamera) and FPPCamera.FieldOfView ~= targetScope then
+                        FPPCamera.FieldOfView = targetScope
+                    end
+                    local FPPComp = self.Object.FPPComponent
+                    if Valid(FPPComp) then
+                        if FPPComp.ScopeFov ~= targetScope then FPPComp.ScopeFov = targetScope end
+                        if FPPComp.CurScopeFov ~= targetScope then FPPComp.CurScopeFov = targetScope end
+                        if FPPComp.TargetScopeFov ~= targetScope then FPPComp.TargetScopeFov = targetScope end
+                    end
+                    local UAETableMgr = package.loaded["UAETableManager"] or import("UAETableManager")
+                    if UAETableMgr and UAETableMgr.GetDataTableStatic then
+                        local UAETable = UAETableMgr.GetDataTableStatic("WeaponScopeFov")
+                        if UAETable and slua.isValid(UAETable) then
+                            local curWep = self.Object.GetCurrentWeapon and self.Object:GetCurrentWeapon()
+                            local wepId = curWep and (curWep.WeaponID or curWep.WeaponId or (curWep.DefineID and curWep.DefineID.TypeSpecificID) or (curWep.GetWeaponID and curWep:GetWeaponID()))
+                            local scopeIds = {0, 101, 102, 103, 104, 105, 106, 107, 108, 109, 201, 202, 203, 204, 205, 206}
+                            if wepId then
+                                for _, scId in ipairs(scopeIds) do
+                                    UAETable:SetTableData_Float(tostring(scId) .. "_" .. tostring(wepId), "ScopeFov_f", targetScope)
+                                end
+                            end
+                            for _, scId in ipairs(scopeIds) do
+                                UAETable:SetTableData_Float(tostring(scId), "ScopeFov_f", targetScope)
+                            end
+                        end
+                    end
+                end)
+            end
         end
 
         local currentTickOS = os_clock()
@@ -7230,21 +7068,6 @@ function BRPlayerCharacterBase:ReceiveEndPlay(EndPlayReason)
 
         -- 6. Dọn kill counter state
         _G.killCountInfo = {}
-
-        -- 7. Reset và mở khóa camera FOV nếu đang bị ScopeView khóa
-        pcall(function()
-            local pc = GameplayData and GameplayData.GetPlayerController and GameplayData.GetPlayerController()
-            if not (pc and slua.isValid(pc)) then
-                local G = rawget(_G, "Game")
-                if G and G.GetPlayerController then pc = G:GetPlayerController() end
-            end
-            if pc and slua.isValid(pc) and pc.PlayerCameraManager and slua.isValid(pc.PlayerCameraManager) then
-                local cm = pc.PlayerCameraManager
-                if type(cm.UnlockFOV) == "function" then cm:UnlockFOV() end
-                cm.LockedFOV = 0.0
-                cm.DefaultFOV = 90.0
-            end
-        end)
         _G.LastKillTime = {}
         _G.UpdateMyKillCounter = false
 
@@ -7708,17 +7531,6 @@ local function _SyncEspV2ConfigKeys()
     if _G.X3 and _G.X3.LexusState and _G.X3.LexusState.CustomTextData then
         _G.X3.LexusState.CustomTextData.MortarFOV = S.MortarFOV
         _G.X3.LexusState.CustomTextData.MortarMaxRange = S.MortarMaxRange
-    end
-
-    -- Sync Scope View
-    local isScopeViewOn = (S.ScopeView == 1 or S.ScopeView == true)
-    S.ScopeView = isScopeViewOn and 1 or 0
-    S.ScopeViewFOV = S.ScopeViewFOV or 110
-    if _G.X3 and _G.X3.LexusConfig then
-        _G.X3.LexusConfig.ScopeView = isScopeViewOn
-    end
-    if _G.X3 and _G.X3.LexusState and _G.X3.LexusState.CustomTextData then
-        _G.X3.LexusState.CustomTextData.ScopeViewFOV = S.ScopeViewFOV
     end
 end
 
