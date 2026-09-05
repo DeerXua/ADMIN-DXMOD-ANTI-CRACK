@@ -13087,6 +13087,8 @@ end
 _G.DX_ZonePredictMark = _G.DX_ZonePredictMark or nil
 _G.DX_LastZoneCheckTime = _G.DX_LastZoneCheckTime or 0
 _G.DX_Settings.ZONE_PREDICTOR = _G.DX_Settings.ZONE_PREDICTOR or 1 -- Mặc định bật sẵn
+_G.DX_LastPredictedCircleKey = _G.DX_LastPredictedCircleKey or ""
+_G.DX_ZoneBannerExpiry = _G.DX_ZoneBannerExpiry or 0
 
 local function GetNextSafeZoneInfo()
     local nextPos = nil
@@ -13165,58 +13167,162 @@ end
 
 _G.DX_GetNextSafeZoneInfo = GetNextSafeZoneInfo
 
--- Hook MapDataBase.OnModPaint để Slate UMG vẽ trực tiếp vòng bo lên MiniMap và Bản đồ lớn
+-- Hàm vẽ bo thực tế lên Map Slate/UMG
+local function PerformZoneDraw(mapDataInst, PaintContext, paintType, circleColor)
+    local isEnable = (_G.DX_GetVal and _G.DX_GetVal("ZONE_PREDICTOR") == 1) or (_G.DX_Settings and _G.DX_Settings.ZONE_PREDICTOR == 1)
+    if not isEnable then return end
+
+    pcall(function()
+        local nextPos, radius = GetNextSafeZoneInfo()
+        if not (nextPos and radius and radius > 0) then return end
+
+        local MapUI = mapDataInst.MapUI or (mapDataInst.CurrentMapUI_BP and mapDataInst.CurrentMapUI_BP.CurrentMapUI) or mapDataInst.CurrentHoldMapUI
+        if not (MapUI and slua.isValid(MapUI)) then return end
+
+        local USTExtraMapFunctionLibrary = import("STExtraMapFunctionLibrary") or import("/Script/ShadowTrackerExtra.STExtraMapFunctionLibrary")
+        if not USTExtraMapFunctionLibrary then return end
+
+        local nMapWindowExtend = MapUI.MapWindowExtentC
+        local levelToMapScale = (type(MapUI.GetLevelToMapScale) == "function" and MapUI:GetLevelToMapScale()) or 1.0
+        local LevelLandScapeCenterC = mapDataInst.LevelLandScapeCenterC or slua.IndexReference(MapUI, "LevelLandScapeCenterC")
+        local PlayerCoord = mapDataInst.PlayerCoord or slua.IndexReference(MapUI, "MapRealTimeInfoC", "PlayerCoord")
+
+        if not (LevelLandScapeCenterC and PlayerCoord and nMapWindowExtend) then return end
+
+        local CircleCenter = USTExtraMapFunctionLibrary.MapCenterToPointVector2D(nextPos, LevelLandScapeCenterC, levelToMapScale)
+        local drawRadius = radius * levelToMapScale
+
+        -- Vòng bo dự đoán tiếp theo: Màu vàng cam dạ quang (Golden Yellow)
+        local predictedColor = FLinearColor(1.0, 0.85, 0.0, 0.95)
+        USTExtraMapFunctionLibrary.DrawCircle(PaintContext, CircleCenter, predictedColor, drawRadius, nMapWindowExtend, PlayerCoord, paintType, true)
+
+        -- Vẽ tâm chấm đỏ/vàng tại chính giữa tâm bo tiếp theo
+        local centerDotColor = FLinearColor(1.0, 0.2, 0.2, 1.0)
+        local dotRadius = math.max(300.0 * levelToMapScale, 4.0)
+        USTExtraMapFunctionLibrary.DrawCircle(PaintContext, CircleCenter, centerDotColor, dotRadius, nMapWindowExtend, PlayerCoord, paintType, true)
+    end)
+end
+
+-- Hook MapDataBase để Slate UMG vẽ trực tiếp vòng bo lên MiniMap và Bản đồ lớn
 local function HookMapPainting()
     pcall(function()
         local ok, MapDataBase = pcall(require, "GameLua.Mod.BaseMod.Client.Map.MapData.MapDataBase")
         if not (ok and MapDataBase) then return end
-        if MapDataBase._DX_PaintHooked then return end
-        MapDataBase._DX_PaintHooked = true
 
-        local orig_OnModPaint = MapDataBase.OnModPaint
-        MapDataBase.OnModPaint = function(self, PaintContext, paintType, circleColor)
-            if orig_OnModPaint then
-                pcall(orig_OnModPaint, self, PaintContext, paintType, circleColor)
+        if not MapDataBase._DX_PaintHooked then
+            MapDataBase._DX_PaintHooked = true
+
+            local orig_OnModPaint = MapDataBase.OnModPaint
+            MapDataBase.OnModPaint = function(self, PaintContext, paintType, circleColor)
+                if orig_OnModPaint then
+                    pcall(orig_OnModPaint, self, PaintContext, paintType, circleColor)
+                end
+                PerformZoneDraw(self, PaintContext, paintType, circleColor)
             end
 
-            local isEnable = (_G.DX_GetVal and _G.DX_GetVal("ZONE_PREDICTOR") == 1) or (_G.DX_Settings and _G.DX_Settings.ZONE_PREDICTOR == 1)
-            if not isEnable then return end
-
-            pcall(function()
-                local nextPos, radius = GetNextSafeZoneInfo()
-                if not (nextPos and radius and radius > 0) then return end
-
-                local MapUI = self.MapUI or (self.CurrentMapUI_BP and self.CurrentMapUI_BP.CurrentMapUI) or self.CurrentHoldMapUI
-                if not (MapUI and slua.isValid(MapUI)) then return end
-
-                local USTExtraMapFunctionLibrary = import("STExtraMapFunctionLibrary") or import("/Script/ShadowTrackerExtra.STExtraMapFunctionLibrary")
-                if not USTExtraMapFunctionLibrary then return end
-
-                local nMapWindowExtend = MapUI.MapWindowExtentC
-                local levelToMapScale = (type(MapUI.GetLevelToMapScale) == "function" and MapUI:GetLevelToMapScale()) or 1.0
-                local LevelLandScapeCenterC = self.LevelLandScapeCenterC or slua.IndexReference(MapUI, "LevelLandScapeCenterC")
-                local PlayerCoord = self.PlayerCoord or slua.IndexReference(MapUI, "MapRealTimeInfoC", "PlayerCoord")
-
-                if not (LevelLandScapeCenterC and PlayerCoord and nMapWindowExtend) then return end
-
-                local CircleCenter = USTExtraMapFunctionLibrary.MapCenterToPointVector2D(nextPos, LevelLandScapeCenterC, levelToMapScale)
-                local drawRadius = radius * levelToMapScale
-
-                -- Vòng bo dự đoán tiếp theo: Màu vàng cam dạ quang (Golden Yellow)
-                local predictedColor = FLinearColor(1.0, 0.85, 0.0, 0.95)
-                USTExtraMapFunctionLibrary.DrawCircle(PaintContext, CircleCenter, predictedColor, drawRadius, nMapWindowExtend, PlayerCoord, paintType, true)
-
-                -- Vẽ tâm chấm đỏ/vàng tại chính giữa tâm bo tiếp theo
-                local centerDotColor = FLinearColor(1.0, 0.2, 0.2, 1.0)
-                local dotRadius = math.max(300.0 * levelToMapScale, 4.0)
-                USTExtraMapFunctionLibrary.DrawCircle(PaintContext, CircleCenter, centerDotColor, dotRadius, nMapWindowExtend, PlayerCoord, paintType, true)
-            end)
+            local orig_HandleConstruct = MapDataBase.HandleConstruct
+            MapDataBase.HandleConstruct = function(self, InMapUI)
+                if orig_HandleConstruct then
+                    pcall(orig_HandleConstruct, self, InMapUI)
+                end
+                -- Gán trực tiếp OnModPaint cho từng instance
+                self.OnModPaint = function(inst, PaintContext, paintType, circleColor)
+                    if orig_OnModPaint then
+                        pcall(orig_OnModPaint, inst, PaintContext, paintType, circleColor)
+                    end
+                    PerformZoneDraw(inst, PaintContext, paintType, circleColor)
+                end
+            end
         end
+
+        -- Đồng thời quét các MapData đang active trên màn hình
+        pcall(function()
+            local UIManager = require("common.ui_manager") or rawget(_G, "UIManager")
+            if UIManager and UIManager.GetUI and UIManager.UI_Config_InGame then
+                if UIManager.UI_Config_InGame.MiniMapWindow then
+                    local miniMap = UIManager.GetUI(UIManager.UI_Config_InGame.MiniMapWindow)
+                    if miniMap and miniMap.UIRoot and miniMap.UIRoot.CurrentMapUIBP then
+                        local mapData = miniMap.UIRoot.CurrentMapUIBP.CurrentMapData_BP
+                        if mapData and not mapData._DX_InstanceHooked then
+                            mapData._DX_InstanceHooked = true
+                            local oldPaint = mapData.OnModPaint
+                            mapData.OnModPaint = function(inst, PaintContext, paintType, circleColor)
+                                if oldPaint then pcall(oldPaint, inst, PaintContext, paintType, circleColor) end
+                                PerformZoneDraw(inst, PaintContext, paintType, circleColor)
+                            end
+                        end
+                    end
+                end
+
+                if UIManager.UI_Config_InGame.EntireMapWindow then
+                    local entireMap = UIManager.GetUI(UIManager.UI_Config_InGame.EntireMapWindow)
+                    if entireMap and entireMap.UIRoot and entireMap.UIRoot.CurrentMapUIBP then
+                        local mapData = entireMap.UIRoot.CurrentMapUIBP.CurrentMapData_BP
+                        if mapData and not mapData._DX_InstanceHooked then
+                            mapData._DX_InstanceHooked = true
+                            local oldPaint = mapData.OnModPaint
+                            mapData.OnModPaint = function(inst, PaintContext, paintType, circleColor)
+                                if oldPaint then pcall(oldPaint, inst, PaintContext, paintType, circleColor) end
+                                PerformZoneDraw(inst, PaintContext, paintType, circleColor)
+                            end
+                        end
+                    end
+                end
+            end
+        end)
     end)
 end
 
 -- Chạy hook Map painting ngay lập tức
 HookMapPainting()
+
+-- Hàm phát thông báo nổi thông minh khi phát hiện bo mới
+local function BroadcastPredictedZoneAlert(posX, posY, distM)
+    pcall(function()
+        local GameplayData = require("GameLua.GameCore.Data.GameplayData")
+        local pc = GameplayData and GameplayData.GetPlayerController and GameplayData.GetPlayerController()
+        if not (pc and slua.isValid(pc)) then
+            local G = rawget(_G, "Game")
+            if G and G.GetPlayerController then pc = G:GetPlayerController() end
+        end
+
+        if not (pc and slua.isValid(pc)) then return end
+
+        local circleKey = string.format("%.0f_%.0f", posX, posY)
+        local isNewCircle = (_G.DX_LastPredictedCircleKey ~= circleKey)
+
+        if isNewCircle then
+            _G.DX_LastPredictedCircleKey = circleKey
+            _G.DX_ZoneBannerExpiry = os.clock() + 10.0 -- Giữ thông báo nổi
+
+            -- THÔNG BÁO NỔI LỚN KHI BO MỚI ĐƯỢC TÍNH TOÁN
+            local bannerMsg = string.format("★ [DỰ ĐOÁN BO] Bo tiếp theo đã được dự đoán (Cách %dm)! Hãy mở MiniMap hoặc Bản đồ lớn (M) để xem vị trí!", distM)
+            
+            pcall(function()
+                if pc.BroadcastUIMessage then
+                    pc:BroadcastUIMessage("UIMsg_CanSelfRescue", 0, bannerMsg, "")
+                    pc:BroadcastUIMessage("UIMsg_FPPModeChange", 0, bannerMsg, "")
+                end
+            end)
+
+            -- Phát qua IngameTipsTools nếu có
+            pcall(function()
+                local ok, IngameTipsTools = pcall(require, "GameLua.Mod.BaseMod.Common.UI.InGameTipsTools")
+                if ok and IngameTipsTools and IngameTipsTools.BattleGeneralTip then
+                    IngameTipsTools.BattleGeneralTip(10022, "DỰ ĐOÁN BO", bannerMsg)
+                end
+            end)
+        else
+            -- Thông báo ticker khoảng cách định kỳ
+            local toast = string.format("[DỰ ĐOÁN BO] Tâm bo tiếp theo: %dm (Mở map xem)", distM)
+            pcall(function()
+                if pc.BroadcastUIMessage then
+                    pc:BroadcastUIMessage("UIMsg_CanSelfRescue", 0, toast, "")
+                end
+            end)
+        end
+    end)
+end
 
 local function UpdateZonePredictor()
     HookMapPainting()
@@ -13262,7 +13368,7 @@ local function UpdateZonePredictor()
             end
         end)
 
-        -- Phát thông báo khoảng cách tới tâm bo tiếp theo
+        -- Tính khoảng cách và phát thông báo nổi
         local GameplayData = require("GameLua.GameCore.Data.GameplayData")
         local pc = GameplayData and GameplayData.GetPlayerController and GameplayData.GetPlayerController()
         if not (pc and slua.isValid(pc)) then
@@ -13270,6 +13376,7 @@ local function UpdateZonePredictor()
             if G and G.GetPlayerController then pc = G:GetPlayerController() end
         end
 
+        local distM = 0
         if pc and slua.isValid(pc) then
             local myPawn = pc.Pawn or (pc.GetPawn and pc:GetPawn())
             if myPawn and slua.isValid(myPawn) and type(myPawn.K2_GetActorLocation) == "function" then
@@ -13277,14 +13384,12 @@ local function UpdateZonePredictor()
                 if myLoc then
                     local dx = posX - myLoc.X
                     local dy = posY - myLoc.Y
-                    local distM = math.floor(math.sqrt(dx * dx + dy * dy) / 100.0)
-                    local toast = string.format("[DU DOAN BO] Tam bo tiep theo: %dm", distM)
-                    if pc.BroadcastUIMessage then
-                        pc:BroadcastUIMessage("UIMsg_CanSelfRescue", 0, toast, "")
-                    end
+                    distM = math.floor(math.sqrt(dx * dx + dy * dy) / 100.0)
                 end
             end
         end
+
+        BroadcastPredictedZoneAlert(posX, posY, distM)
     end)
 end
 
