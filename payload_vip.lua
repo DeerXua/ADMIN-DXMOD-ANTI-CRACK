@@ -2828,6 +2828,13 @@ function _G.InitModMenuTab()
             _G.DX_Settings[key] = value and 1 or 0
             _G.EnvRequiresUpdate = true
             _G.MagicUpdateVersion = (_G.MagicUpdateVersion or 1) + 1
+            if key == "ZONE_PREDICTOR" and value then
+                pcall(function()
+                    if _G.DX_TriggerZonePredictorAlert then
+                        _G.DX_TriggerZonePredictorAlert()
+                    end
+                end)
+            end
             return true
         end
     }
@@ -13071,7 +13078,7 @@ end
 
 
 -- ============================================================================
--- MODULE DỰ ĐOÁN BO (NEXT SAFE ZONE PREDICTOR - ROBUST DRIVER & MAP DRAWING)
+-- MODULE DU DOAN BO (SAFE ZONE PREDICTOR - MULTI-LAYER DRIVER & MAP DRAWING)
 -- ============================================================================
 _G.DX_ZonePredictMark = _G.DX_ZonePredictMark or nil
 _G.DX_LastZoneCheckTime = _G.DX_LastZoneCheckTime or 0
@@ -13081,126 +13088,145 @@ if _G.DX_Settings.ZONE_PREDICTOR == nil then
 end
 _G.DX_LastPredictedCircleKey = _G.DX_LastPredictedCircleKey or ""
 _G.DX_ZoneBannerExpiry = _G.DX_ZoneBannerExpiry or 0
+_G.DX_ZoneBannerText = _G.DX_ZoneBannerText or ""
 _G.DX_CachedPredictedZone = _G.DX_CachedPredictedZone or nil
+
+local function ExtractCircleFromVector(vec)
+    if not vec then return nil, nil end
+    local x = vec.X or vec.x
+    local y = vec.Y or vec.y
+    local z = vec.Z or vec.z
+    if type(x) == "number" and type(y) == "number" and type(z) == "number" then
+        if (x ~= 0 or y ~= 0) and z > 0 then
+            return FVector(x, y, 0), z
+        end
+    end
+    return nil, nil
+end
 
 local function GetNextSafeZoneInfo()
     local nextPos = nil
     local radius = nil
 
     pcall(function()
-        -- 1. Check RadiationCircleContainer.Actor (Primary Client-Side BR Radiation Actor)
-        local radContainer = rawget(_G, "RadiationCircleContainer")
-        local radActor = (radContainer and radContainer.Actor)
-        if not (radActor and slua.isValid(radActor)) then
-            pcall(function()
-                local GameplayData = require("GameLua.GameCore.Data.GameplayData")
-                local gs = GameplayData and GameplayData.GetGameState and GameplayData.GetGameState()
-                if gs and slua.isValid(gs) and gs.RadiationCircleActor and slua.isValid(gs.RadiationCircleActor) then
-                    radActor = gs.RadiationCircleActor
-                end
-            end)
+        local GameplayData = package.loaded["GameLua.GameCore.Data.GameplayData"] 
+            or (pcall(require, "GameLua.GameCore.Data.GameplayData") and require("GameLua.GameCore.Data.GameplayData"))
+        local uGameState = (GameplayData and GameplayData.GetGameState and GameplayData.GetGameState())
+            or (rawget(_G, "slua_GameFrontendHUD") and slua_GameFrontendHUD.GetGameState and slua_GameFrontendHUD:GetGameState())
+            or rawget(_G, "CGameState")
+
+        -- 1. Primary: uGameState.WhiteCircle (Standard PUBG Mobile BR replicated property)
+        if uGameState and slua.isValid(uGameState) then
+            local pos, rad = ExtractCircleFromVector(uGameState.WhiteCircle)
+            if pos and rad and rad > 0 then
+                nextPos = pos
+                radius = rad
+            end
         end
 
-        if radActor and slua.isValid(radActor) then
+        -- 2. Oracle / RolePlay / Event modes (SkillPropFeature)
+        if not nextPos and uGameState and slua.isValid(uGameState) and uGameState.SkillPropFeature then
             pcall(function()
-                local wc = radActor.WhiteCircle or (radActor.GetWhiteCircle and radActor:GetWhiteCircle()) or radActor.CircleLessenTo
-                if wc and (wc.X ~= 0 or wc.Y ~= 0) then
-                    local r = (wc.Z and wc.Z > 0 and wc.Z) or (radActor.CurRadius and radActor.CurRadius > 0 and radActor.CurRadius)
-                    if r and r > 0 then
-                        nextPos = FVector(wc.X, wc.Y, 0)
-                        radius = r
-                    end
-                end
-            end)
-        end
-
-        -- 2. Check uGameState.SkillPropFeature (Event modes / Oracle Feature)
-        pcall(function()
-            local GameplayData = require("GameLua.GameCore.Data.GameplayData")
-            local uGameState = GameplayData and GameplayData.GetGameState and GameplayData.GetGameState()
-            if uGameState and slua.isValid(uGameState) and uGameState.SkillPropFeature then
                 if type(uGameState.SkillPropFeature.GetNextWhiteCirclePos) == "function" then
-                    local pos = uGameState.SkillPropFeature:GetNextWhiteCirclePos()
-                    if pos and (pos.X ~= 0 or pos.Y ~= 0) then
-                        nextPos = FVector(pos.X, pos.Y, 0)
-                        radius = (pos.Z and pos.Z > 0 and pos.Z) or radius
+                    local pos, rad = ExtractCircleFromVector(uGameState.SkillPropFeature:GetNextWhiteCirclePos())
+                    if pos and rad and rad > 0 then
+                        nextPos = pos
+                        radius = rad
                     end
                 end
-            end
-        end)
+            end)
+        end
 
-        -- 3. Check CircleMgr (CGameMode / CGameState / GameState)
-        pcall(function()
-            local GameplayData = require("GameLua.GameCore.Data.GameplayData")
-            local uGameState = GameplayData and GameplayData.GetGameState and GameplayData.GetGameState()
-            local CG = rawget(_G, "CGameMode") or rawget(_G, "CGameState")
-            local uCircleMgr = (CG and CG.CircleMgr) or (uGameState and uGameState.CircleMgr)
-            if uCircleMgr and slua.isValid(uCircleMgr) then
-                local curIdx = uCircleMgr:GetCurrentCircleIndex()
-                if curIdx and curIdx >= -1 then
-                    if type(uCircleMgr.PreCalculateCircle) == "function" then
-                        pcall(function() uCircleMgr:PreCalculateCircle(curIdx + 1) end)
+        -- 3. RadiationCircleContainer / RadiationCircleActor (TDM / Custom modes)
+        if not nextPos then
+            pcall(function()
+                local radContainer = rawget(_G, "RadiationCircleContainer") or RadiationCircleContainer
+                local radActor = radContainer and radContainer.Actor
+                if radActor and slua.isValid(radActor) then
+                    local pos, rad = ExtractCircleFromVector(radActor.WhiteCircle)
+                    if not pos then
+                        pos, rad = ExtractCircleFromVector(radActor.CircleLessenTo)
                     end
-                    local nextWhite = nil
-                    pcall(function() nextWhite = uCircleMgr:GetWhiteCircle(curIdx + 1) end)
-                    if not nextWhite or (nextWhite.X == 0 and nextWhite.Y == 0) then
-                        pcall(function() nextWhite = uCircleMgr:GetWhiteCircle(curIdx) end)
+                    if not pos and type(radActor.GetWhiteCircle) == "function" then
+                        pos, rad = ExtractCircleFromVector(radActor:GetWhiteCircle())
                     end
-                    if nextWhite and (nextWhite.X ~= 0 or nextWhite.Y ~= 0) and (nextWhite.Z and nextWhite.Z > 0) then
-                        nextPos = FVector(nextWhite.X, nextWhite.Y, 0)
-                        radius = nextWhite.Z
+                    if pos and (not rad or rad <= 0) then
+                        rad = radActor.CurRadius
+                    end
+                    if pos and rad and rad > 0 then
+                        nextPos = pos
+                        radius = rad
                     end
                 end
-            end
-        end)
+            end)
+        end
 
-        -- 4. Check GameState variables (NextSafetyZoneCenter / SafetyZoneCenter / WhiteCircle)
-        pcall(function()
-            local GameplayData = require("GameLua.GameCore.Data.GameplayData")
-            local uGameState = GameplayData and GameplayData.GetGameState and GameplayData.GetGameState()
-            if not (uGameState and slua.isValid(uGameState)) then
-                local hud = rawget(_G, "slua_GameFrontendHUD")
-                if hud and hud.GetGameState then uGameState = hud:GetGameState() end
-            end
-            if uGameState and slua.isValid(uGameState) then
-                local center = uGameState.NextSafetyZoneCenter or uGameState.SafetyZoneCenter or uGameState.CurSafetyZone or uGameState.WhiteCircle
-                local rad = uGameState.NextSafetyZoneRadius or uGameState.SafetyZoneRadius
+        -- 4. NextSafetyZoneCenter / SafetyZoneCenter on GameState
+        if not nextPos and uGameState and slua.isValid(uGameState) then
+            pcall(function()
+                local center = uGameState.NextSafetyZoneCenter
+                local radVal = uGameState.NextSafetyZoneRadius
+                if not (center and (center.X ~= 0 or center.Y ~= 0)) then
+                    center = uGameState.SafetyZoneCenter or uGameState.CurSafetyZone
+                    radVal = uGameState.SafetyZoneRadius
+                end
                 if center and (type(center.X) == "number" or type(center.x) == "number") then
                     local cx = center.X or center.x or 0
                     local cy = center.Y or center.y or 0
+                    local cz = center.Z or center.z or 0
                     if cx ~= 0 or cy ~= 0 then
-                        nextPos = FVector(cx, cy, 0)
-                        radius = rad or (center.Z and center.Z > 0 and center.Z) or (center.z and center.z > 0 and center.z) or radius
-                    end
-                end
-            end
-        end)
-
-        -- 5. Fallback từ Map Data UI nếu có
-        if not nextPos then
-            pcall(function()
-                local UIManager = require("common.ui_manager") or rawget(_G, "UIManager")
-                if UIManager and UIManager.GetUI and UIManager.UI_Config_InGame then
-                    local entireMap = UIManager.GetUI(UIManager.UI_Config_InGame.EntireMapWindow)
-                    if entireMap and entireMap.UIRoot and entireMap.UIRoot.CurrentMapUIBP then
-                        local mapUI = entireMap.UIRoot.CurrentMapUIBP.CurrentMapUI
-                        if mapUI and mapUI.CircleCenterC and (mapUI.CircleCenterC.X ~= 0 or mapUI.CircleCenterC.Y ~= 0) then
-                            nextPos = FVector(mapUI.CircleCenterC.X, mapUI.CircleCenterC.Y, 0)
-                            radius = mapUI.CircleRadiusC or 30000.0
+                        local r = (type(radVal) == "number" and radVal > 0 and radVal) or (cz > 0 and cz) or nil
+                        if r and r > 0 then
+                            nextPos = FVector(cx, cy, 0)
+                            radius = r
                         end
                     end
                 end
             end)
         end
 
-        -- 6. Cache cập nhật
+        -- 5. MapRealTimeInfoC.WhiteCircleCoord from In-game UI
+        if not nextPos then
+            pcall(function()
+                local UIManager = package.loaded["common.ui_manager"] or rawget(_G, "UIManager")
+                if UIManager and UIManager.GetUI and UIManager.UI_Config_InGame then
+                    local entireMap = UIManager.GetUI(UIManager.UI_Config_InGame.EntireMapWindow)
+                    local mapUI = entireMap and entireMap.UIRoot and entireMap.UIRoot.CurrentMapUIBP and entireMap.UIRoot.CurrentMapUIBP.CurrentMapUI
+                    if not mapUI then
+                        local miniMap = UIManager.GetUI(UIManager.UI_Config_InGame.MiniMapWindow)
+                        mapUI = miniMap and miniMap.UIRoot and miniMap.UIRoot.CurrentMapUIBP and miniMap.UIRoot.CurrentMapUIBP.CurrentMapUI
+                    end
+                    if mapUI and mapUI.MapRealTimeInfoC then
+                        local coord = mapUI.MapRealTimeInfoC.WhiteCircleCoord
+                        local pos, rad = ExtractCircleFromVector(coord)
+                        if pos and rad and rad > 0 then
+                            nextPos = pos
+                            radius = rad
+                        end
+                    end
+                end
+            end)
+        end
+
+        -- 6. Fallback: uGameState.BlueCircle (If white circle has not spawned yet)
+        if not nextPos and uGameState and slua.isValid(uGameState) then
+            pcall(function()
+                local pos, rad = ExtractCircleFromVector(uGameState.BlueCircle)
+                if pos and rad and rad > 0 then
+                    nextPos = pos
+                    radius = rad
+                end
+            end)
+        end
+
+        -- 7. Cache handling
         if nextPos and radius and radius > 0 then
             _G.DX_CachedPredictedZone = {
                 Pos = nextPos,
                 Radius = radius,
                 Time = os.clock()
             }
-        elseif _G.DX_CachedPredictedZone and (os.clock() - _G.DX_CachedPredictedZone.Time) < 60.0 then
+        elseif _G.DX_CachedPredictedZone and (os.clock() - _G.DX_CachedPredictedZone.Time) < 90.0 then
             nextPos = _G.DX_CachedPredictedZone.Pos
             radius = _G.DX_CachedPredictedZone.Radius
         end
@@ -13331,12 +13357,10 @@ local function HookMapPainting()
     end)
 end
 
-HookMapPainting()
-
--- Hàm phát thông báo nổi thông minh khi phát hiện bo mới
-local function BroadcastPredictedZoneAlert(posX, posY, distM, radiusM)
+-- Broadcast in-game notifications
+local function BroadcastPredictedZoneAlert(posX, posY, distM, radiusM, bForce)
     pcall(function()
-        local GameplayData = require("GameLua.GameCore.Data.GameplayData")
+        local GameplayData = package.loaded["GameLua.GameCore.Data.GameplayData"] or rawget(_G, "GameplayData")
         local pc = GameplayData and GameplayData.GetPlayerController and GameplayData.GetPlayerController()
         if not (pc and slua.isValid(pc)) then
             local G = rawget(_G, "Game")
@@ -13346,49 +13370,36 @@ local function BroadcastPredictedZoneAlert(posX, posY, distM, radiusM)
         local circleKey = string.format("%.0f_%.0f_%.0f", posX, posY, radiusM or 0)
         local isNewCircle = (_G.DX_LastPredictedCircleKey ~= circleKey)
 
-        if isNewCircle then
+        if isNewCircle or bForce then
             _G.DX_LastPredictedCircleKey = circleKey
-            _G.DX_ZoneBannerExpiry = os.clock() + 12.0 -- Giữ thông báo nổi 12s trên màn hình
-            _G.DX_ZoneBannerText = string.format("★ [DỰ ĐOÁN BO] Bo tiếp theo cách %dm (R=%dm)! Mở MiniMap/Map lớn để xem vị trí!", distM, radiusM or 0)
+            _G.DX_ZoneBannerExpiry = os.clock() + 12.0
+            _G.DX_ZoneBannerText = string.format("★ [DU DOAN BO] Bo cach %dm (R=%dm)! Mo Ban Do xem vi tri!", distM, radiusM or 0)
 
-            if pc and slua.isValid(pc) then
+            if pc and slua.isValid(pc) and pc.BroadcastUIMessage then
                 pcall(function()
-                    if pc.BroadcastUIMessage then
-                        pc:BroadcastUIMessage("UIMsg_CanSelfRescue", 0, _G.DX_ZoneBannerText, "")
-                        pc:BroadcastUIMessage("UIMsg_FPPModeChange", 0, _G.DX_ZoneBannerText, "")
-                    end
+                    pc:BroadcastUIMessage("UIMsg_CanSelfRescue", 0, _G.DX_ZoneBannerText, "")
+                    pc:BroadcastUIMessage("UIMsg_FPPModeChange", 0, _G.DX_ZoneBannerText, "")
                 end)
             end
 
-            -- Phát qua IngameTipsTools
             pcall(function()
                 local ok, IngameTipsTools = pcall(require, "GameLua.Mod.BaseMod.Common.UI.InGameTipsTools")
                 if ok and IngameTipsTools and IngameTipsTools.BattleGeneralTip then
-                    IngameTipsTools.BattleGeneralTip(10022, "DỰ ĐOÁN BO", _G.DX_ZoneBannerText)
-                end
-            end)
-
-            -- Game:UIShowTips
-            pcall(function()
-                local GameObj = rawget(_G, "Game")
-                if GameObj and GameObj.UIShowTips and pc and pc.PlayerKey then
-                    GameObj:UIShowTips(pc.PlayerKey, 43797)
+                    IngameTipsTools.BattleGeneralTip(10022, "DU DOAN BO", _G.DX_ZoneBannerText)
                 end
             end)
         else
-            _G.DX_ZoneBannerText = string.format("[DỰ ĐOÁN BO] Tâm bo tiếp theo: %dm (R=%dm)", distM, radiusM or 0)
-            if pc and slua.isValid(pc) then
+            _G.DX_ZoneBannerText = string.format("[DU DOAN BO] Tam bo: %dm (R=%dm)", distM, radiusM or 0)
+            if pc and slua.isValid(pc) and pc.BroadcastUIMessage then
                 pcall(function()
-                    if pc.BroadcastUIMessage then
-                        pc:BroadcastUIMessage("UIMsg_CanSelfRescue", 0, _G.DX_ZoneBannerText, "")
-                    end
+                    pc:BroadcastUIMessage("UIMsg_CanSelfRescue", 0, _G.DX_ZoneBannerText, "")
                 end)
             end
         end
     end)
 end
 
--- Hiển thị thông báo nổi trực tiếp và HUD chỉ hướng trên ESPCanvas của người chơi
+-- Render HUD Banner and 3D World Tag on ESP Canvas
 local function DrawZonePredictorOverlay(PC)
     local isEnable = (_G.DX_GetVal and _G.DX_GetVal("ZONE_PREDICTOR") ~= 0)
     if not isEnable then
@@ -13401,7 +13412,14 @@ local function DrawZonePredictorOverlay(PC)
         return
     end
 
-    if not (PlayerMapMarker and PlayerMapMarker.ESPCanvas and Game:IsValid(PlayerMapMarker.ESPCanvas)) then return end
+    if not (PlayerMapMarker and PlayerMapMarker.ESPCanvas and Game:IsValid(PlayerMapMarker.ESPCanvas)) then
+        if PlayerMapMarker and PlayerMapMarker.InitESPCanvas then
+            pcall(PlayerMapMarker.InitESPCanvas)
+        end
+        if not (PlayerMapMarker and PlayerMapMarker.ESPCanvas and Game:IsValid(PlayerMapMarker.ESPCanvas)) then
+            return
+        end
+    end
 
     pcall(function()
         local nextPos, radius = GetNextSafeZoneInfo()
@@ -13413,11 +13431,10 @@ local function DrawZonePredictorOverlay(PC)
         local radiusM = math.floor((radius or 0) / 100.0)
 
         local distM = 0
-        local myLoc = nil
         if PC and slua.isValid(PC) then
             local myPawn = PC.Pawn or (PC.GetPawn and PC:GetPawn())
             if myPawn and slua.isValid(myPawn) and type(myPawn.K2_GetActorLocation) == "function" then
-                myLoc = myPawn:K2_GetActorLocation()
+                local myLoc = myPawn:K2_GetActorLocation()
                 if myLoc then
                     local dx = posX - myLoc.X
                     local dy = posY - myLoc.Y
@@ -13426,7 +13443,7 @@ local function DrawZonePredictorOverlay(PC)
             end
         end
 
-        -- 1. Tạo widget Text Banner trên đỉnh màn hình nếu chưa có
+        -- 1. Create Top Screen Banner
         if not (_G.DX_ZoneBannerWidget and slua.isValid(_G.DX_ZoneBannerWidget)) then
             pcall(function()
                 local TextBlock = CGame:NewObjectFromPath("/Script/UMG.TextBlock", PlayerMapMarker.ESPCanvas)
@@ -13442,37 +13459,34 @@ local function DrawZonePredictorOverlay(PC)
             end)
         end
 
-        -- 2. Cập nhật vị trí và nội dung Text Banner
+        -- 2. Update Banner text and position
         if _G.DX_ZoneBannerWidget and slua.isValid(_G.DX_ZoneBannerWidget) and _G.DX_ZoneBannerSlot then
             local now = os.clock()
             local bShowBanner = (now < _G.DX_ZoneBannerExpiry)
-            
-            local bannerText = ""
-            if bShowBanner then
-                bannerText = string.format("★ [DỰ ĐOÁN BO] Bo tiếp theo cách %dm (R=%dm) | Mở Bản Đồ xem vị trí! ★", distM, radiusM)
-                pcall(function()
-                    _G.DX_ZoneBannerWidget:SetColorAndOpacity(FLinearColor(1.0, 0.9, 0.1, 1.0))
-                    _G.DX_ZoneBannerWidget:SetText(bannerText)
-                    _G.DX_ZoneBannerWidget:SetWidgetVisibility(UEnums.ESlateVisibility.SelfHitTestInvisible)
-                end)
-            else
-                bannerText = string.format("[BO TIẾP THEO: %dm | R=%dm]", distM, radiusM)
-                pcall(function()
-                    _G.DX_ZoneBannerWidget:SetColorAndOpacity(FLinearColor(0.2, 1.0, 0.4, 0.9))
-                    _G.DX_ZoneBannerWidget:SetText(bannerText)
-                    _G.DX_ZoneBannerWidget:SetWidgetVisibility(UEnums.ESlateVisibility.SelfHitTestInvisible)
-                end)
-            end
+            local bannerText = bShowBanner 
+                and string.format("★ [DU DOAN BO] Bo tiep theo cach %dm (R=%dm) | Mo Ban Do xem vi tri! ★", distM, radiusM)
+                or string.format("[BO TIEP THEO: %dm | R=%dm]", distM, radiusM)
+
+            local bannerColor = bShowBanner and FLinearColor(1.0, 0.9, 0.1, 1.0) or FLinearColor(0.2, 1.0, 0.4, 0.9)
+            pcall(function()
+                if FSlateColor then
+                    _G.DX_ZoneBannerWidget:SetColorAndOpacity(FSlateColor(bannerColor))
+                else
+                    _G.DX_ZoneBannerWidget:SetColorAndOpacity(bannerColor)
+                end
+                _G.DX_ZoneBannerWidget:SetText(bannerText)
+                _G.DX_ZoneBannerWidget:SetWidgetVisibility(UEnums.ESlateVisibility.SelfHitTestInvisible)
+            end)
 
             pcall(function()
                 local vpW = PlayerMapMarker._cachedViewportW or 1920
-                local posX = bShowBanner and (vpW * 0.5 - 280) or (vpW * 0.5 - 120)
-                local posY = bShowBanner and 65 or 30
-                _G.DX_ZoneBannerSlot:SetPosition(FVector2D(posX, posY))
+                local pX = bShowBanner and (vpW * 0.5 - 280) or (vpW * 0.5 - 120)
+                local pY = bShowBanner and 65 or 30
+                _G.DX_ZoneBannerSlot:SetPosition(FVector2D(pX, pY))
             end)
         end
 
-        -- 3. Vẽ 3D World Tag ngay tại tâm bo nếu nhìn về hướng tâm bo
+        -- 3. 3D World Tag at Zone Center
         if not (_G.DX_ZoneWorldTagWidget and slua.isValid(_G.DX_ZoneWorldTagWidget)) then
             pcall(function()
                 local TextBlock = CGame:NewObjectFromPath("/Script/UMG.TextBlock", PlayerMapMarker.ESPCanvas)
@@ -13489,11 +13503,19 @@ local function DrawZonePredictorOverlay(PC)
         end
 
         if _G.DX_ZoneWorldTagWidget and slua.isValid(_G.DX_ZoneWorldTagWidget) and _G.DX_ZoneWorldTagSlot and PC then
-            local bOnScreen, CanvasPos = PlayerMapMarker.ProjectWorldToCanvasLocal(PC, nextPos)
+            local bOnScreen, CanvasPos = false, nil
+            if PlayerMapMarker and PlayerMapMarker.ProjectWorldToCanvasLocal then
+                bOnScreen, CanvasPos = PlayerMapMarker.ProjectWorldToCanvasLocal(PC, nextPos)
+            end
             if bOnScreen and CanvasPos then
                 pcall(function()
-                    local tagText = string.format("◎ [TÂM BO TIẾP THEO]\n   Cách: %dm | R: %dm", distM, radiusM)
-                    _G.DX_ZoneWorldTagWidget:SetColorAndOpacity(FLinearColor(1.0, 0.85, 0.0, 1.0))
+                    local tagText = string.format("◎ [TAM BO TIEP THEO]\n   Cach: %dm | R: %dm", distM, radiusM)
+                    local tagColor = FLinearColor(1.0, 0.85, 0.0, 1.0)
+                    if FSlateColor then
+                        _G.DX_ZoneWorldTagWidget:SetColorAndOpacity(FSlateColor(tagColor))
+                    else
+                        _G.DX_ZoneWorldTagWidget:SetColorAndOpacity(tagColor)
+                    end
                     _G.DX_ZoneWorldTagWidget:SetText(tagText)
                     _G.DX_ZoneWorldTagWidget:SetWidgetVisibility(UEnums.ESlateVisibility.SelfHitTestInvisible)
                     _G.DX_ZoneWorldTagSlot:SetPosition(CanvasPos)
@@ -13529,7 +13551,7 @@ local function UpdateZonePredictor()
     end
 
     local now = os.clock()
-    if (now - _G.DX_LastZoneCheckTime) < 1.5 then return end
+    if (now - _G.DX_LastZoneCheckTime) < 1.0 then return end
     _G.DX_LastZoneCheckTime = now
 
     pcall(function()
@@ -13542,7 +13564,6 @@ local function UpdateZonePredictor()
         local radiusM = math.floor((radius or 0) / 100.0)
         local targetVec = FVector(posX, posY, posZ)
 
-        -- Thử gắn thêm Map Mark Marker nếu hỗ trợ
         pcall(function()
             local ok, InGameMarkTools = pcall(require, "GameLua.Mod.BaseMod.Common.InGameMarkTools")
             if ok and InGameMarkTools and type(InGameMarkTools.ClientAddMapMark) == "function" then
@@ -13552,8 +13573,7 @@ local function UpdateZonePredictor()
             end
         end)
 
-        -- Tính khoảng cách và phát thông báo nổi
-        local GameplayData = require("GameLua.GameCore.Data.GameplayData")
+        local GameplayData = package.loaded["GameLua.GameCore.Data.GameplayData"] or rawget(_G, "GameplayData")
         local pc = GameplayData and GameplayData.GetPlayerController and GameplayData.GetPlayerController()
         if not (pc and slua.isValid(pc)) then
             local G = rawget(_G, "Game")
@@ -13573,18 +13593,76 @@ local function UpdateZonePredictor()
             end
         end
 
-        BroadcastPredictedZoneAlert(posX, posY, distM, radiusM)
+        BroadcastPredictedZoneAlert(posX, posY, distM, radiusM, false)
     end)
 end
 
 _G.UpdateZonePredictor = UpdateZonePredictor
 _G.DrawZonePredictorOverlay = DrawZonePredictorOverlay
 
--- Ticker độc lập chạy liên tục 2.0 giây một lần
+-- Function called when user flips the switch ON in Mod Menu
+function _G.DX_TriggerZonePredictorAlert()
+    pcall(function()
+        HookMapPainting()
+        local nextPos, radius = GetNextSafeZoneInfo()
+        local GameplayData = package.loaded["GameLua.GameCore.Data.GameplayData"] or rawget(_G, "GameplayData")
+        local pc = GameplayData and GameplayData.GetPlayerController and GameplayData.GetPlayerController()
+        if not (pc and slua.isValid(pc)) then
+            local G = rawget(_G, "Game")
+            if G and G.GetPlayerController then pc = G:GetPlayerController() end
+        end
+
+        if nextPos and radius and radius > 0 then
+            local distM = 0
+            if pc and slua.isValid(pc) then
+                local myPawn = pc.Pawn or (pc.GetPawn and pc:GetPawn())
+                if myPawn and slua.isValid(myPawn) and type(myPawn.K2_GetActorLocation) == "function" then
+                    local myLoc = myPawn:K2_GetActorLocation()
+                    if myLoc then
+                        local dx = (nextPos.X or 0) - myLoc.X
+                        local dy = (nextPos.Y or 0) - myLoc.Y
+                        distM = math.floor(math.sqrt(dx * dx + dy * dy) / 100.0)
+                    end
+                end
+            end
+            local radiusM = math.floor(radius / 100.0)
+            BroadcastPredictedZoneAlert(nextPos.X or 0, nextPos.Y or 0, distM, radiusM, true)
+            if pc and slua.isValid(pc) then
+                pcall(DrawZonePredictorOverlay, pc)
+            end
+        else
+            local msg = "★ [DU DOAN BO] DA BAT: Dang cho vong bo xuat hien..."
+            if pc and slua.isValid(pc) and pc.BroadcastUIMessage then
+                pcall(function()
+                    pc:BroadcastUIMessage("UIMsg_CanSelfRescue", 0, msg, "")
+                end)
+            end
+        end
+    end)
+end
+
+-- Independent 1.0s loop via time_ticker
 pcall(function()
     local ok, ticker = pcall(require, "common.time_ticker")
     if ok and ticker and ticker.AddTimerLoop then
-        ticker.AddTimerLoop(2.0, function() pcall(UpdateZonePredictor) end)
+        ticker.AddTimerLoop(1.0, function() pcall(UpdateZonePredictor) end)
+    end
+end)
+
+-- Register with EventSystem if available
+pcall(function()
+    local ok, EventSys = pcall(require, "client.common.event.EventSystem")
+    if ok and EventSys and type(EventSys.registEvent) == "function" then
+        if EVENTTYPE_RADIATION_CIRCLE and EVENTID_RADIATION_CIRCLE_DATA_CHANGE then
+            EventSys:registEvent(EVENTTYPE_RADIATION_CIRCLE, EVENTID_RADIATION_CIRCLE_DATA_CHANGE, function()
+                pcall(UpdateZonePredictor)
+            end)
+        end
+        if EVENTTYPE_INGAME_MAP and EVENTID_MAP_ON_MAP_DATA_CONSTRUCTED then
+            EventSys:registEvent(EVENTTYPE_INGAME_MAP, EVENTID_MAP_ON_MAP_DATA_CONSTRUCTED, function()
+                pcall(HookMapPainting)
+            end)
+        end
     end
 end)
 
@@ -13977,7 +14055,15 @@ function PlayerMapMarker.AttachTimers()
 
         -- Tách biệt 3 timer riêng biệt chạy đúng tần số chuẩn để không drop FPS
         pcall(function() pc:AddGameTimer(PlayerMapMarker.nUpdateInterval or 0.5, true, function() PlayerMapMarker._ActiveTimerTick = os.time() if PlayerMapMarker.bActive then pcall(PlayerMapMarker.ScanAndUpdate) end end) end)
-        pcall(function() pc:AddGameTimer(PlayerMapMarker._LightUpdateInterval or 0.016, true, function() PlayerMapMarker._ActiveTimerTick = os.time() if PlayerMapMarker.bActive then pcall(PlayerMapMarker.UpdateESPLight) end end) end)
+        pcall(function() pc:AddGameTimer(PlayerMapMarker._LightUpdateInterval or 0.016, true, function() 
+            PlayerMapMarker._ActiveTimerTick = os.time() 
+            if PlayerMapMarker.bActive then 
+                pcall(PlayerMapMarker.UpdateESPLight) 
+            elseif _G.DX_GetVal and _G.DX_GetVal("ZONE_PREDICTOR") ~= 0 then
+                if slua.isValid(pc) then pcall(DrawZonePredictorOverlay, pc) end
+                pcall(UpdateZonePredictor)
+            end 
+        end) end)
         pcall(function() pc:AddGameTimer(PlayerMapMarker._DistanceUpdateInterval or 0.1, true, function() PlayerMapMarker._ActiveTimerTick = os.time() if PlayerMapMarker.bActive and PlayerMapMarker.bUseScreenESP and PlayerMapMarker.bShowDistance then pcall(PlayerMapMarker.UpdateESPDistances) end end) end)
         pcall(function() require("timer").SetGameTimer(5.0, false, PlayerMapMarker.AttachTimers) end)
     end)
