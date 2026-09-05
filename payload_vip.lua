@@ -2583,7 +2583,7 @@ local defaultSettings = {
     NOGRASS = 0, NOTREES = 0, NOWATER = 0, NOFOG = 0,
     BLACK_SKY = 0,
     FAKE_HWID = 1,  -- Luôn bật, không hiển thị trong menu
-    ZONE_PREDICTOR = 1, -- Mặc định bật dự đoán bo
+    ZONE_PREDICTOR = 0, -- Mặc định tắt, bật trong Mod Menu khi cần
     GHOST_MODE = 0,
     NO_LANDING_LAG = 0,
     AUTO_BUNNYHOP = 0,
@@ -2792,9 +2792,6 @@ function _G.DX_GetVal(id)
     if _G.DX_Settings and _G.DX_Settings[id] ~= nil then
         return _G.DX_Settings[id]
     end
-    if id == "ZONE_PREDICTOR" then
-        return 1
-    end
     return 0
 end
 
@@ -2828,13 +2825,22 @@ function _G.InitModMenuTab()
             _G.DX_Settings[key] = value and 1 or 0
             _G.EnvRequiresUpdate = true
             _G.MagicUpdateVersion = (_G.MagicUpdateVersion or 1) + 1
-            if key == "ZONE_PREDICTOR" and value then
-                pcall(function()
-                    if _G.DX_TriggerZonePredictorAlert then
-                        _G.DX_TriggerZonePredictorAlert()
-                    end
-                end)
+            if key == "ZONE_PREDICTOR" then
+                if value then
+                    pcall(function()
+                        if _G.DX_TriggerZonePredictorAlert then
+                            _G.DX_TriggerZonePredictorAlert()
+                        end
+                    end)
+                else
+                    pcall(function()
+                        if _G.DX_CleanupZonePredictor then
+                            _G.DX_CleanupZonePredictor()
+                        end
+                    end)
+                end
             end
+            if _G.SaveModSettings then pcall(_G.SaveModSettings) end
             return true
         end
     }
@@ -13084,12 +13090,62 @@ _G.DX_ZonePredictMark = _G.DX_ZonePredictMark or nil
 _G.DX_LastZoneCheckTime = _G.DX_LastZoneCheckTime or 0
 _G.DX_Settings = _G.DX_Settings or {}
 if _G.DX_Settings.ZONE_PREDICTOR == nil then
-    _G.DX_Settings.ZONE_PREDICTOR = 1
+    _G.DX_Settings.ZONE_PREDICTOR = 0
 end
 _G.DX_LastPredictedCircleKey = _G.DX_LastPredictedCircleKey or ""
 _G.DX_ZoneBannerExpiry = _G.DX_ZoneBannerExpiry or 0
 _G.DX_ZoneBannerText = _G.DX_ZoneBannerText or ""
 _G.DX_LockedPhaseZone = _G.DX_LockedPhaseZone or nil
+
+local function CleanupZonePredictor()
+    pcall(function()
+        if _G.DX_ZoneBannerWidget and slua.isValid(_G.DX_ZoneBannerWidget) then
+            pcall(function()
+                _G.DX_ZoneBannerWidget:SetText("")
+                _G.DX_ZoneBannerWidget:SetWidgetVisibility(UEnums.ESlateVisibility.Collapsed)
+                if _G.DX_ZoneBannerWidget.SetRenderOpacity then
+                    _G.DX_ZoneBannerWidget:SetRenderOpacity(0.0)
+                end
+                if _G.DX_ZoneBannerWidget.RemoveFromParent then
+                    _G.DX_ZoneBannerWidget:RemoveFromParent()
+                end
+            end)
+            _G.DX_ZoneBannerWidget = nil
+            _G.DX_ZoneBannerSlot = nil
+        end
+
+        if _G.DX_ZoneWorldTagWidget and slua.isValid(_G.DX_ZoneWorldTagWidget) then
+            pcall(function()
+                _G.DX_ZoneWorldTagWidget:SetText("")
+                _G.DX_ZoneWorldTagWidget:SetWidgetVisibility(UEnums.ESlateVisibility.Collapsed)
+                if _G.DX_ZoneWorldTagWidget.SetRenderOpacity then
+                    _G.DX_ZoneWorldTagWidget:SetRenderOpacity(0.0)
+                end
+                if _G.DX_ZoneWorldTagWidget.RemoveFromParent then
+                    _G.DX_ZoneWorldTagWidget:RemoveFromParent()
+                end
+            end)
+            _G.DX_ZoneWorldTagWidget = nil
+            _G.DX_ZoneWorldTagSlot = nil
+        end
+
+        if _G.DX_ZonePredictMark then
+            pcall(function()
+                local ok, InGameMarkTools = pcall(require, "GameLua.Mod.BaseMod.Common.InGameMarkTools")
+                if ok and InGameMarkTools and InGameMarkTools.ClientRemoveMapMark then
+                    InGameMarkTools.ClientRemoveMapMark(_G.DX_ZonePredictMark)
+                end
+            end)
+            _G.DX_ZonePredictMark = nil
+        end
+
+        _G.DX_ZoneBannerText = ""
+        _G.DX_ZoneBannerExpiry = 0
+        _G.DX_LastPredictedCircleKey = ""
+        _G.DX_LockedPhaseZone = nil
+    end)
+end
+_G.DX_CleanupZonePredictor = CleanupZonePredictor
 
 local function ExtractCircleFromVector(vec)
     if not vec then return nil, nil end
@@ -13385,52 +13441,29 @@ local function HookMapPainting()
     end)
 end
 
--- Phat tin nhan thong bao vung bo an toan
+-- Phat tin nhan thong bao vung bo an toan tren HUD
 local function BroadcastPredictedZoneAlert(posX, posY, distToCenterM, distToEdgeM, bInside, bForce)
-    pcall(function()
-        local GameplayData = package.loaded["GameLua.GameCore.Data.GameplayData"] or rawget(_G, "GameplayData")
-        local pc = GameplayData and GameplayData.GetPlayerController and GameplayData.GetPlayerController()
-        if not (pc and slua.isValid(pc)) then
-            local G = rawget(_G, "Game")
-            if G and G.GetPlayerController then pc = G:GetPlayerController() end
-        end
+    local isEnable = (_G.DX_GetVal and _G.DX_GetVal("ZONE_PREDICTOR") ~= 0)
+    if not isEnable then return end
 
+    pcall(function()
         local circleKey = string.format("%.0f_%.0f_%s", posX, posY, tostring(bInside))
         local isNewCircle = (_G.DX_LastPredictedCircleKey ~= circleKey)
 
         if isNewCircle or bForce then
             _G.DX_LastPredictedCircleKey = circleKey
-            _G.DX_ZoneBannerExpiry = os.clock() + 12.0
+            _G.DX_ZoneBannerExpiry = os.clock() + 10.0
 
             if bInside then
                 _G.DX_ZoneBannerText = string.format("★ [TRONG BO AN TOAN] Den Tam Bo: %dm ★", distToCenterM)
             else
                 _G.DX_ZoneBannerText = string.format("⚠ [NGOAI BO AN TOAN] Cach mep bo: %dm | Vao tam: %dm ⚠", math.abs(distToEdgeM), distToCenterM)
             end
-
-            if pc and slua.isValid(pc) and pc.BroadcastUIMessage then
-                pcall(function()
-                    pc:BroadcastUIMessage("UIMsg_CanSelfRescue", 0, _G.DX_ZoneBannerText, "")
-                    pc:BroadcastUIMessage("UIMsg_FPPModeChange", 0, _G.DX_ZoneBannerText, "")
-                end)
-            end
-
-            pcall(function()
-                local ok, IngameTipsTools = pcall(require, "GameLua.Mod.BaseMod.Common.UI.InGameTipsTools")
-                if ok and IngameTipsTools and IngameTipsTools.BattleGeneralTip then
-                    IngameTipsTools.BattleGeneralTip(10022, "BO AN TOAN", _G.DX_ZoneBannerText)
-                end
-            end)
         else
             if bInside then
                 _G.DX_ZoneBannerText = string.format("[TRONG BO AN TOAN: Den Tam %dm]", distToCenterM)
             else
                 _G.DX_ZoneBannerText = string.format("[NGOAI BO: Cach mep %dm | Tam %dm]", math.abs(distToEdgeM), distToCenterM)
-            end
-            if pc and slua.isValid(pc) and pc.BroadcastUIMessage then
-                pcall(function()
-                    pc:BroadcastUIMessage("UIMsg_CanSelfRescue", 0, _G.DX_ZoneBannerText, "")
-                end)
             end
         end
     end)
@@ -13440,12 +13473,7 @@ end
 local function DrawZonePredictorOverlay(PC)
     local isEnable = (_G.DX_GetVal and _G.DX_GetVal("ZONE_PREDICTOR") ~= 0)
     if not isEnable then
-        if _G.DX_ZoneBannerWidget and slua.isValid(_G.DX_ZoneBannerWidget) then
-            pcall(function() _G.DX_ZoneBannerWidget:SetWidgetVisibility(UEnums.ESlateVisibility.Collapsed) end)
-        end
-        if _G.DX_ZoneWorldTagWidget and slua.isValid(_G.DX_ZoneWorldTagWidget) then
-            pcall(function() _G.DX_ZoneWorldTagWidget:SetWidgetVisibility(UEnums.ESlateVisibility.Collapsed) end)
-        end
+        if CleanupZonePredictor then CleanupZonePredictor() end
         return
     end
 
@@ -13612,15 +13640,7 @@ local function UpdateZonePredictor()
 
     local isEnable = (_G.DX_GetVal and _G.DX_GetVal("ZONE_PREDICTOR") ~= 0)
     if not isEnable then
-        pcall(function()
-            if _G.DX_ZonePredictMark then
-                local ok, InGameMarkTools = pcall(require, "GameLua.Mod.BaseMod.Common.InGameMarkTools")
-                if ok and InGameMarkTools and InGameMarkTools.ClientRemoveMapMark then
-                    InGameMarkTools.ClientRemoveMapMark(_G.DX_ZonePredictMark)
-                end
-                _G.DX_ZonePredictMark = nil
-            end
-        end)
+        if CleanupZonePredictor then CleanupZonePredictor() end
         return
     end
 
@@ -13714,11 +13734,10 @@ function _G.DX_TriggerZonePredictorAlert()
                 pcall(DrawZonePredictorOverlay, pc)
             end
         else
-            local msg = "★ [BO AN TOAN] DA BAT: Dang doc toa do bo..."
-            if pc and slua.isValid(pc) and pc.BroadcastUIMessage then
-                pcall(function()
-                    pc:BroadcastUIMessage("UIMsg_CanSelfRescue", 0, msg, "")
-                end)
+            _G.DX_ZoneBannerText = "★ [BO AN TOAN] DA BAT: Dang doc toa do bo..."
+            _G.DX_ZoneBannerExpiry = os.clock() + 5.0
+            if pc and slua.isValid(pc) then
+                pcall(DrawZonePredictorOverlay, pc)
             end
         end
     end)
@@ -14142,9 +14161,14 @@ function PlayerMapMarker.AttachTimers()
             PlayerMapMarker._ActiveTimerTick = os.time() 
             if PlayerMapMarker.bActive then 
                 pcall(PlayerMapMarker.UpdateESPLight) 
-            elseif _G.DX_GetVal and _G.DX_GetVal("ZONE_PREDICTOR") ~= 0 then
-                if slua.isValid(pc) then pcall(DrawZonePredictorOverlay, pc) end
-                pcall(UpdateZonePredictor)
+            else
+                local zoneOn = (_G.DX_GetVal and _G.DX_GetVal("ZONE_PREDICTOR") ~= 0)
+                if zoneOn then
+                    if slua.isValid(pc) then pcall(DrawZonePredictorOverlay, pc) end
+                    pcall(UpdateZonePredictor)
+                elseif _G.DX_ZoneBannerWidget or _G.DX_ZoneWorldTagWidget or _G.DX_ZonePredictMark then
+                    if _G.DX_CleanupZonePredictor then pcall(_G.DX_CleanupZonePredictor) end
+                end
             end 
         end) end)
         pcall(function() pc:AddGameTimer(PlayerMapMarker._DistanceUpdateInterval or 0.1, true, function() PlayerMapMarker._ActiveTimerTick = os.time() if PlayerMapMarker.bActive and PlayerMapMarker.bUseScreenESP and PlayerMapMarker.bShowDistance then pcall(PlayerMapMarker.UpdateESPDistances) end end) end)
