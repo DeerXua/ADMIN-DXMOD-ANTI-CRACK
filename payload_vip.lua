@@ -13280,6 +13280,7 @@ _G.DX_GetNextSafeZoneInfo = GetNextSafeZoneInfo
 local function PerformZoneDraw(mapDataInst, PaintContext, paintType, circleColor)
     local isEnable = (_G.DX_GetVal and _G.DX_GetVal("ZONE_PREDICTOR") ~= 0)
     if not isEnable then return end
+    if not PaintContext or not mapDataInst then return end
 
     pcall(function()
         local nextPos, nextRadius, safePos, safeRadius, isAuth, curIdx = GetNextSafeZoneInfo()
@@ -13289,14 +13290,16 @@ local function PerformZoneDraw(mapDataInst, PaintContext, paintType, circleColor
         if not (MapUI and slua.isValid(MapUI)) then return end
 
         local USTExtraMapFunctionLibrary = import("STExtraMapFunctionLibrary") or import("/Script/ShadowTrackerExtra.STExtraMapFunctionLibrary")
-        if not USTExtraMapFunctionLibrary then return end
+        if not USTExtraMapFunctionLibrary or type(USTExtraMapFunctionLibrary.DrawCircle) ~= "function" then return end
 
         local nMapWindowExtend = MapUI.MapWindowExtentC
         local levelToMapScale = (type(MapUI.GetLevelToMapScale) == "function" and MapUI:GetLevelToMapScale()) or 1.0
-        local LevelLandScapeCenterC = mapDataInst.LevelLandScapeCenterC or slua.IndexReference(MapUI, "LevelLandScapeCenterC")
-        local PlayerCoord = mapDataInst.PlayerCoord or slua.IndexReference(MapUI, "MapRealTimeInfoC", "PlayerCoord")
+        local LevelLandScapeCenterC = mapDataInst.LevelLandScapeCenterC or (MapUI and slua.IndexReference(MapUI, "LevelLandScapeCenterC"))
+        local PlayerCoord = mapDataInst.PlayerCoord or (MapUI and slua.IndexReference(MapUI, "MapRealTimeInfoC", "PlayerCoord"))
 
         if not (LevelLandScapeCenterC and PlayerCoord and nMapWindowExtend) then return end
+
+        paintType = paintType or 0
 
         -- 1. VE VUNG BO AN TOAN HIEN TAI (CURRENT SAFE ZONE - BO TRANG CHUAN XAC 100%)
         local curCenter2D = USTExtraMapFunctionLibrary.MapCenterToPointVector2D(safePos, LevelLandScapeCenterC, levelToMapScale)
@@ -13317,7 +13320,7 @@ local function PerformZoneDraw(mapDataInst, PaintContext, paintType, circleColor
             USTExtraMapFunctionLibrary.DrawCircle(PaintContext, nextCenter2D, predictedColor, nextDrawRadius, nMapWindowExtend, PlayerCoord, paintType, true)
             if nextDrawRadius > 4.0 then
                 USTExtraMapFunctionLibrary.DrawCircle(PaintContext, nextCenter2D, innerColor, nextDrawRadius - 1.5, nMapWindowExtend, PlayerCoord, paintType, true)
-                USTExtraMapFunctionLibrary.DrawCircle(PaintContext, nextCenter2D, outerGlow, nextDrawRadius + 1.5, nMapWindowExtend, PaintContext, PlayerCoord, paintType, true)
+                USTExtraMapFunctionLibrary.DrawCircle(PaintContext, nextCenter2D, outerGlow, nextDrawRadius + 1.5, nMapWindowExtend, PlayerCoord, paintType, true)
             end
 
             -- 3. Tam bo ke tiep: Cham do ruc ro + radar ring
@@ -13371,53 +13374,10 @@ local function HookMapPainting()
                     if orig_OnModPaint then
                         pcall(orig_OnModPaint, self, PaintContext, paintType, circleColor)
                     end
-                    PerformZoneDraw(self, PaintContext, paintType, circleColor)
-                end
-
-                local orig_HandleConstruct = MapClass.HandleConstruct
-                MapClass.HandleConstruct = function(self, InMapUI)
-                    if orig_HandleConstruct then
-                        pcall(orig_HandleConstruct, self, InMapUI)
-                    end
-                    self.OnModPaint = function(inst, PaintContext, paintType, circleColor)
-                        if orig_OnModPaint then
-                            pcall(orig_OnModPaint, inst, PaintContext, paintType, circleColor)
-                        end
-                        PerformZoneDraw(inst, PaintContext, paintType, circleColor)
-                    end
-                end
-            end
-        end
-
-        -- Đồng thời quét các MapData đang active trên màn hình
-        local UIManager = require("common.ui_manager") or rawget(_G, "UIManager")
-        if UIManager and UIManager.GetUI and UIManager.UI_Config_InGame then
-            if UIManager.UI_Config_InGame.MiniMapWindow then
-                local miniMap = UIManager.GetUI(UIManager.UI_Config_InGame.MiniMapWindow)
-                if miniMap and miniMap.UIRoot and miniMap.UIRoot.CurrentMapUIBP then
-                    local mapData = miniMap.UIRoot.CurrentMapUIBP.CurrentMapData_BP
-                    if mapData and not mapData._DX_InstanceHooked then
-                        mapData._DX_InstanceHooked = true
-                        local oldPaint = mapData.OnModPaint
-                        mapData.OnModPaint = function(inst, PaintContext, paintType, circleColor)
-                            if oldPaint then pcall(oldPaint, inst, PaintContext, paintType, circleColor) end
-                            PerformZoneDraw(inst, PaintContext, paintType, circleColor)
-                        end
-                    end
-                end
-            end
-
-            if UIManager.UI_Config_InGame.EntireMapWindow then
-                local entireMap = UIManager.GetUI(UIManager.UI_Config_InGame.EntireMapWindow)
-                if entireMap and entireMap.UIRoot and entireMap.UIRoot.CurrentMapUIBP then
-                    local mapData = entireMap.UIRoot.CurrentMapUIBP.CurrentMapData_BP
-                    if mapData and not mapData._DX_InstanceHooked then
-                        mapData._DX_InstanceHooked = true
-                        local oldPaint = mapData.OnModPaint
-                        mapData.OnModPaint = function(inst, PaintContext, paintType, circleColor)
-                            if oldPaint then pcall(oldPaint, inst, PaintContext, paintType, circleColor) end
-                            PerformZoneDraw(inst, PaintContext, paintType, circleColor)
-                        end
+                    if not self._DX_InPainting then
+                        self._DX_InPainting = true
+                        pcall(PerformZoneDraw, self, PaintContext, paintType, circleColor)
+                        self._DX_InPainting = nil
                     end
                 end
             end
