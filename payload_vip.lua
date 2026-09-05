@@ -13505,6 +13505,7 @@ local function DrawZonePredictorOverlay(PC)
                     if Slot then
                         Slot:SetAutoSize(true)
                         Slot:SetZOrder(9999)
+                        pcall(function() Slot:SetAlignment(FVector2D(0.5, 0.0)) end)
                         _G.DX_ZoneBannerSlot = Slot
                         _G.DX_ZoneBannerWidget = TextBlock
                     end
@@ -13512,13 +13513,22 @@ local function DrawZonePredictorOverlay(PC)
             end)
         end
 
-        -- 2. Update Banner text and position
+        -- 2. Update Banner text and position (Gọn gàng, chữ nhỏ vừa vặn và canh giữa màn hình)
         if _G.DX_ZoneBannerWidget and slua.isValid(_G.DX_ZoneBannerWidget) and _G.DX_ZoneBannerSlot then
+            pcall(function()
+                if _G.DX_ZoneBannerWidget.Font then
+                    local font = _G.DX_ZoneBannerWidget.Font
+                    font.Size = 10
+                    _G.DX_ZoneBannerWidget.Font = font
+                end
+                _G.DX_ZoneBannerSlot:SetAlignment(FVector2D(0.5, 0.0))
+            end)
+
             local now = os.clock()
             local bShowBanner = (now < _G.DX_ZoneBannerExpiry)
             local bannerText = bShowBanner 
-                and string.format("★ [DU DOAN BO TIEP THEO] Bo ke tiep cach %dm (R=%dm, Thu nho ~46%%) | Mo Map xem! ★", distM, radiusM)
-                or string.format("[BO KE TIEP (DU DOAN): %dm | R=%dm]", distM, radiusM)
+                and string.format("★ [BO KE TIEP] %dm | R=%dm (-46%%) ★", distM, radiusM)
+                or string.format("[BO KE TIEP: %dm | R=%dm]", distM, radiusM)
 
             local bannerColor = bShowBanner and FLinearColor(1.0, 0.85, 0.1, 1.0) or FLinearColor(1.0, 0.75, 0.2, 0.9)
             pcall(function()
@@ -13532,14 +13542,20 @@ local function DrawZonePredictorOverlay(PC)
             end)
 
             pcall(function()
-                local vpW = PlayerMapMarker._cachedViewportW or 1920
-                local pX = bShowBanner and (vpW * 0.5 - 300) or (vpW * 0.5 - 140)
-                local pY = bShowBanner and 65 or 30
-                _G.DX_ZoneBannerSlot:SetPosition(FVector2D(pX, pY))
+                local centerX = 0
+                if PlayerMapMarker and PlayerMapMarker.GetSnapLineStartPos and PC then
+                    local fx, _ = PlayerMapMarker.GetSnapLineStartPos(PC)
+                    if fx and fx > 50 then centerX = fx end
+                end
+                if centerX <= 50 then
+                    local vpW = PlayerMapMarker._cachedViewportW or 1920
+                    centerX = vpW * 0.5
+                end
+                _G.DX_ZoneBannerSlot:SetPosition(FVector2D(centerX, 60))
             end)
         end
 
-        -- 3. 3D World Tag at Zone Center
+        -- 3. 3D World Tag at Zone Center (Nhỏ gọn, canh giữa tâm 3D)
         if not (_G.DX_ZoneWorldTagWidget and slua.isValid(_G.DX_ZoneWorldTagWidget)) then
             pcall(function()
                 local TextBlock = CGame:NewObjectFromPath("/Script/UMG.TextBlock", PlayerMapMarker.ESPCanvas)
@@ -13548,6 +13564,7 @@ local function DrawZonePredictorOverlay(PC)
                     if Slot then
                         Slot:SetAutoSize(true)
                         Slot:SetZOrder(9998)
+                        pcall(function() Slot:SetAlignment(FVector2D(0.5, 0.5)) end)
                         _G.DX_ZoneWorldTagSlot = Slot
                         _G.DX_ZoneWorldTagWidget = TextBlock
                     end
@@ -13556,14 +13573,23 @@ local function DrawZonePredictorOverlay(PC)
         end
 
         if _G.DX_ZoneWorldTagWidget and slua.isValid(_G.DX_ZoneWorldTagWidget) and _G.DX_ZoneWorldTagSlot and PC then
+            pcall(function()
+                if _G.DX_ZoneWorldTagWidget.Font then
+                    local font = _G.DX_ZoneWorldTagWidget.Font
+                    font.Size = 9
+                    _G.DX_ZoneWorldTagWidget.Font = font
+                end
+                _G.DX_ZoneWorldTagSlot:SetAlignment(FVector2D(0.5, 0.5))
+            end)
+
             local bOnScreen, CanvasPos = false, nil
             if PlayerMapMarker and PlayerMapMarker.ProjectWorldToCanvasLocal then
                 bOnScreen, CanvasPos = PlayerMapMarker.ProjectWorldToCanvasLocal(PC, nextPos)
             end
             if bOnScreen and CanvasPos then
                 pcall(function()
-                    local tagText = string.format("◎ [TAM BO TIEP THEO (DU DOAN)]\n   Cach: %dm | R: %dm", distM, radiusM)
-                    local tagColor = FLinearColor(1.0, 0.85, 0.0, 1.0)
+                    local tagText = string.format("◎ [BO KE TIEP: %dm | R=%dm]", distM, radiusM)
+                    local tagColor = FLinearColor(1.0, 0.85, 0.0, 0.95)
                     if FSlateColor then
                         _G.DX_ZoneWorldTagWidget:SetColorAndOpacity(FSlateColor(tagColor))
                     else
