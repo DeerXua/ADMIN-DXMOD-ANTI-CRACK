@@ -3834,6 +3834,49 @@ table.insert(StackESP, {
 end
 
 -- =========================== PHẦN 28: AURA DYEING FUNCTIONS ===========================
+-- Hook bao ve Aura Dyeing trong Che do Sang Tao WOW (World of Wonder)
+pcall(function()
+    local okCG, CreativeGameState = pcall(require, "GameLua.Mod.CreativeBase.Gameplay.Core.CreativeModeGameState")
+    if okCG and CreativeGameState and type(CreativeGameState) == "table" and not CreativeGameState._DX_AuraHooked then
+        CreativeGameState._DX_AuraHooked = true
+
+        local orig_SetDrawDyeingCommand = CreativeGameState._SetDrawDyeingCommand
+        CreativeGameState._SetDrawDyeingCommand = function(self, bEnable)
+            if _G.DX_GetVal and _G.DX_GetVal("WALLHACK") == 1 then
+                bEnable = true
+            end
+            if orig_SetDrawDyeingCommand then
+                pcall(orig_SetDrawDyeingCommand, self, bEnable)
+            end
+        end
+
+        local orig_RemoveDrawDyeingCommand = CreativeGameState.RemoveDrawDyeingCommand
+        CreativeGameState.RemoveDrawDyeingCommand = function(self)
+            if _G.DX_GetVal and _G.DX_GetVal("WALLHACK") == 1 then
+                self.DrawDyeingCount = 9999
+                return
+            end
+            if orig_RemoveDrawDyeingCommand then
+                pcall(orig_RemoveDrawDyeingCommand, self)
+            end
+        end
+    end
+
+    local okCP, CreativePlayerChar = pcall(require, "GameLua.Mod.CreativeBase.Gameplay.Core.CreativeModePlayerCharacter")
+    if okCP and CreativePlayerChar and type(CreativePlayerChar) == "table" and not CreativePlayerChar._DX_AuraHooked then
+        CreativePlayerChar._DX_AuraHooked = true
+
+        local orig_SetEnemyOutlineSeeThrough = CreativePlayerChar._SetEnemyOutlineSeeThrough
+        CreativePlayerChar._SetEnemyOutlineSeeThrough = function(self, bEnable, nRetryCount)
+            if _G.DX_GetVal and _G.DX_GetVal("WALLHACK") == 1 then
+                bEnable = true
+            end
+            if orig_SetEnemyOutlineSeeThrough then
+                pcall(orig_SetEnemyOutlineSeeThrough, self, bEnable, nRetryCount)
+            end
+        end
+    end
+end)
 local slua_isValid = slua and slua.isValid
 local string_lower = string.lower
 local string_find = string.find
@@ -5697,11 +5740,19 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                 local aiCount = 0
 
                 local globalVisColor, globalPlayerOccludedColor, globalAiOccludedColor, globalColorHash
+                local isCreativeMode = false
+                pcall(function()
+                    local CGS = rawget(_G, "CGameState")
+                    if CGS and slua.isValid(CGS) and type(CGS.IsCreativeMode) == "function" then
+                        isCreativeMode = CGS:IsCreativeMode()
+                    end
+                end)
+
                 if isWallhackGlobalOn then
-                    -- [WOW / CHẾ ĐỘ SÁNG TẠO FIX] Duy trì định kỳ các CVar chiều sâu để chống bị map WOW ghi đè
+                    -- [WOW / CHẾ ĐỘ SÁNG TẠO FIX] Duy trì định kỳ các CVar chiều sâu (1.5s) để chống bị map WOW ghi đè làm mất VisCheck 2 màu
                     pcall(function()
                         local curOS = os_clock()
-                        if not self._lastWHCvarTime or (curOS - self._lastWHCvarTime) > 10.0 then
+                        if not self._lastWHCvarTime or (curOS - self._lastWHCvarTime) > 1.5 then
                             self._lastWHCvarTime = curOS
                             local KSL = rawget(_G, "KismetSystemLibrary") or (import and import("KismetSystemLibrary"))
                             local pc = PlayerController or (self.GetPlayerController and self:GetPlayerController())
@@ -5750,25 +5801,37 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                         if not Valid(enemy) or enemy == LocalPlayer then
                             isTeammate = true
                         else
-                            -- 1. Native Character method: IsSameTeam (Chuẩn nhất mọi chế độ Classic/Ranked/TDM/WOW)
-                            if type(LocalPlayer.IsSameTeam) == "function" then
-                                local ok, isSame = pcall(function() return LocalPlayer:IsSameTeam(enemy) end)
-                                if ok and isSame == true then
-                                    isTeammate = true
-                                end
-                            end
-                            -- 2. Native PlayerController method: IsTeamMate
-                            if not isTeammate and Valid(PlayerController) and type(PlayerController.IsTeamMate) == "function" then
-                                local ok, isTeam = pcall(function() return PlayerController:IsTeamMate(enemy) end)
-                                if ok and isTeam == true then
-                                    isTeammate = true
-                                end
-                            end
-                            -- 3. TeamID check
-                            if not isTeammate and myTeamID and myTeamID > 0 then
+                            local isFFAorWOW = isCreativeMode or (myTeamID == nil or myTeamID <= 0)
+                            if isFFAorWOW then
+                                -- Trong WOW / FFA: Khong tu dong danh dong cac player deu la team 0
                                 local eTeamID = enemy.TeamID or (type(enemy.GetTeamID) == "function" and enemy:GetTeamID())
-                                if eTeamID and eTeamID > 0 and eTeamID == myTeamID then
+                                if myTeamID and myTeamID > 0 and eTeamID and eTeamID > 0 and myTeamID == eTeamID then
                                     isTeammate = true
+                                elseif type(LocalPlayer.IsSameTeam) == "function" and (myTeamID and myTeamID > 0) then
+                                    local ok, isSame = pcall(function() return LocalPlayer:IsSameTeam(enemy) end)
+                                    if ok and isSame == true then isTeammate = true end
+                                end
+                            else
+                                -- 1. Native Character method: IsSameTeam (Classic/Ranked/TDM)
+                                if type(LocalPlayer.IsSameTeam) == "function" then
+                                    local ok, isSame = pcall(function() return LocalPlayer:IsSameTeam(enemy) end)
+                                    if ok and isSame == true then
+                                        isTeammate = true
+                                    end
+                                end
+                                -- 2. Native PlayerController method: IsTeamMate
+                                if not isTeammate and Valid(PlayerController) and type(PlayerController.IsTeamMate) == "function" then
+                                    local ok, isTeam = pcall(function() return PlayerController:IsTeamMate(enemy) end)
+                                    if ok and isTeam == true then
+                                        isTeammate = true
+                                    end
+                                end
+                                -- 3. TeamID check
+                                if not isTeammate and myTeamID and myTeamID > 0 then
+                                    local eTeamID = enemy.TeamID or (type(enemy.GetTeamID) == "function" and enemy:GetTeamID())
+                                    if eTeamID and eTeamID > 0 and eTeamID == myTeamID then
+                                        isTeammate = true
+                                    end
                                 end
                             end
                         end
@@ -5875,13 +5938,26 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                             end
 
                             if not enemy.DX_NextMeshUpdateTime or currentTickOS > enemy.DX_NextMeshUpdateTime then
-                                enemy.DX_NextMeshUpdateTime = currentTickOS + 3.0 + (math_random() * 2.0)
+                                enemy.DX_NextMeshUpdateTime = currentTickOS + 2.0 + (math_random() * 1.5)
                                 local meshes = {}
                                 local existing = {}
                                 if Valid(enemy.Mesh) then
                                     table.insert(meshes, enemy.Mesh)
                                     existing[enemy.Mesh] = true
                                 end
+                                -- Thêm tất cả mesh từ AvatarComponent (Quần áo, mũ, giáp, skin trong WOW & Classic)
+                                pcall(function()
+                                    local avatar = enemy.AvatarComponent or (type(enemy.getAvatarComponent2) == "function" and enemy:getAvatarComponent2())
+                                    if Valid(avatar) and type(avatar.GetMeshCompBySlotID) == "function" then
+                                        for slot = 0, 30 do
+                                            local slotMesh = avatar:GetMeshCompBySlotID(slot)
+                                            if Valid(slotMesh) and not existing[slotMesh] then
+                                                table.insert(meshes, slotMesh)
+                                                existing[slotMesh] = true
+                                            end
+                                        end
+                                    end
+                                end)
                                 if GlobalSkelClass then
                                     pcall(function()
                                         local childs = enemy:GetComponentsByClass(GlobalSkelClass)
@@ -5909,6 +5985,12 @@ function BRPlayerCharacterBase:StartAdvancedSystems()
                                 local occludedColor = enemy.DX_IsAICached and globalAiOccludedColor or globalPlayerOccludedColor
                                 local auraHash = (enemy.DX_IsAICached and "ai_" or "player_") .. globalColorHash
                                 local bNeedReapply = not enemy.WallhackApplied or isMeshChanged or enemy.LastAuraHash ~= auraHash
+                                if not bNeedReapply and Valid(enemy.Mesh) then
+                                    -- [WOW RESPAWN FIX] Tự động kích hoạt lại khi địch hồi sinh trong trận đấu WOW
+                                    if enemy.Mesh.bRenderCustomDepth == false or enemy.Mesh.bDrawDyeing == false then
+                                        bNeedReapply = true
+                                    end
+                                end
                                 if bNeedReapply then
                                     pcall(function()
                                         for _, mesh in ipairs(meshes) do
